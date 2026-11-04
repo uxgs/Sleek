@@ -1,6 +1,8 @@
 /* Press clippings: a bullet with data-press="<id>" opens a newspaper clipping over its slide.
    Built here, not in the markup, so it takes no text ids and later slides keep their saved edits.
-   It lives inside the slide (slide coordinates), so the presenter's preview replays the clicks. */
+   It lives inside the slide (slide coordinates), so the presenter's preview replays the clicks.
+   A deck carries its own clippings in seed.press, each keyed by the text id of the bullet that opens it
+   ("<slide id>.t4"), with the same fields as the sample below. */
 (function(){
   var D = window.Deck; if(!D) return;
 
@@ -26,7 +28,20 @@
     }
   };
 
+  // the deck's own clippings, on the bullets they belong to
+  var OWN = (D.SEED && D.SEED.press) || {};
+  function okClip(p){ return p && typeof p === 'object' && Array.isArray(p.head) && Array.isArray(p.body); }
+  function attach(){
+    Object.keys(OWN).forEach(function(eid){
+      if(!okClip(OWN[eid])) return;
+      PRESS['own:' + eid] = OWN[eid];
+      Array.prototype.forEach.call(document.querySelectorAll('#stage [data-eid="' + eid.replace(/["\\]/g, '') + '"]'), function(el){ el.setAttribute('data-press', 'own:' + eid); });
+    });
+  }
+  attach();
+
   var cur = null;   // { el, src }
+  function esc(v){ return String(v == null ? '' : v).replace(/[&<>"]/g, function(c){ return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
 
   // torn top and bottom, scissor-cut sides; seeded so the audience and the preview tear it the same
   function torn(){
@@ -40,19 +55,19 @@
   function build(p){
     var el = document.createElement('div');
     el.className = 'press'; el.lang = 'en';
-    var marked = function(parts){ return parts.map(function(b){ return b[1] ? '<mark class="pr-hl">' + b[0] + '</mark>' : b[0]; }).join(''); };
+    var marked = function(parts){ return parts.map(function(b){ b = [].concat(b); return b[1] ? '<mark class="pr-hl">' + esc(b[0]) + '</mark>' : esc(b[0]); }).join(''); };
     var body = marked(p.body);
     el.innerHTML =
       '<div class="pr-dim"></div>' +
-      '<article class="pr-clip" role="dialog" aria-label="' + p.outlet + ' article"><div class="pr-paper" style="clip-path:' + torn() + '">' +
+      '<article class="pr-clip" role="dialog" aria-label="' + esc(p.outlet) + ' article"><div class="pr-paper" style="clip-path:' + torn() + '">' +
         '<header class="pr-mast">' +
-          '<span class="pr-sec">' + p.section + '</span>' +
-          '<span class="pr-name">' + p.outlet + '</span>' +
-          '<span class="pr-sec">' + p.kicker + '</span>' +
+          '<span class="pr-sec">' + esc(p.section) + '</span>' +
+          '<span class="pr-name">' + esc(p.outlet) + '</span>' +
+          '<span class="pr-sec">' + esc(p.kicker) + '</span>' +
         '</header>' +
         '<h3 class="pr-head">“' + marked(p.head) + '”</h3>' +
         '<div class="pr-cols"><p class="pr-body">' + body + '</p>' +
-          '<aside class="pr-by"><span class="pr-by-n">' + p.by + '</span><span class="pr-by-r">' + p.role + '</span></aside>' +
+          '<aside class="pr-by"><span class="pr-by-n">' + esc(p.by) + '</span><span class="pr-by-r">' + esc(p.role) + '</span></aside>' +
         '</div>' +
       '</div></article>' +
       '';

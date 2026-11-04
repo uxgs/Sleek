@@ -3182,7 +3182,7 @@
         } else {
           var id = s.getAttribute('data-added');
           doc.added = (doc.added || []).filter(function(a){ return a.id !== id; });
-          ['text', 'style', 'media', 'components'].forEach(function(f){ dropPrefixed(doc[f], id); });
+          ['text', 'style', 'media', 'components', 'press'].forEach(function(f){ dropPrefixed(doc[f], id); });
           if(doc.noteByKey) delete doc.noteByKey['add-' + id];
           doc.order = keys.filter(function(x){ return x !== key; });
         }
@@ -3204,7 +3204,7 @@
           var src = list.filter(function(a){ return a.id === id; })[0]; if(!src) return false;
           var copy = { id: nid, t: src.t, name: name }; if(src.fill) copy.fill = src.fill;
           list.splice(list.indexOf(src) + 1, 0, copy); doc.added = list;
-          ['text', 'style', 'media', 'components'].forEach(function(f){ copyPrefixed(doc[f], id, nid); });
+          ['text', 'style', 'media', 'components', 'press'].forEach(function(f){ copyPrefixed(doc[f], id, nid); });
           doc.noteByKey = doc.noteByKey || {}; doc.noteByKey['add-' + nid] = s._notes || '';
           if(doc.slideTheme && s._lkey != null && doc.slideTheme[s._lkey] != null) doc.slideTheme[name] = doc.slideTheme[s._lkey];
           var pg = doc.annotations && doc.annotations.pages && s._lkey != null && doc.annotations.pages[s._lkey];
