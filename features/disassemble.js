@@ -6,13 +6,10 @@
        { title, kicker, w, h, layers: [ back ... front ] }
    each layer: { id, type, box: [x, y, w, h], label, desc, ...type fields }
        type 'art'   src | a, b    artwork (an image, or a placeholder gradient)
-            'scrim'               bottom legibility gradient
             'image' src           any other flat layer
             'text'  text, sub     a headline with a small kicker above it
             'tiles' count, a, b   a row of 16:9 placeholder tiles
             'color' color         a flat fill
-            'texture' src         a pattern that drifts slowly (oversized, so its edges never show)
-            'images' items        several images in one layer: [{ src, box }], boxes relative to the layer
    'image' layers take fade: true to soften their bottom edge, drift: true to sway gently, and ph: { type, box, ... } for a stand-in
    (any of the types above, drawn at box) shown while the image file isn't there yet.
    Add data-assemble to run it in place instead: clicking the tile pulls its layers apart right
@@ -78,14 +75,10 @@
   function layerInner(L){
     switch(L.type){
       case 'art':   return L.src ? '<img src="' + esc(L.src) + '" alt="">' :
-                      '<div class="dl-art-ph" style="--a:' + (L.a || '#4a7cff') + ';--b:' + (L.b || '#1a1f3a') + '"></div>';
-      case 'scrim': return '<div class="dl-scrim"></div>';
+                      '<div class="dl-art-ph" style="--a:' + (L.a || '#5b6170') + ';--b:' + (L.b || '#1c1e24') + '"></div>';
       case 'text':  return '<div class="dl-text">' + (L.sub ? '<span>' + esc(L.sub) + '</span>' : '') + esc(L.text || '') + '</div>';
       case 'color': return '<div class="dl-color" style="background:' + esc(L.color || '#222') + '"></div>';
-      case 'texture': return '<div class="dl-texture"><img src="' + esc(L.src) + '" alt=""></div>';
-      case 'images': return (L.items || []).map(function(it){ var b = it.box;
-                      return '<img class="dl-item" src="' + esc(it.src) + '" alt="" style="left:' + b[0] + 'px;top:' + b[1] + 'px;width:' + b[2] + 'px;height:' + b[3] + 'px">'; }).join('');
-      case 'tiles': var tiles = ''; for(var t = 0; t < (L.count || 4); t++) tiles += '<i style="--a:' + (L.a || '#3a5bd9') + ';--b:' + (L.b || '#141a33') + ';--k:' + t + '"></i>';
+      case 'tiles': var tiles = ''; for(var t = 0; t < (L.count || 4); t++) tiles += '<i style="--a:' + (L.a || '#4b5060') + ';--b:' + (L.b || '#1a1c22') + ';--k:' + t + '"></i>';
                     return '<div class="dl-tiles">' + tiles + '</div>';
       default:      var ph = '';
                     if(L.ph){ var pb = L.ph.box || [0, 0, '100%', '100%'], px = function(v){ return typeof v === 'number' ? v + 'px' : v; };

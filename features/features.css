@@ -1,19 +1,17 @@
-/* Come to life + Disassemble. Both are dark "stage" overlays, so they read the same in light and dark. */
+/* Take apart: a dark "stage" overlay, so they read the same in light and dark. */
 
 /* over a feature tile, clicks go to the tile instead of the slide's edge click-zones */
-body.over-proto .zone, body.over-dis .zone { pointer-events: none; }
-/* a prototype or Disassemble is open: the edge zones step aside so every click reaches it */
+body.over-dis .zone { pointer-events: none; }
+/* a take-apart is open: the edge zones step aside so every click reaches it */
 body.deck-modal .zone { pointer-events: none; }
 
 /* ---------- tile affordances ---------- */
-body:not(.editing) #stage [data-proto] { cursor: pointer; }
 body:not(.editing) #stage [data-dis] { cursor: pointer; }
-body:not(.editing) #stage [data-proto]::before, body:not(.editing) #stage [data-dis]::before {
+body:not(.editing) #stage [data-dis]::before {
   position: absolute; left: 12px; top: 12px; z-index: 4; padding: 6px 10px 6px 9px; border-radius: 999px;
   background: rgba(10,12,18,0.7); color: #fff; font: 600 11px/1 var(--ff-body, Inter, sans-serif); letter-spacing: 0.04em;
   opacity: 0; transform: translateY(-3px); transition: opacity 0.2s ease, transform 0.2s ease; pointer-events: none;
   -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
-body:not(.editing) #stage [data-proto]::before { content: "\25CF  Live prototype \00B7  Click to open"; }
 body:not(.editing) #stage [data-dis]::before { content: "\25A7  Disassemble"; }
 body:not(.editing) #stage [data-dis][data-assemble]::before { content: "\25A7  Click to take apart"; }
 body:not(.editing) #stage [data-dis][data-assemble].asm-on::before { content: "\25A7  Click to put it together"; }
@@ -27,7 +25,6 @@ body:not(.editing) #stage [data-dis][data-assemble].asm-on::before { content: "\
 .dis-inline.apart .dis-layer { transform: translateZ(var(--z)); }
 .dis-inline .dis-layer::after { content: ""; position: absolute; inset: -1px; border: 1px dashed transparent; border-radius: inherit; transition: border-color 0.4s; }
 .dis-inline.apart .dis-layer::after { border-color: color-mix(in srgb, var(--fg) 32%, transparent); }
-.dis-inline.apart .dis-layer.dl-texture .dl-texture { opacity: 0.5; }
 /* the vertical stack: each layer drawn flat in order (so none can cut through another), tipped back and
    given its own row; the whole stack sits a little low, clear of the slide's title */
 .dis-inline.stack-v .dis-iobj { transform-style: flat; }
@@ -55,47 +52,8 @@ body:not(.editing) #stage [data-dis][data-assemble].asm-on::before { content: "\
 .asm-layers b { min-width: 2ch; font-size: 12px; font-weight: 600; letter-spacing: 0.08em; line-height: 1.7; color: var(--accent); font-variant-numeric: tabular-nums; }
 .asm-layers strong { display: block; font-size: 18px; font-weight: 600; letter-spacing: -0.01em; color: var(--fg); }
 .asm-layers em { display: block; margin-top: 3px; font-size: 13.5px; font-style: normal; line-height: 1.45; color: var(--muted); }
-body:not(.editing) #stage [data-proto]:hover::before, body:not(.editing) #stage [data-proto].ctl-arming::before,
 body:not(.editing) #stage [data-dis]:hover::before { opacity: 1; transform: none; }
-/* hover: an accent ring says it's clickable; nothing opens until you click */
-body:not(.editing) #stage [data-proto]::after { content: ""; position: absolute; inset: 0; z-index: 4; border-radius: inherit;
-  box-shadow: inset 0 0 0 2px var(--accent); opacity: 0; transition: opacity 0.18s ease; pointer-events: none; }
-body:not(.editing) #stage [data-proto].ctl-arming::after { opacity: 1; }
 
-/* ---------- come to life ---------- */
-.ctl { position: absolute; inset: 0; z-index: 30; }
-.ctl[hidden] { display: none; }
-.ctl-dim { position: absolute; inset: 0; background: rgba(5,6,10,0); transition: background 0.5s ease; }
-.ctl.grown .ctl-dim { background: rgba(5,6,10,0.74); }
-.ctl-frame { position: absolute; overflow: hidden; background: #000; box-shadow: 0 30px 90px rgba(0,0,0,0.5);
-  transition: left 0.72s cubic-bezier(0.2,0.8,0.2,1), top 0.72s cubic-bezier(0.2,0.8,0.2,1), width 0.72s cubic-bezier(0.2,0.8,0.2,1),
-              height 0.72s cubic-bezier(0.2,0.8,0.2,1), border-radius 0.72s cubic-bezier(0.2,0.8,0.2,1); }
-.ctl-frame.no-anim { transition: none; }
-.ctl-live { position: absolute; left: 50%; top: 50%; width: 1280px; height: 720px; opacity: 0;
-  transform: translate(-50%,-50%) scale(1.04); transition: opacity 0.52s ease, transform 0.62s cubic-bezier(0.2,0.8,0.2,1); }
-.ctl-live iframe { display: block; width: 1280px; height: 720px; border: 0; background: #000; }
-.ctl-still { position: absolute; inset: 0; background: center / cover no-repeat; transform-origin: 50% 50%;
-  pointer-events: none;   /* visual only: once it fades out, the mouse must reach the prototype under it */
-  transition: opacity 0.52s ease, transform 0.9s cubic-bezier(0.2,0.8,0.2,1); }
-.ctl.grown .ctl-still { transform: scale(1.03); }                 /* a slow push-in as it grows... */
-.ctl.alive .ctl-still { opacity: 0; transform: scale(1.09); }      /* ...then the still dissolves into the live UI */
-.ctl.alive .ctl-live { opacity: 1; transform: translate(-50%,-50%) scale(1); }
-.ctl.closing .ctl-still { opacity: 1; transform: none; }
-.ctl.no-still .ctl-still { display: none; }                         /* no screenshot yet: the prototype itself grows */
-.ctl.no-still .ctl-live { opacity: 1; }
-.ctl-chip { position: absolute; left: 18px; top: 16px; z-index: 2; display: flex; align-items: center; gap: 8px; padding: 7px 12px;
-  border-radius: 999px; background: rgba(10,12,18,0.72); color: #fff; font: 600 12px/1 var(--ff-body, Inter, sans-serif); letter-spacing: 0.03em;
-  opacity: 0; transform: translateY(-6px); transition: opacity 0.3s, transform 0.3s; pointer-events: none;
-  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
-.ctl.alive .ctl-chip { opacity: 1; transform: none; animation: ctl-chip-out 0.5s ease 2.8s forwards; }
-@keyframes ctl-chip-out { to { opacity: 0; transform: translateY(-6px); } }
-.ctl-dot { width: 8px; height: 8px; border-radius: 50%; background: #ff453a; animation: ctl-pulse 1.4s ease-in-out infinite; }
-@keyframes ctl-pulse { 50% { opacity: 0.35; } }
-.ctl-key { margin-left: 4px; color: rgba(255,255,255,0.6); font-weight: 500; }
-.ctl-close { position: absolute; right: 14px; top: 14px; z-index: 2; width: 32px; height: 32px; border-radius: 50%; border: 0;
-  background: rgba(10,12,18,0.62); color: #fff; font-size: 18px; line-height: 1; cursor: pointer; opacity: 0; transition: opacity 0.3s; }
-.ctl.alive .ctl-close { opacity: 0.55; }
-.ctl.alive .ctl-close:hover { opacity: 1; }
 
 /* ---------- disassemble ---------- */
 .dis { position: absolute; inset: 0; z-index: 30; color: #fff; font-family: var(--ff-body, Inter, sans-serif); }
@@ -122,33 +80,16 @@ body:not(.editing) #stage [data-proto].ctl-arming::after { opacity: 1; }
 .dis.apart .dis-layer::after { border-color: rgba(255,255,255,0.3); }
 
 /* layer types */
-.dis-layer.dl-art, .dis-layer.dl-scrim { border-radius: 12px; overflow: hidden; }
-.dis-layer.dl-art { box-shadow: 0 20px 50px rgba(0,0,0,0.45); }
+.dis-layer.dl-art { border-radius: 12px; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.45); }
 .dis-layer img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .dl-art-ph { position: absolute; inset: 0; background: linear-gradient(160deg, var(--a), var(--b)); }
 .dl-art-ph::before { content: ""; position: absolute; width: 120%; aspect-ratio: 1; left: -10%; top: -30%; border-radius: 50%;
   background: radial-gradient(circle, rgba(255,255,255,0.35), transparent 60%); }
-.dl-art-ph::after { content: ""; position: absolute; left: 18%; right: 18%; bottom: 14%; height: 58%; border-radius: 48% 48% 10% 10%;
-  background: rgba(0,0,0,0.28); }
-.dl-scrim { position: absolute; inset: 0; background: linear-gradient(rgba(0,0,0,0) 36%, rgba(0,0,0,0.84)); }
-/* flat and textured layers */
-.dis-layer.dl-color, .dis-layer.dl-texture { border-radius: 12px; overflow: hidden; }
-.dis-layer.dl-color { box-shadow: 0 20px 50px rgba(0,0,0,0.45); }
+/* flat layers */
+.dis-layer.dl-color { border-radius: 12px; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.45); }
 .dl-color { position: absolute; inset: 0; }
-.dl-texture { position: absolute; inset: 0; overflow: hidden; }
-.dis-layer .dl-texture img { position: absolute; left: -5%; top: -5%; width: 110%; height: 110%; max-width: none; object-fit: cover;
-  animation: dl-texture-drift 22s ease-in-out infinite alternate; }
-@keyframes dl-texture-drift {
-  0%   { transform: translate(0, 0) scale(1) rotate(0deg); }
-  35%  { transform: translate(-1.2%, 0.8%) scale(1.025) rotate(0.35deg); }
-  70%  { transform: translate(0.9%, -1%) scale(1.04) rotate(-0.3deg); }
-  100% { transform: translate(-0.6%, -1.6%) scale(1.02) rotate(0.2deg); }
-}
-.dis-layer img.dl-item { position: absolute; width: auto; height: auto; max-width: none; object-fit: fill; }
 .dis-layer img.dl-fade { -webkit-mask-image: linear-gradient(#000 calc(100% - 47px), transparent calc(100% - 22px));
                                  mask-image: linear-gradient(#000 calc(100% - 47px), transparent calc(100% - 22px)); }
-.dis-layer.dl-texture .dl-texture { opacity: 0.15; transition: opacity 0.6s; }
-.dis.apart .dis-layer.dl-texture .dl-texture { opacity: 0.5; }   /* stronger while apart, so the sheet reads on its own */
 .dl-text { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; gap: 6px;
   font: 600 20px/1.15 var(--ff-body, Inter, sans-serif); letter-spacing: -0.01em; color: #fff; text-shadow: 0 2px 10px rgba(0,0,0,0.4); }
 .dl-text span { font-size: 11px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255,255,255,0.75); }
@@ -176,7 +117,7 @@ body:not(.editing) #stage [data-proto].ctl-arming::after { opacity: 1; }
 .dis-toggle { font: 600 14px/1 var(--ff-body, Inter, sans-serif); color: #0b0c10; background: #fff; border: 0; border-radius: 999px; padding: 11px 18px; cursor: pointer;
   transition: box-shadow 0.25s ease; }
 /* accent bloom on the feature buttons, like the deck's */
-.dis-toggle:is(:hover, :focus-visible), .ctl-close:hover, .dis-close:hover { outline: none;
+.dis-toggle:is(:hover, :focus-visible), .dis-close:hover { outline: none;
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 60%, transparent), 0 0 18px color-mix(in srgb, var(--accent) 55%, transparent),
               0 0 44px color-mix(in srgb, var(--accent) 30%, transparent); }
 .dis-close { position: absolute; right: 22px; top: 22px; width: 34px; height: 34px; border-radius: 50%; border: 0;
@@ -185,7 +126,7 @@ body:not(.editing) #stage [data-proto].ctl-arming::after { opacity: 1; }
 .dis-close:hover { opacity: 1; }
 
 @media (prefers-reduced-motion: reduce) {
-  .ctl-frame, .ctl-still, .ctl-live, .dis-obj, .dis-layer, .dis-scene { transition-duration: 0.01s !important; }
+  .dis-obj, .dis-layer, .dis-scene { transition-duration: 0.01s !important; }
 }
 
 /* a layer whose image isn't there yet shows its stand-in (ph) instead */

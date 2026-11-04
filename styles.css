@@ -142,7 +142,7 @@ img { max-width: 100%; }
   .s-twovideo .tv-stack { display: grid; gap: 20px; }
   .s-twovideo .tv-stack .media { aspect-ratio: 16 / 9; height: auto; }
   /* a video tile that waits for a click (data-noautoplay): a glass play button over its first frame */
-  /* bottom left, clear of a title card the video may open on */
+  /* bottom left, clear of the video's own opening frame */
   body:not(.editing) .media[data-noautoplay].filled::after { content: ""; position: absolute; left: 16px; bottom: 16px; z-index: 3;
     width: 48px; height: 48px; border-radius: 50%; pointer-events: none;
     background: rgba(10,12,18,0.55) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M9 6.5v11l9-5.5z' fill='%23fff'/%3E%3C/svg%3E") center / 22px no-repeat;
@@ -175,25 +175,25 @@ img { max-width: 100%; }
   body.editing .fs-track { animation: none; }
   body.editing .filmstrip { overflow-y: auto; }
   body.editing .fs-copy { display: none; }
-  @keyframes fs-roll { from { transform: translateY(0); } to { transform: translateY(calc(var(--set, 936px) * -1)); } }   /* one set; app.js sets --set */
+  @keyframes fs-roll { from { transform: translateY(0); } to { transform: translateY(calc(var(--set, 624px) * -1)); } }   /* one set; app.js sets --set */
   @media (prefers-reduced-motion: reduce) { .fs-track { animation: none; } }
 
   /* cards (a row of 3) */
-  .s-phases { gap: 40px; }
-  .s-phases h2.display { font-size: 44px; max-width: 22ch; }
-  .phases { display: grid; grid-template-columns: repeat(3,1fr); gap: 22px; flex: 1 1 auto; align-content: center; }
-  .phase { border: 1px solid var(--line); border-radius: 16px; padding: 28px; background: var(--surface);
+  .s-cards { gap: 40px; }
+  .s-cards h2.display { font-size: 44px; max-width: 22ch; }
+  .card-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 22px; flex: 1 1 auto; align-content: center; }
+  .card-item { border: 1px solid var(--line); border-radius: 16px; padding: 28px; background: var(--surface);
            display: flex; flex-direction: column; gap: 10px; }
-  .phase .p-k { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); font-weight: 600; }
-  .phase .p-n { font-size: 26px; font-weight: 600; letter-spacing: -0.02em; }
-  .phase .p-r { font-size: 15px; color: var(--faint); }
-  .phase .p-d { font-size: 16px; color: var(--muted); line-height: 1.45; margin-top: 4px; }
+  .card-item .p-k { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); font-weight: 600; }
+  .card-item .p-n { font-size: 26px; font-weight: 600; letter-spacing: -0.02em; }
+  .card-item .p-r { font-size: 15px; color: var(--faint); }
+  .card-item .p-d { font-size: 16px; color: var(--muted); line-height: 1.45; margin-top: 4px; }
   /* wrap up: the same three cards, one line each, under a big ask for questions */
   .s-wrap { gap: 28px; justify-content: center; }
   .s-wrap h2.display { font-size: 72px; letter-spacing: -0.035em; }
-  .s-wrap .phases { flex: none; align-content: start; }
-  .s-wrap .phase { padding: 26px 28px 28px; gap: 8px; }
-  .s-wrap .phase .p-d { font-size: 18px; color: var(--fg); line-height: 1.45; margin-top: 8px; padding-top: 16px; border-top: 1px solid var(--line); }
+  .s-wrap .card-row { flex: none; align-content: start; }
+  .s-wrap .card-item { padding: 26px 28px 28px; gap: 8px; }
+  .s-wrap .card-item .p-d { font-size: 18px; color: var(--fg); line-height: 1.45; margin-top: 8px; padding-top: 16px; border-top: 1px solid var(--line); }
   .s-wrap .wrap-next { position: absolute; right: 104px; bottom: 64px; }
   .s-wrap .wrap-next .meta::after { content: ' \2192'; color: var(--accent); }
 
@@ -254,7 +254,7 @@ img { max-width: 100%; }
     box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 50%, transparent), 0 0 20px color-mix(in srgb, var(--accent) 45%, transparent), 0 8px 24px rgba(0,0,0,0.3); }
   body:is(.editing, .annotating) .s-carousel .car-nav { display: none; }
   body:is(.editing, .annotating) .s-carousel .carousel { cursor: auto; }
-  @keyframes car-roll { from { transform: translateX(0); } to { transform: translateX(calc(var(--set, 2112px) * -1)); } }
+  @keyframes car-roll { from { transform: translateX(0); } to { transform: translateX(calc(var(--set, 1866px) * -1)); } }
   body.editing .s-carousel .car-track { animation: none; }
   body.editing .s-carousel .car-copy { display: none; }
   body.editing .s-carousel .carousel { overflow-x: auto; }
@@ -277,8 +277,8 @@ img { max-width: 100%; }
   @media (prefers-reduced-motion: reduce) { .s-carousel .car-track { animation: none; } .s-carousel .carousel { overflow-x: auto; } }
 
   /* learned (wins / misses) */
-  .s-learned { gap: 36px; }
-  .s-learned h2.display { font-size: 42px; }
+  .s-review { gap: 36px; }
+  .s-review h2.display { font-size: 42px; }
   .cols2 { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; flex: 1 1 auto; align-content: start; }
   .lcol .lh { font-size: 13px; letter-spacing: 0.14em; text-transform: uppercase; font-weight: 600; margin-bottom: 18px; }
   .lcol.win .lh { color: var(--good); }
@@ -907,7 +907,6 @@ img { max-width: 100%; }
   body.presenterwin .marks { display: none; }
   body.mirror .bar, body.mirror .zone, body.mirror .notes, body.mirror .editbar, body.mirror .presenter { display: none !important; }
   body.mirror { background: #000; }
-  body.mirror .ctl-live iframe { pointer-events: none; }   /* clicks go to the audience, which passes them in */
   body.mirror .stage { box-shadow: none; }
   /* the preview's own pointer mustn't pause a carousel the audience sees moving */
   body.mirror:not(.deck-modal) .s-carousel.rolling .carousel:hover .car-track { animation-play-state: running; }

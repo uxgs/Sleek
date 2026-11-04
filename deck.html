@@ -27,7 +27,7 @@
     <section class="slide s-title active" data-label="Title" data-note="title">
       <template class="slide-notes"><p>The title slide. Open the menu bottom right and press <b>Edit</b> to change any text on it.</p>
 <ul><li>Press <b>P</b> to open the presenter window with these notes.</li><li>Press <b>G</b> to see every slide at once.</li></ul></template>
-      <div class="overline">Your name <span class="tick">·</span> Product designer</div>
+      <div class="overline">Pace <span class="tick">·</span> Product review</div>
       <h1 class="display">Pace</h1>
       <p class="lead">A fitness app that builds today's workout from how you slept and the time you have.</p>
       <div class="footrow">
@@ -102,14 +102,14 @@
     </section>
 
     <!-- Cards: a row of three -->
-    <section class="slide s-phases" data-label="Cards" data-note="cards">
+    <section class="slide s-cards" data-label="Cards" data-note="cards">
       <template class="slide-notes"><p>Three cards side by side: stages, options or pillars.</p></template>
       <div class="overline">How it works</div>
       <h2 class="display">Check in, train, recover.</h2>
-      <div class="phases">
-        <div class="phase"><span class="p-k">Step 01</span><span class="p-n">Check in</span><span class="p-r">Ten seconds</span><span class="p-d">How you slept, how you feel and how long you have.</span></div>
-        <div class="phase"><span class="p-k">Step 02</span><span class="p-n">Train</span><span class="p-r">15 to 60 minutes</span><span class="p-d">A session built for today, move by move, with a timer.</span></div>
-        <div class="phase"><span class="p-k">Step 03</span><span class="p-n">Recover</span><span class="p-r">Rest of the day</span><span class="p-d">Stretch, sleep and let tomorrow's plan adjust.</span></div>
+      <div class="card-row">
+        <div class="card-item"><span class="p-k">Step 01</span><span class="p-n">Check in</span><span class="p-r">Ten seconds</span><span class="p-d">How you slept, how you feel and how long you have.</span></div>
+        <div class="card-item"><span class="p-k">Step 02</span><span class="p-n">Train</span><span class="p-r">15 to 60 minutes</span><span class="p-d">A session built for today, move by move, with a timer.</span></div>
+        <div class="card-item"><span class="p-k">Step 03</span><span class="p-n">Recover</span><span class="p-r">Rest of the day</span><span class="p-d">Stretch, sleep and let tomorrow's plan adjust.</span></div>
       </div>
     </section>
 
@@ -121,9 +121,9 @@
         <div class="section-no">Part 02</div>
         <h2 class="display">The design</h2>
         <div class="metarow">
-          <span class="meta">Role · Lead designer</span>
-          <span class="meta">Year · 2026</span>
-          <span class="meta">Team · Design, Engineering, Research</span>
+          <span class="meta">Product · Pace</span>
+          <span class="meta">Release · 2.0</span>
+          <span class="meta">Platform · iOS, Android</span>
         </div>
         <p class="one body">From a paper sketch to the app on people's phones.</p>
       </div>
@@ -184,7 +184,7 @@
     </section>
 
     <!-- Lessons: what landed and what to watch -->
-    <section class="slide s-learned" data-label="Lessons" data-note="lessons">
+    <section class="slide s-review" data-label="Lessons" data-note="lessons">
       <template class="slide-notes"><p>Two columns: what worked and what did not. The second bullet opens a press clipping; click it.</p></template>
       <div class="overline"><span class="tick">Part 03 ·</span> Results</div>
       <h2 class="display">What the first year taught us.</h2>
@@ -201,21 +201,21 @@
           <div class="lh">What to watch</div>
           <ul>
             <li><span class="m">!</span>The check-in gets skipped on busy mornings.</li>
-            <li><span class="m">–</span>Training with friends was cut and is still missed.</li>
+            <li><span class="m">–</span>Route sharing slipped to the next release.</li>
           </ul>
         </div>
       </div>
     </section>
 
     <!-- Closing cards: a recap, then questions -->
-    <section class="slide s-phases s-wrap" data-label="Wrap up" data-note="wrap-up">
+    <section class="slide s-cards s-wrap" data-label="Wrap up" data-note="wrap-up">
       <template class="slide-notes"><p>A recap of the three parts, then open the floor for questions.</p></template>
       <div class="overline">Wrap up</div>
       <h2 class="display">Questions?</h2>
-      <div class="phases">
-        <div class="phase"><span class="p-k">Part 01</span><span class="p-n">The problem</span><span class="p-d">Rigid plans broke by week two.</span></div>
-        <div class="phase"><span class="p-k">Part 02</span><span class="p-n">The design</span><span class="p-d">Check in, train and recover, every day.</span></div>
-        <div class="phase"><span class="p-k">Part 03</span><span class="p-n">Results</span><span class="p-d">More people still training at week six.</span></div>
+      <div class="card-row">
+        <div class="card-item"><span class="p-k">Part 01</span><span class="p-n">The problem</span><span class="p-d">Rigid plans broke by week two.</span></div>
+        <div class="card-item"><span class="p-k">Part 02</span><span class="p-n">The design</span><span class="p-d">Check in, train and recover, every day.</span></div>
+        <div class="card-item"><span class="p-k">Part 03</span><span class="p-n">Results</span><span class="p-d">More people still training at week six.</span></div>
       </div>
       <div class="wrap-next"><span class="meta">Up next · An annotated screen</span></div>
     </section>
@@ -487,7 +487,6 @@
 
 <script src="app.js"></script>
 <script src="glow-fx.js"></script>
-<script src="features/come-to-life.js"></script>
 <script src="features/disassemble.js"></script>
 <script src="features/press.js"></script>
 <script src="features/add-slide.js"></script>

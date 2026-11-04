@@ -21,7 +21,7 @@
         ['knew when to push me and when to back off.', true],
         [' Fifteen minutes on a busy day still counted, and the plan never made me feel behind.”']
       ],
-      by: 'Sam Okafor',
+      by: 'Priya Nair',
       role: 'Health editor'
     }
   };

@@ -320,7 +320,7 @@
   notesEditor(nText, document.getElementById('n-fmt'), function(){ return editing; });
 
   // ---------- links in the notes to things on the slide ----------
-  // Select words in your notes, then Link: pick an image, take-apart, prototype or pin on that slide.
+  // Select words in your notes, then Link: pick an image, take-apart or pin on that slide.
   // The words become a link (href "#open:tile:2", "#open:pin:1": by position on the slide, so it
   // survives saving and slides moving) that opens it on the audience screen as if you'd clicked it,
   // from the deck's notes or the presenter's (the preview follows). While editing it's just text.
@@ -333,7 +333,6 @@
     slideTiles(s).forEach(function(m, k){
       var cap = m.querySelector('.cap'), name = cap ? cap.textContent.trim() : '', src = tileSrc(m), kind, vid = isVideo(src);
       if(m.hasAttribute('data-dis')) kind = 'Take apart';
-      else if(m.hasAttribute('data-proto')) kind = 'Open prototype';
       else if(src && !s.matches('.s-divider, .s-screen') && !m.closest('.filmstrip')) kind = vid ? 'Play video ' + (++nv) : 'Image ' + (++n);   // a video plays full screen
       else return;
       out.push({ ref: 'tile:' + (k + 1), kind: kind, name: name, src: src, video: vid });
@@ -792,7 +791,7 @@
   function next(){ show(i+1); }
   function prev(){ show(i-1); }
 
-  // while a prototype or Disassemble is open, clicks never move the deck: close it first
+  // while a take-apart is open, clicks never move the deck: close it first
   function featureOpen(){ return !!(window.Deck && Deck.modal); }
   document.getElementById('next').onclick = function(){ if(!featureOpen()) next(); };
   document.getElementById('prev').onclick = function(){ if(!featureOpen()) prev(); };
@@ -1759,11 +1758,11 @@
     });
   }
   // ---------- click a tile to see it big ----------
-  // Any filled image tile without a live prototype or a take-apart expands into the full-screen
+  // Any filled image tile without a take-apart expands into the full-screen
   // viewer; ←/→ step through the other tiles in the same group (a carousel set, a grid).
   function isExpandable(m){
     return m && m.classList.contains('media') && m.classList.contains('filled') && !editing && !annotating &&
-      m.closest('#stage .slide.active') && !m.closest('.s-divider, .s-screen, .filmstrip') && !m.matches('[data-proto], [data-dis]');
+      m.closest('#stage .slide.active') && !m.closest('.s-divider, .s-screen, .filmstrip') && !m.matches('[data-dis]');
   }
   function expandableTileAt(x, y){
     var els = document.elementsFromPoint(x, y);
@@ -2236,7 +2235,7 @@
   // Any text block on a non-screen slide can be edited live in edit mode.
   // Edits are keyed by a stable id (document order of the static markup),
   // persisted on this device, and mirrored to the audience window.
-  var TEDIT_SEL = '.overline, .display, .lead, .one, .body, .section-no, .lbl, .lh, .taglist li, .cap, .meta, .phase span, .lcol li';
+  var TEDIT_SEL = '.overline, .display, .lead, .one, .body, .section-no, .lbl, .lh, .taglist li, .cap, .meta, .card-item span, .lcol li';
   var textOverrides = {};
   try { textOverrides = JSON.parse(localStorage.getItem('deck-text') || '{}') || {}; } catch(e){ textOverrides = {}; }
   var tSaveTimer = null;
@@ -2818,7 +2817,7 @@
         clr.className = 'media-clear'; clr.type = 'button'; clr.textContent = '×'; clr.title = 'Remove image';
         clr.addEventListener('click', function(ev){ ev.stopPropagation(); delete mediaImages[mid]; applyMedia(); saveMedia(); });
         m.appendChild(clr);
-        if(!m.closest('.s-divider, .filmstrip') && !m.matches('[data-proto], [data-dis]')){   // a tile that opens big can have a Before
+        if(!m.closest('.s-divider, .filmstrip') && !m.matches('[data-dis]')){   // a tile that opens big can have a Before
           var bb = document.createElement('button');
           bb.className = 'media-before'; bb.type = 'button'; bb.innerHTML = '<i></i><span>Add before</span>';
           bb.addEventListener('click', function(ev){ ev.stopPropagation(); if(Deck.openBeforePicker) Deck.openBeforePicker(mid, m); });
@@ -2967,7 +2966,7 @@
       if(el.classList && el.classList.contains('media') && el.classList.contains('filled') &&
          el.closest('#stage .slide.active') && !el.closest('.s-divider, .s-screen, .filmstrip')){
         glow = el;
-        if(!el.matches('[data-proto], [data-dis]')) hit = el;
+        if(!el.matches('[data-dis]')) hit = el;
         break;
       }
     }
@@ -3193,7 +3192,7 @@
   // ================= presenter remote: the live preview drives the audience screen =================
   // Inputs travel as "acts" over a BroadcastChannel. The audience window performs every act (its own
   // clicks and keys, and requests from the presenter / preview) and echoes each one, so the preview,
-  // a mirror deck, replays the same acts and stays in step: take-apart, prototypes, expanded tiles.
+  // a mirror deck, replays the same acts and stays in step: take-apart, expanded tiles.
   var AUDIENCE = !PRESENTERWIN && !MIRROR, inputBC = null, remoteFeature = false;
   var presAliveAt = 0;                                          // last heartbeat from an open presenter window
   function presenting(){ return AUDIENCE && Date.now() - presAliveAt < 4000; }
@@ -3415,15 +3414,8 @@
   function applyAct(a){
     if(a.t === 'click'){
       var r = stage.getBoundingClientRect(), k = r.width / 1280, cx = r.left + a.x * k, cy = r.top + a.y * k;
-      // an open live prototype under the point: the click goes inside it
-      var pf = document.querySelector('#stage .ctl:not([hidden]) .ctl-live iframe'), pr = pf && pf.getBoundingClientRect();
-      var el = (pr && cx >= pr.left && cx <= pr.right && cy >= pr.top && cy <= pr.bottom) ? pf : document.elementFromPoint(cx, cy);
+      var el = document.elementFromPoint(cx, cy);
       if(!el) return;
-      if(el.tagName === 'IFRAME'){
-        var fr = el.getBoundingClientRect();
-        try { el.contentWindow.postMessage({ type: 'proto:click', nx: (cx - fr.left) / fr.width, ny: (cy - fr.top) / fr.height }, '*'); } catch(e){}
-        return;
-      }
       el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window, clientX: cx, clientY: cy }));
     } else if(a.t === 'viewer'){
       if(a.op === 'close') closeImageViewer(); else if(a.op === 'prev') stepImage(-1); else if(a.op === 'next') stepImage(1);
@@ -3440,8 +3432,6 @@
       var tr = byPath(a.p); if(tr) carShift(tr, a.px);
     } else if(a.t === 'key'){
       document.dispatchEvent(new KeyboardEvent('keydown', { key: a.key, bubbles: true, cancelable: true }));
-    } else if(a.t === 'protoclick' || a.t === 'protokey'){
-      if(window.Deck && Deck.protoPost) Deck.protoPost(a.t === 'protoclick' ? { type: 'proto:click', nx: a.nx, ny: a.ny } : { type: 'proto:key', key: a.key });
     }
   }
   var KEYS = ['ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown', 'PageDown', 'PageUp', ' ', 'Enter', 'Escape', 'Backspace', 'Home', 'End', 'a', 'A'];
@@ -3532,7 +3522,7 @@
   }
   function inScope(el){
     var cur = slides[i]; if(!el || !stage.contains(el)) return false;
-    var sl = el.closest('.slide'); return sl ? sl === cur : true;       // the current slide, or a stage overlay (prototype, take-apart)
+    var sl = el.closest('.slide'); return sl ? sl === cur : true;       // the current slide, or a stage overlay (a take-apart)
   }
   function motionState(){
     var anims = [], vids = [];
