@@ -2259,7 +2259,22 @@
   // A bullet deleted in edit mode keeps its id (so nothing after it shifts) and saves as this marker:
   // gone when presenting, a dashed "click to restore" row in edit mode
   var TX_GONE = '<!--removed-->', TX_DEL_SEL = '.taglist li, .lcol li';
-  function markGone(el){ el.classList.toggle('tx-gone', el.innerHTML === TX_GONE); }
+  function markGone(el){
+    el.classList.toggle('tx-gone', el.innerHTML === TX_GONE);
+    var fr = el.classList.contains('cap') && el.closest('.fs-frame');   // a film strip picture is removed by its caption's marker
+    if(fr){ fr.classList.toggle('fs-gone', el.innerHTML === TX_GONE); fsMinMark(fr.closest('.fs-set')); }
+  }
+  // a film strip keeps at least FS_MIN pictures: at that many, their × can't remove one
+  var FS_MIN = 2;
+  function fsLeft(set){ return set ? set.querySelectorAll('.fs-frame:not(.fs-gone)').length : 0; }
+  function fsMinMark(set){ if(set && !set.classList.contains('fs-copy')) set.classList.toggle('fs-min', fsLeft(set) <= FS_MIN); }
+  function removeFrame(fr){
+    var set = fr.closest('.fs-set'), cap = fr.querySelector('.cap[data-eid]');
+    if(!cap) return;
+    if(fsLeft(set) <= FS_MIN){ showToast('A film strip keeps at least ' + FS_MIN + ' pictures'); return; }
+    cap.innerHTML = TX_GONE; onTextInput(cap, cap.getAttribute('data-eid'));
+    showToast('Picture removed from the strip', true);
+  }
   function onTextInput(el, eid){
     markGone(el);
     textOverrides[eid] = el.innerHTML;
@@ -2827,7 +2842,11 @@
         if(m.hasAttribute('data-resize')) addMediaSizer(m);
         var clr = document.createElement('button');
         clr.className = 'media-clear'; clr.type = 'button'; clr.textContent = '×'; clr.title = 'Remove image';
-        clr.addEventListener('click', function(ev){ ev.stopPropagation(); delete mediaImages[mid]; applyMedia(); saveMedia(); });
+        var frame = m.classList.contains('fs-frame');
+        if(frame) clr.title = 'Remove from the strip';
+        clr.addEventListener('click', function(ev){ ev.stopPropagation();
+          if(frame){ removeFrame(m); return; }                                    // the strip loses the picture, not just its image
+          delete mediaImages[mid]; applyMedia(); saveMedia(); });
         m.appendChild(clr);
         if(!m.closest('.s-divider, .filmstrip') && !m.matches('[data-dis]')){   // a tile that opens big can have a Before
           var bb = document.createElement('button');

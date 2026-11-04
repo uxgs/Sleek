@@ -180,7 +180,7 @@ img { max-width: 100%; }
   /* edit mode: stop rolling, show only the real frames, scroll the strip to reach them all */
   body.editing .fs-track { animation: none; }
   body.editing .filmstrip { overflow-y: auto; }
-  body.editing .fs-copy { display: none; }
+  body.editing .fs-copy { opacity: 0.3; pointer-events: none; }   /* the loop, dimmed: only the first set is edited */
   @keyframes fs-roll { from { transform: translateY(0); } to { transform: translateY(calc(var(--set, 624px) * -1)); } }   /* one set; app.js sets --set */
   @media (prefers-reduced-motion: reduce) { .fs-track { animation: none; } }
 
@@ -596,6 +596,10 @@ img { max-width: 100%; }
     cursor: pointer; align-items: center; justify-content: center; }
   .media-clear:hover { background: rgba(215,38,61,0.9); }
   body.editing .slide:not(.s-screen) .media.filled .media-clear { display: flex; }
+  .fs-frame.fs-gone { display: none !important; }                               /* removed from its film strip */
+  body.editing .slide .fs-set:not(.fs-copy) .fs-frame .media-clear { display: flex; }
+  body.editing .fs-set.fs-min .media-clear { opacity: 0.35; }                     /* at the fewest a strip can have */
+  body.editing .fs-set.fs-min .media-clear:hover { background: rgba(0,0,0,0.6); }
   /* Before: on a picture tile in Edit mode, picks the picture it wipes from in Present */
   .media-before { position: absolute; top: 8px; left: 8px; z-index: 6; display: none; align-items: center; gap: 6px; height: 26px;
     padding: 0 10px 0 4px; border-radius: 999px; border: none; background: rgba(20,20,24,0.62); color: #fff; cursor: pointer;
