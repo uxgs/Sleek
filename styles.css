@@ -921,7 +921,7 @@ img { max-width: 100%; }
 
   /* ---------- grid mode: every slide as a tile, below the deck (.slides-grid, so it never touches a slide's own .grid) ---------- */
   .grid-chev { position: absolute; left: 50%; bottom: calc(14px + env(safe-area-inset-bottom,0px)); transform: translateX(-50%);
-    width: 48px; height: 32px; padding: 0 !important; display: grid; place-items: center; border-radius: 16px !important; }
+    width: 48px; height: 32px; padding: 0 !important; display: grid; place-items: center; border-radius: 9px !important; }   /* the same shape as the bar's other buttons */
   .grid-chev svg, .grid-back svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
   .grid-chev svg { transition: transform 0.25s ease; }
   .grid-chev:hover svg { transform: translateY(2px); }
@@ -1168,6 +1168,7 @@ body.compact .bar .label { display: none; }
 body.compact .bar .grp { gap: 6px; }
 body.compact .bar .count { font-size: 13px; min-width: 6.2ch; text-align: center; white-space: nowrap; }
 body.compact .bar button.ibtn.icon-only { width: 44px; height: 40px; border-radius: 12px; }
+body.compact .bar .grid-chev { height: 40px; border-radius: 12px !important; bottom: calc(8px + env(safe-area-inset-bottom, 0px)); }
 body.compact .bar .more-btn { display: inline-flex; }
 body.compact .bar .more-btn .ico { width: 20px; height: 20px; }
 body.compact .bar .more-btn .ico circle { fill: currentColor; stroke: none; }
@@ -1214,6 +1215,7 @@ body.compact .tray .tray-sheet .grp button[hidden] { display: none; }
 @media (max-height: 500px) {
   body.compact .bar { padding-top: 4px; padding-bottom: calc(4px + env(safe-area-inset-bottom, 0px)); }
   body.compact .bar button.ibtn.icon-only { height: 34px; }
+  body.compact .bar .grid-chev { height: 34px; bottom: calc(4px + env(safe-area-inset-bottom, 0px)); }
   .tray .grp { --n: 8; }
   .tray-head { display: none; }
 }

@@ -99,10 +99,10 @@
 @keyframes smoke-roll { from { translate: 0 0; } to { translate: -50% 0; } }
 @keyframes smoke-sway { 0% { transform: scaleY(1) skewX(0deg); } 100% { transform: scaleY(1.16) skewX(-4deg); } }
 
-/* the pulsating grid's canvas (glow-fx.js): a band along the bottom, like the gradient, very faint
-   (1%) and fading out at its top so it blends into the page */
+/* the pulsating grid's canvas (glow-fx.js): a band along the bottom, like the gradient, faint
+   and fading out at its top so it blends into the page */
 .glow-fx { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 46%; z-index: -1; pointer-events: none; display: block;
-  opacity: 0.01; transition: opacity 0.5s ease;
+  opacity: 0.16; transition: opacity 0.5s ease;
   -webkit-mask-image: linear-gradient(to top, #000 0%, #000 30%, rgba(0,0,0,0.5) 62%, transparent 100%);
           mask-image: linear-gradient(to top, #000 0%, #000 30%, rgba(0,0,0,0.5) 62%, transparent 100%); }
 .glow-fx[hidden] { display: none; }
