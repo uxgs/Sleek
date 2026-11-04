@@ -53,6 +53,44 @@
     return out;
   }
 
+  // ---------- which layers a tile takes apart into ----------
+  // In order: its own layers (edited on this device, or saved with the deck as components['tile:<id>']);
+  // then, if its picture is your own, that picture as a single layer at its real shape; then the
+  // component its markup names (data-dis). A layer whose src is '@tile' is the tile's picture, and a
+  // component with no h takes its height from that picture.
+  var ratios = {};
+  function ratioOf(src, cb){
+    if(!src || D.isVideo(src)) return cb(16 / 9);
+    if(ratios[src]) return cb(ratios[src]);
+    var im = new Image();
+    im.onload = function(){ ratios[src] = im.naturalWidth && im.naturalHeight ? im.naturalWidth / im.naturalHeight : 16 / 9; cb(ratios[src]); };
+    im.onerror = function(){ cb(16 / 9); };
+    im.src = src;
+  }
+  function capOf(tile){ var c = tile.querySelector('.cap'); return c ? c.textContent.trim() : ''; }
+  function ownDefault(tile){
+    return { title: capOf(tile), kicker: 'Take apart', mode: 'assemble', stack: 'vertical', vgap: 16, tilt: 0, hshift: -40, apartScale: 0.74, w: 640, h: null,
+      layers: [{ id: 'base', type: 'image', src: '@tile', label: capOf(tile) || 'Picture', desc: '' }] };
+  }
+  function rawFor(tile){
+    var mid = tile.getAttribute('data-mid'), own = D.tileComponent && D.tileComponent(mid);
+    if(own && own.layers && own.layers.length) return own;
+    if(mid && D.mediaIsCustom && D.mediaIsCustom(mid)) return ownDefault(tile);
+    return components()[tile.getAttribute('data-dis')] || null;
+  }
+  // the component ready to draw: the tile's picture filled in, its height known
+  function componentFor(tile, cb){
+    var c = rawFor(tile); if(!c || !c.layers || !c.layers.length) return cb(null);
+    var pic = D.tilePicture(tile);
+    ratioOf(pic, function(ratio){
+      var o = JSON.parse(JSON.stringify(c));
+      o.w = o.w || 640; if(!o.h) o.h = Math.round(o.w / ratio);
+      o.layers.forEach(function(L){ if(L.src === '@tile') L.src = pic; });
+      cb(o);
+    });
+  }
+  D.takeApart = { raw: rawFor, ownDefault: ownDefault, ratioOf: ratioOf };
+
   function build(){
     if(root) return;
     root = document.createElement('div');
@@ -78,13 +116,18 @@
                       '<div class="dl-art-ph" style="--a:' + (L.a || '#5b6170') + ';--b:' + (L.b || '#1c1e24') + '"></div>';
       case 'text':  return '<div class="dl-text">' + (L.sub ? '<span>' + esc(L.sub) + '</span>' : '') + esc(L.text || '') + '</div>';
       case 'color': return '<div class="dl-color" style="background:' + esc(L.color || '#222') + '"></div>';
+      case 'texture': return '<div class="dl-texture"><img src="' + esc(L.src) + '" alt=""></div>';
+      case 'images': return (L.items || []).map(function(it){ var b = it.box || [0, 0, '100%', '100%'], px = function(v){ return typeof v === 'number' ? v + 'px' : v; };
+                      return '<img class="dl-item" src="' + esc(it.src) + '" alt="" style="left:' + px(b[0]) + ';top:' + px(b[1]) + ';width:' + px(b[2]) + ';height:' + px(b[3]) + '">'; }).join('');
+      case 'nav':   return '<div class="dl-nav">' + (L.items || []).map(function(t, k){ return '<span' + (k === 0 ? ' class="on"' : '') + '>' + esc(t) + '</span>'; }).join('') + '</div>';
       case 'tiles': var tiles = ''; for(var t = 0; t < (L.count || 4); t++) tiles += '<i style="--a:' + (L.a || '#4b5060') + ';--b:' + (L.b || '#1a1c22') + ';--k:' + t + '"></i>';
                     return '<div class="dl-tiles">' + tiles + '</div>';
       default:      var ph = '';
                     if(L.ph){ var pb = L.ph.box || [0, 0, '100%', '100%'], px = function(v){ return typeof v === 'number' ? v + 'px' : v; };
                       ph = '<div class="dl-ph" style="left:' + px(pb[0]) + ';top:' + px(pb[1]) + ';width:' + px(pb[2]) + ';height:' + px(pb[3]) + '">' + layerInner(L.ph) + '</div>'; }
                     // a missing file shows its stand-in instead (drop the image in and it replaces it)
-                    return (L.src ? '<img src="' + esc(L.src) + '" alt=""' + (L.fade || L.drift ? ' class="' + (L.fade ? 'dl-fade' : '') + (L.drift ? ' dl-drift' : '') + '"' : '') +
+                    var cls = [L.fade ? 'dl-fade' : '', L.drift ? 'dl-drift' : '', L.fit === 'contain' ? 'dl-contain' : ''].join(' ').trim();
+                    return (L.src ? '<img src="' + esc(L.src) + '" alt=""' + (cls ? ' class="' + cls + '"' : '') +
                       (L.ph ? ' onerror="this.parentNode.classList.add(\'dl-missing\')"' : '') + '>' : '') + ph;
     }
   }
@@ -166,9 +209,9 @@
   function toggle(){ setApart(!apart); }
 
   // ---------- open / close ----------
-  function openFrom(tile){
-    var c = components()[tile.getAttribute('data-dis')];
-    if(!c || !c.layers || !c.layers.length){ console.warn('No component in this deck for', tile.getAttribute('data-dis')); return; }
+  function openFrom(tile, c){
+    if(c === undefined){ componentFor(tile, function(r){ if(r) openFrom(tile, r); else console.warn('No component in this deck for', tile.getAttribute('data-dis')); }); return; }
+    if(!c || !c.layers || !c.layers.length) return;
     build(); comp = c; sourceTile = tile; open = true; D.modal = true; D.hideZoom();
     render(c);
     assemble = tile.hasAttribute('data-assemble') || c.mode === 'assemble';
@@ -199,13 +242,24 @@
 
   // ---------- in place (data-assemble): apart inside the tile, copy swaps to the layer list ----------
   var inl = null;   // { tile, c, el, copy }
-  function inlineOpen(tile){
-    var c = components()[tile.getAttribute('data-dis')]; if(!c || !c.layers) return;
+  var opening = null;
+  function inlineOpen(tile, c){
+    if(c === undefined){ opening = tile; componentFor(tile, function(r){ if(opening === tile){ opening = null; if(r && !inl) inlineOpen(tile, r); } }); return; }
+    if(!c || !c.layers) return;
     var r = D.stageRect(tile), s = r.w / c.w;
     var el = document.createElement('div');
     el.className = 'dis-inline';
     el.style.setProperty('--s', s); el.style.setProperty('--apart-scale', c.inlineScale || (c.stack === 'vertical' ? c.apartScale || 1 : 0.68));   // kept near the tile's own frame
     el.innerHTML = '<div class="dis-iobj" style="width:' + c.w + 'px;height:' + c.h + 'px">' + layersHTML(c) + '</div>';
+    var sl0 = tile.closest('.slide'), head0 = sl0 && (sl0.querySelector('.headrow') || sl0.querySelector('.display'));
+    var bandTop0 = head0 ? D.stageRect(head0).y + D.stageRect(head0).h + 28 : 40, bandH0 = 720 - 36 - bandTop0;
+    if(c.stack !== 'vertical'){
+      // the tipped stack, drawn as tall as it lands on screen (its tilt, and the depth between layers),
+      // smaller if it must be to stay between the title and the bottom edge
+      var k0 = s * (c.inlineScale || 0.68), sp0 = c.spread || SPREAD;
+      var tall = ((c.w * 0.588 + c.h * 0.809) * 0.559 + (c.layers.length - 1) * sp0 * 0.829);
+      if(tall * k0 > bandH0) el.style.setProperty('--apart-scale', (bandH0 / tall) / s);
+    }
     if(c.stack === 'vertical'){
       // every layer tips back around its own middle and gets its own row, front layer on top: rows are
       // packed top to bottom (each as tall as its tipped layer) with an even gap, centred on the tile
@@ -230,7 +284,8 @@
     tile.appendChild(el);
     // the copy beside the tile gets the layer list, front layer first
     var copy = tile.closest('.slide').querySelector('.asm-copy');
-    if(copy && !copy.querySelector('.asm-layers')){
+    if(copy){
+      var old = copy.querySelector('.asm-layers'); if(old) old.remove();     // its layers may have changed since
       var list = document.createElement('ol'); list.className = 'asm-layers';
       list.innerHTML = c.layers.slice().reverse().map(function(L, n){
         return '<li style="--n:' + n + '"><b>' + String(n + 1).padStart(2, '0') + '</b><span><strong>' + esc(L.label || L.id) + '</strong>' +
@@ -300,12 +355,12 @@
     var done = function(){ if(!inl || inl.tile !== it.tile) it.tile.classList.remove('asm-on'); it.el.remove(); };
     if(instant) done(); else setTimeout(done, 1000 + it.c.layers.length * 55);
   }
-  D.onShow.push(function(){ inlineClose(true); });
+  D.onShow.push(function(){ opening = null; inlineClose(true); });
   D.onReset.push(function(){ if(open) close(); if(inl) inlineClose(); });
   // for the presenter's preview: which tile is taken apart in place, and a way to match it
   D.inlineTile = function(){ return inl ? inl.tile : null; };
   D.inlineSet = function(tile){
-    if(tile){ if(!inl || inl.tile !== tile){ inlineClose(true); inlineOpen(tile); } }
+    if(tile){ if((!inl || inl.tile !== tile) && opening !== tile){ inlineClose(true); inlineOpen(tile); } }
     else if(inl) inlineClose();
   };
 
@@ -315,7 +370,7 @@
     var t = e.target.closest && e.target.closest('#stage .slide.active [data-dis]');
     if(!t) return;
     e.stopPropagation();
-    if(t.hasAttribute('data-assemble')){ if(inl && inl.tile === t) inlineClose(); else { inlineClose(true); inlineOpen(t); } }
+    if(t.hasAttribute('data-assemble')){ if(inl && inl.tile === t) inlineClose(); else if(opening !== t){ inlineClose(true); inlineOpen(t); } }
     else openFrom(t);
   }, true);
   document.addEventListener('keydown', function(e){ if(inl && !open && e.key === 'Escape'){ e.preventDefault(); inlineClose(); } });

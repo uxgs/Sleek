@@ -204,3 +204,25 @@ body:not(.editing) #stage li[data-press]:hover::after { color: var(--fg); border
 
 /* where a layer's leader line starts (see pinOf in disassemble.js) */
 .dis-pin { position: absolute; width: 0; height: 0; pointer-events: none; }
+
+/* layer types: a brand sheet that drifts slowly, several pictures placed inside one layer, a row of tabs;
+   and a picture fitted whole (a layer you added from a file) */
+.dis-layer.dl-texture { border-radius: 12px; overflow: hidden; }
+.dl-texture { position: absolute; inset: 0; overflow: hidden; opacity: 0.15; transition: opacity 0.6s; }
+.dis.apart .dis-layer.dl-texture .dl-texture, .dis-inline.apart .dis-layer.dl-texture .dl-texture { opacity: 0.5; }
+.dis-layer .dl-texture img { position: absolute; left: -5%; top: -5%; width: 110%; height: 110%; max-width: none; object-fit: cover;
+  animation: dl-tex-drift 22s ease-in-out infinite alternate; }
+@keyframes dl-tex-drift {
+  0%   { transform: translate(0, 0) scale(1) rotate(0deg); }
+  35%  { transform: translate(-1.2%, 0.8%) scale(1.025) rotate(0.35deg); }
+  70%  { transform: translate(0.9%, -1%) scale(1.04) rotate(-0.3deg); }
+  100% { transform: translate(-0.6%, -1.6%) scale(1.02) rotate(0.2deg); }
+}
+.dis-layer img.dl-item { position: absolute; width: auto; height: auto; max-width: none; object-fit: fill; }
+.dis-layer img.dl-contain { object-fit: contain; }
+.dl-nav { position: absolute; inset: 0; display: flex; align-items: center; gap: 6px; font: 800 12px/1 var(--slide-display, Inter, sans-serif);
+  text-transform: uppercase; letter-spacing: 0.02em; color: #fff; }
+.dl-nav span { padding: 7px 9px; border-radius: 6px; }
+.dl-nav span.on { background: #c8cdd8; color: #10162e; }
+.dis-layer .dl-ph > .dl-nav { position: absolute; inset: 0; }
+@media (prefers-reduced-motion: reduce) { .dis-layer .dl-texture img { animation: none; } }

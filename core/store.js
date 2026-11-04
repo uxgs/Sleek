@@ -209,10 +209,28 @@
   function canStep(id){ return getHistory(id).then(function(h){ return { undo: h.undo.length > 0, redo: h.redo.length > 0 }; }); }
 
   // ---------- files ----------
-  function exportDeck(id){
+  // speaker notes: the slides' notes and each screen's notes. A pin's note and a callout show on the slide, so they stay.
+  function plain(h){ return String(h == null ? '' : h).replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim(); }
+  function hasNotes(seed){
+    if(!seed) return false;
+    if((seed.notes || []).some(function(n){ return plain(n); })) return true;
+    var by = seed.noteByKey || {};
+    if(Object.keys(by).some(function(k){ return plain(by[k]); })) return true;
+    var sc = seed.annotations && seed.annotations.screens || [];
+    return sc.some(function(s){ return s && plain(s.notes); });
+  }
+  function stripNotes(seed){
+    if(!seed) return seed;
+    if(seed.notes) seed.notes = seed.notes.map(function(){ return ''; });
+    delete seed.noteByKey;
+    ((seed.annotations && seed.annotations.screens) || []).forEach(function(s){ if(s) s.notes = ''; });
+    return seed;
+  }
+  // opts.notes === false leaves the speaker notes out of the file
+  function exportDeck(id, opts){
     return get(id).then(function(d){
       if(!d) return null;
-      return inline(d.seed, true).then(function(seed){
+      return inline(opts && opts.notes === false ? stripNotes(JSON.parse(JSON.stringify(d.seed))) : d.seed, true).then(function(seed){
         return JSON.stringify({ format: FORMAT, version: FORMAT_VERSION, id: d.id, title: d.title, exported: new Date().toISOString(), updated: d.updated, seed: seed });
       });
     });
@@ -224,11 +242,18 @@
     return o;
   }
   // a file keeps its deck's id when this browser doesn't have that deck yet (a linked folder matches files to decks by it)
-  function importDeck(text){
+  // opts.ask(title): when the file has speaker notes, resolves true to keep them, false to leave them out,
+  // null to not open the file after all (the import then resolves null)
+  function importDeck(text, opts){
     var o = parseFile(text);
     var id = typeof o.id === 'string' && /^[a-z0-9]{4,24}$/.test(o.id) ? o.id : null;
-    return (id ? get(id) : Promise.resolve(null)).then(function(have){
-      return create({ id: have ? null : id, title: o.title || 'Imported deck', seed: o.seed });
+    var asked = opts && opts.ask && hasNotes(o.seed) ? Promise.resolve(opts.ask(o.title || 'Imported deck')) : Promise.resolve(true);
+    return asked.then(function(keep){
+      if(keep == null) return null;
+      if(keep === false) stripNotes(o.seed);
+      return (id ? get(id) : Promise.resolve(null)).then(function(have){
+        return create({ id: have ? null : id, title: o.title || 'Imported deck', seed: o.seed });
+      });
     });
   }
 
@@ -252,7 +277,7 @@
     list: list, get: get, create: create, save: save, rename: rename, duplicate: duplicate, remove: remove,
     hydrate: hydrate, dehydrate: dehydrate, inline: inline,
     undo: function(id, o){ return step(id, -1, o); }, redo: function(id, o){ return step(id, 1, o); }, canStep: canStep,
-    exportDeck: exportDeck, importDeck: importDeck, parseFile: parseFile,
+    exportDeck: exportDeck, importDeck: importDeck, parseFile: parseFile, hasNotes: hasNotes,
     ensureSample: ensureSample, addSample: addSample, clearDeviceState: clearDeviceState
   };
 })();

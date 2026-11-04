@@ -84,7 +84,7 @@
     if(a === 'open') openDeck(id);
     else if(a === 'rename') startRename(c, d);
     else if(a === 'dup'){ busy(c, true); S.duplicate(id).then(function(){ return render(); }).then(function(){ toast('Made a copy of ' + d.title + '.'); }); }
-    else if(a === 'file'){ busy(c, true); P.exportFile(id).then(function(n){ busy(c, false); toast('Downloaded ' + n + '.'); }, function(e){ console.error(e); busy(c, false); toast('Couldn’t make the file.'); }); }
+    else if(a === 'file'){ busy(c, true); P.exportFile(id).then(function(n){ busy(c, false); if(n) toast('Downloaded ' + n + '.'); }, function(e){ console.error(e); busy(c, false); toast('Couldn’t make the file.'); }); }
     else if(a === 'pub'){ busy(c, true); P.publish(id).then(function(r){ busy(c, false); toast('Downloaded ' + r.name + '. It plays in any browser.'); }, function(e){ console.error(e); busy(c, false); toast('Couldn’t build the page.'); }); }
     else if(a === 'del') confirmDelete(c, d);
   }
@@ -138,9 +138,11 @@
   sampleBtn.addEventListener('click', addSample);
 
   // ---------- opening a .sleek file ----------
+  var ASK = { ask: function(title){ return P.askNotes('open', title); } };   // a file with speaker notes asks whether to keep them
   function importFile(f){
-    if(!f) return;
-    f.text().then(function(text){ return S.importDeck(text); }).then(function(d){
+    if(!f) return Promise.resolve();
+    return f.text().then(function(text){ return S.importDeck(text, ASK); }).then(function(d){
+      if(!d) return;
       return render().then(function(){
         toast('Opened ' + d.title + '.');
         var c = grid.querySelector('.lib-card[data-id="' + d.id + '"]'); if(c) c.classList.add('fresh');
@@ -157,7 +159,8 @@
   document.addEventListener('drop', function(e){
     if(!hasFiles(e)) return;
     e.preventDefault(); depth = 0; drop.classList.remove('on');
-    Array.prototype.forEach.call(e.dataTransfer.files, importFile);
+    // one after another, so each file's question comes up on its own
+    Array.prototype.reduce.call(e.dataTransfer.files, function(p, f){ return p.then(function(){ return importFile(f); }); }, Promise.resolve());
   });
 
   // the offline cache (sw.js): the app opens with no connection and installs as an app
@@ -169,7 +172,7 @@
 
   // the installed app was asked to open a .sleek file (double-click, Open with)
   if('launchQueue' in window) window.launchQueue.setConsumer(function(p){
-    (p.files || []).forEach(function(h){ h.getFile().then(importFile); });
+    (p.files || []).reduce(function(q, h){ return q.then(function(){ return h.getFile().then(importFile); }); }, Promise.resolve());
   });
 
   // ---------- the linked folder (core/folder.js; Chrome and Edge) ----------
@@ -200,7 +203,7 @@
   }
   function openFromFolder(name){
     var f = folderFiles.filter(function(x){ return x.name === name; })[0]; if(!f) return;
-    S.importDeck(f.text).then(function(d){ openDeck(d.id); }, function(e){ console.error(e); toast('That file couldn’t be opened.'); });
+    S.importDeck(f.text, ASK).then(function(d){ if(d) openDeck(d.id); }, function(e){ console.error(e); toast('That file couldn’t be opened.'); });
   }
   ifGrid.addEventListener('click', function(e){ var c = e.target.closest('.lib-file'); if(c) openFromFolder(c.dataset.id.slice(5)); });
   ifGrid.addEventListener('keydown', function(e){ var c = e.target.closest('.lib-file'); if(c && (e.key === 'Enter' || e.key === ' ')){ e.preventDefault(); openFromFolder(c.dataset.id.slice(5)); } });

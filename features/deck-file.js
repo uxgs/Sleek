@@ -99,6 +99,7 @@
     } else if(act === 'file'){
       var done2 = busy(item, 'Packing the deck and its media…');
       flushed.then(function(){ return P.exportFile(info.id); }).then(function(n){
+        if(!n){ done2(''); return; }
         done2('Downloaded ' + n + '. Open it from the start screen in any browser.');
       }, function(err){ console.error(err); done2('Couldn’t make the file.'); });
     } else if(act === 'folder'){

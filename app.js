@@ -2592,7 +2592,15 @@
     try { localStorage.setItem(NS + 'sleek-media-ping', String(Date.now())); } catch(e){}
     try { if(bc) bc.postMessage({ media: true }); } catch(e){}
   }
-  function reloadMedia(){ idbGet('media', function(d){ mediaImages = d || {}; applyMedia(); markChanged(); }); }
+  function reloadMedia(){ idbGet('components', function(c){ compEdits = c || {}; idbGet('media', function(d){ mediaImages = d || {}; applyMedia(); markChanged(); }); }); }
+  // a take-apart tile's own layers, edited on this device (features/disassemble.js), by tile id;
+  // they save into the deck as seed.components['tile:<tile id>']
+  var compEdits = {};
+  function saveComps(){
+    idbSet('components', compEdits); markChanged();
+    try { localStorage.setItem(NS + 'sleek-media-ping', String(Date.now())); } catch(e){}
+    try { if(bc) bc.postMessage({ media: true }); } catch(e){}
+  }
   function applyMedia(){
     Array.prototype.forEach.call(document.querySelectorAll('.slide:not(.s-screen) .media[data-mid]'), function(m){
       var mid = m.getAttribute('data-mid');
@@ -3001,6 +3009,8 @@
     var media = {};
     Object.keys(SEED.media || {}).forEach(function(k){ media[k] = SEED.media[k]; });
     Object.keys(mediaImages).forEach(function(mid){ media[mid] = imageFile(mediaImages[mid], mid, files); });
+    var comps = JSON.parse(JSON.stringify(SEED.components || {}));
+    Object.keys(compEdits).forEach(function(mid){ comps['tile:' + mid] = compEdits[mid]; });
     // one set's pins and shapes, with their images written to images/<base>-noteN-k
     function setOut(sc, base){
       return {
@@ -3042,6 +3052,7 @@
     seed.theme = DT.snapshot();                                  // accent, font, gradient, effect, light / dark
     if(ADDED.length) seed.added = ADDED; else delete seed.added;
     seed.annotations = anns; seed.text = ex.text; seed.style = ex.style; seed.media = media;
+    if(Object.keys(comps).length) seed.components = comps; else delete seed.components;
     return { seed: seed, files: files };
   }
   function clearDeviceEdits(done){
@@ -3050,7 +3061,7 @@
     if(!DB){ done(); return; }
     try {
       var tx = DB.transaction('kv', 'readwrite'), st = tx.objectStore('kv');
-      st.delete('media'); st.delete('annotations');
+      st.delete('media'); st.delete('annotations'); st.delete('components');
       tx.oncomplete = tx.onerror = tx.onabort = function(){ done(); };
     } catch(e){ done(); }
   }
@@ -3146,11 +3157,12 @@
     Object.keys(map).forEach(function(k){
       if(k.indexOf(from + '.') === 0) map[to + k.slice(from.length)] = JSON.parse(JSON.stringify(map[k]));
       else if(k.indexOf('b:' + from + '.') === 0) map['b:' + to + k.slice(2 + from.length)] = map[k];
+      else if(k.indexOf('tile:' + from + '.') === 0) map['tile:' + to + k.slice(5 + from.length)] = JSON.parse(JSON.stringify(map[k]));
     });
   }
   function dropPrefixed(map, id){
     if(!map) return;
-    Object.keys(map).forEach(function(k){ if(k.indexOf(id + '.') === 0 || k.indexOf('b:' + id + '.') === 0) delete map[k]; });
+    Object.keys(map).forEach(function(k){ if(k.indexOf(id + '.') === 0 || k.indexOf('b:' + id + '.') === 0 || k.indexOf('tile:' + id + '.') === 0) delete map[k]; });
   }
   function slideAction(kind, k){
     var s = slides[k]; if(!s) return;
@@ -3170,7 +3182,7 @@
         } else {
           var id = s.getAttribute('data-added');
           doc.added = (doc.added || []).filter(function(a){ return a.id !== id; });
-          ['text', 'style', 'media'].forEach(function(f){ dropPrefixed(doc[f], id); });
+          ['text', 'style', 'media', 'components'].forEach(function(f){ dropPrefixed(doc[f], id); });
           if(doc.noteByKey) delete doc.noteByKey['add-' + id];
           doc.order = keys.filter(function(x){ return x !== key; });
         }
@@ -3192,7 +3204,7 @@
           var src = list.filter(function(a){ return a.id === id; })[0]; if(!src) return false;
           var copy = { id: nid, t: src.t, name: name }; if(src.fill) copy.fill = src.fill;
           list.splice(list.indexOf(src) + 1, 0, copy); doc.added = list;
-          ['text', 'style', 'media'].forEach(function(f){ copyPrefixed(doc[f], id, nid); });
+          ['text', 'style', 'media', 'components'].forEach(function(f){ copyPrefixed(doc[f], id, nid); });
           doc.noteByKey = doc.noteByKey || {}; doc.noteByKey['add-' + nid] = s._notes || '';
           if(doc.slideTheme && s._lkey != null && doc.slideTheme[s._lkey] != null) doc.slideTheme[name] = doc.slideTheme[s._lkey];
           var pg = doc.annotations && doc.annotations.pages && s._lkey != null && doc.annotations.pages[s._lkey];
@@ -3683,6 +3695,15 @@
       });
     },
     setBefore: function(mid, v){ setBefore(mid, v); },
+    // take-apart: a tile's own layers (this device's edit, else the deck's), and whether its picture is its own
+    tileComponent: function(mid){ return (mid && (compEdits[mid] || (SEED.components && SEED.components['tile:' + mid]))) || null; },
+    setTileComponent: function(mid, c){ if(!mid) return; if(c) compEdits[mid] = c; else delete compEdits[mid]; saveComps(); },
+    mediaIsCustom: function(mid){
+      var t = tileByMid(mid), v = mid && (mediaImages[mid] || (SEED.media && SEED.media[mid]));
+      return !!v && (!t || v !== t.getAttribute('data-default-src'));
+    },
+    tilePicture: function(tile){ return tile ? tileSrc(tile) : null; },
+    isVideo: function(src){ return isVideo(src); },
     mediaFromFile: function(f, place){ mediaFromFile(f, place); },
     hideZoom: function(){ hideZoom(); },
     flush: function(){ return flushSave(); },      // save now (before a download or leaving)

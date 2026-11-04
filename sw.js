@@ -2,12 +2,12 @@
    connection, and installs as an app. A page comes from the cache at once and is refreshed from
    the network behind it, so a new version shows on the next visit. Change VERSION (and the list)
    when files are added or removed. */
-var VERSION = 'sleek-v11';
+var VERSION = 'sleek-v12';
 var FILES = [
   './', 'index.html', 'deck.html', 'manifest.webmanifest',
   'styles.css', 'glow.css', 'app.js', 'glow-fx.js', 'theme-boot.js',
   'core/store.js', 'core/boot.js', 'core/publish.js', 'core/folder.js', 'data/sample.js',
-  'features/features.css', 'features/add-slide.css', 'features/add-slide.js', 'features/before-picker.css', 'features/before-picker.js',
+  'features/features.css', 'features/add-slide.css', 'features/add-slide.js', 'features/before-picker.css', 'features/before-picker.js', 'features/take-apart-editor.css', 'features/take-apart-editor.js',
   'features/deck-file.css', 'features/deck-file.js', 'features/disassemble.js', 'features/press.js', 'features/tour.js', 'features/mobile.js',
   'features/setup.css', 'features/setup.js', 'features/library.css', 'features/library.js',
   'icons/icon.svg', 'icons/favicon.svg', 'icons/logo.svg', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/maskable-512.png', 'icons/apple-touch-icon.png', 'icons/favicon-32.png',
