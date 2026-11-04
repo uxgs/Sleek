@@ -423,14 +423,14 @@
       <p class="lead" style="max-width:none">Wireframes we tested between sets, sweaty thumbs and all.</p>
     </section>
 
-    <!-- Carousel paired with the one before it: each tile opens as a before / after -->
-    <section class="slide s-gallery s-carousel" data-label="Before and after" data-before="Carousel" data-note="before-after">
-      <template class="slide-notes"><p>This carousel is paired with the previous slide, tile by tile (by caption). Open a tile and it shows as a before / after: drag the divider, or press <b>Space</b> to sweep it.</p></template>
+    <!-- A carousel whose tiles each carry a Before: open one and it shows as a before / after -->
+    <section class="slide s-gallery s-carousel" data-label="Before and after" data-note="before-after">
+      <template class="slide-notes"><p>Each tile has a Before and an After. Open a tile and it shows as a before / after: drag the divider, or press <b>Space</b> to sweep it. In Edit mode, click a tile to replace the After, and its Before button to replace the Before.</p></template>
       <div class="headrow"><h2 class="display">What shipped.</h2><span class="meta">Version 1.0</span></div>
       <div class="carousel"><div class="car-track"><div class="car-set">
-        <div class="media" data-default-src="assets/sample/today.svg"><span class="cap">Today</span></div>
-        <div class="media" data-default-src="assets/sample/workout.svg"><span class="cap">Workout</span></div>
-        <div class="media" data-default-src="assets/sample/plan.svg"><span class="cap">Plan</span></div>
+        <div class="media" data-default-src="assets/sample/today.svg" data-before-src="assets/sample/today-sketch.svg"><span class="cap">Today</span></div>
+        <div class="media" data-default-src="assets/sample/workout.svg" data-before-src="assets/sample/workout-sketch.svg"><span class="cap">Workout</span></div>
+        <div class="media" data-default-src="assets/sample/plan.svg" data-before-src="assets/sample/plan-sketch.svg"><span class="cap">Plan</span></div>
       </div></div></div>
       <p class="lead" style="max-width:none">Open a tile to compare it with the sketch.</p>
     </section>

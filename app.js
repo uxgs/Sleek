@@ -1732,7 +1732,8 @@
   // ---------- the Before picture of a tile ----------
   // In order: the one picked for it in Edit mode (its Before button; kept with the tile's media as
   // "b:<tile id>": another tile's id as "tile:<id>", a picture, or "none"), then a data-before-src
-  // on the tile, then the tile with the same caption on the slide its slide names in data-before.
+  // on the tile (a layout's own sample Before), then the tile with the same caption on the slide its
+  // slide names in data-before.
   function tileByMid(mid){
     return Array.prototype.filter.call(document.querySelectorAll('#stage .media[data-mid="' + mid + '"]'), function(m){ return !m.closest('.car-copy, .fs-copy'); })[0] || null;
   }
@@ -3649,7 +3650,7 @@
     // Before pictures (features/before-picker.js)
     beforeInfo: function(mid){
       var t = tileByMid(mid), v = beforePick(mid);
-      return { pick: v, src: t ? beforeFor(t) : null, after: t ? tileSrc(t) : null, auto: !v && !!(t && pairedBefore(t)),
+      return { pick: v, src: t ? beforeFor(t) : null, after: t ? tileSrc(t) : null, auto: !v && t ? (t.hasAttribute('data-before-src') ? 'sample' : pairedBefore(t) ? 'caption' : '') : '',
                slide: t && t.closest('.slide') ? t.closest('.slide').getAttribute('data-label') : '' };
     },
     beforeChoices: function(mid){

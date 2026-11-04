@@ -32,7 +32,7 @@
           '</div>' +
           '<div class="bp-copy"><div class="bp-k">Before / after</div><h2 class="bp-h">What did it look like before?</h2>' +
             '<p class="bp-p">Pick the earlier picture. In Present, this tile opens with a divider that wipes from it to this one.' +
-            (info.auto ? ' Right now it pairs by its caption; a pick here takes over.' : '') + '</p>' +
+            (info.auto === 'sample' ? ' It starts with a sample Before; pick or upload your own here.' : info.auto ? ' Right now it pairs by its caption; a pick here takes over.' : '') + '</p>' +
             '<div class="bp-actions">' +
               '<label class="bp-btn primary"><input type="file" accept="image/*" hidden>Upload a picture…</label>' +
               (info.src ? '<button type="button" class="bp-btn ghost" data-none>No before</button>' : '') +
