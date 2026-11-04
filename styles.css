@@ -1287,13 +1287,13 @@ body.compact .tray .tps-nav button:disabled { opacity: 0.35; }
 @media (hover: none) { body:not(.editing) #viewport, body:not(.editing) .zone { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; } }
 /* hold to edit: a ring fills under the finger */
 .hold-ring { position: fixed; z-index: 90; width: 84px; height: 84px; margin: -42px 0 0 -42px; border-radius: 50%; pointer-events: none;
-  background: conic-gradient(var(--accent) calc(var(--p, 0) * 1turn), rgba(255,255,255,0.14) 0);
+  background: conic-gradient(var(--accent) calc(var(--hold-p, 0) * 1turn), rgba(255,255,255,0.14) 0);
   -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4px)); mask: radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4px));
   animation: hold-in .25s ease both, hold-fill var(--d, 1650ms) linear forwards; }
-@property --p { syntax: '<number>'; inherits: false; initial-value: 0; }
-@keyframes hold-fill { to { --p: 1; } }
+@property --hold-p { syntax: '<number>'; inherits: false; initial-value: 0; }
+@keyframes hold-fill { to { --hold-p: 1; } }
 @keyframes hold-in { from { opacity: 0; transform: scale(.6); } }
-.hold-ring.done { animation: hold-done .45s cubic-bezier(.16, 1, .3, 1) forwards; --p: 1; }
+.hold-ring.done { animation: hold-done .45s cubic-bezier(.16, 1, .3, 1) forwards; --hold-p: 1; }
 @keyframes hold-done { to { opacity: 0; transform: scale(1.5); } }
 .hold-ring.gone { transition: opacity .2s ease; opacity: 0; }
 
