@@ -134,9 +134,10 @@ img { max-width: 100%; }
   .s-points .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: center; }
   /* full video: the whole slide is the film (fades in once it plays), the title over its top on a soft
      shade in the page colour */
-  .s-fullvideo > video.slide-bg { position: absolute; inset: 0; z-index: 0; width: 100%; height: 100%; object-fit: cover;
-    pointer-events: none; opacity: 0; transition: opacity 1.8s ease; }
-  .s-fullvideo > video.slide-bg.on { opacity: 1; }
+  .s-fullvideo > .media.slide-bg { position: absolute; inset: 0; z-index: 0; border: 0; border-radius: 0; aspect-ratio: auto; height: auto; background: transparent; }
+  .s-fullvideo > .media.slide-bg > .tile-video { object-position: center; opacity: 0; transition: opacity 1.8s ease; }
+  .s-fullvideo > .media.slide-bg > .tile-video.on { opacity: 1; }
+  .s-fullvideo > .media.slide-bg .media-clear { top: auto; bottom: 16px; }   /* clear of the title */
   .s-fullvideo::before { content: ""; position: absolute; inset: 0 0 auto; height: 220px; z-index: 1; pointer-events: none;
     background: linear-gradient(to bottom, color-mix(in srgb, var(--bg) 85%, transparent), color-mix(in srgb, var(--bg) 40%, transparent) 55%, transparent); }
   .s-fullvideo > .headrow { position: relative; z-index: 2; }
@@ -149,12 +150,12 @@ img { max-width: 100%; }
   .s-twovideo .tv-stack .media { aspect-ratio: 16 / 9; height: auto; }
   /* a video tile that waits for a click (data-noautoplay): a glass play button over its first frame */
   /* bottom left, clear of the video's own opening frame */
-  body:not(.editing) .media[data-noautoplay].filled::after { content: ""; position: absolute; left: 16px; bottom: 16px; z-index: 3;
+  body:not(.editing) .media[data-noautoplay].filled.is-video::after { content: ""; position: absolute; left: 16px; bottom: 16px; z-index: 3;
     width: 48px; height: 48px; border-radius: 50%; pointer-events: none;
     background: rgba(10,12,18,0.55) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M9 6.5v11l9-5.5z' fill='%23fff'/%3E%3C/svg%3E") center / 22px no-repeat;
     border: 1px solid rgba(255,255,255,0.28); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
     box-shadow: 0 8px 24px rgba(0,0,0,0.35); transition: transform 0.2s ease, background-color 0.2s ease; }
-  body:not(.editing) .media[data-noautoplay].filled:hover::after { transform: scale(1.08); background-color: color-mix(in srgb, var(--accent) 70%, transparent); }
+  body:not(.editing) .media[data-noautoplay].filled.is-video:hover::after { transform: scale(1.08); background-color: color-mix(in srgb, var(--accent) 70%, transparent); }
   .s-statement { justify-content: center; gap: 34px; }
   .s-statement .display { font-size: 54px; max-width: 22ch; line-height: 1.08; font-weight: 500; }
 
@@ -754,7 +755,7 @@ img { max-width: 100%; }
   .tile-zoom .tz-cap { position: absolute; left: 0; right: 0; bottom: 0; padding: 34px 20px 14px; font-size: 16px;
     color: #fff; letter-spacing: 0.01em; background: linear-gradient(transparent, rgba(0,0,0,0.62)); }
   .tile-zoom .tz-cap:empty { display: none; }
-  body:not(.editing) .slide:not(.s-divider):not(.s-screen) .media.filled { cursor: pointer; }
+  body:not(.editing) .slide:not(.s-divider):not(.s-fullvideo):not(.s-screen) .media.filled { cursor: pointer; }
   @media (prefers-reduced-motion: reduce) { .tile-zoom { transition: opacity 0.12s ease; transform: none; } }
   :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 

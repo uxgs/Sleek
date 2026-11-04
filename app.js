@@ -337,7 +337,7 @@
     slideTiles(s).forEach(function(m, k){
       var cap = m.querySelector('.cap'), name = cap ? cap.textContent.trim() : '', src = tileSrc(m), kind, vid = isVideo(src);
       if(m.hasAttribute('data-dis')) kind = 'Take apart';
-      else if(src && !s.matches('.s-divider, .s-screen') && !m.closest('.filmstrip')) kind = vid ? 'Play video ' + (++nv) : 'Image ' + (++n);   // a video plays full screen
+      else if(src && !s.matches('.s-divider, .s-fullvideo, .s-screen') && !m.closest('.filmstrip')) kind = vid ? 'Play video ' + (++nv) : 'Image ' + (++n);   // a video plays full screen
       else return;
       out.push({ ref: 'tile:' + (k + 1), kind: kind, name: name, src: src, video: vid });
     });
@@ -1800,7 +1800,7 @@
   // viewer; ←/→ step through the other tiles in the same group (a carousel set, a grid).
   function isExpandable(m){
     return m && m.classList.contains('media') && m.classList.contains('filled') && !editing && !annotating &&
-      m.closest('#stage .slide.active') && !m.closest('.s-divider, .s-screen, .filmstrip') && !m.matches('[data-dis]');
+      m.closest('#stage .slide.active') && !m.closest('.s-divider, .s-fullvideo, .s-screen, .filmstrip') && !m.matches('[data-dis]');
   }
   function expandableTileAt(x, y){
     var els = document.elementsFromPoint(x, y);
@@ -2592,20 +2592,35 @@
     try { localStorage.setItem(NS + 'sleek-media-ping', String(Date.now())); } catch(e){}
     try { if(bc) bc.postMessage({ media: true }); } catch(e){}
   }
-  function reloadMedia(){ idbGet('components', function(c){ compEdits = c || {}; idbGet('media', function(d){ mediaImages = d || {}; applyMedia(); markChanged(); }); }); }
+  function reloadMedia(){ idbGet('press', function(p){ pressEdits = p || {}; idbGet('components', function(c){ compEdits = c || {}; idbGet('media', function(d){ mediaImages = d || {}; applyMedia(); pressChanged(); markChanged(); }); }); }); }
   // a take-apart tile's own layers, edited on this device (features/disassemble.js), by tile id;
   // they save into the deck as seed.components['tile:<tile id>']
   var compEdits = {};
+  // a bullet's newspaper clipping, edited on this device (features/press.js), by the bullet's text id;
+  // they save into the deck as seed.press['<text id>'] (false: this bullet has none, even the layout's)
+  var pressEdits = {}, pressListeners = [];
+  function pressChanged(){ pressListeners.forEach(function(f){ try { f(); } catch(e){ console.error(e); } }); }
+  function savePress(){
+    idbSet('press', pressEdits); markChanged(); pressChanged();
+    try { localStorage.setItem(NS + 'sleek-media-ping', String(Date.now())); } catch(e){}
+    try { if(bc) bc.postMessage({ media: true }); } catch(e){}
+  }
   function saveComps(){
     idbSet('components', compEdits); markChanged();
     try { localStorage.setItem(NS + 'sleek-media-ping', String(Date.now())); } catch(e){}
     try { if(bc) bc.postMessage({ media: true }); } catch(e){}
   }
+  // a tile's picture: a device edit, then the seed, then the layout's own; 'none' is no picture at all
+  // (a divider with none shows the theme behind its words)
+  function picOf(mid, m){
+    var v = mediaImages[mid] || (SEED.media && SEED.media[mid]) || m.getAttribute('data-default-src') || null;
+    return v === 'none' ? null : v;
+  }
   function applyMedia(){
     Array.prototype.forEach.call(document.querySelectorAll('.slide:not(.s-screen) .media[data-mid]'), function(m){
       var mid = m.getAttribute('data-mid');
       // a device edit, then the seed, then the tile's own data-default-src
-      var img = mediaImages[mid] || (SEED.media && SEED.media[mid]) || m.getAttribute('data-default-src');
+      var img = picOf(mid, m);
       if(img) img = busted(img);                               // a file you replaced on disk loads fresh
       if(img && isVideo(img)){ m.style.background = ''; setTileVideo(m, img); m.classList.add('filled'); }
       else if(img){ setTileVideo(m, null); m.style.background = (m.getAttribute('data-bg-pos') || 'center top') + '/cover no-repeat url("' + img + '")'; m.classList.add('filled'); }   // crops keep the top
@@ -2713,7 +2728,7 @@
   // tile videos start 1.5s after you land on their slide, from the top; leaving a slide stops its videos
   var vidT = 0;
   // a slide's background film (video.slide-bg) fades in once its first frame is actually playing
-  document.addEventListener('playing', function(e){ if(e.target.matches && e.target.matches('video.slide-bg')) e.target.classList.add('on'); }, true);
+  document.addEventListener('playing', function(e){ if(e.target.matches && e.target.matches('.slide-bg > video.tile-video')) e.target.classList.add('on'); }, true);
   function armVideos(keepPlaying){
     clearTimeout(vidT);
     var cur = slides[i];
@@ -2881,9 +2896,10 @@
         if(frame) clr.title = 'Remove from the strip';
         clr.addEventListener('click', function(ev){ ev.stopPropagation();
           if(frame){ removeFrame(m); return; }                                    // the strip loses the picture, not just its image
-          delete mediaImages[mid]; applyMedia(); saveMedia(); });
+          if(m.closest('.s-divider')) mediaImages[mid] = 'none'; else delete mediaImages[mid];   // a divider's backdrop goes, the theme shows
+          applyMedia(); saveMedia(); });
         m.appendChild(clr);
-        if(!m.closest('.s-divider, .filmstrip') && !m.matches('[data-dis]')){   // a tile that opens big can have a Before
+        if(!m.closest('.s-divider, .s-fullvideo, .filmstrip') && !m.matches('[data-dis]')){   // a tile that opens big can have a Before
           var bb = document.createElement('button');
           bb.className = 'media-before'; bb.type = 'button'; bb.innerHTML = '<i></i><span>Add before</span>';
           bb.addEventListener('click', function(ev){ ev.stopPropagation(); if(Deck.openBeforePicker) Deck.openBeforePicker(mid, m); });
@@ -2920,7 +2936,7 @@
   function busted(src){ return src; }
   function tileSrc(m){
     var mid = m.getAttribute('data-mid');
-    if(mid) return busted(mediaImages[mid] || (SEED.media && SEED.media[mid]) || m.getAttribute('data-default-src') || null);
+    if(mid) return busted(picOf(mid, m));
     var tv = m.querySelector(':scope > video.tile-video'); if(tv) return vsrc(tv);
     var bg = /url\(["']?([^"')]+)["']?\)/.exec(m.style.backgroundImage || '');   // looping copies carry the image inline
     return bg ? bg[1] : null;
@@ -2984,7 +3000,7 @@
     for(var k = 0; k < els.length; k++){
       var el = els[k];
       if(el.classList && el.classList.contains('media') && el.classList.contains('filled') &&
-         el.closest('#stage .slide.active') && !el.closest('.s-divider, .s-screen, .filmstrip')){
+         el.closest('#stage .slide.active') && !el.closest('.s-divider, .s-fullvideo, .s-screen, .filmstrip')){
         glow = el;
         if(!el.matches('[data-dis]')) hit = el;
         break;
@@ -3011,6 +3027,8 @@
     Object.keys(mediaImages).forEach(function(mid){ media[mid] = imageFile(mediaImages[mid], mid, files); });
     var comps = JSON.parse(JSON.stringify(SEED.components || {}));
     Object.keys(compEdits).forEach(function(mid){ comps['tile:' + mid] = compEdits[mid]; });
+    var press = JSON.parse(JSON.stringify(SEED.press || {}));
+    Object.keys(pressEdits).forEach(function(eid){ press[eid] = pressEdits[eid]; });
     // one set's pins and shapes, with their images written to images/<base>-noteN-k
     function setOut(sc, base){
       return {
@@ -3053,6 +3071,7 @@
     if(ADDED.length) seed.added = ADDED; else delete seed.added;
     seed.annotations = anns; seed.text = ex.text; seed.style = ex.style; seed.media = media;
     if(Object.keys(comps).length) seed.components = comps; else delete seed.components;
+    if(Object.keys(press).length) seed.press = press; else delete seed.press;
     return { seed: seed, files: files };
   }
   function clearDeviceEdits(done){
@@ -3061,7 +3080,7 @@
     if(!DB){ done(); return; }
     try {
       var tx = DB.transaction('kv', 'readwrite'), st = tx.objectStore('kv');
-      st.delete('media'); st.delete('annotations'); st.delete('components');
+      st.delete('media'); st.delete('annotations'); st.delete('components'); st.delete('press');
       tx.oncomplete = tx.onerror = tx.onabort = function(){ done(); };
     } catch(e){ done(); }
   }
@@ -3697,6 +3716,9 @@
     setBefore: function(mid, v){ setBefore(mid, v); },
     // take-apart: a tile's own layers (this device's edit, else the deck's), and whether its picture is its own
     tileComponent: function(mid){ return (mid && (compEdits[mid] || (SEED.components && SEED.components['tile:' + mid]))) || null; },
+    pressClip: function(eid){ return !eid ? undefined : eid in pressEdits ? pressEdits[eid] : (SEED.press && eid in SEED.press ? SEED.press[eid] : undefined); },
+    setPressClip: function(eid, c){ if(!eid) return; if(c === undefined) delete pressEdits[eid]; else pressEdits[eid] = c; savePress(); },
+    onPress: pressListeners,
     setTileComponent: function(mid, c){ if(!mid) return; if(c) compEdits[mid] = c; else delete compEdits[mid]; saveComps(); },
     mediaIsCustom: function(mid){
       var t = tileByMid(mid), v = mid && (mediaImages[mid] || (SEED.media && SEED.media[mid]));

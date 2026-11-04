@@ -20,6 +20,7 @@
 <link rel="stylesheet" href="features/add-slide.css">
 <link rel="stylesheet" href="features/before-picker.css">
 <link rel="stylesheet" href="features/take-apart-editor.css">
+<link rel="stylesheet" href="features/press-editor.css">
 <link rel="stylesheet" href="features/deck-file.css">
 <!-- the storage, the sample deck, then the loader: it opens the deck and starts the engine on it -->
 <script src="core/store.js"></script>
@@ -448,8 +449,9 @@
 
     <!-- Full-bleed video with the title over its top -->
     <section class="slide s-gallery s-fullvideo" data-label="Full video" data-note="full-video">
-      <template class="slide-notes"><p>The whole slide is a film, with the title over its top.</p></template>
-      <video class="tile-video slide-bg" data-src="assets/sample/clip-a.mp4" muted loop playsinline preload="auto" aria-hidden="true"></video>
+      <template class="slide-notes"><p>The whole slide is a film, with the title over its top.</p>
+<ul><li>In Edit mode, click the film to swap it for your own video or picture.</li></ul></template>
+      <div class="media slide-bg" data-default-src="assets/sample/clip-a.mp4"></div>
       <div class="headrow"><h2 class="display">Launch day.</h2><span class="meta">Spring 2026</span></div>
     </section>
 

@@ -1,8 +1,11 @@
-/* Press clippings: a bullet with data-press="<id>" opens a newspaper clipping over its slide.
+/* Press clippings: a bullet with a clipping opens a newspaper clipping over its slide when clicked.
    Built here, not in the markup, so it takes no text ids and later slides keep their saved edits.
    It lives inside the slide (slide coordinates), so the presenter's preview replays the clicks.
-   A deck carries its own clippings in seed.press, each keyed by the text id of the bullet that opens it
-   ("<slide id>.t4"), with the same fields as the sample below. */
+
+   Any bullet can carry one. In Edit mode, point at a bullet and press Clipping: write the paper's name,
+   the headline and the passage, put *stars* around the words the highlighter should sweep over, and
+   name who said it. A clipping saves with the deck as seed.press['<the bullet's text id>'], with the
+   fields of the sample below (false: this bullet has none, not even its layout's). */
 (function(){
   var D = window.Deck; if(!D) return;
 
@@ -27,18 +30,24 @@
       role: 'Health editor'
     }
   };
+  var LIST = '#stage .slide:not(.s-screen) li[data-eid]';   // the bullets that can carry one
 
-  // the deck's own clippings, on the bullets they belong to
-  var OWN = (D.SEED && D.SEED.press) || {};
-  function okClip(p){ return p && typeof p === 'object' && Array.isArray(p.head) && Array.isArray(p.body); }
+  function okClip(p){ return !!p && typeof p === 'object' && Array.isArray(p.head) && Array.isArray(p.body); }
+  function clipOf(el){ var k = el && el.getAttribute('data-press'); return k ? PRESS[k] || null : null; }
+  // every bullet shows the deck's clipping for it, else its layout's own, else none
   function attach(){
-    Object.keys(OWN).forEach(function(eid){
-      if(!okClip(OWN[eid])) return;
-      PRESS['own:' + eid] = OWN[eid];
-      Array.prototype.forEach.call(document.querySelectorAll('#stage [data-eid="' + eid.replace(/["\\]/g, '') + '"]'), function(el){ el.setAttribute('data-press', 'own:' + eid); });
+    Array.prototype.forEach.call(document.querySelectorAll('#stage [data-eid]'), function(el){
+      if(el.closest('.car-copy, .fs-copy')) return;
+      if(!el.hasAttribute('data-press-0')) el.setAttribute('data-press-0', el.getAttribute('data-press') || '');
+      var eid = el.getAttribute('data-eid'), c = D.pressClip ? D.pressClip(eid) : (D.SEED.press || {})[eid], base = el.getAttribute('data-press-0');
+      if(okClip(c)){ PRESS['own:' + eid] = c; el.setAttribute('data-press', 'own:' + eid); }
+      else if(c === false || !base) el.removeAttribute('data-press');
+      else el.setAttribute('data-press', base);
     });
+    if(cur && !clipOf(cur.src)) close(true);
   }
   attach();
+  if(D.onPress) D.onPress.push(attach);
 
   var cur = null;   // { el, src }
   function esc(v){ return String(v == null ? '' : v).replace(/[&<>"]/g, function(c){ return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
@@ -75,7 +84,7 @@
   }
 
   function open(src){
-    var p = PRESS[src.getAttribute('data-press')], s = src.closest('.slide'); if(!p || !s) return;
+    var p = clipOf(src), s = src.closest('.slide'); if(!p || !s) return;
     close(true);
     var el = build(p); s.appendChild(el);
     cur = { el: el, src: src };
@@ -99,7 +108,7 @@
     }
     if(D.isEditing()) return;
     var t = e.target.closest && e.target.closest('#stage .slide.active [data-press]');
-    if(!t) return;
+    if(!t || !clipOf(t)) return;
     e.stopPropagation(); e.preventDefault();
     open(t);
   }, true);
@@ -113,4 +122,156 @@
   });
   D.onShow.push(function(){ close(true); });
   D.onReset.push(function(){ close(); });
+
+  // ================= Edit mode: a bullet's Clipping button, and the editor behind it =================
+  if(D.popout || D.mirror || !D.setPressClip) return;
+
+  // *words* highlight; parts back to text the same way
+  function toText(parts){ return (parts || []).map(function(b){ b = [].concat(b); return b[1] ? '*' + b[0] + '*' : String(b[0] == null ? '' : b[0]); }).join(''); }
+  function toParts(text){
+    var out = [], re = /\*([^*]+)\*/g, at = 0, m;
+    text = String(text || '');
+    while((m = re.exec(text))){ if(m.index > at) out.push([text.slice(at, m.index)]); out.push([m[1], true]); at = re.lastIndex; }
+    if(at < text.length) out.push([text.slice(at)]);
+    return out;
+  }
+  function blank(li){
+    var said = (li.textContent || '').replace(/^\s*[+\-–!•]\s*/, '').trim();
+    return { outlet: 'The Daily Paper', section: 'News', kicker: 'Feature',
+      head: toParts(said ? '*' + said.replace(/[*.]+$/, '') + '*.' : 'A headline with *the words that matter* marked.'),
+      body: toParts('“A few lines from the piece go here, the part that makes the case for the work,” said someone who covered it. “Mark *the words worth reading aloud* with stars and the highlighter sweeps over them once the clipping lands. Two or three sentences fill both columns.”'),
+      by: 'A name', role: 'Their role' };
+  }
+
+  // the button, beside whichever bullet you point at (or are typing in)
+  var chip = document.createElement('button');
+  chip.type = 'button'; chip.className = 'pr-chip'; chip.hidden = true;
+  chip.innerHTML = '<i aria-hidden="true"></i><span>Clipping</span>';
+  document.body.appendChild(chip);
+  var chipFor = null, hideT = 0;
+  function place(li){
+    if(!li || !D.isEditing() || D.modal){ chip.hidden = true; chipFor = null; return; }
+    clearTimeout(hideT);
+    chipFor = li;
+    var r = li.getBoundingClientRect(), has = !!clipOf(li);
+    chip.classList.toggle('has', has);
+    chip.querySelector('span').textContent = has ? 'Clipping' : '+ Clipping';
+    chip.title = has ? 'Edit this bullet’s newspaper clipping' : 'Give this bullet a newspaper clipping (it opens when clicked in Present)';
+    chip.hidden = false;
+    var w = chip.offsetWidth || 96, x = Math.min(r.right + 10, window.innerWidth - w - 8);
+    chip.style.left = Math.max(8, x) + 'px'; chip.style.top = Math.max(8, r.top + r.height / 2 - 13) + 'px';
+  }
+  function hideSoon(){ clearTimeout(hideT); hideT = setTimeout(function(){ chip.hidden = true; chipFor = null; }, 450); }
+  document.addEventListener('mouseover', function(e){
+    if(!D.isEditing() || ed) return;
+    if(e.target.closest && e.target.closest('.pr-chip')){ clearTimeout(hideT); return; }
+    var li = e.target.closest && e.target.closest(LIST);
+    if(li && li.closest('.slide.active')) place(li); else if(chipFor) hideSoon();
+  });
+  document.addEventListener('focusin', function(e){
+    var li = D.isEditing() && !ed && e.target.closest && e.target.closest(LIST);
+    if(li && li.closest('.slide.active')) place(li);
+  });
+  chip.addEventListener('mousedown', function(e){ e.preventDefault(); });   // the caret stays in the bullet
+  chip.addEventListener('click', function(e){ e.preventDefault(); e.stopPropagation(); if(chipFor) edit(chipFor); });
+  window.addEventListener('resize', function(){ if(chipFor && !chip.hidden) place(chipFor); });
+  D.onShow.push(function(){ chip.hidden = true; chipFor = null; });
+  new MutationObserver(function(){ if(!D.isEditing()){ chip.hidden = true; chipFor = null; } }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+
+  // the editor: fields on one side, the clipping as it will look on the other
+  var ed = null;   // { el, li, eid, c, typing, prev }
+  var FIELDS = [
+    ['outlet', 'The paper', 'A magazine, a trade paper, your local daily', 'full'],
+    ['section', 'Section (left of the name)', 'Games'], ['kicker', 'Strapline (right of the name)', 'Gaming · Platforms'],
+    ['head', 'Headline', 'Put *stars* around the words to highlight', 'full area-s'],
+    ['body', 'Passage', 'The lines from the piece; *stars* highlight', 'full area'],
+    ['by', 'Who said it', 'A name'], ['role', 'Their role', 'Editor, creator, critic']
+  ];
+  function edit(li){
+    if(ed) return;
+    var eid = li.getAttribute('data-eid'), have = clipOf(li);
+    chip.hidden = true;
+    var c = JSON.parse(JSON.stringify(have || blank(li)));
+    var el = document.createElement('div');
+    el.className = 'bp-backdrop pr-backdrop';
+    el.innerHTML = '' +
+      '<div class="bp-modal pr-modal" role="dialog" aria-modal="true" aria-label="Newspaper clipping">' +
+        '<button type="button" class="bp-close" data-close aria-label="Close">×</button>' +
+        '<div class="pr-ehead"><div class="bp-k">Clipping · ' + esc((li.textContent || '').replace(/^\s*[+\-–!•]\s*/, '').trim().slice(0, 48)) + '</div>' +
+          '<h2 class="bp-h">What did the press say?</h2>' +
+          '<p class="bp-p">In Present, click this bullet and the clipping lands over the slide, then the highlighter sweeps over the words you marked.</p></div>' +
+        '<div class="pr-ebody">' +
+          '<form class="pr-form" autocomplete="off">' + FIELDS.map(function(f){
+            var v = f[0] === 'head' || f[0] === 'body' ? toText(c[f[0]]) : (c[f[0]] || '');
+            var area = /area/.test(f[3] || '');
+            return '<label class="pr-f ' + (f[3] || '') + '"><span>' + f[1] + '</span>' +
+              (area ? '<textarea name="' + f[0] + '" rows="' + (/area-s/.test(f[3]) ? 2 : 4) + '" placeholder="' + esc(f[2]) + '">' + esc(v) + '</textarea>'
+                    : '<input type="text" name="' + f[0] + '" value="' + esc(v) + '" placeholder="' + esc(f[2]) + '">') + '</label>';
+          }).join('') + '</form>' +
+          '<div class="pr-prev" aria-hidden="true"><div class="pr-prev-in"></div></div>' +
+        '</div>' +
+        '<div class="pr-efoot">' +
+          '<button type="button" class="bp-btn ghost pr-del" data-del' + (have ? '' : ' hidden') + '>Remove clipping</button>' +
+          '<span class="tl-sp"></span><button type="button" class="bp-btn primary" data-done>Done</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(el);
+    ed = { el: el, li: li, eid: eid, c: c, typing: 0, prev: document.activeElement, saved: !!have };
+    preview();
+    el.addEventListener('click', function(e){
+      if(e.target.closest('[data-done]')){ if(!ed.saved || ed.typing) save(); finish(); return; }
+      if(e.target === el || e.target.closest('[data-close]')){ finish(); return; }   // a new one you didn't touch isn't kept
+      if(e.target.closest('[data-del]')){
+        clearTimeout(ed.typing); ed.typing = 0;
+        D.setPressClip(eid, false);   // none here, even where the layout or the deck file has one
+        ed.saved = false; ed.removed = true; finish(); return;
+      }
+    });
+    el.addEventListener('input', function(e){
+      var n = e.target.name; if(!n) return;
+      ed.c[n] = n === 'head' || n === 'body' ? toParts(e.target.value) : e.target.value;
+      preview();
+      clearTimeout(ed.typing); ed.typing = setTimeout(save, 400);
+    });
+    el.querySelector('form').addEventListener('submit', function(e){ e.preventDefault(); });
+    document.addEventListener('keydown', onKey, true);
+    window.addEventListener('resize', fit);
+    D.modal = true;
+    requestAnimationFrame(function(){ requestAnimationFrame(function(){ if(!ed) return; el.classList.add('in'); var f = el.querySelector('input'); if(f){ f.focus({ preventScroll: true }); f.select(); } }); });
+  }
+  function save(){
+    if(!ed) return;
+    ed.typing = 0; ed.saved = true;
+    D.setPressClip(ed.eid, JSON.parse(JSON.stringify(ed.c)));
+    var del = ed.el.querySelector('[data-del]'); if(del) del.hidden = false;
+  }
+  function preview(){
+    var box = ed.el.querySelector('.pr-prev-in');
+    box.innerHTML = ''; var p = build(ed.c); p.classList.add('in', 'pr-still'); box.appendChild(p);
+    fit();
+  }
+  function fit(){
+    if(!ed) return;
+    var wrap = ed.el.querySelector('.pr-prev'), box = ed.el.querySelector('.pr-prev-in'), clip = box.querySelector('.pr-clip');
+    if(!clip) return;
+    var s = Math.min(1, (wrap.clientWidth - 8) / 860);
+    box.style.transform = 'scale(' + s + ')';
+    wrap.style.height = Math.ceil((clip.offsetHeight + 40) * s) + 'px';
+  }
+  function finish(){
+    if(!ed) return;
+    if(ed.typing){ clearTimeout(ed.typing); save(); }
+    var node = ed.el, prev = ed.prev; ed = null; D.modal = false;
+    document.removeEventListener('keydown', onKey, true);
+    window.removeEventListener('resize', fit);
+    node.classList.remove('in'); node.classList.add('out');
+    setTimeout(function(){ node.remove(); }, 380);
+    if(prev && prev.focus) prev.focus({ preventScroll: true });
+  }
+  function onKey(e){
+    if(!ed) return;
+    if(e.key === 'Escape'){ e.preventDefault(); e.stopImmediatePropagation(); finish(); return; }
+    if(!(e.target && /^(INPUT|TEXTAREA)$/.test(e.target.tagName))) e.stopImmediatePropagation();   // the deck underneath stays put
+  }
+  D.editClipping = edit;
 })();
