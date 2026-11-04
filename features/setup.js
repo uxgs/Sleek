@@ -220,19 +220,21 @@
           '<div class="su-progress" aria-hidden="true">' + STEPS.map(function(){ return '<i></i>'; }).join('') + '</div>' +
           '<div class="su-stage"></div>' +
           '<div class="su-nav">' +
-            '<button type="button" class="su-btn ghost su-skip" data-skip>Skip to the end</button>' +
+            '<button type="button" class="su-btn ghost su-skip" data-skip>Skip<span class="su-long"> to the end</span></button>' +
             '<button type="button" class="su-btn ghost" data-back>Back</button>' +
             '<button type="button" class="su-btn primary" data-next>Continue</button>' +
           '</div>' +
         '</div>' +
         '<div class="su-preview" aria-hidden="true"><span class="su-preview-k">Live preview</span>' +
-          '<div class="su-slide glow"><span class="su-chip" data-tag="Label">New</span><div class="su-ov"></div><div class="su-t"></div><i class="su-rule" data-tag="Underline"></i><p class="su-l"></p>' +
+          '<div class="su-slide glow" data-fx><span class="su-chip" data-tag="Label">New</span><div class="su-ov"></div><div class="su-t"></div><i class="su-rule" data-tag="Underline"></i><p class="su-l"></p>' +
           '<span class="su-cta" data-tag="Button">Get started</span>' +
           '<div class="su-foot"><span>Title slide</span><span>Edit anything later</span></div></div>' +
         '</div>' +
         '<button type="button" class="su-close" data-close aria-label="Close setup">×</button>' +
       '</div>';
     document.body.appendChild(el);
+    // the preview's Pulse grid is drawn on a canvas (glow-fx.js), like the slides'
+    if(window.GlowFX) GlowFX.mount(el.querySelector('.su-slide'));
     el.addEventListener('click', onClick);
     el.addEventListener('input', onInput);
     document.addEventListener('keydown', onKey, true);

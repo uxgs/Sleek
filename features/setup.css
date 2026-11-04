@@ -36,7 +36,8 @@
 .su-close:hover { background: var(--surface-2); color: var(--fg); }
 
 .su-stage { position: relative; flex: 1; min-height: 0; }
-.su-step { position: absolute; inset: 0; display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden; padding: 2px;
+/* room around the choices, so a picked one's ring and glow aren't cut off at the edges */
+.su-step { position: absolute; inset: -12px; display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden; padding: 12px;
            transition: transform .55s cubic-bezier(.16, 1, .3, 1), opacity .35s ease; }
 .su-step.enter { transform: translateX(var(--from, 36px)); opacity: 0; }
 .su-step.leave { transform: translateX(var(--to, -36px)); opacity: 0; pointer-events: none; }
@@ -146,6 +147,7 @@
 .su-slide.bump { animation: su-bump .5s cubic-bezier(.16, 1, .3, 1); }
 @keyframes su-bump { 40% { transform: scale(.985); } }
 .su-slide > * { position: relative; z-index: 1; }
+.su-slide > .glow-fx { position: absolute; z-index: 0; opacity: 0.3; }   /* the Pulse grid, as strong as in the Theme menu's preview */
 .su-ov { font: 600 2.1cqi/1.2 var(--slide-body, var(--ff)); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
 .su-ov i { font-style: normal; color: var(--accent); padding: 0 .4em; }
 .su-t { margin: 3cqi 0 2.4cqi; font: 650 9.5cqi/0.98 var(--slide-display, var(--ff)); letter-spacing: -0.035em; text-wrap: balance; overflow-wrap: anywhere; }
@@ -174,6 +176,8 @@
   .su-side { padding: 18px 18px 18px; }
   .su-row2 { grid-template-columns: 1fr; }
   .su-opts { --cols: 2 !important; }
+  .su-long { display: none; }
+  .su-nav button { white-space: nowrap; }
 }
 @media (prefers-reduced-motion: reduce) {
   .su-modal, .su-step, .su-opt, .su-sw, .su-gc, .su-summary button, .su-slide, .su-slide [data-tag] { transition: none !important; animation: none !important; }

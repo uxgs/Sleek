@@ -62,7 +62,7 @@
 
   // ---------- the card menu ----------
   var menu = null;
-  function closeMenu(){ if(!menu) return; var m = menu; menu = null; m.btn.setAttribute('aria-expanded', 'false'); m.el.remove(); }
+  function closeMenu(){ if(!menu) return; var m = menu; menu = null; m.btn.setAttribute('aria-expanded', 'false'); m.el.remove(); var c = m.btn.closest('.lib-card'); if(c) c.classList.remove('menu-open'); }
   function openMenu(btn, id){
     closeMenu();
     var el = document.createElement('div'); el.className = 'lib-menu'; el.setAttribute('role', 'menu');
@@ -70,6 +70,7 @@
       return m[0] === '-' ? '<hr>' : '<button type="button" role="menuitem" data-act="' + m[0] + '"' + (m[0] === 'del' ? ' class="danger"' : '') + '>' + m[1] + '</button>';
     }).join('');
     btn.closest('.lib-meta').appendChild(el);
+    btn.closest('.lib-card').classList.add('menu-open');        // above the cards after it
     btn.setAttribute('aria-expanded', 'true');
     menu = { el: el, btn: btn, id: id };
     var first = el.querySelector('button'); if(first) first.focus();
@@ -122,7 +123,7 @@
     if(item){ act(item.dataset.act, menu.id); return; }
     if(e.target.closest('[data-sample]')) addSample();
   });
-  document.addEventListener('pointerdown', function(e){ if(menu && !e.target.closest('.lib-menu, .lib-more')) closeMenu(); });
+  document.addEventListener('pointerdown', function(e){ if(menu && !(e.target.closest && e.target.closest('.lib-menu, .lib-more'))) closeMenu(); });
   document.addEventListener('keydown', function(e){
     if(!menu) return;
     if(e.key === 'Escape'){ var b = menu.btn; closeMenu(); b.focus(); }
