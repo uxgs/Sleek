@@ -1,0 +1,70 @@
+/* Before picture: the picker behind a tile's Before button (features/before-picker.js).
+   Dark glass like the layout picker, whatever the deck's own mode. */
+.bp-backdrop { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center;
+  padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+  background: rgba(0, 0, 0, 0.55); -webkit-backdrop-filter: blur(18px) saturate(140%); backdrop-filter: blur(18px) saturate(140%);
+  opacity: 0; transition: opacity .35s ease; color: #F2F2F4; font-family: "Inter", -apple-system, BlinkMacSystemFont, system-ui, sans-serif; }
+.bp-backdrop.in { opacity: 1; }
+.bp-modal { position: relative; width: min(980px, 100%); max-height: min(780px, 100%); display: flex; flex-direction: column; overflow: hidden;
+  border-radius: 26px; background: rgba(22, 22, 26, 0.95); border: 1px solid rgba(255,255,255,0.12);
+  box-shadow: 0 60px 140px -40px rgba(0,0,0,0.85), inset 0 1px 0 rgba(255,255,255,0.06);
+  transform-origin: var(--ox, 50%) var(--oy, 0%); transform: scale(.55); opacity: 0;
+  transition: transform .6s cubic-bezier(.16, 1, .3, 1), opacity .3s ease; }
+.bp-backdrop.in .bp-modal { transform: none; opacity: 1; }
+.bp-backdrop.out .bp-modal { transform: scale(.94) translateY(10px); opacity: 0; transition-duration: .28s; }
+.bp-modal::before { content: ""; position: absolute; inset: -40% -10% auto; height: 70%; pointer-events: none;
+  background: radial-gradient(50% 60% at 30% 100%, color-mix(in srgb, var(--accent) 20%, transparent), transparent 70%); opacity: .7; }
+
+.bp-close { position: absolute; top: 18px; right: 18px; width: 34px; height: 34px; border-radius: 50%; border: 0; cursor: pointer; z-index: 2;
+  background: rgba(255,255,255,0.06); color: #C7C7CE; font: 20px/1 inherit; display: grid; place-items: center; transition: background .2s ease; }
+.bp-close:hover { background: rgba(255,255,255,0.14); color: #fff; }
+
+/* the pair: the Before and this tile, split by the divider the wipe uses */
+.bp-head { position: relative; display: flex; gap: 28px; align-items: center; padding: 28px 32px 20px; flex-wrap: wrap; }
+.bp-pair { position: relative; flex: none; width: min(300px, 100%); aspect-ratio: 16 / 9; border-radius: 14px; overflow: hidden; display: flex;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.12), 0 24px 50px -24px rgba(0,0,0,0.8); background: #0c0c0f; }
+.bp-half { position: relative; flex: 1; background: center / cover no-repeat; transition: flex .7s cubic-bezier(.16, 1, .3, 1); }
+.bp-half em { position: absolute; bottom: 8px; padding: 4px 7px; border-radius: 6px; background: rgba(0,0,0,0.55); font: 600 10px/1 inherit;
+  font-style: normal; letter-spacing: .1em; text-transform: uppercase; color: #fff; }
+.bp-b em { left: 8px; } .bp-a em { right: 8px; }
+.bp-a { background-position: right center; }
+.bp-b:not([style*="background-image"]) { background: repeating-linear-gradient(135deg, rgba(255,255,255,0.05) 0 8px, transparent 8px 16px); }
+.bp-pair.empty .bp-b { background: repeating-linear-gradient(135deg, rgba(255,255,255,0.05) 0 8px, transparent 8px 16px) !important; }
+.bp-line { position: absolute; top: 0; bottom: 0; left: 50%; width: 2px; margin-left: -1px; background: #fff; box-shadow: 0 0 12px rgba(0,0,0,0.5);
+  transition: left .7s cubic-bezier(.16, 1, .3, 1); }
+.bp-line::after { content: ""; position: absolute; top: 50%; left: 50%; width: 22px; height: 22px; border-radius: 50%; transform: translate(-50%, -50%);
+  background: #fff; box-shadow: 0 2px 10px rgba(0,0,0,0.45); }
+/* on a pick the divider sweeps across to show it */
+.bp-backdrop.done .bp-pair:not(.empty) .bp-b { flex: 3; }
+.bp-backdrop.done .bp-pair:not(.empty) .bp-line { left: 75%; }
+
+.bp-copy { flex: 1; min-width: min(100%, 280px); padding-right: 30px; }
+.bp-k { font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: var(--accent); font-weight: 600; }
+.bp-h { margin: 6px 0 6px; font-size: clamp(24px, 3vw, 30px); line-height: 1.08; letter-spacing: -0.03em; font-weight: 650; text-wrap: balance; }
+.bp-p { margin: 0; color: #A1A1A6; font-size: 14.5px; line-height: 1.45; max-width: 54ch; }
+.bp-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+.bp-btn { display: inline-flex; align-items: center; height: 36px; padding: 0 16px; border-radius: 999px; border: 0; cursor: pointer;
+  font: 600 13px/1 inherit; font-family: inherit; transition: background .2s ease, transform .2s ease; }
+.bp-btn.primary { background: var(--accent); color: #fff; }
+.bp-btn.primary:hover { transform: translateY(-1px); filter: brightness(1.08); }
+.bp-btn.ghost { background: rgba(255,255,255,0.07); color: #E5E5EA; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.12); }
+.bp-btn.ghost:hover { background: rgba(255,255,255,0.13); }
+
+/* every picture in the deck, by slide */
+.bp-body { position: relative; overflow-y: auto; padding: 4px 32px 30px; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 20px;
+  border-top: 1px solid rgba(255,255,255,0.07); padding-top: 18px; }
+.bp-slide { font-size: 12px; font-weight: 600; letter-spacing: .06em; color: #8E8E93; margin-bottom: 10px; }
+.bp-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 150px), 1fr)); }
+.bp-tile { display: flex; flex-direction: column; gap: 7px; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer;
+  animation: bp-rise .55s cubic-bezier(.16, 1, .3, 1) both; animation-delay: calc(min(var(--i, 0), 24) * 22ms + 140ms); outline: none; }
+@keyframes bp-rise { from { opacity: 0; transform: translateY(14px) scale(.96); } }
+.bp-shot { position: relative; display: block; width: 100%; aspect-ratio: 16 / 10; border-radius: 10px; background: center top / cover no-repeat #000;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.1); transition: transform .3s cubic-bezier(.16, 1, .3, 1), box-shadow .25s ease; }
+.bp-cap { font-size: 12.5px; color: #C7C7CE; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bp-tile:hover .bp-shot, .bp-tile:focus-visible .bp-shot { transform: translateY(-3px); box-shadow: 0 0 0 1px rgba(255,255,255,0.3), 0 16px 30px -16px rgba(0,0,0,0.9); }
+.bp-tile:focus-visible .bp-shot { box-shadow: 0 0 0 2px #fff, 0 16px 30px -16px rgba(0,0,0,0.9); }
+.bp-tile.on .bp-shot { box-shadow: 0 0 0 2.5px var(--accent), 0 0 0 6px color-mix(in srgb, var(--accent) 25%, transparent); }
+.bp-tile.on .bp-shot::after { content: ""; position: absolute; top: 7px; right: 7px; width: 20px; height: 20px; border-radius: 50%; background: var(--accent)
+  url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M5.5 10.5l3 3 6-6.5' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 14px no-repeat; }
+.bp-empty { color: #8E8E93; margin: 8px 0; }
+@media (prefers-reduced-motion: reduce) { .bp-modal, .bp-half, .bp-line, .bp-tile { transition: none; animation: none; } }

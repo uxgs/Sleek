@@ -1,0 +1,497 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sleek</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
+<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="glow.css">
+<link rel="stylesheet" href="features/features.css">
+<link rel="stylesheet" href="features/add-slide.css">
+<link rel="stylesheet" href="features/before-picker.css">
+<!-- the deck's content, then its theme (saved in the seed, with your unsaved changes on top), before paint -->
+<script src="data/seed.js"></script>
+<script src="theme-boot.js"></script>
+</head>
+<body>
+<div class="viewport" id="viewport">
+  <div class="stage glow" id="stage" data-fx>
+
+    <!-- Sample deck: one slide per layout. Every slide keys its speaker notes by name (data-note) and
+         carries them in its own <template class="slide-notes">. -->
+
+    <!-- Title -->
+    <section class="slide s-title active" data-label="Title" data-note="title">
+      <template class="slide-notes"><p>The title slide. Open the menu bottom right and press <b>Edit</b> to change any text on it.</p>
+<ul><li>Press <b>P</b> to open the presenter window with these notes.</li><li>Press <b>G</b> to see every slide at once.</li></ul></template>
+      <div class="overline">Your name <span class="tick">·</span> Product designer</div>
+      <h1 class="display">Pace</h1>
+      <p class="lead">A fitness app that builds today's workout from how you slept and the time you have.</p>
+      <div class="footrow">
+        <span class="meta">Sample deck · 2026</span>
+        <span class="meta">One slide per layout · edit anything</span>
+      </div>
+    </section>
+
+    <!-- Bullets -->
+    <section class="slide s-points" data-label="Bullets" data-note="bullets">
+      <template class="slide-notes"><p>A headline and a short list. Keep each point to one line.</p></template>
+      <div class="overline"><span class="tick">Part 01 ·</span> The problem</div>
+      <h2 class="display">Most workout plans break by week two.</h2>
+      <ul class="taglist">
+        <li>Plans assume every day is the same day.</li>
+        <li>Miss one session and the whole week falls apart.</li>
+        <li>Tracking lives in one app, coaching in another.</li>
+        <li>Most people quit, then start over in January.</li>
+      </ul>
+    </section>
+
+    <!-- Bullets + side video: the area above and below the film is filled live from its own edges -->
+    <section class="slide s-points s-sidevideo" data-label="Bullets with video" data-note="bullets-video">
+      <template class="slide-notes"><p>A glass side panel with a film beside it. The space above and below the film is painted from the film itself, so it feels edge to edge.</p>
+<ul><li>In Edit mode, click the film to swap it for your own video or image.</li></ul></template>
+      <aside class="side-panel">
+        <div class="overline">Research</div>
+        <h2 class="display">We trained with them.<br>Six weeks of it.</h2>
+        <ul class="taglist">
+          <li>The plan is decided in the first minute of the day.</li>
+          <li>Time, not motivation, is what runs out.</li>
+          <li>A short workout beats a skipped long one.</li>
+        </ul>
+      </aside>
+      <div class="media side-video" data-resize="left" data-default-src="assets/sample/clip-a.mp4"><span class="cap">Gym clip</span></div>
+    </section>
+
+    <!-- Bullets + two stacked videos (each waits for a click, then plays full screen) -->
+    <section class="slide s-points s-twovideo" data-label="Bullets with two videos" data-note="bullets-two-videos">
+      <template class="slide-notes"><p>Two videos stacked beside the copy. They hold their first frame until clicked, then play full screen.</p></template>
+      <div class="tv-copy">
+        <div class="overline"><span class="tick">Part 02 ·</span> The idea</div>
+        <h2 class="display">A plan that bends.</h2>
+        <ul class="taglist">
+          <li>Tell it how long you have; it fits the session to that.</li>
+          <li>Sleep and soreness set the intensity.</li>
+          <li>Click a clip to play it full screen.</li>
+        </ul>
+      </div>
+      <div class="tv-stack">
+        <div class="media" data-noautoplay data-default-src="assets/sample/clip-b.mp4"><span class="cap">Warm up</span></div>
+        <div class="media" data-noautoplay data-default-src="assets/sample/clip-c.mp4"><span class="cap">Main set</span></div>
+      </div>
+    </section>
+
+    <!-- Statement + film strip of reference frames rolling up on the right -->
+    <section class="slide s-statement s-filmstrip" data-label="Statement" data-note="statement">
+      <template class="slide-notes"><p>One big statement, with a film strip of references rolling by on the right.</p></template>
+      <div class="overline">The principle</div>
+      <h2 class="display">The best workout is the one you actually do.</h2>
+      <p class="lead">If the plan fits the day, people show up more often and keep going for longer.</p>
+      <div class="filmstrip" aria-label="Reference frames">
+        <div class="fs-track">
+          <div class="fs-set">
+            <div class="media fs-frame" data-default-src="assets/sample/today.svg"><span class="cap">Today</span></div>
+            <div class="media fs-frame" data-default-src="assets/sample/workout.svg"><span class="cap">Workout</span></div>
+            <div class="media fs-frame" data-default-src="assets/sample/plan.svg"><span class="cap">Plan</span></div>
+            <div class="media fs-frame" data-default-src="assets/sample/you.svg"><span class="cap">You</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Cards: a row of three -->
+    <section class="slide s-phases" data-label="Cards" data-note="cards">
+      <template class="slide-notes"><p>Three cards side by side: stages, options or pillars.</p></template>
+      <div class="overline">How it works</div>
+      <h2 class="display">Check in, train, recover.</h2>
+      <div class="phases">
+        <div class="phase"><span class="p-k">Step 01</span><span class="p-n">Check in</span><span class="p-r">Ten seconds</span><span class="p-d">How you slept, how you feel and how long you have.</span></div>
+        <div class="phase"><span class="p-k">Step 02</span><span class="p-n">Train</span><span class="p-r">15 to 60 minutes</span><span class="p-d">A session built for today, move by move, with a timer.</span></div>
+        <div class="phase"><span class="p-k">Step 03</span><span class="p-n">Recover</span><span class="p-r">Rest of the day</span><span class="p-d">Stretch, sleep and let tomorrow's plan adjust.</span></div>
+      </div>
+    </section>
+
+    <!-- Section divider over a full-bleed picture -->
+    <section class="slide s-divider" data-label="Section divider" data-note="divider">
+      <template class="slide-notes"><p>A section break. The picture behind it is optional: in Edit mode, click the background to set one.</p></template>
+      <div class="media" data-default-src="assets/sample/backdrop.svg"></div><div class="scrim"></div>
+      <div class="content">
+        <div class="section-no">Part 02</div>
+        <h2 class="display">The design</h2>
+        <div class="metarow">
+          <span class="meta">Role · Lead designer</span>
+          <span class="meta">Year · 2026</span>
+          <span class="meta">Team · Design, Engineering, Research</span>
+        </div>
+        <p class="one body">From a paper sketch to the app on people's phones.</p>
+      </div>
+    </section>
+
+    <!-- Gallery: one large tile and two smaller ones -->
+    <section class="slide s-gallery" data-label="Gallery" data-note="gallery">
+      <template class="slide-notes"><p>A large tile with two beside it. Click any tile to open it full screen.</p>
+<ul><li>These notes link to each screen: open <a href="#open:tile:1">Today</a>, then <a href="#open:tile:2">the workout</a>, then <a href="#open:tile:3">the plan</a>, and <a href="#open:slide">close it again</a>.</li></ul></template>
+      <div class="headrow"><h2 class="display">Three screens do the work.</h2><span class="meta">Today, workout, plan</span></div>
+      <div class="grid">
+        <div class="media" data-default-src="assets/sample/today.svg"><span class="cap">Today</span></div>
+        <div class="media" data-default-src="assets/sample/workout.svg"><span class="cap">Workout</span></div>
+        <div class="media" data-default-src="assets/sample/plan.svg"><span class="cap">Plan</span></div>
+      </div>
+      <p class="lead">Each one opens full screen, where the arrow keys step through them.</p>
+    </section>
+
+    <!-- Carousel: the "before" set -->
+    <section class="slide s-gallery s-carousel" data-label="Carousel" data-note="carousel">
+      <template class="slide-notes"><p>An endless, slow carousel. Hover pauses it; drag or swipe to move it.</p></template>
+      <div class="headrow"><h2 class="display">The first sketches.</h2><span class="meta">Version 0.1</span></div>
+      <div class="carousel"><div class="car-track"><div class="car-set">
+        <div class="media" data-default-src="assets/sample/today-sketch.svg"><span class="cap">Today</span></div>
+        <div class="media" data-default-src="assets/sample/workout-sketch.svg"><span class="cap">Workout</span></div>
+        <div class="media" data-default-src="assets/sample/plan-sketch.svg"><span class="cap">Plan</span></div>
+      </div></div></div>
+      <p class="lead" style="max-width:none">Wireframes we tested between sets, sweaty thumbs and all.</p>
+    </section>
+
+    <!-- Carousel paired with the one before it: each tile opens as a before / after -->
+    <section class="slide s-gallery s-carousel" data-label="Before and after" data-before="Carousel" data-note="before-after">
+      <template class="slide-notes"><p>This carousel is paired with the previous slide, tile by tile (by caption). Open a tile and it shows as a before / after: drag the divider, or press <b>Space</b> to sweep it.</p></template>
+      <div class="headrow"><h2 class="display">What shipped.</h2><span class="meta">Version 1.0</span></div>
+      <div class="carousel"><div class="car-track"><div class="car-set">
+        <div class="media" data-default-src="assets/sample/today.svg"><span class="cap">Today</span></div>
+        <div class="media" data-default-src="assets/sample/workout.svg"><span class="cap">Workout</span></div>
+        <div class="media" data-default-src="assets/sample/plan.svg"><span class="cap">Plan</span></div>
+      </div></div></div>
+      <p class="lead" style="max-width:none">Open a tile to compare it with the sketch.</p>
+    </section>
+
+    <!-- Take apart: click the tile and its layers come apart in place -->
+    <section class="slide s-gallery s-assemble" data-label="Take apart" data-note="take-apart">
+      <template class="slide-notes"><p>Click the tile and it comes apart into its labelled layers, right in place. Click again (or Esc) to put it back together.</p></template>
+      <div class="headrow"><h2 class="display">Anatomy of a workout card.</h2><span class="meta">Take apart</span></div>
+      <div class="asm-row">
+        <div class="media" data-dis="sample-card" data-assemble data-default-src="assets/sample/card.svg"><span class="cap">Workout card</span></div>
+        <div class="asm-copy"><p class="lead">Click the card to see the layers it is built from, then click again to put it back together.</p></div>
+      </div>
+    </section>
+
+    <!-- Full-bleed video with the title over its top -->
+    <section class="slide s-gallery s-fullvideo" data-label="Full video" data-note="full-video">
+      <template class="slide-notes"><p>The whole slide is a film, with the title over its top.</p></template>
+      <video class="tile-video slide-bg" data-src="assets/sample/clip-a.mp4" muted loop playsinline preload="auto" aria-hidden="true"></video>
+      <div class="headrow"><h2 class="display">Launch day.</h2><span class="meta">Spring 2026</span></div>
+    </section>
+
+    <!-- Lessons: what landed and what to watch -->
+    <section class="slide s-learned" data-label="Lessons" data-note="lessons">
+      <template class="slide-notes"><p>Two columns: what worked and what did not. The second bullet opens a press clipping; click it.</p></template>
+      <div class="overline"><span class="tick">Part 03 ·</span> Results</div>
+      <h2 class="display">What the first year taught us.</h2>
+      <div class="cols2">
+        <div class="lcol win">
+          <div class="lh">What landed</div>
+          <ul>
+            <li><span class="m">+</span>Two in three people were still training in week six.</li>
+            <li data-press="sample"><span class="m">+</span>Reviewers picked it up.</li>
+            <li><span class="m">+</span>Short sessions became the most finished workouts.</li>
+          </ul>
+        </div>
+        <div class="lcol miss">
+          <div class="lh">What to watch</div>
+          <ul>
+            <li><span class="m">!</span>The check-in gets skipped on busy mornings.</li>
+            <li><span class="m">–</span>Training with friends was cut and is still missed.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- Closing cards: a recap, then questions -->
+    <section class="slide s-phases s-wrap" data-label="Wrap up" data-note="wrap-up">
+      <template class="slide-notes"><p>A recap of the three parts, then open the floor for questions.</p></template>
+      <div class="overline">Wrap up</div>
+      <h2 class="display">Questions?</h2>
+      <div class="phases">
+        <div class="phase"><span class="p-k">Part 01</span><span class="p-n">The problem</span><span class="p-d">Rigid plans broke by week two.</span></div>
+        <div class="phase"><span class="p-k">Part 02</span><span class="p-n">The design</span><span class="p-d">Check in, train and recover, every day.</span></div>
+        <div class="phase"><span class="p-k">Part 03</span><span class="p-n">Results</span><span class="p-d">More people still training at week six.</span></div>
+      </div>
+      <div class="wrap-next"><span class="meta">Up next · An annotated screen</span></div>
+    </section>
+
+    <!-- annotated screens (pins, boxes, arrows) are built here from data/seed.js -> annotations.screens -->
+    <div id="screen-slides"></div>
+
+  </div>
+</div>
+
+<div class="zone prev" id="zprev" aria-hidden="true"></div>
+<div class="zone next" id="znext" aria-hidden="true"></div>
+
+<aside class="notes" id="notes" aria-label="Speaker notes">
+  <div class="nk" id="n-k"></div>
+  <div class="nt" id="n-t"></div>
+  <div class="n-fmt" id="n-fmt" role="toolbar" aria-label="Notes formatting">
+    <button type="button" data-cmd="bold" title="Bold (⌘B)" aria-label="Bold"><b>B</b></button>
+    <button type="button" data-cmd="italic" title="Italic (⌘I)" aria-label="Italic"><i>I</i></button>
+    <button type="button" data-cmd="underline" title="Underline (⌘U)" aria-label="Underline"><u>U</u></button>
+    <span class="n-sep"></span>
+    <button type="button" data-cmd="insertUnorderedList" title="Bullets (or type “- ”)" aria-label="Bulleted list">
+      <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="4" cy="5.5" r="1.8"/><circle cx="4" cy="14.5" r="1.8"/><path d="M8.5 5.5h9M8.5 14.5h9"/></svg></button>
+    <button type="button" data-cmd="insertOrderedList" title="Numbered list" aria-label="Numbered list">
+      <svg viewBox="0 0 20 20" aria-hidden="true"><text x="1.6" y="8" font-size="6.5" font-weight="700" stroke="none">1</text><text x="1.6" y="17" font-size="6.5" font-weight="700" stroke="none">2</text><path d="M8.5 5.5h9M8.5 14.5h9"/></svg></button>
+    <button type="button" data-cmd="outdent" title="Less indent (Shift-Tab)" aria-label="Decrease indent">
+      <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M8 5h9M8 10h9M8 15h9M5.5 7.5 3 10l2.5 2.5"/></svg></button>
+    <button type="button" data-cmd="indent" title="Indent (Tab)" aria-label="Increase indent">
+      <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M8 5h9M8 10h9M8 15h9M3 7.5 5.5 10 3 12.5"/></svg></button>
+    <span class="n-sep"></span>
+    <button type="button" class="n-link" aria-haspopup="menu" aria-expanded="false" title="Link the selected words to something on this slide" aria-label="Link to something on this slide">
+      <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M8.6 11.4a3.2 3.2 0 0 0 4.5 0l2.6-2.6a3.2 3.2 0 0 0-4.5-4.5l-1 1"/><path d="M11.4 8.6a3.2 3.2 0 0 0-4.5 0L4.3 11.2a3.2 3.2 0 0 0 4.5 4.5l1-1"/></svg></button>
+  </div>
+  <div class="ntext" id="n-text"></div>
+</aside>
+
+<section class="presenter" id="presenter" hidden aria-label="Presenter view">
+  <div class="pres-top">
+    <span class="pres-clock" id="pres-clock">--:--</span>
+    <span class="pres-timer" id="pres-timer">00:00</span>
+    <button id="pres-reset" class="pres-reset"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10.5" r="7"/><path d="M10 6.5v4l2.6 1.8"/></svg>Reset timer</button>
+    <span class="pres-count"><span id="pres-cur">1</span> / <span id="pres-total">1</span></span>
+  </div>
+  <div class="pres-main" id="pres-main">
+    <div class="pres-split" id="pres-split" role="separator" aria-orientation="vertical" aria-label="Resize the preview and the notes" title="Drag to resize · double-click to reset"><span></span></div>
+    <div class="pres-now">
+      <div class="pres-khead">
+        <div class="pres-k">Audience sees</div>
+        <!-- annotate the audience screen from the preview: Space or the next slide clears the boxes -->
+        <span class="pres-tools" role="toolbar" aria-label="Annotate the audience screen">
+          <button type="button" class="pres-ico pres-tool" data-tool="box" aria-pressed="false" title="Box: drag on the preview to highlight an area. Space clears.">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3.5" y="5" width="13" height="10" rx="2"/></svg>Box</button>
+          <button type="button" class="pres-ico pres-wipe" id="pres-wipe" hidden title="Wipe: play the before / after (opens the first one if none is open). Space does it too.">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="4.5" width="14" height="11" rx="2"/><path d="M10 4.5v11"/><path d="m6.6 8.4-1.6 1.6 1.6 1.6M13.4 8.4l1.6 1.6-1.6 1.6"/></svg>Wipe</button>
+          <button type="button" class="pres-ico pres-tool" data-tool="cursor" aria-pressed="false" title="Cursor: the audience sees where you point on the preview">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3.2"/><circle cx="10" cy="10" r="6.6" opacity="0.45"/></svg>Cursor</button>
+        </span>
+      </div>
+      <div class="pres-shot live" id="pres-shot" title="Live: click here to click on the audience screen"><div class="pres-canvas glow" id="pres-canvas"></div></div>
+      <div class="pres-upnext">
+        <div class="pres-shot small" id="pres-next-shot" title="Click to advance"><div class="pres-canvas glow" id="pres-next-canvas"></div></div>
+        <div>
+          <div class="pres-k">Up next</div>
+          <div class="pres-next" id="pres-next-title"></div>
+        </div>
+      </div>
+    </div>
+    <div class="pres-notes">
+      <div class="pres-nhead"><div class="pres-k" id="pres-label">Notes</div></div>
+    <div class="n-fmt pres-fmt" id="pres-fmt" role="toolbar" aria-label="Notes formatting">
+        <button type="button" data-cmd="bold" title="Bold (⌘B)" aria-label="Bold"><b>B</b></button>
+        <button type="button" data-cmd="italic" title="Italic (⌘I)" aria-label="Italic"><i>I</i></button>
+        <button type="button" data-cmd="underline" title="Underline (⌘U)" aria-label="Underline"><u>U</u></button>
+        <span class="n-sep"></span>
+        <button type="button" data-cmd="insertUnorderedList" title="Bullets (or type “- ”)" aria-label="Bulleted list">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="4" cy="5.5" r="1.8"/><circle cx="4" cy="14.5" r="1.8"/><path d="M8.5 5.5h9M8.5 14.5h9"/></svg></button>
+        <button type="button" data-cmd="insertOrderedList" title="Numbered list" aria-label="Numbered list">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><text x="1.6" y="8" font-size="6.5" font-weight="700" stroke="none">1</text><text x="1.6" y="17" font-size="6.5" font-weight="700" stroke="none">2</text><path d="M8.5 5.5h9M8.5 14.5h9"/></svg></button>
+        <button type="button" data-cmd="outdent" title="Less indent (Shift-Tab)" aria-label="Decrease indent">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M8 5h9M8 10h9M8 15h9M5.5 7.5 3 10l2.5 2.5"/></svg></button>
+        <button type="button" data-cmd="indent" title="Indent (Tab)" aria-label="Increase indent">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M8 5h9M8 10h9M8 15h9M3 7.5 5.5 10 3 12.5"/></svg></button>
+        <span class="n-sep"></span>
+        <button type="button" class="n-link" aria-haspopup="menu" aria-expanded="false" title="Link the selected words to something on this slide" aria-label="Link to something on this slide">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M8.6 11.4a3.2 3.2 0 0 0 4.5 0l2.6-2.6a3.2 3.2 0 0 0-4.5-4.5l-1 1"/><path d="M11.4 8.6a3.2 3.2 0 0 0-4.5 0L4.3 11.2a3.2 3.2 0 0 0 4.5 4.5l1-1"/></svg></button>
+      </div>
+      <div class="pres-ntext" id="pres-ntext"></div>
+      <div class="pres-nfoot">
+        <button class="pres-ico save-seed" id="pres-save" type="button" hidden disabled title="Write all your edits into data/seed.js (the old seed is backed up)">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.5 5A1.5 1.5 0 0 1 5 3.5h8.4l3.1 3.1V15a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 15Z"/><path d="M6.5 3.5v3.6h6V3.5"/><rect x="6" y="10.5" width="8" height="6"/></svg><span class="lbl">Save Changes</span></button>
+        <button class="pres-ico pres-edit" id="pres-edit" type="button" aria-pressed="false" title="Edit these notes">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10.5 17h6.5"/><path d="M13.7 3.1a1.75 1.75 0 0 1 2.5 2.5L6.4 15.4l-3.4.9.9-3.4Z"/></svg><span class="lbl">Edit notes</span></button>
+      </div>
+    </div>
+  </div>
+  <div class="pres-nav">
+    <!-- the same chevrons as the deck's arrows -->
+    <button id="pres-prev" class="pres-ico">
+      <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12.5 4.5 7 10l5.5 5.5"/></svg>Prev</button>
+    <button id="pres-next" class="pres-ico pres-ico-end">Next
+      <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.5 4.5 13 10l-5.5 5.5"/></svg></button>
+    <!-- bottom right, in line with Prev / Next -->
+    <span class="pres-nav-end">
+      <button id="pres-swap" class="pres-ico" type="button" title="Swap the notes and the preview" aria-label="Swap sides">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="4" width="15" height="12" rx="2.5"/><path d="M10 4v12"/><path d="m5.2 8.6-1.4 1.4 1.4 1.4M14.8 8.6l1.4 1.4-1.4 1.4"/></svg>Swap sides</button>
+      <button id="pres-exit">Exit (P)</button>
+    </span>
+  </div>
+</section>
+
+<div class="editbar" id="editbar" hidden>
+  <button id="eb-done" class="eb-close" title="Done editing (E)" aria-label="Done editing">
+    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5.5 5.5 9 9M14.5 5.5l-9 9"/></svg></button>
+  <span class="eb-group" id="eb-text">
+    <button id="eb-fs-down" title="Smaller text" disabled>A−</button>
+    <span class="eb-fs" id="eb-fs" title="Text size (slide px)">–</span>
+    <button id="eb-fs-up" title="Larger text" disabled>A+</button>
+    <button id="eb-size-reset" title="Back to the layout's width and size" disabled>Reset size</button>
+    <button id="eb-link" class="eb-ico" title="Link (⌘K): select some text, then add a link" disabled>
+      <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M8.6 11.4a3.2 3.2 0 0 0 4.5 0l2.6-2.6a3.2 3.2 0 0 0-4.5-4.5l-1 1"/><path d="M11.4 8.6a3.2 3.2 0 0 0-4.5 0L4.3 11.2a3.2 3.2 0 0 0 4.5 4.5l1-1"/></svg><span class="lbl">Link</span>
+    </button>
+    <button id="eb-theme" class="eb-icon" type="button" aria-pressed="true" data-tt="Theme on this slide" aria-label="Theme on this slide">
+      <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 16.5c2.2-2.4 4.7-3.6 7-3.6s4.8 1.2 7 3.6"/><path d="M5.5 16.5c1.4-1.3 2.9-1.9 4.5-1.9s3.1.6 4.5 1.9"/><path d="M10 3.2l.9 2.3 2.3.9-2.3.9-.9 2.3-.9-2.3-2.3-.9 2.3-.9Z"/><path d="M15.2 6.6l.45 1.1 1.1.45-1.1.45-.45 1.1-.45-1.1-1.1-.45 1.1-.45Z"/></svg></button>
+    <span class="sep"></span>
+  </span>
+  <span class="eb-group" id="eb-annot" hidden>
+    <span class="eb-addwrap">
+      <button id="eb-add" class="eb-plus" type="button" aria-pressed="false" aria-haspopup="menu" aria-expanded="false" title="Add Annotation" aria-label="Add Annotation">
+        <svg class="i-plus" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4.5v11M4.5 10h11"/></svg>
+        <svg class="i-pin" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 17.6s-5.2-4.7-5.2-8.8a5.2 5.2 0 0 1 10.4 0c0 4.1-5.2 8.8-5.2 8.8Z"/><circle cx="10" cy="8.8" r="1.9"/></svg>
+        <svg class="i-arrow" viewBox="0 0 20 20" aria-hidden="true"><path d="M4.5 15.5 15 5"/><path d="M8.2 5H15v6.8"/></svg>
+      </button>
+      <span class="eb-menu" id="eb-menu" role="menu" hidden>
+        <button type="button" role="menuitem" data-tool="pin">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 17.6s-5.2-4.7-5.2-8.8a5.2 5.2 0 0 1 10.4 0c0 4.1-5.2 8.8-5.2 8.8Z"/><circle cx="10" cy="8.8" r="1.9"/></svg>Add Pin</button>
+        <button type="button" role="menuitem" data-tool="arrow">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4.5 15.5 15 5"/><path d="M8.2 5H15v6.8"/></svg>Add Arrow</button>
+      </span>
+    </span>
+    <span class="eb-colors" id="eb-colors" role="radiogroup" aria-label="Annotation color"></span>
+    <span class="sep"></span>
+  </span>
+  <button id="eb-reset" class="eb-icon" type="button" disabled data-tt="Revert to Last Save" aria-label="Revert to Last Save">
+    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4.1 11.2A6.1 6.1 0 1 0 5.9 5.6"/><path d="M3.6 3.4v3.9h3.9"/><path d="M10 7v3.2l2.3 1.5"/></svg></button>
+  <button id="eb-save" class="eb-ico save-seed" hidden disabled title="Write all your edits into data/seed.js and images/ (the old seed is backed up)">
+    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.5 5A1.5 1.5 0 0 1 5 3.5h8.4l3.1 3.1V15a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 15Z"/><path d="M6.5 3.5v3.6h6V3.5"/><rect x="6" y="10.5" width="8" height="6"/></svg><span class="lbl">Save Changes</span></button>
+</div>
+
+<section class="slides-grid" id="grid" hidden aria-label="All slides">
+  <div class="grid-head">
+    <div class="grid-title">All slides <span class="grid-count" id="grid-count"></span></div>
+    <button class="grid-back" id="grid-back" type="button" title="Back to the slide (Esc)" aria-label="Back to the slide">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 14.5 6-6 6 6"/></svg></button>
+  </div>
+  <div class="grid-tiles" id="grid-tiles"></div>
+</section>
+<input type="file" accept="image/*,video/*" id="media-file" hidden>
+
+<div class="pin-ed" id="pin-ed" hidden>
+  <input class="pe-title" placeholder="Label (e.g. Start button)">
+  <div class="pe-fmt" role="toolbar" aria-label="Note formatting">
+    <button type="button" data-cmd="bold" title="Bold (⌘B)" aria-label="Bold"><b>B</b></button>
+    <button type="button" data-cmd="italic" title="Italic (⌘I)" aria-label="Italic"><i>I</i></button>
+    <button type="button" data-cmd="underline" title="Underline (⌘U)" aria-label="Underline"><u>U</u></button>
+    <button type="button" data-cmd="insertUnorderedList" title="Bullets (type “- ” to start, Tab to nest)" aria-label="Bulleted list">
+      <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="4" cy="5.5" r="1.8"/><circle cx="4" cy="14.5" r="1.8"/><path d="M8.5 5.5h9M8.5 14.5h9"/></svg>
+    </button>
+  </div>
+  <div class="pe-note" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Note" data-placeholder="What to say about it…"></div>
+  <div class="pe-imgs">
+    <div class="pe-thumbs"></div>
+    <label class="pe-attach" title="Attach images (or paste one into the note)">
+      <svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="4" width="15" height="12" rx="2.5"/><circle cx="7.2" cy="8.4" r="1.5"/><path d="m3.5 14.5 4.2-4 3 2.8 2.3-2 3.5 3.2"/></svg>
+      Attach image<input type="file" accept="image/*" multiple hidden>
+    </label>
+  </div>
+  <div class="pe-colors" role="radiogroup" aria-label="Color"></div>
+  <label class="pe-spot" hidden><input type="checkbox"> Spotlight: dim the rest of the screen when opened</label>
+  <div class="row"><button class="del" id="pe-del">Delete</button><button id="pe-done">Done</button></div>
+</div>
+
+<div class="modal" id="revert-modal" hidden role="dialog" aria-modal="true" aria-labelledby="rv-h">
+  <div class="confirm-card">
+    <div class="cf-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M4.1 11.2A6.1 6.1 0 1 0 5.9 5.6"/><path d="M3.6 3.4v3.9h3.9"/><path d="M10 7v3.2l2.3 1.5"/></svg></div>
+    <h3 id="rv-h">Revert to your last save?</h3>
+    <p>Everything you've changed since you last pressed <b>Save Changes</b> goes away on this computer, and the deck goes back to <code>data/seed.js</code>:</p>
+    <ul id="rv-list"></ul>
+    <p class="cf-warn">This can't be undone. Your saved deck isn't touched.</p>
+    <div class="cf-row"><button type="button" id="rv-cancel">Cancel</button><button type="button" class="cf-danger" id="rv-ok">Revert</button></div>
+  </div>
+</div>
+
+<div class="link-pop" id="link-pop" hidden>
+  <input type="text" placeholder="Paste a link, e.g. https://example.com" spellcheck="false" autocomplete="off" aria-label="Link address">
+  <button class="lp-ok" type="button">Apply</button>
+  <button class="lp-rm" type="button">Remove</button>
+</div>
+
+
+<div class="bar" id="bar">
+  <div class="grp">
+    <!-- the same chevrons as the carousels' arrows -->
+    <button id="prev" class="ibtn icon-only nav-chev" aria-label="Previous slide">
+      <svg class="ico" viewBox="0 0 20 20" aria-hidden="true"><path d="M12.5 4.5 7 10l5.5 5.5"/></svg></button>
+    <button id="next" class="ibtn icon-only nav-chev" aria-label="Next slide">
+      <svg class="ico" viewBox="0 0 20 20" aria-hidden="true"><path d="M7.5 4.5 13 10l-5.5 5.5"/></svg></button>
+    <span class="count"><span id="cur">01</span> / <span id="total">01</span></span>
+  </div>
+  <span class="label" id="seclabel"></span>
+  <button class="grid-chev" id="gridbtn" type="button" title="All slides (G)" aria-label="All slides">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9.5 6 6 6-6"/></svg></button>
+  <div class="spacer"></div>
+  <div class="grp">
+    <button id="homebtn" class="ibtn icon-only" title="First slide (Home)" aria-label="First slide">
+      <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 11 12 4l8.5 7"/><path d="M5.5 9.5V20h13V9.5"/><path d="M10 20v-5.5h4V20"/></svg>
+    </button>
+    <span class="bar-sep" aria-hidden="true"></span>
+    <button id="presentbtn" class="ibtn icon-only" title="Present (P)" aria-label="Present">
+      <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="7.5" r="3.6"/><path d="M2.5 20.5v-.8A5.7 5.7 0 0 1 8.2 14h1.6a5.7 5.7 0 0 1 5.7 5.7v.8"/><path d="M16.8 5.2a4.4 4.4 0 0 1 0 5.6"/><path d="M19.6 2.8a8 8 0 0 1 0 10.4"/></svg>
+    </button>
+    <button id="notesbtn" class="ibtn icon-only" aria-pressed="false" aria-controls="notes" title="Speaker notes (N)" aria-label="Speaker notes">
+      <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2.5h8.5L19 7v14.5H6Z"/><path d="M14 2.5V7.5h5"/><path d="M9 12h7"/><path d="M9 16h7"/></svg>
+    </button>
+    <span class="bar-sep" aria-hidden="true"></span>
+    <button id="annotbtn" class="ibtn icon-only" aria-pressed="false" title="Annotate" aria-label="Annotate">
+      <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-6.2-5.6-6.2-10.5a6.2 6.2 0 0 1 12.4 0C18.2 15.4 12 21 12 21Z"/><circle cx="12" cy="10.4" r="2.2"/></svg>
+    </button>
+    <button id="editbtn" class="ibtn icon-only" aria-pressed="false" title="Edit (E)" aria-label="Edit">
+      <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12.5 20.5h8"/><path d="M16.4 3.6a2.1 2.1 0 0 1 3 3L7.6 18.4l-4.1 1.1 1.1-4.1Z"/></svg>
+    </button>
+    <span class="bar-sep" aria-hidden="true"></span>
+    <div class="accent-pick">
+      <button class="ibtn icon-only" id="accent-dot" aria-haspopup="true" aria-expanded="false" title="Theme" aria-label="Theme">
+        <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21.5a9.5 9.5 0 1 1 9.5-9.5c0 2.1-1.7 3.3-3.8 3.3h-1.9a1.7 1.7 0 0 0-1.2 2.9 1.7 1.7 0 0 1-1.2 2.9Z"/><circle cx="7.6" cy="11" r="1.1" class="dot"/><circle cx="10.6" cy="7.2" r="1.1" class="dot"/><circle cx="15.2" cy="7.6" r="1.1" class="dot"/></svg>
+      </button>
+      <div class="swatches theme-pop" id="swatches" role="dialog" aria-label="Theme" hidden>
+        <div class="tp-hero glow" id="tp-hero" data-fx aria-hidden="true">
+          <span class="tp-hero-k">Your look</span>
+          <span class="tp-hero-h">Aa <i></i></span>
+        </div>
+        <div class="tp-row"><span class="tp-k">Accent <b class="tp-v" id="tp-v-accent"></b></span>
+          <div class="tp-dots">
+            <button class="sw" data-accent="#0A84FF" title="Blue" aria-label="Blue" style="background:#0A84FF"></button>
+            <button class="sw" data-accent="#C9A227" title="Gold" aria-label="Gold" style="background:#C9A227"></button>
+            <button class="sw" data-accent="#9A7CF0" title="Violet" aria-label="Violet" style="background:#9A7CF0"></button>
+            <button class="sw" data-accent="#2FB8A0" title="Teal" aria-label="Teal" style="background:#2FB8A0"></button>
+          </div></div>
+        <div class="tp-sec"><span class="tp-k">Font <b class="tp-v" id="tp-v-font"></b></span>
+          <div class="tp-fonts" id="tp-fonts"></div></div>
+        <div class="tp-sec"><span class="tp-k">Gradient <b class="tp-v" id="tp-v-style"></b></span>
+          <div class="tp-styles" id="tp-styles"></div></div>
+        <div class="tp-row"><span class="tp-k">Color <b class="tp-v" id="tp-v-color"></b></span><div class="tp-dots" id="tp-colors"></div></div>
+        <div class="tp-row"><span class="tp-k">Motion</span>
+          <button class="tp-switch" id="tp-motion" type="button" role="switch" aria-checked="false" aria-label="Gradient motion"><span></span></button></div>
+        <div class="tp-row"><span class="tp-k">Effect</span>
+          <div class="tp-seg" id="tp-fx" role="radiogroup" aria-label="Effect">
+            <button type="button" role="radio" data-v="none">None</button><button type="button" role="radio" data-v="smoke">Smoke</button><button type="button" role="radio" data-v="grid">Pulse grid</button>
+          </div></div>
+        <div class="tp-row"><span class="tp-k">Mode</span>
+          <button id="theme" class="tp-mode" type="button" aria-label="Toggle light and dark (T)">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="6.5"/><path d="M10 3.5a6.5 6.5 0 0 1 0 13Z" class="fill"/></svg><span id="tp-mode-t">Dark</span></button></div>
+      </div>
+    </div>
+    <button id="full" class="ibtn icon-only" title="Fullscreen (F)" aria-label="Fullscreen">
+      <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5"/><path d="M20 9V4h-5"/><path d="M4 15v5h5"/><path d="M20 15v5h-5"/></svg>
+    </button>
+  </div>
+</div>
+
+<script src="app.js"></script>
+<script src="glow-fx.js"></script>
+<script src="features/come-to-life.js"></script>
+<script src="features/disassemble.js"></script>
+<script src="features/press.js"></script>
+<script src="features/add-slide.js"></script>
+<script src="features/before-picker.js"></script>
+<script src="features/tour.js"></script>
+</body>
+</html>

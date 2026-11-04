@@ -1,0 +1,123 @@
+/* The glow: the soft gradient that rises from the bottom of the slides (and the start screen).
+
+   One component, three choices, all set on <html> by the Theme menu (and remembered on this device):
+     data-glow         style:  aurora (default) | horizon | corners | spotlight | none
+     data-glow-color   colors: dusk (default) | ember | ocean | verdant | gold | accent
+     data-glow-motion  "on":   the glow drifts and breathes, very slowly
+   Light and dark each have their own strength (--ga*) and their own take on every palette.
+
+   Use it with class="glow" on any positioned box: the glow paints as a layer behind the box's
+   content, over its background color. A [data-glow] on an element (the style previews in the menu)
+   shows that style there, whatever the page uses. */
+
+/* ---------- palettes: g1 left bloom, g2 right bloom, g3 middle, g4 the wide base ---------- */
+:root {
+  --g1: rgb(126,156,255); --g2: rgb(255,142,224); --g3: rgb(190,150,245); --g4: rgb(214,170,250);
+  --ga1: 48%; --ga2: 50%; --ga3: 42%; --ga4: 30%;
+}
+:root[data-theme="dark"] {
+  --g1: rgb(70,92,210); --g2: rgb(200,64,176); --g3: rgb(120,72,200); --g4: rgb(120,72,200);
+  --ga1: 42%; --ga2: 40%; --ga3: 0%; --ga4: 38%;
+}
+:root[data-glow-color="ember"] { --g1: rgb(255,178,112); --g2: rgb(255,112,146); --g3: rgb(255,150,120); --g4: rgb(255,196,156); }
+:root[data-theme="dark"][data-glow-color="ember"] { --g1: rgb(255,112,36); --g2: rgb(236,40,112); --g3: rgb(226,72,60); --g4: rgb(206,42,84); }
+:root[data-glow-color="ocean"] { --g1: rgb(110,204,255); --g2: rgb(124,140,255); --g3: rgb(120,180,250); --g4: rgb(160,212,250); }
+:root[data-theme="dark"][data-glow-color="ocean"] { --g1: rgb(28,150,214); --g2: rgb(64,72,214); --g3: rgb(40,112,204); --g4: rgb(30,84,168); }
+:root[data-glow-color="verdant"] { --g1: rgb(118,230,188); --g2: rgb(124,204,255); --g3: rgb(150,230,200); --g4: rgb(182,240,212); }
+:root[data-theme="dark"][data-glow-color="verdant"] { --g1: rgb(28,172,122); --g2: rgb(30,122,176); --g3: rgb(40,150,120); --g4: rgb(22,112,92); }
+:root[data-glow-color="gold"] { --g1: rgb(255,214,120); --g2: rgb(255,158,118); --g3: rgb(250,200,140); --g4: rgb(250,222,172); }
+:root[data-theme="dark"][data-glow-color="gold"] { --g1: rgb(240,180,40); --g2: rgb(236,110,52); --g3: rgb(214,150,40); --g4: rgb(200,120,40); }
+/* from your accent color, warmed toward pink and violet */
+:root[data-glow-color="accent"] {
+  --g1: color-mix(in oklab, var(--accent) 72%, white); --g2: color-mix(in oklab, var(--accent) 50%, #ff8ad8);
+  --g3: color-mix(in oklab, var(--accent) 58%, #c29cff); --g4: color-mix(in oklab, var(--accent) 45%, #dcc0ff); }
+:root[data-theme="dark"][data-glow-color="accent"] {
+  --g1: color-mix(in oklab, var(--accent) 82%, black); --g2: color-mix(in oklab, var(--accent) 48%, #c03cb0);
+  --g3: color-mix(in oklab, var(--accent) 56%, #7a48c8); --g4: color-mix(in oklab, var(--accent) 52%, #6a3cb8); }
+
+/* ---------- styles ---------- */
+:root, [data-glow="aurora"] {     /* three blooms across the bottom */
+  --grad:
+    radial-gradient(82% 54% at 20% 113%, color-mix(in srgb, var(--g1) var(--ga1), transparent), transparent 62%),
+    radial-gradient(70% 50% at 44% 120%, color-mix(in srgb, var(--g3) var(--ga3), transparent), transparent 60%),
+    radial-gradient(70% 52% at 63% 117%, color-mix(in srgb, var(--g2) var(--ga2), transparent), transparent 60%),
+    radial-gradient(120% 86% at 52% 140%, color-mix(in srgb, var(--g4) var(--ga4), transparent), transparent 56%);
+}
+[data-glow="horizon"] {           /* one wide, even band, like light over a horizon */
+  --grad:
+    radial-gradient(150% 44% at 50% 112%, color-mix(in srgb, var(--g2) var(--ga2), transparent), transparent 64%),
+    radial-gradient(90% 40% at 26% 108%, color-mix(in srgb, var(--g1) var(--ga1), transparent), transparent 62%),
+    radial-gradient(170% 80% at 50% 150%, color-mix(in srgb, var(--g4) calc(var(--ga4) + 6%), transparent), transparent 58%);
+}
+[data-glow="corners"] {           /* two blooms from the bottom corners, open in the middle */
+  --grad:
+    radial-gradient(66% 74% at -4% 112%, color-mix(in srgb, var(--g1) calc(var(--ga1) + 4%), transparent), transparent 62%),
+    radial-gradient(66% 74% at 104% 112%, color-mix(in srgb, var(--g2) calc(var(--ga2) + 4%), transparent), transparent 62%),
+    radial-gradient(120% 60% at 50% 150%, color-mix(in srgb, var(--g4) var(--ga4), transparent), transparent 56%);
+}
+[data-glow="spotlight"] {         /* a single glow from the bottom center */
+  --grad:
+    radial-gradient(58% 58% at 50% 120%, color-mix(in srgb, var(--g2) calc(var(--ga2) + 6%), transparent), transparent 62%),
+    radial-gradient(40% 40% at 50% 112%, color-mix(in srgb, var(--g1) var(--ga1), transparent), transparent 64%),
+    radial-gradient(110% 80% at 50% 150%, color-mix(in srgb, var(--g4) var(--ga4), transparent), transparent 56%);
+}
+[data-glow="none"] { --grad: none; }
+
+/* ---------- the component ---------- */
+.glow { isolation: isolate; }
+.glow::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: var(--grad); transform-origin: 50% 100%; }
+
+/* motion: the glow drifts side to side and swells. Transform-only, so it's
+   cheap; the layer is oversized (the 1.12 scale) so its edges never show, and it only moves down,
+   where the box already clips it. */
+:root[data-glow-motion="on"] .glow::before { animation: glow-drift 13s ease-in-out infinite alternate; }
+@keyframes glow-drift {
+  0%   { transform: translate3d(-5%, 0, 0) scale(1.12, 1.00); }
+  30%  { transform: translate3d(1.5%, 2%, 0) scale(1.14, 1.18); }
+  65%  { transform: translate3d(5%, 0.5%, 0) scale(1.12, 1.08); }
+  100% { transform: translate3d(-1%, 2.5%, 0) scale(1.13, 1.24); }
+}
+
+/* effects (data-glow-fx): "smoke" here, "grid" is drawn by glow-fx.js, or none.
+   smoke: faint wisps low on the page, tinted by the palette; with Motion on
+   they roll slowly sideways. It's a tileable noise image used as a mask on a strip twice as wide as the box: moving
+   the strip by half its width (two tiles) loops without a seam, and a vertical fade keeps it low. */
+:root { --smoke: color-mix(in srgb, var(--g3) 55%, white); --smoke-o: 0.32; }
+:root[data-theme="dark"] { --smoke: color-mix(in srgb, var(--g4) 35%, white); --smoke-o: 0.16; }
+:root[data-glow-fx="smoke"] .glow:not(.tp-prev)::after { content: ""; position: absolute; left: 0; bottom: -6%; width: 200%; height: 54%;
+  z-index: -1; pointer-events: none; background: var(--smoke); opacity: var(--smoke-o);
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='640' height='400'%3E%3Cfilter id='n' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.0028 0.0075' numOctaves='3' seed='11' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 2.1 0 0 0 -0.82'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"), linear-gradient(to top, #000 10%, rgba(0,0,0,0.45) 42%, transparent 88%);
+          mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='640' height='400'%3E%3Cfilter id='n' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.0028 0.0075' numOctaves='3' seed='11' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 2.1 0 0 0 -0.82'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"), linear-gradient(to top, #000 10%, rgba(0,0,0,0.45) 42%, transparent 88%);
+  -webkit-mask-size: 25% 100%, 100% 100%; mask-size: 25% 100%, 100% 100%;
+  -webkit-mask-repeat: repeat-x, no-repeat; mask-repeat: repeat-x, no-repeat;
+  -webkit-mask-composite: source-in; mask-composite: intersect; }
+/* it rolls and sways only with Motion on; otherwise it holds still */
+:root[data-glow-fx="smoke"][data-glow-motion="on"] .glow:not(.tp-prev)::after { animation: smoke-roll 70s linear infinite, smoke-sway 11s ease-in-out infinite alternate; }
+/* the glow's own previews in the Theme menu, a picture tile, and "None" have no smoke */
+:root[data-glow="none"] .glow::after, .media.glow.filled::after { display: none; }
+@keyframes smoke-roll { from { translate: 0 0; } to { translate: -50% 0; } }
+@keyframes smoke-sway { 0% { transform: scaleY(1) skewX(0deg); } 100% { transform: scaleY(1.16) skewX(-4deg); } }
+
+/* the pulsating grid's canvas (glow-fx.js): a band along the bottom, like the gradient, very faint
+   (1%) and fading out at its top so it blends into the page */
+.glow-fx { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 46%; z-index: -1; pointer-events: none; display: block;
+  opacity: 0.01; transition: opacity 0.5s ease;
+  -webkit-mask-image: linear-gradient(to top, #000 0%, #000 30%, rgba(0,0,0,0.5) 62%, transparent 100%);
+          mask-image: linear-gradient(to top, #000 0%, #000 30%, rgba(0,0,0,0.5) 62%, transparent 100%); }
+.glow-fx[hidden] { display: none; }
+.tp-hero .glow-fx { opacity: 0.3; }      /* the menu's small preview needs more to be seen at all */
+.glow.glow-off > .glow-fx { opacity: 0 !important; }
+
+/* .glow-off fades the glow and smoke away (the deck sets it on slides that fill the frame with a
+   picture); opacity is left free for this, so the motion only ever moves and scales */
+.glow::before, .glow::after { transition: opacity 0.5s ease; }
+.glow.glow-off::before, .glow.glow-off::after { opacity: 0 !important; }
+:root[data-glow-fx="smoke"] .glow:not(.tp-prev)::after { transform-origin: 50% 100%; }
+/* in Edit mode a full-slide tile's ::after is its "Click to add image" cover, not smoke */
+body.editing .slide:not(.s-screen) .media.glow::after { -webkit-mask-image: none; mask-image: none; animation: none;
+  translate: none; transform: none; width: auto; height: auto; }
+
+@media (prefers-reduced-motion: reduce) {
+  :root[data-glow-motion="on"] .glow::before, :root[data-glow-fx="smoke"] .glow::after { animation: none; }
+}
