@@ -121,8 +121,6 @@ body.tour-on .bar { opacity: 1; }
   color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); }
 .et-ic svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .et-nav { display: flex; align-items: center; gap: 8px; margin-top: 16px; }
-.et-key { font-size: 12px; color: #6E6E73; margin-right: 4px; }
-.et-key kbd { font: 600 11px/1 inherit; padding: 3px 6px; border-radius: 5px; border: 1px solid rgba(255,255,255,0.2); color: #C7C7CE; }
 .et-btn { border: 0; cursor: pointer; font: 600 13px/1 inherit; padding: 10px 14px; border-radius: 999px; transition: background .2s ease, transform .15s ease; }
 .et-btn:active { transform: scale(.97); }
 .et-btn.primary { background: var(--accent); color: #fff; }

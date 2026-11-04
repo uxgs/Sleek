@@ -1188,10 +1188,12 @@ body.compact .zone { width: 22%; }
 .tray.sub .tray-sheet.bar { visibility: hidden; transform: none; }
 .tray.sub .tray-sheet.bar :is(.swatches:not([hidden]), .df-pop:not([hidden])) { visibility: visible; }
 .tray-grab { width: 38px; height: 5px; margin: 0 auto 12px; border-radius: 3px; background: rgba(255,255,255,0.22); }
-.tray-head { display: flex; flex-direction: column; gap: 3px; padding: 2px 4px 16px; }
+.tray-head { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 2px 4px 16px; text-align: center; }
 .tray-k { font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
-.tray-t { font-size: 19px; font-weight: 650; letter-spacing: -0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.tray .grp { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.tray-t { max-width: 100%; font-size: 19px; font-weight: 650; letter-spacing: -0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* the options sit centered: a short row (a published deck has fewer) stays in the middle */
+.tray .grp { --n: 4; display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+body.compact .tray .tray-sheet .grp > *, body.compact .tray .tray-sheet .grp .accent-pick > button, body.compact .tray .tray-sheet .grp .df-wrap > button { flex: 0 0 calc((100% - (var(--n) - 1) * 10px) / var(--n)); box-sizing: border-box; }
 .tray .bar-sep { display: none; }
 .tray .accent-pick, .tray .df-wrap { display: contents; }
 body.compact .tray .tray-sheet .grp button.ibtn.icon-only {
@@ -1212,7 +1214,7 @@ body.compact .tray .tray-sheet .grp button[hidden] { display: none; }
 @media (max-height: 500px) {
   body.compact .bar { padding-top: 4px; padding-bottom: calc(4px + env(safe-area-inset-bottom, 0px)); }
   body.compact .bar button.ibtn.icon-only { height: 34px; }
-  .tray .grp { grid-template-columns: repeat(8, minmax(0, 1fr)); }
+  .tray .grp { --n: 8; }
   .tray-head { display: none; }
 }
 /* portrait phones: speaker notes fill the space under the slide, and the slide moves up to make room */
@@ -1226,3 +1228,73 @@ body.compact .tray .tray-sheet .grp button[hidden] { display: none; }
   body.compact.notes-open .editbar, body.compact .editbar { left: 50%; max-width: calc(100vw - 16px); bottom: calc(64px + env(safe-area-inset-bottom, 0px)); }
   body.compact.notes-open .editbar { bottom: calc(48% + 64px + env(safe-area-inset-bottom, 0px)); }
 }
+
+/* the Theme sheet in steps on phones (features/mobile.js); on wider windows it's one menu as before */
+.tps-head, .tps-nav { display: none; }
+body.compact .tray .theme-pop { gap: 16px; padding: 14px 16px calc(14px + env(safe-area-inset-bottom, 0px)); bottom: 0; left: 0; right: 0; border-radius: 24px 24px 0 0; }
+body.compact .tray .theme-pop [data-tstep]:not(.tps-on) { display: none; }
+body.compact .tray .theme-pop .tps-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
+body.compact .tray .theme-pop .tps-head > div:first-child { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.tps-k { font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
+.tps-h { font-size: 20px; font-weight: 650; letter-spacing: -0.02em; color: var(--fg); }
+.tps-dots { display: flex; gap: 6px; padding-bottom: 6px; }
+body.compact .tray .tps-dots button { width: 8px; height: 8px; padding: 0; border: 0; border-radius: 4px; background: var(--line-strong); cursor: pointer;
+  transition: width .35s cubic-bezier(.16, 1, .3, 1), background .25s ease; }
+body.compact .tray .tps-dots button.done { background: color-mix(in srgb, var(--accent) 55%, transparent); }
+body.compact .tray .tps-dots button[aria-selected="true"] { width: 22px; background: var(--accent); }
+/* each step's controls get room to breathe */
+body.compact .tray .theme-pop .tp-row.tps-on { min-height: 44px; }
+body.compact .tray .theme-pop .tp-sec.tps-on { gap: 12px; }
+body.compact .tray .theme-pop .tp-dots { gap: 12px; }
+body.compact .tray .theme-pop .sw, body.compact .tray .theme-pop .tp-gc { width: 30px; height: 30px; }
+body.compact .tray .theme-pop .tp-fonts button, body.compact .tray .theme-pop .tp-styles button { min-height: 64px; }
+.tps-in-r { animation: tps-in-r .4s cubic-bezier(.16, 1, .3, 1) both; }
+.tps-in-l { animation: tps-in-l .4s cubic-bezier(.16, 1, .3, 1) both; }
+@keyframes tps-in-r { from { opacity: 0; transform: translateX(22px); } }
+@keyframes tps-in-l { from { opacity: 0; transform: translateX(-22px); } }
+body.compact .tray .theme-pop .tps-nav { display: flex; gap: 10px; margin-top: 4px; }
+body.compact .tray .tps-nav button { flex: 1; height: 46px; border-radius: 14px; border: 1px solid var(--line-strong); background: transparent;
+  color: var(--fg); font: 600 15px/1 var(--ff-body, Inter, sans-serif); cursor: pointer; }
+body.compact .tray .tps-nav .tps-next { background: var(--accent); border-color: var(--accent); color: #fff; }
+body.compact .tray .tps-nav button:disabled { opacity: 0.35; }
+@media (prefers-reduced-motion: reduce) { .tps-in-r, .tps-in-l { animation: none; } }
+
+/* touch: the slide under your finger and the next one beside it (features/mobile.js) */
+.stage.swiping .slide { transition: none !important; }
+.stage.swiping .slide.active, .stage .slide.swipe-peer { will-change: transform; }
+.stage .slide.swipe-peer { opacity: 1; visibility: visible; }
+.stage.swiped .slide { transition: none !important; }
+@media (hover: none) { body:not(.editing) #viewport, body:not(.editing) .zone { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; } }
+/* hold to edit: a ring fills under the finger */
+.hold-ring { position: fixed; z-index: 90; width: 84px; height: 84px; margin: -42px 0 0 -42px; border-radius: 50%; pointer-events: none;
+  background: conic-gradient(var(--accent) calc(var(--p, 0) * 1turn), rgba(255,255,255,0.14) 0);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4px)); mask: radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4px));
+  animation: hold-in .25s ease both, hold-fill var(--d, 1650ms) linear forwards; }
+@property --p { syntax: '<number>'; inherits: false; initial-value: 0; }
+@keyframes hold-fill { to { --p: 1; } }
+@keyframes hold-in { from { opacity: 0; transform: scale(.6); } }
+.hold-ring.done { animation: hold-done .45s cubic-bezier(.16, 1, .3, 1) forwards; --p: 1; }
+@keyframes hold-done { to { opacity: 0; transform: scale(1.5); } }
+.hold-ring.gone { transition: opacity .2s ease; opacity: 0; }
+
+/* sheets you can pull down: a handle on the Theme and Share sheets on phones */
+.sheet-grab { display: none; }
+body.compact .tray .sheet-grab { display: block; width: 38px; height: 5px; margin: -4px auto 2px; border-radius: 3px; background: rgba(255,255,255,0.22); flex: none; }
+.tray-grab { padding: 0; position: relative; }
+.tray-grab::before { content: ""; position: absolute; inset: -14px -60px; }       /* a bigger target than it looks */
+.tray .tray-sheet.bar, .tray .theme-pop, .tray .df-pop { touch-action: pan-y; }
+.tray-head, .tray-grab { touch-action: none; }
+
+/* All slides on phones: Edit turns on dragging, duplicating and deleting */
+.grid-edit { display: none; }
+body.compact .grid-edit { display: inline-flex; align-items: center; height: 36px; padding: 0 16px; margin-left: auto; margin-right: 10px; border-radius: 999px;
+  border: 1px solid var(--line-strong); background: transparent; color: var(--fg); font: 600 14px/1 var(--ff-body, Inter, sans-serif); cursor: pointer; }
+body.compact .grid-edit[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+body.compact:not(.grid-editing) .gt-acts { display: none; }
+body.compact.grid-editing .gt:not(.gt-add) { touch-action: none; }
+body.compact.grid-editing .gt:not(.gt-add) .gt-shot { outline: 1.5px dashed color-mix(in srgb, var(--accent) 70%, transparent); outline-offset: 3px; }
+@media (prefers-reduced-motion: no-preference) {
+  body.compact.grid-editing .gt:not(.gt-add):not(.dragging) .gt-shot { animation: gt-wiggle .5s ease-in-out infinite alternate; }
+  body.compact.grid-editing .gt:nth-child(2n) .gt-shot { animation-delay: -.25s; }
+}
+@keyframes gt-wiggle { from { transform: rotate(-0.4deg); } to { transform: rotate(0.4deg); } }

@@ -134,7 +134,6 @@
 .su-btn.ghost { background: transparent; color: var(--muted); }
 .su-btn.ghost:hover { color: var(--fg); background: var(--surface-2); }
 .su-btn[hidden] { display: none; }
-.su-kbd { font: 600 11px/1 var(--ff); margin-left: 8px; padding: 3px 6px; border-radius: 6px; border: 1px solid currentColor; opacity: .7; }
 
 /* ---------- right: the live title slide ---------- */
 .su-preview { position: relative; display: grid; place-items: center; padding: 28px; min-width: 0;

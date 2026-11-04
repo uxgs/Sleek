@@ -656,6 +656,8 @@
   }
   gridTiles.addEventListener('pointerdown', function(e){
     var b = e.target.closest('.gt:not(.gt-add)'); if(!b || e.button !== 0 || !gridOpen || e.target.closest('.gt-act')) return;
+    // phones: slides move only after Edit at the top of All slides (features/mobile.js)
+    if(document.body.classList.contains('compact') && !document.body.classList.contains('grid-editing')) return;
     gdrag = { b: b, id: e.pointerId, sx: e.clientX, sy: e.clientY, x: e.clientX, y: e.clientY, on: false };
   });
   window.addEventListener('pointermove', function(e){
@@ -1351,7 +1353,7 @@
     var add = document.getElementById('eb-add');
     add.setAttribute('aria-pressed', String(!!t));
     add.dataset.tool = t || '';
-    add.title = t === 'pin' ? 'Click the slide to drop a pin (Esc cancels)' : t === 'arrow' ? 'Drag on the slide to draw an arrow (Esc cancels)' : 'Add Annotation';
+    add.title = t === 'pin' ? 'Click the slide to drop a pin' : t === 'arrow' ? 'Drag on the slide to draw an arrow' : 'Add Annotation';
     document.body.classList.toggle('drawing', !!drawTool);
     document.body.classList.toggle('ann-tool', !!t);
   }
@@ -2082,7 +2084,7 @@
     document.getElementById('eb-annot').hidden = !annotating;
     document.getElementById('editbtn').setAttribute('aria-pressed', String(editing));
     document.getElementById('annotbtn').setAttribute('aria-pressed', String(annotating));
-    document.getElementById('eb-done').title = annotating ? 'Done annotating' : 'Done editing (E)';
+    document.getElementById('eb-done').title = annotating ? 'Done annotating' : 'Done editing';
   }
   function toggleEdit(){
     if(PUBLISHED && !editing) return;

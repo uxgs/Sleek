@@ -37,7 +37,7 @@
         ['text', '<b>Double-click any slide</b> to start, then click any text to retype it. Select words to bold, link or resize them.'],
         ['image', '<b>Click a picture or video</b> to replace it with your own.'],
         ['lines', '<b>Notes and slide names</b> edit the same way, in the notes panel.'],
-        ['check', '<b>Every change saves</b> as you make it. ⌘Z undoes, ⇧⌘Z redoes.']
+        ['check', '<b>Every change saves</b> as you make it. Undo and Redo are in the edit bar.']
       ],
       key: 'E', next: 'present'
     },
@@ -114,7 +114,7 @@
       '<h3 class="et-h">' + st.h + '</h3>' +
       '<ul class="et-list">' + st.items.map(function(it, k){ return li(it[0], it[1], k); }).join('') + '</ul>' +
       '<div class="et-nav"><button type="button" class="et-skip" data-skip>Skip tour</button>' +
-        (st.key ? '<span class="et-key">or press <kbd>' + st.key + '</kbd></span>' : '') +
+        
         (st.action ? '<button type="button" class="et-btn ghost" data-next>Later</button><button type="button" class="et-btn primary" data-act>' + st.action + '</button>'
                    : '<button type="button" class="et-btn primary" data-next>' + (st.next === 'done' ? 'Done' : 'Next') + '</button>') +
       '</div>';

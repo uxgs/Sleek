@@ -165,7 +165,7 @@
     el.querySelectorAll('.su-progress i').forEach(function(b, k){ b.classList.toggle('done', k <= n); });
     el.querySelector('[data-back]').hidden = n === 0;
     el.querySelector('[data-skip]').hidden = n === STEPS.length - 1;
-    el.querySelector('[data-next]').innerHTML = n === STEPS.length - 1 ? 'Open my deck<span class="su-kbd">↵</span>' : 'Continue<span class="su-kbd">↵</span>';
+    el.querySelector('[data-next]').textContent = n === STEPS.length - 1 ? 'Open my deck' : 'Continue';
     sync();
     var first = s.querySelector('input, [aria-pressed="true"], button');
     setTimeout(function(){ if(first && el) first.focus({ preventScroll: true }); }, 80);
