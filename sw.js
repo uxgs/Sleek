@@ -2,7 +2,7 @@
    connection, and installs as an app. A page comes from the cache at once and is refreshed from
    the network behind it, so a new version shows on the next visit. Change VERSION (and the list)
    when files are added or removed. */
-var VERSION = 'sleek-v12';
+var VERSION = 'sleek-v13';
 var FILES = [
   './', 'index.html', 'deck.html', 'manifest.webmanifest',
   'styles.css', 'glow.css', 'app.js', 'glow-fx.js', 'theme-boot.js',

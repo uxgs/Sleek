@@ -87,7 +87,8 @@
   function getMedia(key){ return tx('media', 'readonly', function(st){ return st.get(key); }); }
   function mediaUrl(key, blob){
     if(keyToUrl[key]) return keyToUrl[key];
-    var u = URL.createObjectURL(blob); keyToUrl[key] = u; urlToKey[u] = key; return u;
+    // a film's address says so (#video), since a blob: address has no file extension to tell by
+    var u = URL.createObjectURL(blob) + (/^video\//.test(blob.type || '') ? '#video' : ''); keyToUrl[key] = u; urlToKey[u] = key; return u;
   }
   // stored seed -> a seed the page can show
   function hydrate(seed){

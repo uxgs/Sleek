@@ -1535,7 +1535,7 @@
 
   // full-screen viewer: grows out of the thumbnail, arrows step through, Esc / click outside closes.
   // Videos play here with controls and sound (the click that opened it counts as permission).
-  function isVideo(src){ return /^data:video\//.test(src || '') || /\.(mp4|webm|mov|m4v)([?#]|$)/i.test(src || ''); }
+  function isVideo(src){ return /^data:video\//.test(src || '') || /^blob:[^#]*#video$/.test(src || '') || /\.(mp4|webm|mov|m4v)([?#]|$)/i.test(src || ''); }
   var viewer = null;
   function buildViewer(){
     if(viewer) return viewer;
