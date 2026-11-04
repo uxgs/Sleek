@@ -105,7 +105,7 @@
       { n: 'Accent and mode', els: [row('#theme', '.tp-row'), row('#tp-v-accent', '.tp-row')] },
       { n: 'Font', els: [row('#tp-fonts', '.tp-sec')] },
       { n: 'Backdrop', els: [row('#tp-styles', '.tp-sec'), row('#tp-colors', '.tp-row')] },
-      { n: 'Effect and motion', els: [row('#tp-fx', '.tp-row'), row('#tp-motion', '.tp-row')] }
+      { n: 'Effect and motion', els: [row('#tp-fx', '.tp-row'), row('#tp-fxo', '.tp-row'), row('#tp-motion', '.tp-row')] }
     ];
     TSTEPS.forEach(function(st, k){ st.els.forEach(function(e){ if(e) e.setAttribute('data-tstep', k); }); });
     var head = document.createElement('div'); head.className = 'tps-head';

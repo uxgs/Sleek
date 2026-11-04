@@ -1149,9 +1149,10 @@
     { v: 'ocean', n: 'Ocean', c: ['#6ECCFF', '#7C8CFF'] }, { v: 'verdant', n: 'Verdant', c: ['#76E6BC', '#7CCCFF'] },
     { v: 'gold', n: 'Gold', c: ['#FFD678', '#FF9E76'] }, { v: 'accent', n: 'From accent', c: null }];
   var glow = {};
-  function readGlow(){ glow.style = DT.get('glow'); glow.color = DT.get('glowColor'); glow.motion = DT.get('motion') === 'on'; glow.fx = DT.get('fx'); }
+  function readGlow(){ glow.style = DT.get('glow'); glow.color = DT.get('glowColor'); glow.motion = DT.get('motion') === 'on'; glow.fx = DT.get('fx'); glow.fxo = DT.get('fxo'); }
   readGlow();
   var stylesEl = document.getElementById('tp-styles'), colorsEl = document.getElementById('tp-colors'), motionEl = document.getElementById('tp-motion'), fxEl = document.getElementById('tp-fx');
+  var fxoEl = document.getElementById('tp-fxo'), fxoV = document.getElementById('tp-v-fxo');
   stylesEl.innerHTML = GLOW_STYLES.map(function(o){
     return '<button type="button" class="tp-style" data-v="' + o.v + '" aria-label="' + o.n + '"><span class="tp-prev glow" data-glow="' + o.v + '"></span><span>' + o.n + '</span></button>';
   }).join('');
@@ -1164,17 +1165,24 @@
     de.setAttribute('data-glow', glow.style); de.setAttribute('data-glow-color', glow.color);
     if(glow.motion) de.setAttribute('data-glow-motion', 'on'); else de.removeAttribute('data-glow-motion');
     de.setAttribute('data-glow-fx', glow.fx);
+    var fxo = Math.max(0, Math.min(100, parseFloat(glow.fxo))); if(isNaN(fxo)) fxo = 50;
+    de.style.setProperty('--fx-k', String(fxo / 50));
+    fxoEl.value = fxo; fxoEl.style.setProperty('--fill', fxo + '%'); fxoV.textContent = fxo + '%';
+    fxoEl.disabled = glow.style === 'none' || glow.fx === 'none';
     Array.prototype.forEach.call(stylesEl.children, function(b){ b.setAttribute('aria-pressed', String(b.dataset.v === glow.style)); });
     Array.prototype.forEach.call(colorsEl.children, function(b){ b.setAttribute('aria-pressed', String(b.dataset.v === glow.color)); b.disabled = glow.style === 'none'; });
     motionEl.setAttribute('aria-checked', String(glow.motion)); motionEl.disabled = glow.style === 'none';
     Array.prototype.forEach.call(fxEl.children, function(b){ b.setAttribute('aria-checked', String(b.dataset.v === glow.fx)); b.disabled = glow.style === 'none'; });
     paintThemeSummary();
-    if(save){ DT.set('glow', glow.style); DT.set('glowColor', glow.color); DT.set('motion', glow.motion ? 'on' : 'off'); DT.set('fx', glow.fx); markChanged(); }
+    if(save){ DT.set('glow', glow.style); DT.set('glowColor', glow.color); DT.set('motion', glow.motion ? 'on' : 'off'); DT.set('fx', glow.fx); DT.set('fxo', String(glow.fxo)); markChanged(); }
   }
   stylesEl.addEventListener('click', function(e){ var b = e.target.closest('.tp-style'); if(b){ glow.style = b.dataset.v; applyGlow(true); } });
   colorsEl.addEventListener('click', function(e){ var b = e.target.closest('.tp-gc'); if(b && !b.disabled){ glow.color = b.dataset.v; applyGlow(true); } });
   motionEl.onclick = function(){ glow.motion = !glow.motion; applyGlow(true); };
   fxEl.addEventListener('click', function(e){ var b = e.target.closest('[data-v]'); if(b && !b.disabled){ glow.fx = b.dataset.v; applyGlow(true); } });
+  // the effect's opacity: it shows as you drag, and saves (as one step) when you let go
+  fxoEl.addEventListener('input', function(){ glow.fxo = fxoEl.value; applyGlow(false); });
+  fxoEl.addEventListener('change', function(){ glow.fxo = fxoEl.value; applyGlow(true); });
   applyGlow(false);
   // ---------- slide fonts: a display face for headings, a body face for the rest ----------
   // Only the slides (and their previews) change; the deck's controls stay in Inter. Each pair's

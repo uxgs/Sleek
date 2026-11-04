@@ -1062,6 +1062,20 @@ img { max-width: 100%; }
     box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 45%, transparent); }
   .bar .tp-switch[aria-checked="true"] span { transform: translateX(16px); background: #fff; }
   /* effect: one of three, as a segmented control */
+  /* a slider (the effect's opacity): a thin track filled in the accent up to the thumb (--fill) */
+  .tp-range { -webkit-appearance: none; appearance: none; flex: 0 1 172px; min-width: 0; height: 24px; margin: 0; background: none; cursor: pointer; --fill: 50%; }
+  .tp-range::-webkit-slider-runnable-track { height: 4px; border-radius: 2px;
+    background: linear-gradient(var(--accent), var(--accent)) 0 / var(--fill) 100% no-repeat, var(--line-strong); }
+  .tp-range::-moz-range-track { height: 4px; border-radius: 2px; background: var(--line-strong); }
+  .tp-range::-moz-range-progress { height: 4px; border-radius: 2px; background: var(--accent); }
+  .tp-range::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; margin-top: -6px; border-radius: 50%; border: 0;
+    background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.35), 0 0 0 1px rgba(0,0,0,0.06); transition: transform 0.15s ease; }
+  .tp-range::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; border: 0; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.35); }
+  .tp-range:active::-webkit-slider-thumb { transform: scale(1.15); }
+  .tp-range:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+  .tp-range:disabled { opacity: 0.35; cursor: default; }
+  body.compact .tp-range { flex-basis: 220px; height: 32px; }
+  body.compact .tp-range::-webkit-slider-thumb { width: 22px; height: 22px; margin-top: -9px; }
   .tp-seg { display: inline-flex; padding: 2px; gap: 2px; border-radius: 10px; background: var(--surface-2); border: 1px solid var(--line); }
   .bar .tp-seg button { height: 24px; padding: 0 9px; border: 0; border-radius: 8px; background: none; font-size: 11.5px; font-weight: 500; color: var(--muted); cursor: pointer; }
   .bar .tp-seg button:hover { color: var(--fg); }
