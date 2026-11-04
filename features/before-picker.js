@@ -9,6 +9,9 @@
   var el = null, mid = null, prevFocus = null;
 
   function esc(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, function(c){ return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  // a group's heading is its slide's name; the Statement slide's pictures show as Your Images
+  var GROUP_NAMES = { 'statement': 'Your Images' };
+  function groupName(n){ return GROUP_NAMES[String(n || '').trim().toLowerCase()] || n; }
   function css(src){ return 'url(&quot;' + esc(src) + '&quot;)'; }
 
   function open(id, tile){
@@ -39,7 +42,7 @@
             '</div></div>' +
         '</div>' +
         '<div class="bp-body">' + (groups.length ? groups.map(function(g){
-          return '<div class="bp-group"><div class="bp-slide">' + esc(g.slide) + '</div><div class="bp-grid">' + g.items.map(function(c){
+          return '<div class="bp-group"><div class="bp-slide">' + esc(groupName(g.slide)) + '</div><div class="bp-grid">' + g.items.map(function(c){
             var on = c.mid === picked || (!picked && info.src && c.src === info.src);
             return '<button type="button" class="bp-tile' + (on ? ' on' : '') + '" style="--i:' + (k++) + '" data-mid="' + esc(c.mid) + '" aria-pressed="' + on + '"' +
               ' aria-label="' + esc((c.cap || 'Picture') + ', ' + g.slide) + '">' +
