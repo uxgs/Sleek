@@ -1,0 +1,108 @@
+/* The start screen's deck library (features/library.js). Each card's picture is a small slide in
+   that deck's own look: its mode, accent and backdrop colors, with its first slide's words. */
+.lib { margin-top: 4px; }
+.lib-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 18px; }
+.lib-head h2 { margin: 0; font-size: 20px; letter-spacing: -0.02em; font-weight: 650; }
+.lib-count { color: var(--faint); font-size: 14px; }
+.lib-grid { display: grid; gap: 22px 20px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 270px), 1fr)); }
+
+.lib-card { position: relative; display: flex; flex-direction: column; gap: 12px; min-width: 0;
+  animation: lib-rise .6s cubic-bezier(.16, 1, .3, 1) both; animation-delay: calc(min(var(--i, 0), 12) * 40ms); }
+@keyframes lib-rise { from { opacity: 0; transform: translateY(14px); } }
+.lib-card.gone { transition: opacity .25s ease, transform .25s ease; opacity: 0; transform: scale(.96); }
+.lib-card.busy .lib-thumb { animation: lib-pulse 1s ease-in-out infinite; }
+@keyframes lib-pulse { 50% { opacity: .6; } }
+
+.lib-thumb { position: relative; display: flex; flex-direction: column; justify-content: center; gap: 6px; aspect-ratio: 16 / 9; max-width: 100%;
+  padding: 0 9%; border-radius: 14px; overflow: hidden; text-decoration: none; isolation: isolate;
+  background: #0B0B0D; color: #F5F5F7; box-shadow: 0 0 0 1px var(--line), 0 24px 50px -30px rgba(0,0,0,0.55);
+  transition: transform .35s cubic-bezier(.16, 1, .3, 1), box-shadow .25s ease; }
+.lib-thumb[data-mode="light"] { background: #FDFDFF; color: #1D1D1F; }
+.lib-thumb::before { content: ""; position: absolute; inset: 0; z-index: -1; opacity: .55;
+  background: radial-gradient(70% 60% at 30% 115%, var(--g1), transparent 70%), radial-gradient(60% 55% at 85% 110%, var(--g2), transparent 70%); }
+.lib-thumb[data-mode="light"]::before { opacity: .38; }
+.lib-thumb[data-glow="corners"]::before { background: radial-gradient(45% 55% at 0% 0%, var(--g1), transparent 70%), radial-gradient(45% 55% at 100% 100%, var(--g2), transparent 70%); }
+.lib-thumb[data-glow="spotlight"]::before { background: radial-gradient(55% 60% at 50% -15%, var(--g1), transparent 70%); }
+.lib-thumb[data-glow="horizon"]::before { background: linear-gradient(to top, color-mix(in srgb, var(--g1) 70%, var(--g2)), transparent 55%); }
+.lib-thumb[data-glow="none"]::before { display: none; }
+.lib-thumb:hover, .lib-thumb:focus-visible { transform: translateY(-3px); outline: none;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--a) 60%, transparent), 0 30px 60px -30px rgba(0,0,0,0.6); }
+.lib-thumb:focus-visible { box-shadow: 0 0 0 2px var(--a), 0 30px 60px -30px rgba(0,0,0,0.6); }
+.lib-k { font-size: 9px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--a);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lib-k:empty { display: none; }
+.lib-h { font-size: clamp(17px, 2.2vw, 22px); line-height: 1.05; font-weight: 650; letter-spacing: -0.03em; text-wrap: balance;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.lib-bar { display: block; width: 26px; height: 2px; margin-top: 6px; border-radius: 2px; background: var(--a); }
+.lib-card.fresh .lib-thumb { box-shadow: 0 0 0 2px var(--a), 0 0 0 7px color-mix(in srgb, var(--a) 22%, transparent); }
+
+.lib-meta { position: relative; display: flex; align-items: flex-start; gap: 10px; padding: 0 2px; }
+.lib-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.lib-title { margin: 0; font-size: 15px; font-weight: 600; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lib-sub { font-size: 13px; color: var(--faint); }
+.lib-rename { width: 100%; margin: -4px 0 -1px -8px; padding: 3px 8px; border-radius: 8px; border: 1px solid var(--accent); background: var(--surface);
+  color: var(--fg); font: 600 15px/1.4 var(--ff); outline: none; box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 18%, transparent); }
+.lib-more { flex: none; width: 32px; height: 32px; margin: -4px -4px 0 0; display: grid; place-items: center; border-radius: 50%; border: 0;
+  background: transparent; color: var(--muted); cursor: pointer; transition: background .2s ease, color .2s ease; }
+.lib-more svg { width: 20px; height: 20px; fill: currentColor; }
+.lib-more:hover, .lib-more[aria-expanded="true"] { background: var(--surface-2); color: var(--fg); }
+
+.lib-menu { position: absolute; top: 32px; right: -4px; z-index: 10; min-width: 210px; padding: 6px; border-radius: 14px;
+  display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line);
+  box-shadow: 0 24px 60px -18px rgba(0,0,0,0.45); animation: lib-menu .28s cubic-bezier(.16, 1, .3, 1); transform-origin: top right; }
+@keyframes lib-menu { from { opacity: 0; transform: translateY(-4px) scale(.96); } }
+.lib-menu button { padding: 9px 12px; border: 0; border-radius: 9px; background: none; color: var(--fg); text-align: left; cursor: pointer;
+  font: 500 14px/1.2 var(--ff); outline: none; }
+.lib-menu button:hover, .lib-menu button:focus-visible { background: var(--surface-2); }
+.lib-menu button.danger { color: #E5484D; }
+.lib-menu hr { width: 100%; height: 1px; margin: 5px 0; border: 0; background: var(--line); }
+
+.lib-confirm { position: absolute; inset: 0; z-index: 5; display: flex; flex-direction: column; justify-content: center; gap: 6px; padding: 18px;
+  border-radius: 14px; background: color-mix(in srgb, var(--surface) 92%, transparent); border: 1px solid var(--line);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); opacity: 0; transform: scale(.97); transition: opacity .25s ease, transform .3s cubic-bezier(.16, 1, .3, 1); }
+.lib-confirm.in { opacity: 1; transform: none; }
+.lib-confirm b { font-size: 16px; letter-spacing: -0.01em; }
+.lib-confirm span { color: var(--muted); font-size: 13.5px; line-height: 1.4; }
+.lib-confirm div { display: flex; gap: 8px; margin-top: 8px; }
+.lib-confirm button { padding: 9px 16px; border-radius: 999px; border: 1px solid var(--line-strong); background: transparent; color: var(--fg); cursor: pointer; font: 600 13.5px/1 var(--ff); }
+.lib-confirm .lib-c-del { background: #E5484D; border-color: #E5484D; color: #fff; }
+
+.lib-empty { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 6px; padding: 40px 28px; border-radius: 18px;
+  border: 1px dashed var(--line-strong); color: var(--muted); }
+.lib-empty b { color: var(--fg); font-size: 18px; }
+.lib-empty div { margin-top: 12px; }
+
+footer p { margin: 0; max-width: 70ch; line-height: 1.5; }
+footer b { color: var(--muted); font-weight: 600; }
+.lib-link { padding: 0; border: 0; background: none; color: var(--accent); font: inherit; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+
+.lib-drop { position: fixed; inset: 0; z-index: 70; display: grid; place-items: center; pointer-events: none; opacity: 0; transition: opacity .2s ease;
+  background: color-mix(in srgb, var(--bg) 70%, transparent); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+.lib-drop.on { opacity: 1; }
+.lib-drop div { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 40px 60px; border-radius: 24px;
+  border: 2px dashed var(--accent); background: var(--surface); transform: scale(.96); transition: transform .3s cubic-bezier(.16, 1, .3, 1); }
+.lib-drop.on div { transform: none; }
+.lib-drop b { font-size: 20px; }
+.lib-drop span { color: var(--muted); }
+
+.lib-toast { position: fixed; left: 50%; bottom: calc(28px + env(safe-area-inset-bottom, 0px)); z-index: 80; max-width: calc(100vw - 32px);
+  padding: 12px 18px; border-radius: 999px; background: var(--fg); color: var(--bg); font: 500 14px/1.3 var(--ff);
+  box-shadow: 0 20px 50px -20px rgba(0,0,0,0.6); transform: translate(-50%, 14px); opacity: 0; transition: transform .4s cubic-bezier(.16, 1, .3, 1), opacity .25s ease; }
+.lib-toast.in { transform: translate(-50%, 0); opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .lib-card, .lib-menu { animation: none; } .lib-thumb, .lib-drop div, .lib-toast { transition: none; } }
+
+/* the linked folder */
+.actions { position: relative; }
+.lib-folder-btn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linejoin: round; }
+.lib-folder-btn.on { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+.lib-folder-btn.on svg { fill: color-mix(in srgb, var(--accent) 35%, transparent); stroke: var(--accent); }
+.lib-folder-btn.warn { border-color: #E5A13B; }
+.lib-folder-btn.warn svg { stroke: #E5A13B; }
+.lib-fmenu { right: auto; transform-origin: top left; }
+.lib-infolder { margin-top: 44px; }
+.lib-file .lib-thumb { cursor: pointer; }
+.lib-file .lib-thumb::after { content: "Open"; position: absolute; right: 10px; bottom: 10px; padding: 6px 11px; border-radius: 999px;
+  background: var(--a); color: #fff; font-size: 12px; font-weight: 600; opacity: 0; transform: translateY(4px); transition: opacity .2s ease, transform .25s ease; }
+.lib-file .lib-thumb:hover::after, .lib-file .lib-thumb:focus-visible::after { opacity: 1; transform: none; }
+.lib-file-tag { flex: none; max-width: 45%; font-size: 12px; color: var(--faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lib-folder-btn[hidden] { display: none; }

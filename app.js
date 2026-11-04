@@ -1,11 +1,14 @@
 (function(){
-  // speaker notes live in data/seed.js (rich HTML)
+  // every edit kept on this device is named for its deck (core/store.js), so decks never share them
+  var NS = window.SLEEK_NS || '';
+  // a published deck (one HTML file, core/publish.js) plays and presents; it doesn't edit or save
+  var PUBLISHED = !!(window.SLEEK_DECK && window.SLEEK_DECK.published);
+  // speaker notes live in the deck's seed (rich HTML)
   var SEED = window.SEED || {};
-  var SEED_LOADED = JSON.stringify(SEED);   // to notice when data/seed.js changes on disk under an open page
   var NOTES = (SEED.notes || []).slice();
-  // speaker notes edited on this device (Edit mode), by slide index, until Save Changes writes them
+  // speaker notes edited in Edit mode, by slide index; they save into the deck with every other edit
   var noteOverrides = {};
-  try { noteOverrides = JSON.parse(localStorage.getItem('deck-notes') || '{}') || {}; } catch(e){ noteOverrides = {}; }
+  try { noteOverrides = JSON.parse(localStorage.getItem(NS + 'deck-notes') || '{}') || {}; } catch(e){ noteOverrides = {}; }
   // slides marked data-note="<key>" keep their notes by name (seed.noteByKey, else the slide's own
   // <template class="slide-notes">), so they stay with their slide when slides move
   var NOTE_BY_KEY = {};
@@ -21,17 +24,17 @@
   var MIRROR = /[?&]mirror=1/.test(location.search);
   if(MIRROR){ document.body.classList.add('mirror'); }
 
-  // ---------- templates, and slides added in the browser (the grid's + tile) ----------
-  // Every layout in the markup is a template: a clean copy of the first slide that uses it (its
-  // data-note names it), taken here before anything on the page edits it. An added slide is a copy
-  // of one with placeholder words (its pictures stay, to be replaced). The list of added slides,
-  // [{ id, t: template, name }], sits on this device (deck-added) until Save Changes writes
-  // seed.added. They go in after the markup's own slides, so the numbered words and tiles of every
-  // other slide never shift; drag them anywhere in the grid.
+  // ---------- layouts, and the deck's slides ----------
+  // Every layout is a template in deck.html (<template id="layouts">), named by its data-note. A deck
+  // is a list of slides, seed.added: [{ id, t: layout, name, fill }], each one made from its layout:
+  // with placeholder words, or as written there (fill: "sample", the sample deck). A slide's words
+  // and tiles are named for the slide (<id>.t0, <id>.m0), so slides can come and go without anything
+  // else moving. The grid's + tile adds one; edits sit on this device and save into the deck.
   var TEMPLATES = [];
   (function(){
-    var seen = {};
-    Array.prototype.forEach.call(document.querySelectorAll('#stage > .slide[data-note]'), function(s){
+    var seen = {}, lib = document.getElementById('layouts');
+    Array.prototype.forEach.call(lib ? lib.content.children : [], function(s){
+      if(!s.matches || !s.matches('.slide[data-note]')) return;
       var key = s.getAttribute('data-note'); if(seen[key]) return; seen[key] = true;
       var t = s.querySelector('template.slide-notes'), d = document.createElement('div');
       d.innerHTML = t ? t.innerHTML : '';
@@ -41,7 +44,7 @@
   })();
   var ADDED_SEED = Array.isArray(SEED.added) ? SEED.added : [];
   var ADDED = ADDED_SEED.slice();
-  try { var _ad = JSON.parse(localStorage.getItem('deck-added') || 'null'); if(Array.isArray(_ad)) ADDED = _ad; } catch(e){}
+  try { var _ad = JSON.parse(localStorage.getItem(NS + 'deck-added') || 'null'); if(Array.isArray(_ad)) ADDED = _ad; } catch(e){}
   var PH_TEXT = [            // placeholder words, by what the text is
     ['.overline', 'Section'], ['h1.display, h2.display', 'Your headline'], ['.lead, .one.body', 'A sentence that sets up this slide.'],
     ['.taglist li', 'A point worth making'], ['.cap', 'Caption'], ['.meta', 'Detail'], ['.section-no', 'Part 01'],
@@ -54,6 +57,7 @@
     var el = d.firstElementChild;
     el.classList.remove('active');
     el.setAttribute('data-label', a.name); el.setAttribute('data-note', 'add-' + a.id); el.setAttribute('data-added', a.id);
+    if(a.fill === 'sample') return el;                         // the layout's own words, pictures and notes
     el.removeAttribute('data-before');
     var notes = el.querySelector('template.slide-notes'); if(notes) notes.remove();
     PH_TEXT.forEach(function(r){ Array.prototype.forEach.call(el.querySelectorAll(r[0]), function(x){ x.textContent = r[1]; }); });
@@ -66,7 +70,7 @@
     var host = document.getElementById('screen-slides'), stage0 = document.getElementById('stage');
     ADDED.forEach(function(a){ var el = makeAdded(a); if(el) stage0.insertBefore(el, host); });
   })();
-  function saveAdded(){ try { localStorage.setItem('deck-added', JSON.stringify(ADDED)); } catch(e){} }
+  function saveAdded(){ try { localStorage.setItem(NS + 'deck-added', JSON.stringify(ADDED)); } catch(e){} }
 
   var slides = Array.prototype.slice.call(document.querySelectorAll('#stage .slide'));
   var i = 0;
@@ -93,7 +97,7 @@
   // slide names (the label bottom left, the notes header, the address): editable in Edit mode.
   // Keyed by the name in the markup, so a renamed slide keeps its name wherever it moves.
   var labelOverrides = {};
-  try { labelOverrides = JSON.parse(localStorage.getItem('deck-labels') || '{}') || {}; } catch(e){ labelOverrides = {}; }
+  try { labelOverrides = JSON.parse(localStorage.getItem(NS + 'deck-labels') || '{}') || {}; } catch(e){ labelOverrides = {}; }
   function seedLabel(key){ return (SEED.labels && SEED.labels[key] != null) ? SEED.labels[key] : key; }
   slides.forEach(function(s){
     var key = s.getAttribute('data-label'); if(key == null) return;
@@ -114,11 +118,11 @@
   // ---------- slide order ----------
   // The markup's order, unless you've dragged slides around in the grid: then it's a list of slide
   // keys (a slide's name in the markup, a screen's id), saved like any other edit (deck-order on
-  // this device until Save Changes writes seed.order). Slides only move in the page after their
+  // this device and saves into seed.order). Slides only move in the page after their
   // text, tiles and notes are attached, so nothing that's numbered by position shifts. A slide
   // added to the markup later lands right after the one it follows there.
   var orderOverride = null, orderReady = false;
-  try { orderOverride = JSON.parse(localStorage.getItem('deck-order') || 'null'); } catch(e){ orderOverride = null; }
+  try { orderOverride = JSON.parse(localStorage.getItem(NS + 'deck-order') || 'null'); } catch(e){ orderOverride = null; }
   var NATURAL = Array.prototype.map.call(stage.querySelectorAll(':scope > .slide, :scope > #screen-slides'), function(el){
     return el.id === 'screen-slides' ? null : el._lkey;          // the markup's name; null: where the screens go
   });
@@ -153,14 +157,14 @@
   }
   function setOrder(keys){
     orderOverride = keys;
-    try { localStorage.setItem('deck-order', JSON.stringify(keys)); } catch(e){}
+    try { localStorage.setItem(NS + 'deck-order', JSON.stringify(keys)); } catch(e){}
     applyOrder();
     try { if(bc) bc.postMessage({ order: true }); } catch(e){}   // before show() sends the new number
     show(i); markChanged();
   }
   // another window (the presenter, its preview) moved slides
   function reloadOrder(){
-    try { orderOverride = JSON.parse(localStorage.getItem('deck-order') || 'null'); } catch(e){ orderOverride = null; }
+    try { orderOverride = JSON.parse(localStorage.getItem(NS + 'deck-order') || 'null'); } catch(e){ orderOverride = null; }
     applyOrder(); suppress = true; show(i); suppress = false; markChanged();
   }
 
@@ -254,14 +258,14 @@
       clearTimeout(nSaveT);
       nSaveT = setTimeout(function(){
         // merge with anything the other window saved meanwhile
-        var stored = {}; try { stored = JSON.parse(localStorage.getItem('deck-notes') || '{}') || {}; } catch(e){}
+        var stored = {}; try { stored = JSON.parse(localStorage.getItem(NS + 'deck-notes') || '{}') || {}; } catch(e){}
         Object.keys(noteOverrides).forEach(function(k){ stored[k] = noteOverrides[k]; });
-        try { localStorage.setItem('deck-notes', JSON.stringify(stored)); } catch(e){}
+        try { localStorage.setItem(NS + 'deck-notes', JSON.stringify(stored)); } catch(e){}
       }, 250);
     }
     var msg = { noteSlide: slides.indexOf(s), noteHtml: html, t: Date.now() };
     try { if(bc) bc.postMessage(msg); } catch(e){}
-    try { localStorage.setItem('sleek-notesync', JSON.stringify(msg)); } catch(e){}
+    try { localStorage.setItem(NS + 'sleek-notesync', JSON.stringify(msg)); } catch(e){}
   }
   function applyRemoteNote(idx, html){
     var s = slides[idx]; if(!s) return;
@@ -534,10 +538,10 @@
     if(s._lkey == null) return;
     s.setAttribute('data-label', v || s._lkey);
     labelOverrides[s._lkey] = v || s._lkey;
-    try { localStorage.setItem('deck-labels', JSON.stringify(labelOverrides)); } catch(e){}
+    try { localStorage.setItem(NS + 'deck-labels', JSON.stringify(labelOverrides)); } catch(e){}
     var msg = { labelKey: s._lkey, label: v || s._lkey, t: Date.now() };
     try { if(bc) bc.postMessage(msg); } catch(e){}
-    try { localStorage.setItem('sleek-labelsync', JSON.stringify(msg)); } catch(e){}
+    try { localStorage.setItem(NS + 'sleek-labelsync', JSON.stringify(msg)); } catch(e){}
     paintLabel(s); writeSlug(); markChanged();
   }
   function applyRemoteLabel(key, v){
@@ -547,7 +551,7 @@
   secEl.addEventListener('input', function(){ if(editing && slides[i]) renameSlide(slides[i], secEl.textContent.replace(/\s+/g, ' ').trim()); });
   secEl.addEventListener('keydown', function(e){ if(e.key === 'Enter'){ e.preventDefault(); secEl.blur(); } });
   secEl.addEventListener('blur', function(){ if(slides[i]) secEl.textContent = slides[i].getAttribute('data-label') || ''; });
-  window.addEventListener('storage', function(e){ if(e.key==='sleek-labelsync' && e.newValue){ try { var m = JSON.parse(e.newValue); applyRemoteLabel(m.labelKey, m.label); } catch(_){} } });
+  window.addEventListener('storage', function(e){ if(e.key===NS + 'sleek-labelsync' && e.newValue){ try { var m = JSON.parse(e.newValue); applyRemoteLabel(m.labelKey, m.label); } catch(_){} } });
 
   // ---------- grid: every slide as a tile, below the deck ----------
   // The chevron (or G) slides the deck up and the grid up into view; a tile jumps to its slide
@@ -568,6 +572,9 @@
         '<span class="gt-label"><b>' + String(k + 1).padStart(2, '0') + '</b><span></span></span>';
       b.querySelector('.gt-label span').textContent = s.getAttribute('data-label') || ('Slide ' + (k + 1));
       b.querySelector('.gt-canvas').appendChild(cloneSlide(k));
+      if(DECK_ID) b.querySelector('.gt-shot').insertAdjacentHTML('beforeend', '<span class="gt-acts">' +
+        '<span class="gt-act" data-act="dup" role="button" title="Duplicate slide" aria-label="Duplicate slide"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="7" y="7" width="9.5" height="9.5" rx="2"/><path d="M13 7V5a1.5 1.5 0 0 0-1.5-1.5h-6A1.5 1.5 0 0 0 4 5v6.5A1.5 1.5 0 0 0 5.5 13H7"/></svg></span>' +
+        (slides.length > 1 ? '<span class="gt-act del" data-act="del" role="button" title="Delete slide" aria-label="Delete slide"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 6h12M8 6V4.5h4V6M6 6l.7 10h6.6L14 6"/></svg></span>' : '') + '</span>');
       gridTiles.appendChild(b);
     });
     // the last tile adds a slide (features/add-slide.js shows the template picker)
@@ -606,6 +613,7 @@
   document.getElementById('grid-back').onclick = function(){ closeGrid(); };
   gridTiles.addEventListener('click', function(e){
     if(Date.now() - gridDragEnd < 400) return;                 // the end of a drag, not a pick
+    var act = e.target.closest('.gt-act'); if(act){ slideAction(act.getAttribute('data-act'), +act.closest('.gt').getAttribute('data-k')); return; }
     var add = e.target.closest('.gt-add'); if(add){ Deck.openAddSlide(add); return; }
     var b = e.target.closest('.gt'); if(b) closeGrid(+b.getAttribute('data-k'));
   });
@@ -647,7 +655,7 @@
     gdrag.raf = requestAnimationFrame(gridAutoScroll);
   }
   gridTiles.addEventListener('pointerdown', function(e){
-    var b = e.target.closest('.gt:not(.gt-add)'); if(!b || e.button !== 0 || !gridOpen) return;
+    var b = e.target.closest('.gt:not(.gt-add)'); if(!b || e.button !== 0 || !gridOpen || e.target.closest('.gt-act')) return;
     gdrag = { b: b, id: e.pointerId, sx: e.clientX, sy: e.clientY, x: e.clientX, y: e.clientY, on: false };
   });
   window.addEventListener('pointermove', function(e){
@@ -682,7 +690,7 @@
     void d.b.offsetWidth;
     d.b.style.transition = 'transform 0.36s cubic-bezier(0.2, 0.8, 0.2, 1)'; d.b.style.transform = '';
     // the deck takes the grid's new order; tiles are renumbered to match
-    var tiles = Array.prototype.slice.call(gridTiles.querySelectorAll('.gt'));
+    var tiles = Array.prototype.slice.call(gridTiles.querySelectorAll('.gt:not(.gt-add)'));
     var keys = tiles.map(function(t){ return slideKey(slides[+t.getAttribute('data-k')]); });
     if(JSON.stringify(keys) === JSON.stringify(slides.map(slideKey))) return;   // dropped where it started
     setOrder(keys);
@@ -709,7 +717,7 @@
   // stage's theme shows through; on a picture slide turned on, a theme layer sits over the picture.
   // Saved like other edits (seed.slideTheme by slide name; screens keep theme on the screen).
   var slideThemeOverrides = {};
-  try { slideThemeOverrides = JSON.parse(localStorage.getItem('deck-slide-theme') || '{}') || {}; } catch(e){ slideThemeOverrides = {}; }
+  try { slideThemeOverrides = JSON.parse(localStorage.getItem(NS + 'deck-slide-theme') || '{}') || {}; } catch(e){ slideThemeOverrides = {}; }
   function themeSetting(s){
     if(!s) return null;
     if(s._screen) return typeof s._screen.theme === 'boolean' ? s._screen.theme : null;
@@ -735,22 +743,22 @@
     if(s._screen){ s._screen.theme = on; if(!fromRemote) saveAnns(); }
     else if(s._lkey != null){
       slideThemeOverrides[s._lkey] = on;
-      try { localStorage.setItem('deck-slide-theme', JSON.stringify(slideThemeOverrides)); } catch(e){}
+      try { localStorage.setItem(NS + 'deck-slide-theme', JSON.stringify(slideThemeOverrides)); } catch(e){}
       if(!fromRemote){
         var msg = { themeKey: s._lkey, on: on, t: Date.now() };
         try { if(bc) bc.postMessage(msg); } catch(e){}
-        try { localStorage.setItem('sleek-themesync', JSON.stringify(msg)); } catch(e){}
+        try { localStorage.setItem(NS + 'sleek-themesync', JSON.stringify(msg)); } catch(e){}
       }
     }
     refreshSlideThemes(); markChanged();
   }
-  // the whole theme, again from where it now comes from (after Revert to Last Save)
+  // the whole theme, again from where it now comes from (after Undo or Redo)
   function repaintTheme(){
     applyTheme(DT.get('mode') === 'light' ? 'light' : 'dark'); applyAccent(DT.get('accent'));
     readGlow(); applyGlow(false); var f = DT.get('font'); applyFont(f ? f.v : 'inter', false);
   }
   function applyRemoteTheme(key, on){ var s = slides.filter(function(x){ return x._lkey === key; })[0]; if(s) setSlideTheme(s, on, true); }
-  window.addEventListener('storage', function(e){ if(e.key === 'sleek-themesync' && e.newValue){ try { var m = JSON.parse(e.newValue); applyRemoteTheme(m.themeKey, m.on); } catch(_){} } });
+  window.addEventListener('storage', function(e){ if(e.key === NS + 'sleek-themesync' && e.newValue){ try { var m = JSON.parse(e.newValue); applyRemoteTheme(m.themeKey, m.on); } catch(_){} } });
   document.getElementById('eb-theme').onclick = function(){ var s = slides[i]; if(s) setSlideTheme(s, !themeOn(s)); };
   // carousels hold still for 2s after you land on their slide, then start rolling from the beginning
   var carT = 0;
@@ -982,7 +990,7 @@
   function mountMirror(){
     var host = document.getElementById('pres-canvas');
     if(!host || host.querySelector('iframe')) return;
-    host.innerHTML = '<iframe class="pres-mirror" src="' + location.pathname.split('/').pop() + '?mirror=1" title="Live preview of the audience screen"></iframe>';
+    host.innerHTML = '<iframe class="pres-mirror" src="' + location.pathname.split('/').pop() + (location.search ? location.search + '&' : '?') + 'mirror=1" title="Live preview of the audience screen"></iframe>';
   }
   function fitShots(){
     Array.prototype.forEach.call(document.querySelectorAll('.pres-shot'), function(shot){
@@ -1008,10 +1016,11 @@
   }
   // the bar's icons show their name in a tooltip (data-tt) instead of the browser's slow title
   // (just the name: shortcut keys stay out of it)
-  var TT = { homebtn: 'Home', presentbtn: 'Present', notesbtn: 'Notes', annotbtn: 'Annotate', editbtn: 'Edit', 'accent-dot': 'Theme', full: 'Fullscreen', gridbtn: 'All slides' };
+  var TT = { homebtn: 'Your decks', presentbtn: 'Present', notesbtn: 'Notes', annotbtn: 'Annotate', editbtn: 'Edit', 'accent-dot': 'Theme', full: 'Fullscreen', gridbtn: 'All slides' };
   Object.keys(TT).forEach(function(id){ var b = document.getElementById(id); if(b){ b.setAttribute('data-tt', TT[id]); b.removeAttribute('title'); } });
   document.getElementById('presentbtn').onclick = openPresenter;
-  document.getElementById('homebtn').onclick = function(){ show(0); };   // back to the first slide (H goes to the start screen)
+  // back to your decks (the start screen), once this deck is saved
+  document.getElementById('homebtn').onclick = function(){ flushSave().then(function(){ location.href = 'index.html'; }); };
   document.getElementById('pres-prev').onclick = prev;
   document.getElementById('pres-next').onclick = next;
 
@@ -1030,17 +1039,18 @@
 
   // ---- sync across windows (presenter window <-> audience window), same origin ----
   var bc = null;
-  try { bc = new BroadcastChannel('sleek'); } catch(e){}
+  try { bc = new BroadcastChannel(NS + 'sleek'); } catch(e){}
   var suppress = false;
   function broadcast(){
     if(suppress || MIRROR) return;                            // the mirror only ever follows
     var msg = { i: i, annot: annotOn, t: Date.now() };
     try { if(bc) bc.postMessage(msg); } catch(e){}
-    try { localStorage.setItem('sleek-sync', JSON.stringify(msg)); } catch(e){}
+    try { localStorage.setItem(NS + 'sleek-sync', JSON.stringify(msg)); } catch(e){}
   }
   function onRemote(msg){
     if(!msg) return;
     if(msg.reload){ location.reload(); return; }
+    if(msg.steps){ paintSteps(); return; }
     if(msg.anns){ reloadAnns(); return; }
     if(msg.media){ reloadMedia(); return; }
     if(msg.order){ reloadOrder(); return; }
@@ -1055,16 +1065,16 @@
     suppress = false;
   }
   if(bc){ bc.onmessage = function(e){ onRemote(e.data); }; }
-  window.addEventListener('storage', function(e){ if(e.key==='sleek-sync' && e.newValue){ try { onRemote(JSON.parse(e.newValue)); } catch(_){} } });
-  window.addEventListener('storage', function(e){ if(e.key==='sleek-textsync' && e.newValue){ try { var m = JSON.parse(e.newValue); applyRemoteText(m.eid, m.html); } catch(_){} } });
-  window.addEventListener('storage', function(e){ if(e.key==='sleek-reload' && e.newValue){ location.reload(); } });
+  window.addEventListener('storage', function(e){ if(e.key===NS + 'sleek-sync' && e.newValue){ try { onRemote(JSON.parse(e.newValue)); } catch(_){} } });
+  window.addEventListener('storage', function(e){ if(e.key===NS + 'sleek-textsync' && e.newValue){ try { var m = JSON.parse(e.newValue); applyRemoteText(m.eid, m.html); } catch(_){} } });
+  window.addEventListener('storage', function(e){ if(e.key===NS + 'sleek-reload' && e.newValue){ location.reload(); } });
   // tell the other windows of this deck (the presenter, its preview) to load the page again
   function pingReload(){
     try { if(bc) bc.postMessage({ reload: true }); } catch(e){}
-    try { localStorage.setItem('sleek-reload', String(Date.now())); } catch(e){}
+    try { localStorage.setItem(NS + 'sleek-reload', String(Date.now())); } catch(e){}
   }
-  window.addEventListener('storage', function(e){ if(e.key==='sleek-notesync' && e.newValue){ try { var m = JSON.parse(e.newValue); applyRemoteNote(m.noteSlide, m.noteHtml); } catch(_){} } });
-  window.addEventListener('storage', function(e){ if(e.key==='sleek-stylesync' && e.newValue){ try { var m = JSON.parse(e.newValue); applyRemoteStyle(m.eid, m.style); } catch(_){} } });
+  window.addEventListener('storage', function(e){ if(e.key===NS + 'sleek-notesync' && e.newValue){ try { var m = JSON.parse(e.newValue); applyRemoteNote(m.noteSlide, m.noteHtml); } catch(_){} } });
+  window.addEventListener('storage', function(e){ if(e.key===NS + 'sleek-stylesync' && e.newValue){ try { var m = JSON.parse(e.newValue); applyRemoteStyle(m.eid, m.style); } catch(_){} } });
 
   document.addEventListener('keydown', function(e){
     if(/^(INPUT|TEXTAREA|SELECT)$/.test(e.target && e.target.tagName)) return;
@@ -1083,7 +1093,7 @@
     else if(e.key==='p'||e.key==='P'){ if(!POPOUT) openPresenter(); }
     else if(e.key==='e'||e.key==='E'){ if(!POPOUT) toggleEdit(); }
     else if(e.key==='t'||e.key==='T'){ toggleTheme(); }
-    else if(e.key==='h'||e.key==='H'){ if(!POPOUT) location.href = 'index.html'; }
+    else if(e.key==='h'||e.key==='H'){ if(!POPOUT && !PUBLISHED) flushSave().then(function(){ location.href = 'index.html'; }); }
     else if(e.key==='f'||e.key==='F'){ toggleFull(); }
     else if(e.key==='g'||e.key==='G'){ if(!e.metaKey && !e.ctrlKey) openGrid(); }
   });
@@ -1100,8 +1110,8 @@
   window.addEventListener('resize', fit); fit();
 
   // The theme (mode, accent, the glow, the slide font) is saved with the deck: theme-boot.js reads your
-  // unsaved change, else the seed, else the default. Changing something here records it as a change
-  // (save=true) until Save Changes writes it into the seed.
+  // change made here, else the seed, else the default. Changing something here records it as a change
+  // (save=true), which saves into the seed.
   var DT = window.DeckTheme;
   function applyTheme(t, save){
     if(t==='dark'){ document.documentElement.setAttribute('data-theme','dark'); }
@@ -1223,11 +1233,11 @@
   paintThemeSummary();
   // the other windows (presenter, its live preview, the start screen) follow along
   window.addEventListener('storage', function(e){
-    if(e.key === 'deck-accent') applyAccent(DT.get('accent'));
-    else if(e.key === 'deck-theme') applyTheme(DT.get('mode'));
-    else if(e.key === 'deck-font-css'){ var fv = DT.get('font'); applyFont(fv ? fv.v : 'inter', false); }
-    else if(/^deck-glow/.test(e.key || '')){ readGlow(); applyGlow(false); }
-    if(/^deck-(theme|accent|glow|font)/.test(e.key || '')) markChanged();
+    if(e.key === NS + 'deck-accent') applyAccent(DT.get('accent'));
+    else if(e.key === NS + 'deck-theme') applyTheme(DT.get('mode'));
+    else if(e.key === NS + 'deck-font-css'){ var fv = DT.get('font'); applyFont(fv ? fv.v : 'inter', false); }
+    else if((e.key || '').indexOf(NS + 'deck-glow') === 0){ readGlow(); applyGlow(false); }
+    if(/^deck-(theme|accent|glow|font)/.test((e.key || '').slice(NS.length)) && (e.key || '').indexOf(NS) === 0) markChanged();
   });
 
   function toggleFull(){
@@ -1269,7 +1279,7 @@
   var DB = null;
   function idbOpen(cb){
     try {
-      var r = indexedDB.open('sleek', 1);
+      var r = indexedDB.open('sleek-' + NS, 1);
       r.onupgradeneeded = function(){ try { r.result.createObjectStore('kv'); } catch(e){} };
       r.onsuccess = function(){ DB = r.result; cb && cb(); };
       r.onerror = function(){ cb && cb(); };
@@ -1282,7 +1292,7 @@
     } catch(e){ cb(null); }
   }
   function idbSet(key, val){ if(!DB) return; try { DB.transaction('kv','readwrite').objectStore('kv').put(val, key); } catch(e){} }
-  function saveAnns(){ setTimeout(refreshAnnNotes, 0); idbSet('annotations', annData); markChanged(); try { localStorage.setItem('sleek-ann-ping', String(Date.now())); } catch(e){} try { if(bc) bc.postMessage({ anns: true }); } catch(e){} }
+  function saveAnns(){ setTimeout(refreshAnnNotes, 0); idbSet('annotations', annData); markChanged(); try { localStorage.setItem(NS + 'sleek-ann-ping', String(Date.now())); } catch(e){} try { if(bc) bc.postMessage({ anns: true }); } catch(e){} }
   function reloadAnns(){ idbGet('annotations', function(d){ if(d && d.screens){ annData = d; annData.pages = annData.pages || {}; renderScreens(); rebuildSlides(); renderNotes(); renderPresenter(); } markChanged(); }); }
 
   function currentScreen(){ var sid = slides[i] && slides[i]._sid; if(!sid) return null; for(var k=0;k<annData.screens.length;k++){ if(annData.screens[k].id===sid) return annData.screens[k]; } return null; }
@@ -1304,7 +1314,7 @@
   var ANN_COLORS = [{ c: '', n: 'Accent' }, { c: '#FF453A', n: 'Red' }, { c: '#FF9F0A', n: 'Orange' }, { c: '#FFD60A', n: 'Yellow' },
                     { c: '#30D158', n: 'Green' }, { c: '#64D2FF', n: 'Cyan' }, { c: '#BF5AF2', n: 'Purple' }];
   var nextColor = '';
-  try { nextColor = localStorage.getItem('deck-ann-color') || ''; } catch(e){}
+  try { nextColor = localStorage.getItem(NS + 'deck-ann-color') || ''; } catch(e){}
   // the color on an annotation's pieces: --ac, plus dark text on the light colors
   function colorStyle(el, c){
     if(c){ el.style.setProperty('--ac', c); el.style.setProperty('--on-ac', /^#(FFD60A|64D2FF|30D158|FF9F0A)$/i.test(c) ? '#121214' : '#fff'); }
@@ -1323,7 +1333,7 @@
   }
   function paintBarColors(){
     swatchRow(document.getElementById('eb-colors'), nextColor, function(c){
-      nextColor = c; try { localStorage.setItem('deck-ann-color', c); } catch(e){}
+      nextColor = c; try { localStorage.setItem(NS + 'deck-ann-color', c); } catch(e){}
       paintBarColors();
       if(!peEl.hidden && annById(peEl._aid)) setAnnColor(peEl._aid, c);     // and the one you're editing
     });
@@ -1435,8 +1445,7 @@
   }
 
   // ---------- images attached to annotations ----------
-  // An annotation's images ride along with it (data URLs on this device, files in images/ after
-  // Save Changes). The expanded note shows them as thumbnails; one click opens the full-screen viewer.
+  // An annotation's images ride along with it and save with the deck. The expanded note shows them as thumbnails; one click opens the full-screen viewer.
   function renderCalloutImages(co, a){
     var old = co.querySelector('.cimgs'); if(old) old.remove();
     var imgs = a.images || []; if(!imgs.length) return;
@@ -2076,6 +2085,7 @@
     document.getElementById('eb-done').title = annotating ? 'Done annotating' : 'Done editing (E)';
   }
   function toggleEdit(){
+    if(PUBLISHED && !editing) return;
     if(annotating) toggleAnnotate();
     editing = !editing;
     paintModes();
@@ -2116,7 +2126,7 @@
     editAt(e, e.target.closest('[data-eid]'));
   });
   function editAt(e, t){
-    if(editing || annotating || POPOUT || MIRROR || featureOpen() || (viewer && !viewer.el.hidden)) return;
+    if(PUBLISHED || editing || annotating || POPOUT || MIRROR || featureOpen() || (viewer && !viewer.el.hidden)) return;
     e.preventDefault();
     toggleEdit();
     if(!t) return;
@@ -2140,7 +2150,7 @@
     var r = annById(peEl._aid); if(!r) return;
     swatchRow(peEl.querySelector('.pe-colors'), r.a.color, function(c){
       setAnnColor(peEl._aid, c);
-      nextColor = c; try { localStorage.setItem('deck-ann-color', c); } catch(e){} paintBarColors();   // new ones follow your last pick
+      nextColor = c; try { localStorage.setItem(NS + 'deck-ann-color', c); } catch(e){} paintBarColors();   // new ones follow your last pick
     });
   }
   peEl.querySelector('.pe-spot input').onchange = function(){ var r = annById(peEl._aid); if(!r) return; r.a.spot = this.checked; saveAnns(); };
@@ -2228,8 +2238,8 @@
   });
   document.getElementById('pe-del').onclick = function(){ removeAnn(peEl._aid); };
   document.getElementById('pe-done').onclick = function(){ peEl.hidden = true; };
-  window.addEventListener('storage', function(e){ if(e.key==='sleek-ann-ping'){ reloadAnns(); } });
-  window.addEventListener('storage', function(e){ if(e.key==='sleek-media-ping'){ reloadMedia(); } });
+  window.addEventListener('storage', function(e){ if(e.key===NS + 'sleek-ann-ping'){ reloadAnns(); } });
+  window.addEventListener('storage', function(e){ if(e.key===NS + 'sleek-media-ping'){ reloadMedia(); } });
 
   // ================= free text editing (all static slides) =================
   // Any text block on a non-screen slide can be edited live in edit mode.
@@ -2237,11 +2247,11 @@
   // persisted on this device, and mirrored to the audience window.
   var TEDIT_SEL = '.overline, .display, .lead, .one, .body, .section-no, .lbl, .lh, .taglist li, .cap, .meta, .card-item span, .lcol li';
   var textOverrides = {};
-  try { textOverrides = JSON.parse(localStorage.getItem('deck-text') || '{}') || {}; } catch(e){ textOverrides = {}; }
+  try { textOverrides = JSON.parse(localStorage.getItem(NS + 'deck-text') || '{}') || {}; } catch(e){ textOverrides = {}; }
   var tSaveTimer = null;
   function saveText(){
     if(tSaveTimer) clearTimeout(tSaveTimer);
-    tSaveTimer = setTimeout(function(){ try { localStorage.setItem('deck-text', JSON.stringify(textOverrides)); } catch(e){} }, 250);
+    tSaveTimer = setTimeout(function(){ try { localStorage.setItem(NS + 'deck-text', JSON.stringify(textOverrides)); } catch(e){} }, 250);
     markChanged();
   }
   // A bullet deleted in edit mode keeps its id (so nothing after it shifts) and saves as this marker:
@@ -2255,7 +2265,7 @@
     saveText();
     var payload = { eid: eid, html: el.innerHTML, t: Date.now() };
     try { if(bc) bc.postMessage({ textEid: eid, textHtml: el.innerHTML, t: Date.now() }); } catch(e){}
-    try { localStorage.setItem('sleek-textsync', JSON.stringify(payload)); } catch(e){}
+    try { localStorage.setItem(NS + 'sleek-textsync', JSON.stringify(payload)); } catch(e){}
     renderPresenter();
     placeHandle();
   }
@@ -2271,11 +2281,11 @@
   var domBaseline = {};
   function seedTextFor(eid){ return (SEED.text && SEED.text[eid] != null) ? SEED.text[eid] : domBaseline[eid]; }
   function setupText(){
-    var idx = 0;
     var statics = document.querySelectorAll('.slide:not(.s-screen)');
     Array.prototype.forEach.call(statics, function(sl){
+      var idx = 0, pre = (sl.getAttribute('data-added') || 'x') + '.';   // named for its slide
       Array.prototype.forEach.call(sl.querySelectorAll(TEDIT_SEL), function(el){
-        var eid = el.getAttribute('data-eid') || ('t' + (idx++));
+        var eid = el.getAttribute('data-eid') || (pre + 't' + (idx++));
         el.setAttribute('data-eid', eid);
         domBaseline[eid] = el.innerHTML;
         var html = (textOverrides[eid] != null) ? textOverrides[eid] : seedTextFor(eid);
@@ -2384,7 +2394,7 @@
   // (text rewraps). A− / A+ in the edit bar change its text size. Values are slide pixels on
   // the 1280×720 canvas, layered like text: SEED.style, then your edits on this device.
   var styleOverrides = {};
-  try { styleOverrides = JSON.parse(localStorage.getItem('deck-style') || '{}') || {}; } catch(e){ styleOverrides = {}; }
+  try { styleOverrides = JSON.parse(localStorage.getItem(NS + 'deck-style') || '{}') || {}; } catch(e){ styleOverrides = {}; }
   var activeBlock = null, stSaveTimer = null;
   var sizeHandle = document.createElement('div');
   sizeHandle.className = 'size-handle'; sizeHandle.hidden = true;
@@ -2434,7 +2444,7 @@
   }
   function saveStyles(){
     clearTimeout(stSaveTimer);
-    stSaveTimer = setTimeout(function(){ try { localStorage.setItem('deck-style', JSON.stringify(styleOverrides)); } catch(e){} }, 200);
+    stSaveTimer = setTimeout(function(){ try { localStorage.setItem(NS + 'deck-style', JSON.stringify(styleOverrides)); } catch(e){} }, 200);
     markChanged();
   }
   function setStyle(eid, patch, silent){
@@ -2446,7 +2456,7 @@
     if(!silent){
       var payload = { eid: eid, style: styleOverrides[eid] || null, t: Date.now() };
       try { if(bc) bc.postMessage({ styleEid: eid, style: payload.style }); } catch(e){}
-      try { localStorage.setItem('sleek-stylesync', JSON.stringify(payload)); } catch(e){}
+      try { localStorage.setItem(NS + 'sleek-stylesync', JSON.stringify(payload)); } catch(e){}
     }
     if(el && el.closest('.fs-track, .car-track')) syncFilmstrips();
     placeHandle(); renderPresenter();
@@ -2535,7 +2545,7 @@
   var mediaImages = {}, curMid = null;
   function saveMedia(){
     idbSet('media', mediaImages); markChanged();
-    try { localStorage.setItem('sleek-media-ping', String(Date.now())); } catch(e){}
+    try { localStorage.setItem(NS + 'sleek-media-ping', String(Date.now())); } catch(e){}
     try { if(bc) bc.postMessage({ media: true }); } catch(e){}
   }
   function reloadMedia(){ idbGet('media', function(d){ mediaImages = d || {}; applyMedia(); markChanged(); }); }
@@ -2807,10 +2817,10 @@
     });
   }
   function setupMedia(){
-    var idx = 0;
     Array.prototype.forEach.call(document.querySelectorAll('.slide:not(.s-screen)'), function(sl){
+      var idx = 0, pre = (sl.getAttribute('data-added') || 'x') + '.';
       Array.prototype.forEach.call(sl.querySelectorAll('.media'), function(m){
-        var mid = m.getAttribute('data-mid') || ('m' + (idx++));
+        var mid = m.getAttribute('data-mid') || (pre + 'm' + (idx++));
         m.setAttribute('data-mid', mid);
         if(m.hasAttribute('data-resize')) addMediaSizer(m);
         var clr = document.createElement('button');
@@ -2832,14 +2842,9 @@
     });
     applyMedia();
   }
-  // a picture that's already in the project links to its file, so replacing the file updates the
-  // tile; anything else (or no save server) is kept as a copy on this device
+  // a picture or video you pick goes into the deck as it is (no resizing or re-encoding)
   function mediaFromFile(f, place){
-    function copy(){ var rd = new FileReader(); rd.onload = function(){ place(rd.result); }; rd.readAsDataURL(f); }
-    if(location.protocol === 'file:') return copy();
-    fetch('api/find?name=' + encodeURIComponent(f.name) + '&size=' + f.size, { cache: 'no-store' })
-      .then(function(r){ return r.ok ? r.json() : null; })
-      .then(function(j){ if(j && j.path) place(j.path); else copy(); }, copy);
+    var rd = new FileReader(); rd.onload = function(){ place(rd.result); }; rd.readAsDataURL(f);
   }
   document.getElementById('media-file').onchange = function(e){
     var f = e.target.files && e.target.files[0], mid = curMid; if(!f || !mid) return;
@@ -2855,49 +2860,8 @@
   zoomEl.innerHTML = '<div class="tz-img"></div><div class="tz-cap"></div>';
   stage.appendChild(zoomEl);
   var zoomTile = null, zoomHideT = 0, zoomRaf = 0, lastPt = null, imgRatio = {};
-  // ---------- pictures replaced on disk ----------
-  // Swap a file in the project for a new one with the same name and the deck shows it: when you come
-  // back to the window (and every few seconds while it's open) it asks the server whether the files it
-  // shows have changed, and reloads those under a fresh address, since the browser keeps the old copy
-  // of an address it has already shown.
-  var fileStamp = {}, fileVer = {};
-  function busted(src){
-    if(!src || /^(data:|blob:|https?:)/i.test(src)) return src;
-    var path = src.split('?')[0], v = fileVer[path];
-    return v ? path + '?v=' + v : path;
-  }
-  function shownFiles(){
-    var out = {};
-    Array.prototype.forEach.call(document.querySelectorAll('#stage .slide:not(.s-screen) .media[data-mid]'), function(m){
-      var mid = m.getAttribute('data-mid'), src = mediaImages[mid] || (SEED.media && SEED.media[mid]) || m.getAttribute('data-default-src');
-      if(src && !/^(data:|blob:|https?:)/i.test(src)) out[src.split('?')[0]] = true;
-    });
-    annData.screens.forEach(function(sc){ if(sc.img && !/^(data:|blob:)/.test(sc.img)) out[sc.img.split('?')[0]] = true; });
-    Array.prototype.forEach.call(document.querySelectorAll('#stage .car-set:not(.car-copy) [data-before-src]'), function(m){ out[m.getAttribute('data-before-src').split('?')[0]] = true; });
-    return Object.keys(out);
-  }
-  var checkingFiles = false;
-  function checkFiles(){
-    if(checkingFiles || location.protocol === 'file:' || document.hidden) return;
-    checkingFiles = true;
-    var files = shownFiles(), changed = false;
-    Promise.all(files.map(function(path){
-      return fetch(path, { method: 'HEAD', cache: 'no-store' }).then(function(r){
-        if(!r.ok) return;
-        var stamp = (r.headers.get('Last-Modified') || '') + '|' + (r.headers.get('Content-Length') || '');
-        if(fileStamp[path] != null && fileStamp[path] !== stamp){ fileVer[path] = Date.now().toString(36); changed = true; }
-        fileStamp[path] = stamp;
-      }).catch(function(){});
-    })).then(function(){
-      checkingFiles = false;
-      if(!changed) return;
-      applyMedia();
-      renderScreens(); rebuildSlides(); renderPresenter();
-    });
-  }
-  window.addEventListener('focus', checkFiles);
-  document.addEventListener('visibilitychange', function(){ if(!document.hidden) checkFiles(); });
-  setInterval(checkFiles, 4000);
+  // a picture's address as the page shows it (kept as one place to adjust addresses)
+  function busted(src){ return src; }
   function tileSrc(m){
     var mid = m.getAttribute('data-mid');
     if(mid) return busted(mediaImages[mid] || (SEED.media && SEED.media[mid]) || m.getAttribute('data-default-src') || null);
@@ -2979,81 +2943,11 @@
   document.addEventListener('mousemove', function(e){ lastPt = { x: e.clientX, y: e.clientY }; if(!zoomRaf) zoomRaf = requestAnimationFrame(zoomCheck); });
   document.documentElement.addEventListener('mouseleave', function(){ lastPt = null; hideZoom(); });
 
-  // ================= reset to seed =================
-  // Revert asks first, in a modal that says what will go (only what's actually changed)
-  var rvModal = document.getElementById('revert-modal');
-  function pendingKinds(){
-    var k, out = [];
-    if(Object.keys(textOverrides).some(function(e){ return normHtml(textOverrides[e]) !== normHtml(seedTextFor(e)); })) out.push('Slide text and links');
-    if(Object.keys(styleOverrides).length) out.push('Text and video sizes');
-    if(Object.keys(labelOverrides).some(function(x){ return labelOverrides[x] !== seedLabel(x); })) out.push('Slide names');
-    if(orderPending()) out.push('Slide order');
-    if(Object.keys(slideThemeOverrides).some(function(x){ return slideThemeOverrides[x] !== (SEED.slideTheme || {})[x]; })) out.push('Which slides show the theme');
-    if(DT.pending()) out.push('Theme (accent, font, gradient, effect, light / dark)');
-    if(Object.keys(noteOverrides).length) out.push('Speaker notes');
-    for(k in mediaImages){ if(mediaImages[k] !== ((SEED.media || {})[k] || null)){ out.push('Images, videos and Before pictures you placed'); break; } }
-    if(JSON.stringify(annData) !== JSON.stringify(DEFAULT_ANNS)) out.push('Annotations (pins, arrows, their notes and images)');
-    return out;
-  }
-  function openRevert(){
-    if(!pending) return;
-    var kinds = pendingKinds();
-    document.getElementById('rv-list').innerHTML = (kinds.length ? kinds : ['Your unsaved edits']).map(function(t){ return '<li>' + escText(t) + '</li>'; }).join('');
-    rvModal.hidden = false;
-    document.getElementById('rv-cancel').focus();
-  }
-  function closeRevert(){ rvModal.hidden = true; }
-  document.getElementById('rv-cancel').onclick = closeRevert;
-  document.getElementById('rv-ok').onclick = function(){ closeRevert(); resetToSeed(); };
-  rvModal.addEventListener('mousedown', function(e){ if(e.target === rvModal) closeRevert(); });
-  window.addEventListener('keydown', function(e){
-    if(rvModal.hidden) return;
-    if(e.key === 'Escape'){ e.preventDefault(); e.stopImmediatePropagation(); closeRevert(); }
-    else if(e.key !== 'Tab' && e.key !== 'Enter' && e.key !== ' '){ e.stopImmediatePropagation(); }   // the deck stays put underneath
-  }, true);
-  function resetToSeed(){
-    // added slides are part of the page: dropping them means building it again
-    if(JSON.stringify(ADDED) !== JSON.stringify(ADDED_SEED)){
-      clearDeviceEdits(function(){ pingReload(); location.reload(); });
-      return;
-    }
-    textOverrides = {}; try { localStorage.removeItem('deck-text'); } catch(e){}
-    styleOverrides = {}; try { localStorage.removeItem('deck-style'); } catch(e){}
-    noteOverrides = {}; try { localStorage.removeItem('deck-notes'); } catch(e){}
-    labelOverrides = {}; try { localStorage.removeItem('deck-labels'); } catch(e){}
-    orderOverride = null; try { localStorage.removeItem('deck-order'); } catch(e){}
-    slideThemeOverrides = {}; try { localStorage.removeItem('deck-slide-theme'); } catch(e){}
-    DT.clear(); repaintTheme();
-    slides.forEach(function(s){ if(s._lkey != null) s.setAttribute('data-label', seedLabel(s._lkey)); });
-    NOTES = (SEED.notes || []).slice();
-    NOTE_BY_KEY = {}; Object.keys(SEED.noteByKey || {}).forEach(function(k){ NOTE_BY_KEY[k] = SEED.noteByKey[k]; });
-    slides.forEach(function(s){ if(s._ni != null) s._notes = NOTES[s._ni]; else if(s._nkey) s._notes = keyedNote(s); });
-    Array.prototype.forEach.call(document.querySelectorAll('.slide:not(.s-screen) [data-eid]'), function(el){
-      el.innerHTML = seedTextFor(el.getAttribute('data-eid')); markGone(el);
-    });
-    applyStyles();
-    mediaImages = {}; saveMedia(); applyMedia();
-    annData = JSON.parse(JSON.stringify(DEFAULT_ANNS)); saveAnns(); renderScreens(); rebuildSlides();   // renderScreens puts the slides back in the saved order
-    try { if(bc) bc.postMessage({ order: true }); } catch(e){}
-    if(editing) setTextEditable(true);
-    show(Math.min(i, slides.length - 1));
-  }
-  document.getElementById('eb-reset').onclick = openRevert;
-
-
-  // ================= Save Changes (needs serve.py) =================
-  // Bakes everything you've edited on this device into data/seed.js: text, sizes, image
-  // tiles (written to images/), annotations, notes, slide names, order and theme.
-  // Afterwards the device copies are cleared, so the new seed is the single source of truth.
-  function safeName(s){ return String(s).replace(/[^A-Za-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '') || 'img'; }
-  function imageFile(dataUrl, base, files){
-    var m = /^data:(?:image|video)\/(png|jpe?g|webp|gif|svg\+xml|mp4|webm|quicktime);base64,/.exec(dataUrl || '');
-    if(!m) return dataUrl || null;                       // already a path in images/
-    var ext = { jpeg: 'jpg', quicktime: 'mov', 'svg+xml': 'svg' }[m[1]] || m[1];
-    var path = 'images/' + safeName(base) + '.' + ext;
-    files.push({ path: path, data: dataUrl });
-    return path;
-  }
+  // ================= saving: every change goes into the deck as you make it =================
+  // buildSeed() puts the deck back together from what this page shows: its seed with every edit
+  // on this device on top (text, sizes, tiles, annotations, notes, names, order, theme). That is
+  // saved into the deck (core/store.js) a moment after each change; pictures go in as they are.
+  function imageFile(dataUrl){ return dataUrl || null; }
   function buildSeed(){
     var files = [], ex = JSON.parse(exportText());
     var media = {};
@@ -3103,7 +2997,7 @@
     return { seed: seed, files: files };
   }
   function clearDeviceEdits(done){
-    try { ['deck-text', 'deck-style', 'deck-notes', 'deck-labels', 'deck-slide-theme', 'deck-order', 'deck-added'].forEach(function(k){ localStorage.removeItem(k); }); } catch(e){}
+    try { [NS + 'deck-text', NS + 'deck-style', NS + 'deck-notes', NS + 'deck-labels', NS + 'deck-slide-theme', NS + 'deck-order', NS + 'deck-added'].forEach(function(k){ localStorage.removeItem(k); }); } catch(e){}
     DT.clear();
     if(!DB){ done(); return; }
     try {
@@ -3112,82 +3006,172 @@
       tx.oncomplete = tx.onerror = tx.onabort = function(){ done(); };
     } catch(e){ done(); }
   }
-  // Save Changes lives in the edit bar and in the presenter's notes; it lights up only when this
-  // device has edits the seed doesn't have yet
-  var saveBtns = [document.getElementById('eb-save'), document.getElementById('pres-save')];
-  var saveBtn = saveBtns[0], saving = false, pending = false, pendT = 0;
-  function saveLabel(t){ saveBtns.forEach(function(b){ b.querySelector('.lbl').textContent = t; }); }
-  function paintSave(){
-    saveBtns.forEach(function(b){ b.disabled = saving || !pending; b.classList.toggle('pending', pending && !saving); });
-    document.getElementById('eb-reset').disabled = saving || !pending;          // nothing to revert either
-  }
+  // the edit bar says where things stand: Saving, Saved; Undo and Redo step through the deck's history
+  var DECK_ID = !PUBLISHED && window.SLEEK_DECK && window.SLEEK_DECK.id;
+  var savedEl = document.getElementById('eb-saved'), undoBtn = document.getElementById('eb-undo'), redoBtn = document.getElementById('eb-redo');
+  var pendT = 0, lastDoc = null, firstSave = true, saving = null, savedT = 0, stepping = false;
   function normHtml(html){ var d = document.createElement('div'); d.innerHTML = html == null ? '' : html; linkTargets(d); return d.innerHTML; }
-  function hasPending(){
-    var k;
-    for(k in textOverrides){ if(normHtml(textOverrides[k]) !== normHtml(seedTextFor(k))) return true; }
-    for(k in styleOverrides){
-      var mine = styleOverrides[k] || {}, seed = (SEED.style && SEED.style[k]) || {};
-      if(Object.keys(mine).some(function(p){ return mine[p] != null && mine[p] !== seed[p]; })) return true;
-    }
-    for(k in noteOverrides){
-      var base = k.indexOf('k:') === 0
-        ? ((SEED.noteByKey && SEED.noteByKey[k.slice(2)] != null) ? SEED.noteByKey[k.slice(2)]
-           : (function(s){ var t = s && s.querySelector('template.slide-notes'); return t ? t.innerHTML.trim() : ''; })(slides.filter(function(s){ return s._nkey === k.slice(2); })[0]))
-        : ((SEED.notes || [])[+k] || '');
-      if(normHtml(noteOverrides[k]) !== normHtml(base)) return true;
-    }
-    for(k in labelOverrides){ if(labelOverrides[k] !== seedLabel(k)) return true; }
-    if(orderPending()) return true;
-    if(JSON.stringify(ADDED) !== JSON.stringify(ADDED_SEED)) return true;
-    for(k in slideThemeOverrides){ if(slideThemeOverrides[k] !== (SEED.slideTheme || {})[k]) return true; }
-    if(DT.pending()) return true;
-    for(k in mediaImages){ if(mediaImages[k] !== ((SEED.media || {})[k] || null)) return true; }
-    return JSON.stringify(annData) !== JSON.stringify(DEFAULT_ANNS);
+  function paintSaved(state){
+    if(!savedEl) return;
+    clearTimeout(savedT);
+    savedEl.setAttribute('data-state', state);
+    savedEl.querySelector('.lbl').textContent = state === 'saving' ? 'Saving…' : state === 'error' ? 'Not saved' : 'Saved';
+    savedEl.title = state === 'error' ? 'This browser refused to save the deck (its storage may be full).' : 'Every change is saved in this browser as you make it.';
   }
-  function updatePending(){ try { pending = hasPending(); } catch(e){ pending = true; } paintSave(); }
-  function markChanged(){ clearTimeout(pendT); pendT = setTimeout(updatePending, 150); }
-  function saveToSeed(){
-    if(saving || !pending) return;
-    var label = 'Save Changes';
-    saving = true; paintSave(); saveLabel('Saving…');
-    var body;
-    try { body = JSON.stringify(buildSeed()); } catch(e){ saveLabel('Save failed'); saving = false; paintSave(); console.error(e); return; }
-    // refuse to save over a seed that changed since this page loaded (another tab, or an update):
-    // saving from a stale page would quietly undo those changes
-    fetch('data/seed.js', { cache: 'no-store' })
-      .then(function(r){ return r.text(); })
-      .then(function(t){
-        var disk = null;
-        try { disk = JSON.stringify(JSON.parse(t.slice(t.indexOf('{'), t.lastIndexOf('}') + 1))); } catch(e){}
-        if(disk && disk !== SEED_LOADED){
-          var err = new Error('data/seed.js changed since this page loaded. Reload the page, then save again.'); err.stale = true; throw err;
-        }
-        return fetch('api/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: body });
-      })
-      .then(function(r){ return r.json().then(function(j){ if(!r.ok || !j.ok) throw new Error(j.error || ('HTTP ' + r.status)); return j; }); })
-      .then(function(){
-        saveLabel('Saved');
-        clearDeviceEdits(function(){
-          try { if(bc) bc.postMessage({ reload: true }); } catch(e){}
-          try { localStorage.setItem('sleek-reload', String(Date.now())); } catch(e){}
-          setTimeout(function(){ location.reload(); }, 300);
-        });
-      })
-      .catch(function(err){
-        console.error('Save Changes failed:', err);
-        saveLabel(err && err.stale ? 'Seed changed: reload first' : 'Save failed');
-        saveBtns.forEach(function(b){ b.title = String(err && err.message || err); });
-        setTimeout(function(){ saveLabel(label); saving = false; paintSave(); }, err && err.stale ? 5000 : 3000);
+  function paintSteps(){
+    if(!DECK_ID || !window.SleekStore || !undoBtn) return;
+    SleekStore.canStep(DECK_ID).then(function(c){ undoBtn.disabled = !c.undo || stepping; redoBtn.disabled = !c.redo || stepping; });
+  }
+  function save(){
+    if(!DECK_ID || !window.SleekStore || MIRROR || stepping) return Promise.resolve();
+    if(!document.querySelector('#stage .slide')) return Promise.resolve();   // a page that lost its slides never overwrites the deck
+    var doc;
+    try { doc = buildSeed().seed; } catch(e){ console.error(e); return Promise.resolve(); }
+    var j = JSON.stringify(doc);
+    if(j === lastDoc) return saving || Promise.resolve();
+    lastDoc = j;
+    var quiet = firstSave; firstSave = false;            // the deck as it opened: tidied, not a step to undo
+    if(!quiet) paintSaved('saving');
+    saving = SleekStore.save(DECK_ID, doc, { noHistory: quiet, cover: cover() }).then(function(){ paintSaved('saved'); paintSteps(); try { if(bc) bc.postMessage({ steps: true }); } catch(e){} },
+      function(e){ console.error('Sleek could not save the deck:', e); paintSaved('error'); });
+    return saving;
+  }
+  // the start screen's card for this deck: the first slide's overline and headline
+  function cover(){
+    var s = slides[0]; if(!s) return null;
+    function txt(sel){ var e = s.querySelector(sel); return e ? e.textContent.replace(/\s+/g, ' ').trim().slice(0, 140) : ''; }
+    return { k: txt('.overline'), h: txt('.display, h1, h2') };
+  }
+  function markChanged(){ clearTimeout(pendT); pendT = setTimeout(save, 250); }
+  // save now (before the page goes, or before a step back)
+  function flushSave(){ clearTimeout(pendT); return save(); }
+  window.addEventListener('pagehide', function(){ flushSave(); });
+  document.addEventListener('visibilitychange', function(){ if(document.hidden) flushSave(); });
+  // Undo / Redo: the deck becomes the step before (or after); every window of it loads again
+  function stepDeck(dir){
+    if(!DECK_ID || !window.SleekStore || stepping) return;
+    flushSave().then(function(){
+      return SleekStore[dir < 0 ? 'undo' : 'redo'](DECK_ID, { keepDevice: true });
+    }).then(function(moved){
+      if(!moved) return;
+      stepping = true; paintSteps();
+      clearDeviceEdits(function(){
+        pingReload();
+        try { sessionStorage.setItem('sleek-arrive', '1'); } catch(e){}   // the page fades back in
+        location.reload();
       });
+    });
   }
-  saveBtns.forEach(function(b){ b.onclick = saveToSeed; });
-  // only offer saving when the page is served by serve.py
-  if(location.protocol !== 'file:'){
-    fetch('api/ping', { cache: 'no-store' })
-      .then(function(r){ return r.ok ? r.json() : null; })
-      .then(function(j){ if(j && j.ok) saveBtns.forEach(function(b){ b.hidden = false; }); })
-      .catch(function(){});
+  if(undoBtn) undoBtn.onclick = function(){ stepDeck(-1); };
+  if(redoBtn) redoBtn.onclick = function(){ stepDeck(1); };
+  document.addEventListener('keydown', function(e){
+    if(!(e.metaKey || e.ctrlKey) || (e.key !== 'z' && e.key !== 'Z' && e.key !== 'y')) return;
+    var t = e.target;
+    if(t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;   // the field undoes its own typing
+    if(MIRROR) return;
+    e.preventDefault();
+    stepDeck(e.key === 'y' || e.shiftKey ? 1 : -1);
+  });
+  paintSaved('saved'); paintSteps();
+
+  // ---------- duplicate / delete a slide (the grid's tile buttons) ----------
+  // Done on the deck itself: put it together, change it, save it as one step, and load again on
+  // the grid, with a note saying what happened (and Undo).
+  function restructure(change, note){
+    if(!DECK_ID || !window.SleekStore || stepping) return;
+    flushSave().then(function(){
+      var doc = buildSeed().seed;
+      if(change(doc) === false) return;
+      stepping = true;
+      return SleekStore.save(DECK_ID, doc, { newStep: true }).then(function(){
+        clearDeviceEdits(function(){
+          pingReload();
+          try { sessionStorage.setItem('sleek-arrive', '1'); sessionStorage.setItem('sleek-after', JSON.stringify({ grid: true, note: note })); } catch(e){}
+          location.reload();
+        });
+      });
+    });
   }
+  function freshId(){ return Math.random().toString(36).slice(2, 8); }
+  function copyPrefixed(map, from, to){
+    if(!map) return;
+    Object.keys(map).forEach(function(k){
+      if(k.indexOf(from + '.') === 0) map[to + k.slice(from.length)] = JSON.parse(JSON.stringify(map[k]));
+      else if(k.indexOf('b:' + from + '.') === 0) map['b:' + to + k.slice(2 + from.length)] = map[k];
+    });
+  }
+  function dropPrefixed(map, id){
+    if(!map) return;
+    Object.keys(map).forEach(function(k){ if(k.indexOf(id + '.') === 0 || k.indexOf('b:' + id + '.') === 0) delete map[k]; });
+  }
+  function slideAction(kind, k){
+    var s = slides[k]; if(!s) return;
+    var keys = slides.map(slideKey), key = slideKey(s);
+    var names = slides.map(function(x){ return x.getAttribute('data-label'); });
+    function unique(n){ var out = n, c = 2; while(names.indexOf(out) > -1) out = n + ' ' + (c++); return out; }
+    if(kind === 'del'){
+      if(slides.length < 2) return;
+      restructure(function(doc){
+        if(s._sid != null){
+          var si = +String(s._sid).replace(/^seed/, ''), scr = (doc.annotations && doc.annotations.screens) || [];
+          if(!/^seed\d+$/.test(s._sid) || !scr[si]) return false;
+          scr.splice(si, 1);
+          doc.order = keys.filter(function(x){ return x !== key; }).map(function(x){
+            var m = /^scr:seed(\d+)$/.exec(x); return m && +m[1] > si ? 'scr:seed' + (+m[1] - 1) : x;
+          });
+        } else {
+          var id = s.getAttribute('data-added');
+          doc.added = (doc.added || []).filter(function(a){ return a.id !== id; });
+          ['text', 'style', 'media'].forEach(function(f){ dropPrefixed(doc[f], id); });
+          if(doc.noteByKey) delete doc.noteByKey['add-' + id];
+          doc.order = keys.filter(function(x){ return x !== key; });
+        }
+      }, (s.getAttribute('data-label') || 'Slide') + ' deleted');
+    } else if(kind === 'dup'){
+      var name = unique((s.getAttribute('data-label') || 'Slide') + ' copy');
+      restructure(function(doc){
+        var at = keys.indexOf(key);
+        if(s._sid != null){
+          var si = +String(s._sid).replace(/^seed/, ''), scr = (doc.annotations && doc.annotations.screens) || [];
+          if(!/^seed\d+$/.test(s._sid) || !scr[si]) return false;
+          var c = JSON.parse(JSON.stringify(scr[si])); c.name = name;
+          scr.splice(si + 1, 0, c);
+          var moved = keys.map(function(x){ var m = /^scr:seed(\d+)$/.exec(x); return m && +m[1] > si ? 'scr:seed' + (+m[1] + 1) : x; });
+          moved.splice(at + 1, 0, 'scr:seed' + (si + 1));
+          doc.order = moved;
+        } else {
+          var id = s.getAttribute('data-added'), nid = freshId(), list = doc.added || [];
+          var src = list.filter(function(a){ return a.id === id; })[0]; if(!src) return false;
+          var copy = { id: nid, t: src.t, name: name }; if(src.fill) copy.fill = src.fill;
+          list.splice(list.indexOf(src) + 1, 0, copy); doc.added = list;
+          ['text', 'style', 'media'].forEach(function(f){ copyPrefixed(doc[f], id, nid); });
+          doc.noteByKey = doc.noteByKey || {}; doc.noteByKey['add-' + nid] = s._notes || '';
+          if(doc.slideTheme && s._lkey != null && doc.slideTheme[s._lkey] != null) doc.slideTheme[name] = doc.slideTheme[s._lkey];
+          var pg = doc.annotations && doc.annotations.pages && s._lkey != null && doc.annotations.pages[s._lkey];
+          if(pg) doc.annotations.pages[name] = JSON.parse(JSON.stringify(pg));
+          var o = keys.slice(); o.splice(at + 1, 0, name); doc.order = o;
+        }
+      }, name + ' added');
+    }
+  }
+  // after a reload: back on the grid, with a note
+  var toastEl = null;
+  function showToast(text, undo){
+    if(toastEl) toastEl.remove();
+    toastEl = document.createElement('div'); toastEl.className = 'sk-toast'; toastEl.setAttribute('role', 'status');
+    toastEl.innerHTML = '<span></span>' + (undo ? '<button type="button">Undo</button>' : '');
+    toastEl.querySelector('span').textContent = text;
+    if(undo) toastEl.querySelector('button').onclick = function(){ toastEl.classList.remove('in'); stepDeck(-1); };
+    document.body.appendChild(toastEl);
+    var me0 = toastEl; setTimeout(function(){ me0.classList.add('in'); }, 30);
+    var me = toastEl; setTimeout(function(){ me.classList.remove('in'); setTimeout(function(){ me.remove(); }, 400); }, 5000);
+  }
+  (function(){
+    var after = null;
+    try { after = JSON.parse(sessionStorage.getItem('sleek-after') || 'null'); sessionStorage.removeItem('sleek-after'); } catch(e){}
+    if(!after || POPOUT || MIRROR) return;
+    setTimeout(function(){ if(after.grid) openGrid(); if(after.note) showToast(after.note, true); }, 60);
+  })();
 
   // ================= presenter remote: the live preview drives the audience screen =================
   // Inputs travel as "acts" over a BroadcastChannel. The audience window performs every act (its own
@@ -3197,7 +3181,7 @@
   var presAliveAt = 0;                                          // last heartbeat from an open presenter window
   function presenting(){ return AUDIENCE && Date.now() - presAliveAt < 4000; }
   if(AUDIENCE) setInterval(function(){ if(!presenting()) document.body.classList.remove('presenting'); }, 2000);   // a presenter that went quietly
-  try { inputBC = new BroadcastChannel('sleek-input'); } catch(e){}
+  try { inputBC = new BroadcastChannel(NS + 'sleek-input'); } catch(e){}
   function sendInput(msg){ try { if(inputBC) inputBC.postMessage(msg); } catch(e){} }
 
   // ---------- presenter annotate: boxes and a cursor the audience sees ----------
@@ -3620,7 +3604,7 @@
     isEditing: function(){ return editing || annotating; },    // features stay shut while editing or annotating
     current: function(){ return slides[i]; },
     tileSrc: function(m){ return tileSrc(m); },     // the image a tile shows (device edit or seed)
-    templates: function(){ return TEMPLATES.filter(function(t){ return !/^add-/.test(t.key); }).map(function(t){ return { key: t.key, name: t.name, desc: t.desc }; }); },
+    templates: function(){ return TEMPLATES.map(function(t){ return { key: t.key, name: t.name, desc: t.desc }; }); },
     templatePreview: function(key){ return templatePreview(key); },
     // add a slide from a template; the page rebuilds itself and opens on it
     addSlide: function(key){
@@ -3628,7 +3612,7 @@
       var names = slides.map(function(s){ return s.getAttribute('data-label'); }).concat(ADDED.map(function(a){ return a.name; }));
       var name = t.name, n = 2; while(names.indexOf(name) > -1) name = t.name + ' ' + (n++);
       var a = { id: Math.random().toString(36).slice(2, 8), t: key, name: name };
-      ADDED.push(a); saveAdded();
+      ADDED.push(a); saveAdded(); flushSave();
       try { sessionStorage.setItem('sleek-arrive', '1'); } catch(e){}
       pingReload();
       return '#' + slugify(name);
@@ -3653,6 +3637,8 @@
     setBefore: function(mid, v){ setBefore(mid, v); },
     mediaFromFile: function(f, place){ mediaFromFile(f, place); },
     hideZoom: function(){ hideZoom(); },
+    flush: function(){ return flushSave(); },      // save now (before a download or leaving)
+    toast: function(text){ showToast(text); },
     stageRect: function(el){                        // element box in slide (1280x720) coordinates
       var sr = stage.getBoundingClientRect(), k = sr.width / 1280, r = el.getBoundingClientRect();
       return { x: (r.left - sr.left) / k, y: (r.top - sr.top) / k, w: r.width / k, h: r.height / k };
@@ -3689,7 +3675,6 @@
   uiAnim(document.getElementById('swatches'), 'pop');
   uiAnim(document.getElementById('link-pop'), 'pop');
   uiAnim(document.getElementById('pin-ed'), 'pop');
-  uiAnim(document.getElementById('revert-modal'), 'modal');
 
   // a button clicked with the mouse lets go of focus, so it doesn't keep its hover look (and the
   // bar its "in use" state) once you start using the keyboard; keyboard focus is untouched
@@ -3707,7 +3692,7 @@
   rebuildSlides();
   applyOrder(); orderReady = true;                           // after the ids above: moving slides doesn't renumber them
   var startAt = Math.max(0, slideFromHash());                // a slide's address opens that slide
-  if(POPOUT || MIRROR){ try { var last = JSON.parse(localStorage.getItem('sleek-sync') || 'null'); if(last && typeof last.i === 'number') startAt = last.i; } catch(e){} }
+  if(POPOUT || MIRROR){ try { var last = JSON.parse(localStorage.getItem(NS + 'sleek-sync') || 'null'); if(last && typeof last.i === 'number') startAt = last.i; } catch(e){} }
   suppress = true; show(startAt); suppress = false;
   idbOpen(function(){ reloadMedia(); idbGet('annotations', function(d){ if(d && d.screens){ annData = d; annData.pages = annData.pages || {}; renderScreens(); rebuildSlides(); renderNotes(); renderPresenter(); } markChanged(); }); });
   markChanged();

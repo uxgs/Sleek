@@ -4,13 +4,24 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Sleek</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="theme-color" content="#0B0B0D">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Sleek">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
 <link rel="stylesheet" href="glow.css">
 <link rel="stylesheet" href="features/setup.css">
-<!-- the deck's theme (from the seed, with unsaved changes on top), before paint -->
-<script src="data/seed.js"></script>
+<link rel="stylesheet" href="features/library.css">
+<!-- the storage, the sample deck, publishing, and the page's look before paint -->
+<script src="core/store.js"></script>
+<script src="data/sample.js"></script>
+<script src="core/publish.js"></script>
+<script src="core/folder.js"></script>
 <script src="theme-boot.js"></script>
 <style>
   :root {
@@ -35,21 +46,16 @@
   .start-glow { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
   main { position: relative; z-index: 1; max-width: 980px; margin: 0 auto;
          padding: 72px max(16px, env(safe-area-inset-right, 0px)) 64px max(16px, env(safe-area-inset-left, 0px)); }
-  .eyebrow { font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--accent); font-weight: 600; }
+  .brand { display: flex; align-items: center; gap: 11px; margin-bottom: 26px; }
+  .brand img { display: block; width: 34px; height: auto; }
+  .brand span { font-size: 25px; font-weight: 700; letter-spacing: -0.045em; line-height: 1; }
   h1 { font-size: clamp(40px, 7vw, 64px); line-height: 1.02; letter-spacing: -0.035em; margin: 10px 0 12px; font-weight: 650; text-wrap: balance; }
   .lede { font-size: 18px; color: var(--muted); max-width: 56ch; margin: 0 0 40px; }
-  .card { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 28px; align-items: center;
-          padding: 22px; border: 1px solid var(--line); border-radius: 22px; background: var(--surface); box-shadow: var(--shadow);
-          color: inherit; text-decoration: none; transition: transform .2s ease, border-color .2s ease; }
-  .card:hover, .card:focus-visible { transform: translateY(-2px); border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); outline: none; }
-  .thumb { aspect-ratio: 16 / 9; border-radius: 14px; overflow: hidden; background: #140e1b url('assets/sample/today.svg') center / cover no-repeat; }
-  .card h2 { margin: 0 0 6px; font-size: 26px; letter-spacing: -0.02em; }
-  .card p { margin: 0 0 16px; color: var(--muted); }
+  .actions { display: flex; flex-wrap: wrap; gap: 12px; margin: -16px 0 44px; }
   .btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 999px;
          background: var(--accent); color: var(--on-accent); font-weight: 600; }
-  .kbd { font: 600 11px/1 var(--ff); padding: 4px 7px; border-radius: 6px; border: 1px solid var(--line-strong); color: var(--muted); }
-  .btn .kbd { color: inherit; border-color: currentColor; }
-  .actions { display: flex; flex-wrap: wrap; gap: 12px; margin: -16px 0 28px; }
+  .btn-ghost { border: 1px solid var(--line); background: transparent; color: var(--fg); cursor: pointer; font: 600 15px/1 var(--ff); transition: border-color .2s ease, background .2s ease; }
+  .btn-ghost:hover { border-color: var(--line-strong); background: var(--surface); }
   .btn-new { border: 1px solid var(--line-strong); background: var(--surface); color: var(--fg); cursor: pointer; font: 600 15px/1 var(--ff);
              transition: transform .2s ease, border-color .2s ease; }
   .btn-new:hover { transform: translateY(-1px); border-color: var(--accent); }
@@ -65,42 +71,43 @@
   @media (prefers-reduced-motion: reduce) { .btn-new::after, .btn-new .plus::after { animation: none; } }
   .btn-new .plus { width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: var(--on-accent); font-size: 14px; line-height: 1; }
   footer { margin-top: 28px; color: var(--faint); font-size: 13px; }
-  @media (max-width: 720px) { .card { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
 <div class="start-glow glow" data-fx aria-hidden="true"></div>
 <main>
-  <div class="eyebrow">Sleek</div>
+  <div class="brand"><img src="icons/logo.svg" alt="" width="34" height="31"><span>Sleek</span></div>
   <h1>Build a deck in your browser.</h1>
-  <p class="lede">Open the sample deck, press <span class="kbd">E</span> to edit, and make it yours. Every layout in it is a starting point.</p>
+  <p class="lede">Every change saves as you make it. No account, nothing to install, and it works offline.</p>
 
   <div class="actions">
     <button type="button" class="btn btn-new" data-open-setup><span class="plus" aria-hidden="true">+</span>New deck</button>
+    <button type="button" class="btn btn-ghost" id="lib-open">Open a file…</button>
+    <input type="file" id="lib-file" accept=".sleek,application/json" hidden>
+    <button type="button" class="btn btn-ghost lib-folder-btn" id="lib-folder" hidden>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7.5A1.5 1.5 0 0 1 4.5 6h4.4l2 2.2h8.6A1.5 1.5 0 0 1 21 9.7v8.8a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18.5Z"/></svg>
+      <span>Link a folder</span></button>
   </div>
 
-  <a class="card" href="deck.html">
-    <div class="thumb" aria-hidden="true"></div>
-    <div>
-      <h2>Sample deck: Pace</h2>
-      <p>A launch story for a made-up fitness app, one slide per layout: bullets, video, galleries, carousels, before / after, take apart, press clippings and annotated screens.</p>
-      <span class="btn">Open deck</span>
-    </div>
-  </a>
+  <section class="lib" aria-labelledby="lib-h">
+    <div class="lib-head"><h2 id="lib-h">Your decks</h2><span class="lib-count" id="lib-count"></span></div>
+    <div class="lib-grid" id="lib-grid" aria-live="polite"></div>
+  </section>
 
-  <footer id="server-state"></footer>
+  <section class="lib lib-infolder" id="lib-infolder" aria-labelledby="lib-if-h" hidden>
+    <div class="lib-head"><h2 id="lib-if-h">In your folder</h2><span class="lib-count">Not in this browser yet</span></div>
+    <div class="lib-grid" id="lib-if-grid"></div>
+  </section>
+
+  <footer>
+    <p>Decks live in this browser, on this device. To keep one safe or move it, download its <b>.sleek</b> file (the ⋯ menu, or Share in the deck) and open it here on any device.
+      <span id="lib-folder-note" hidden>Or link a folder, and every deck keeps a .sleek copy there as you work.</span>
+      <button type="button" class="lib-link" id="lib-sample" hidden>Add the sample deck</button></p>
+  </footer>
 </main>
+<div class="lib-drop" id="lib-drop" aria-hidden="true"><div><b>Drop to open</b><span>A .sleek deck file</span></div></div>
 <script src="glow-fx.js"></script>
 <script src="features/setup.js"></script>
-<script>
-(function(){
-  var foot = document.getElementById('server-state');
-  if(location.protocol === 'file:'){ foot.textContent = 'Opened from a file: edits stay on this device until you save with serve.py.'; return; }
-  var off = 'Save is off: run python3 serve.py to turn it on.';
-  fetch('api/ping', { cache: 'no-store' }).then(function(r){ return r.ok ? r.json() : null; })
-    .then(function(j){ foot.textContent = j && j.ok ? 'Save is on: edits are written into this folder.' : off; })
-    .catch(function(){ foot.textContent = off; });
-})();
-</script>
+<script src="features/library.js"></script>
 </body>
 </html>

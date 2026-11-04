@@ -37,7 +37,7 @@
         ['text', '<b>Double-click any slide</b> to start, then click any text to retype it. Select words to bold, link or resize them.'],
         ['image', '<b>Click a picture or video</b> to replace it with your own.'],
         ['lines', '<b>Notes and slide names</b> edit the same way, in the notes panel.'],
-        ['check', '<b>Save Changes</b> keeps it all; until then edits stay on this device.']
+        ['check', '<b>Every change saves</b> as you make it. ⌘Z undoes, ⇧⌘Z redoes.']
       ],
       key: 'E', next: 'present'
     },

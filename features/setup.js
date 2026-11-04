@@ -2,9 +2,8 @@
 
    Steps: name the deck, light or dark, backdrop, accent, font, then a summary. Every step can be
    skipped, and every choice paints the whole page at once (through DeckTheme.paint's attributes)
-   with a live title slide beside it. Finishing writes the choices the same way the deck's Theme
-   menu does (DeckTheme.set) and puts the names on the title slide (the deck's text edits), so
-   they show as unsaved changes in the deck until Save Changes.
+   with a live title slide beside it. Finishing makes a new deck in this browser (core/store.js)
+   with that look, the names on its title slide and a slide of bullets, and opens it.
 
    Opens from the start screen's "New deck" button, the N key, or index.html#setup. */
 (function(){
@@ -130,7 +129,7 @@
       ['Font', fontOf(pick.font).n, 'font']
     ];
     return '<div class="su-k">All set</div><h2 class="su-h">Your deck is ready.</h2>' +
-      '<p class="su-p">It starts from the sample slides with your title and look. Press E in the deck to make them yours, and Save Changes to keep them.</p>' +
+      '<p class="su-p">It starts from the sample slides with your title and look. Press E in the deck to make them yours. Every change saves as you go.</p>' +
       '<div class="su-summary">' + rows.map(function(r, k){
         return '<button type="button" style="--i:' + k + '" data-goto="' + STEPS.indexOf(r[2]) + '" aria-label="Change ' + r[0].toLowerCase() + '"><span>' + r[0] + '</span><b>' +
           (r[2] === 'accent' ? '<i class="su-dot" style="background:' + esc(pick.accent) + '"></i>' : '') + esc(r[1]) + '</b><em aria-hidden="true">Edit</em></button>';
@@ -253,20 +252,21 @@
   }
 
   function finish(){
-    var f = fontOf(pick.font);
-    DT.set('mode', pick.mode); DT.set('accent', pick.accent);
-    DT.set('glow', pick.glow); DT.set('glowColor', pick.glowColor); DT.set('motion', pick.motion ? 'on' : 'off'); DT.set('fx', pick.fx);
-    DT.set('font', f.v === 'inter' ? null : { v: f.v, d: f.d, b: f.b, href: f.href });
-    // the title slide's words, as text edits (left alone where a field was left empty)
-    var text = {};
-    try { text = JSON.parse(localStorage.getItem('deck-text') || '{}') || {}; } catch(e){ text = {}; }
-    if(pick.author || pick.role) text[TITLE_IDS.overline] = [pick.author, pick.role].filter(Boolean).map(esc).join(' <span class="tick">·</span> ');
-    if(pick.title) text[TITLE_IDS.title] = esc(pick.title);
-    if(pick.lead) text[TITLE_IDS.lead] = esc(pick.lead);
-    try { localStorage.setItem('deck-text', JSON.stringify(text)); } catch(e){}
-    try { localStorage.setItem('sleek-tour', 'edit'); } catch(e){}   // the deck opens on its tour
-    close(true);
-    setTimeout(function(){ location.href = 'deck.html#title'; }, 380);
+    var f = fontOf(pick.font), S = window.SleekStore;
+    var theme = { mode: pick.mode, accent: pick.accent, glow: pick.glow, glowColor: pick.glowColor, motion: pick.motion ? 'on' : 'off', fx: pick.fx };
+    if(f.v !== 'inter') theme.font = { v: f.v, d: f.d, b: f.b, href: f.href };
+    // a title slide with the names on it, and a slide of bullets to start writing on
+    var a = S.uid(), b = S.uid(), text = {};
+    if(pick.author || pick.role) text[a + '.' + TITLE_IDS.overline] = [pick.author, pick.role].filter(Boolean).map(esc).join(' <span class="tick">·</span> ');
+    if(pick.title) text[a + '.' + TITLE_IDS.title] = esc(pick.title);
+    if(pick.lead) text[a + '.' + TITLE_IDS.lead] = esc(pick.lead);
+    var seed = { theme: theme, added: [{ id: a, t: 'title', name: 'Title' }, { id: b, t: 'bullets', name: 'Bullets' }], text: text };
+    var title = pick.title || 'Untitled deck';
+    S.create({ title: title, seed: seed, cover: { k: [pick.author, pick.role].filter(Boolean).join(' · '), h: title } }).then(function(d){
+      try { localStorage.setItem('sleek-tour', 'edit'); } catch(e){}   // the deck opens on its tour
+      close(true);
+      setTimeout(function(){ location.href = 'deck.html?d=' + d.id + '#title'; }, 380);
+    }, function(err){ console.error(err); close(false); });
   }
 
   window.SleekSetup = { open: open, close: close };

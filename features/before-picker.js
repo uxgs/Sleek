@@ -2,8 +2,8 @@
 
    A tile with a Before opens in Present with a divider that wipes between the two: the Before on
    the left, the tile's own picture (the After) on the right. Pick the Before from any picture in
-   the deck, or upload one; "No before" turns it off. The choice is kept with the deck's media, so
-   Save Changes writes it into data/seed.js and Revert drops it, like a replaced picture. */
+   the deck, or upload one; "No before" turns it off. The choice is kept with the deck's media
+   and saves with it, like a replaced picture. */
 (function(){
   var D = window.Deck; if(!D || D.popout || D.mirror) return;
   var el = null, mid = null, prevFocus = null;

@@ -1,14 +1,15 @@
 /* The deck's theme (Theme menu): mode, accent, gradient style and color, motion, effect, font.
 
-   Saved with the deck: data/seed.js has `theme`. A change you make sits on this device (localStorage)
-   until Save Changes writes it into the seed, like every other edit; Revert to Last Save drops it.
-   Each setting is: your unsaved change, else the seed, else the default.
+   Saved with the deck: its seed has `theme`. A change from the Theme menu is kept for this deck
+   (localStorage, under the deck's own keys) and saves into the seed with every other edit.
+   Each setting is: that change, else the seed, else the default.
 
-   Loaded in the <head> of the deck and the start screen, right after data/seed.js, so the page paints in the
+   Loaded in the <head> of the deck and the start screen, once the deck is loaded (core/boot.js), so the page paints in the
    right theme from the first frame. */
 (function(){
-  var KEYS = { mode: 'deck-theme', accent: 'deck-accent', glow: 'deck-glow', glowColor: 'deck-glow-color',
-               motion: 'deck-glow-motion', fx: 'deck-glow-fx', font: 'deck-font-css' };
+  var NS = window.SLEEK_NS || '';               // the open deck's own keys (core/store.js); none on the start screen
+  var KEYS = { mode: NS + 'deck-theme', accent: NS + 'deck-accent', glow: NS + 'deck-glow', glowColor: NS + 'deck-glow-color',
+               motion: NS + 'deck-glow-motion', fx: NS + 'deck-glow-fx', font: NS + 'deck-font-css' };
   var DEFAULTS = { mode: 'dark', accent: '#0A84FF', glow: 'aurora', glowColor: 'dusk', motion: 'off', fx: 'smoke', font: null };
   function seed(){ return (window.SEED && window.SEED.theme) || {}; }
   function local(k){

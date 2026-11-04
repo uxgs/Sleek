@@ -1,3 +1,9 @@
+/* the page stays hidden while core/boot.js opens the deck, then fades in */
+html.booting body { opacity: 0; }
+body { transition: opacity .25s ease; }
+.boot-fail { max-width: 560px; margin: 18vh auto; padding: 0 max(16px, env(safe-area-inset-left, 0px)); color: #F2F2F4; font: 15px/1.5 Inter, -apple-system, system-ui, sans-serif; }
+.boot-fail h1 { font-size: 30px; letter-spacing: -0.02em; margin: 0 0 8px; }
+.boot-fail p { color: #A1A1A6; } .boot-fail a { color: #fff; }
 /* base reset */
 *, *::before, *::after { box-sizing: border-box; }
 html, body { margin: 0; }
@@ -539,8 +545,15 @@ img { max-width: 100%; }
   .editbar button:disabled { opacity: 0.38; cursor: default; }
   .editbar button:disabled:hover { border-color: rgba(255,255,255,0.22); }
   .editbar .eb-fs { min-width: 2.6ch; text-align: center; color: #F2F2F4; font-variant-numeric: tabular-nums; font-size: 13px; }
-  .editbar #eb-save[hidden] { display: none; }
-  /* Save Changes: dim until there's something to save, then lit with the accent */
+  /* Saved: a quiet check while the deck is saved, a spinner while it saves */
+  .eb-saved { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px 0 8px; color: rgba(255,255,255,0.62);
+    font: 600 12px/1 var(--ff-body, Inter, sans-serif); letter-spacing: 0.01em; white-space: nowrap; }
+  .eb-saved svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .eb-saved .spin { display: none; stroke-dasharray: 22 40; transform-origin: 50% 50%; animation: eb-spin .8s linear infinite; }
+  .eb-saved[data-state="saving"] .ok { display: none; }
+  .eb-saved[data-state="saving"] .spin { display: block; }
+  .eb-saved[data-state="error"] { color: #FF8A8A; }
+  @keyframes eb-spin { to { transform: rotate(360deg); } }
   .save-seed.pending { border-color: var(--accent) !important; color: #fff !important; background: color-mix(in srgb, var(--accent) 22%, transparent) !important;
     box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent), 0 0 18px color-mix(in srgb, var(--accent) 38%, transparent); }
 
@@ -609,7 +622,7 @@ img { max-width: 100%; }
   .editbar .eb-close svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; }
   .editbar button, .editbar label.btn { font: inherit; color: #F2F2F4; background: transparent;
     border: 1px solid rgba(255,255,255,0.22); border-radius: 8px; padding: 6px 10px; cursor: pointer; white-space: nowrap; }
-  /* every button in the bar is the same 32px tall (text, icon-only, +, Revert, Save); the round X and
+  /* every button in the bar is the same 32px tall (text, icon-only, +, Undo, Redo); the round X and
      the color dots keep their own sizes */
   .editbar button:not(.eb-close):not(.acol), .editbar label.btn { box-sizing: border-box; height: 32px; padding-top: 0; padding-bottom: 0;
     display: inline-flex; align-items: center; justify-content: center; gap: 6px; line-height: 1; }
@@ -640,31 +653,6 @@ img { max-width: 100%; }
   .pin-ed button { font: inherit; border-radius: 8px; padding: 6px 12px; cursor: pointer; border: 1px solid var(--line-strong);
     background: transparent; color: var(--fg); }
   .pin-ed .del { color: #D7263D; border-color: rgba(215,38,61,0.4); }
-  .modal { position: fixed; inset: 0; z-index: 55; background: rgba(0,0,0,0.5); display: grid; place-items: center; padding: 24px; }
-  .modal[hidden] { display: none; }
-  /* confirm modal (Revert to Last Save) */
-  .modal { -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); animation: cf-fade 0.18s ease; }
-  .confirm-card { width: min(440px, 92vw); box-sizing: border-box; background: var(--surface); color: var(--fg); border: 1px solid var(--line-strong);
-    border-radius: 18px; padding: 24px 24px 20px; box-shadow: var(--shadow); font-family: var(--ff-body); animation: cf-pop 0.22s cubic-bezier(0.2, 0.8, 0.2, 1); }
-  .confirm-card .cf-icon { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; margin-bottom: 14px;
-    background: color-mix(in srgb, #FF453A 16%, transparent); color: #FF6B61; }
-  .confirm-card .cf-icon svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-  .confirm-card h3 { margin: 0 0 8px; font-size: 19px; font-weight: 650; letter-spacing: -0.01em; }
-  .confirm-card p { margin: 0 0 10px; font-size: 14px; line-height: 1.5; color: var(--muted); }
-  .confirm-card p b { color: var(--fg); font-weight: 600; }
-  .confirm-card code { font: 500 12.5px ui-monospace, SFMono-Regular, Menlo, monospace; padding: 2px 5px; border-radius: 5px; background: var(--surface-2); color: var(--fg); }
-  .confirm-card ul { margin: 0 0 12px; padding-left: 1.2em; font-size: 14px; line-height: 1.6; }
-  .confirm-card li::marker { color: #FF6B61; }
-  .confirm-card .cf-warn { font-size: 13px; color: var(--faint); }
-  .confirm-card .cf-row { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
-  .confirm-card .cf-row button { font: inherit; font-size: 14px; border: 1px solid var(--line-strong); background: transparent; color: var(--fg);
-    border-radius: 10px; padding: 9px 16px; cursor: pointer; transition: box-shadow 0.25s ease, border-color 0.2s ease; }
-  .confirm-card .cf-row button:is(:hover, :focus-visible) { border-color: var(--accent); outline: none;
-    box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 50%, transparent), 0 0 16px color-mix(in srgb, var(--accent) 40%, transparent); }
-  .confirm-card .cf-danger { background: #D7263D !important; border-color: #D7263D !important; color: #fff !important; font-weight: 600; }
-  .confirm-card .cf-danger:is(:hover, :focus-visible) { box-shadow: 0 0 0 1px rgba(215,38,61,0.6), 0 0 18px rgba(215,38,61,0.45) !important; }
-  @keyframes cf-fade { from { opacity: 0; } }
-  @keyframes cf-pop { from { opacity: 0; transform: translateY(8px) scale(0.98); } }
   /* icon-only edit bar buttons get the same tooltip as the bottom bar */
   .editbar .eb-icon { position: relative; width: 34px; height: 32px; padding: 0; display: grid; place-items: center; }
   .editbar #eb-theme[aria-pressed="true"] { color: #fff; border-color: var(--accent); background: color-mix(in srgb, var(--accent) 22%, transparent); }
@@ -805,7 +793,7 @@ img { max-width: 100%; }
     background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line); cursor: text; }
   .notes.editable .ntext:focus { box-shadow: inset 0 0 0 1px var(--accent); }
   .notes.editable .ntext:empty::before { content: "Speaker notes for this slide…"; color: var(--faint); }
-  .notes.editable .nt::after { content: " \00B7  editing, Save Changes keeps it"; color: var(--accent); }
+  .notes.editable .nt::after { content: " \00B7  editing, saves as you type"; color: var(--accent); }
   .notes .nk { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); font-weight: 600; }
   .notes .nt { font-size: 15px; letter-spacing: 0.02em; color: var(--faint); margin: 4px 0 18px; }
   .notes .ntext { font-size: 16px; line-height: 1.62; color: var(--fg); }
@@ -1092,7 +1080,6 @@ img { max-width: 100%; }
   [data-ui="pop"].ui-out { animation: ui-pop-out 0.16s cubic-bezier(0.4, 0, 1, 1) both; }
   [data-ui="fade"].ui-in { animation: ui-fade-in 0.26s ease both; }
   [data-ui="modal"].ui-out { animation: ui-fade-out 0.18s ease both; }
-  [data-ui="modal"].ui-out .confirm-card { animation: ui-pop-out 0.18s cubic-bezier(0.4, 0, 1, 1) both; }
   .editbar .eb-menu { transform-origin: 50% 100%; }
   .swatches { transform-origin: calc(100% - 20px) 100%; }
   @keyframes ui-rise-in { from { opacity: 0; translate: 0 16px; scale: 0.96; filter: blur(4px); } to { opacity: 1; translate: 0 0; scale: 1; filter: none; } }
@@ -1101,7 +1088,7 @@ img { max-width: 100%; }
   @keyframes ui-pop-out { from { opacity: 1; translate: 0 0; scale: 1; } to { opacity: 0; translate: 0 4px; scale: 0.96; } }
   @keyframes ui-fade-in { from { opacity: 0; translate: 4px 0; } to { opacity: 1; translate: 0 0; } }
   @keyframes ui-fade-out { to { opacity: 0; } }
-  @media (prefers-reduced-motion: reduce) { [data-ui].ui-in, [data-ui].ui-out, [data-ui].ui-out .confirm-card { animation-duration: 0.01s; } }
+  @media (prefers-reduced-motion: reduce) { [data-ui].ui-in, [data-ui].ui-out { animation-duration: 0.01s; } }
 
   /* ---------- re-ordering slides in the grid (app.js: drag a tile) ---------- */
   .gt { touch-action: none; -webkit-user-select: none; user-select: none; }
@@ -1156,3 +1143,13 @@ img { max-width: 100%; }
   /* hovering an item points out the thing on the slide */
   #stage .nl-hint { outline: 3px solid var(--accent); outline-offset: 4px;
     box-shadow: 0 0 0 8px color-mix(in srgb, var(--accent) 22%, transparent), 0 0 40px color-mix(in srgb, var(--accent) 50%, transparent) !important; }
+
+/* a published deck: it plays and presents, nothing more */
+html.published #editbtn, html.published #homebtn, html.published #filebtn, html.published .editbar { display: none !important; }
+html.published #homebtn + .bar-sep { display: none; }
+
+/* the Sleek mark: the way back to your decks */
+.bar .home-mark .mark { width: 17px; height: auto; display: block; transition: transform .35s cubic-bezier(.16, 1, .3, 1); }
+.bar .home-mark:hover .mark path:first-child { transform: translateX(-14px); }
+.bar .home-mark:hover .mark path:last-child { transform: translateX(14px); }
+.bar .home-mark .mark path { transition: transform .35s cubic-bezier(.16, 1, .3, 1); }

@@ -2,7 +2,7 @@
 
    Mark a tile with the component it opens:
        <div class="media" data-dis="sample-card">...</div>
-   The component itself is data in data/seed.js -> components['sample-card']:
+   The component itself is data in the deck (seed.components['sample-card']), or the built-in sample:
        { title, kicker, w, h, layers: [ back ... front ] }
    each layer: { id, type, box: [x, y, w, h], label, desc, ...type fields }
        type 'art'   src | a, b    artwork (an image, or a placeholder gradient)
@@ -17,7 +17,7 @@
    and given its own row, front layer on top; vgap sets the gap between rows, tilt the angle, vshift
    and hshift move the whole stack down / sideways, in slide px), and the slide's copy beside it (.asm-copy) swaps to the numbered layer
    list. Click again (or Esc) and it goes back together and the copy returns.
-   Space/Enter toggles apart/together, Esc closes. Edit data/seed.js to change the copy.
+   Space/Enter toggles apart/together, Esc closes. A deck's seed.components changes the copy.
 */
 (function(){
   var D = window.Deck; if(!D || D.popout) return;
@@ -27,7 +27,7 @@
   function later(fn, ms){ timers.push(setTimeout(fn, ms)); }
   function clearTimers(){ timers.forEach(clearTimeout); timers = []; }
   function esc(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, function(c){ return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
-  // a built-in sample; data/seed.js -> components overrides it (or adds others) by name
+  // a built-in sample; the deck's seed.components overrides it (or adds others) by name
   var DEFAULTS = {
     // a workout card built from four layers, at 640x360 (the rings layer is one transparent SVG)
     'sample-card': {
@@ -168,7 +168,7 @@
   // ---------- open / close ----------
   function openFrom(tile){
     var c = components()[tile.getAttribute('data-dis')];
-    if(!c || !c.layers || !c.layers.length){ console.warn('No component in data/seed.js for', tile.getAttribute('data-dis')); return; }
+    if(!c || !c.layers || !c.layers.length){ console.warn('No component in this deck for', tile.getAttribute('data-dis')); return; }
     build(); comp = c; sourceTile = tile; open = true; D.modal = true; D.hideZoom();
     render(c);
     assemble = tile.hasAttribute('data-assemble') || c.mode === 'assemble';
