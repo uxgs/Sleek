@@ -614,6 +614,24 @@ img { max-width: 100%; }
   .media.has-before .media-before i::before, .media.has-before .media-before i::after { display: none; }
   .media-before:hover { background: var(--accent); transform: translateY(-1px); }
   body.editing .slide:not(.s-screen) .media.filled:not(.is-video) .media-before { display: flex; }
+  /* Edit mode, a tile with a Before: split in half, Before on the left (click it for the Before
+     picker), After on the right (click it to replace the picture), each named at the top */
+  .media-split { display: none; }
+  body.editing .slide:not(.s-screen) .media.has-split > .media-split { display: block; position: absolute; inset: 0; z-index: 1; border-radius: inherit; overflow: hidden; pointer-events: none; }
+  body.editing .slide:not(.s-screen) .media.filled.has-split:not(.is-video) > .media-before { display: none; }   /* the left half does its job */
+  body.editing .media.has-split > .cap { position: relative; z-index: 2; }
+  .media-split .msp-b { position: absolute; inset: 0; clip-path: inset(0 50% 0 0); pointer-events: auto; cursor: pointer; }
+  .media-split .msp-a { position: absolute; inset: 0 0 0 50%; }
+  .media-split :is(.msp-b, .msp-a)::after { content: ""; position: absolute; inset: 0; background: var(--accent); opacity: 0; transition: opacity .2s ease; pointer-events: none; }
+  .media-split .msp-b:hover::after { opacity: 0.16; }
+  .media.has-split:hover .media-split:not(:has(.msp-b:hover)) .msp-a::after { opacity: 0.16; }
+  .media-split em { position: absolute; top: 10px; height: 22px; display: flex; align-items: center; padding: 0 9px; border-radius: 999px;
+    background: rgba(20,20,24,0.66); color: #fff; font: 600 10.5px/1 var(--ff-body, Inter, sans-serif); font-style: normal; letter-spacing: 0.1em; text-transform: uppercase;
+    -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); white-space: nowrap; }
+  .media-split .msp-b em { left: 10px; }
+  .media-split .msp-a em { right: 42px; }                                     /* clear of the tile's × */
+  .media-split .msp-b:hover em, .media.has-split:hover .media-split:not(:has(.msp-b:hover)) .msp-a em { background: var(--accent); }
+  .media-split .msp-line { position: absolute; top: 0; bottom: 0; left: 50%; width: 2px; margin-left: -1px; background: #fff; box-shadow: 0 0 10px rgba(0,0,0,0.45); }
   .editbar { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(68px + env(safe-area-inset-bottom,0px));
     z-index: 45; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: center; max-width: 94vw;
     background: #0E0E11; color: #F2F2F4; border: 1px solid rgba(255,255,255,0.18); border-radius: 12px; padding: 8px 10px;

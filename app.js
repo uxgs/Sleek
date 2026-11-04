@@ -1775,7 +1775,25 @@
       b.querySelector('i').style.backgroundImage = src ? 'url("' + src + '")' : '';
       b.querySelector('span').textContent = src ? 'Before' : 'Add before';
       b.title = src ? 'Change or remove the Before picture' : 'Pick a Before picture: in Present this tile opens with a wipe between the two';
+      paintSplit(t, src);
     });
+  }
+  // Edit mode: a tile with a Before shows it split down the middle, the Before on the left and the
+  // After on the right, so each half is where you click to replace that picture
+  function paintSplit(t, src){
+    var sp = t.querySelector(':scope > .media-split');
+    if(!src || t.classList.contains('is-video')){ if(sp) sp.remove(); t.classList.remove('has-split'); return; }
+    if(!sp){
+      sp = document.createElement('div'); sp.className = 'media-split';
+      sp.innerHTML = '<span class="msp-b" title="Replace the Before picture"><em>Before</em></span><span class="msp-a" aria-hidden="true"><em>After</em></span><i class="msp-line" aria-hidden="true"></i>';
+      sp.querySelector('.msp-b').addEventListener('click', function(ev){
+        if(!editing) return;
+        ev.stopPropagation(); if(Deck.openBeforePicker) Deck.openBeforePicker(t.getAttribute('data-mid'), t);
+      });
+      t.insertBefore(sp, t.firstChild);
+    }
+    t.classList.add('has-split');
+    sp.querySelector('.msp-b').style.background = (t.getAttribute('data-bg-pos') || 'center top') + '/cover no-repeat url("' + src.replace(/"/g, '%22') + '")';
   }
   // ---------- click a tile to see it big ----------
   // Any filled image tile without a take-apart expands into the full-screen
