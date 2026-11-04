@@ -14,8 +14,8 @@
    (any of the types above, drawn at box) shown while the image file isn't there yet.
    Add data-assemble to run it in place instead: clicking the tile pulls its layers apart right
    there in the frame (as a diagonal stack in depth, or with stack: 'vertical', each layer tipped back
-   and given its own row, front layer on top; vgap sets the gap between rows, tilt the angle, vshift
-   and hshift move the whole stack down / sideways, in slide px), and the slide's copy beside it (.asm-copy) swaps to the numbered layer
+   and given its own row, front layer on top; vgap sets the gap between rows, tilt the angle, hshift
+   moves the whole stack sideways, in slide px; it is sized and placed to fit between the title and the slide's bottom), and the slide's copy beside it (.asm-copy) swaps to the numbered layer
    list. Click again (or Esc) and it goes back together and the copy returns.
    Space/Enter toggles apart/together, Esc closes. A deck's seed.components changes the copy.
 */
@@ -31,7 +31,7 @@
   var DEFAULTS = {
     // a workout card built from four layers, at 640x360 (the rings layer is one transparent SVG)
     'sample-card': {
-      title: 'Workout Card', kicker: 'Sample \u00b7 Take apart', mode: 'assemble', stack: 'vertical', vgap: 16, tilt: 0, vshift: 80, hshift: -40, apartScale: 0.74,
+      title: 'Workout Card', kicker: 'Sample \u00b7 Take apart', mode: 'assemble', stack: 'vertical', vgap: 16, tilt: 0, hshift: -40, apartScale: 0.74,
       w: 640, h: 360,
       layers: [
         { id: 'background', type: 'color', box: [0, 0, 640, 360], label: 'Background',
@@ -213,6 +213,12 @@
       el.classList.add('stack-v'); el.style.setProperty('--tilt', tilt + 'deg'); el.style.setProperty('--vshift', (c.vshift != null ? c.vshift : 22) + 'px'); el.style.setProperty('--hshift', (c.hshift || 0) + 'px');
       var rows = c.layers.map(function(L, k){ var b = L.box || [0, 0, c.w, c.h]; return { k: k, b: b, h: b[3] * cos }; }).reverse();
       var total = rows.reduce(function(t, r){ return t + r.h; }, 0) + gap * (rows.length - 1), y = -total / 2;
+      // the stack fits between the slide's title and its bottom edge: smaller if it must be, centred there
+      var sl = tile.closest('.slide'), head = sl && (sl.querySelector('.headrow') || sl.querySelector('.display'));
+      var bandTop = head ? D.stageRect(head).y + D.stageRect(head).h + 28 : 40, bandBottom = 720 - 36;
+      var k = Math.min(s * (c.apartScale || 1), (bandBottom - bandTop) / total);
+      el.style.setProperty('--apart-scale', k / s);
+      el.style.setProperty('--vshift', ((bandTop + bandBottom) / 2 - (r.y + r.h / 2)) + 'px');
       rows.forEach(function(r){
         var d = el.querySelector('.dis-layer[data-k="' + r.k + '"]'); if(!d) return;
         var slot = y + r.h / 2, natural = r.b[1] + r.b[3] / 2 - c.h / 2;      // both from the frame's middle

@@ -19,24 +19,28 @@
   background: rgba(255,255,255,0.06); color: #C7C7CE; font: 20px/1 inherit; display: grid; place-items: center; transition: background .2s ease; }
 .bp-close:hover { background: rgba(255,255,255,0.14); color: #fff; }
 
-/* the pair: the Before and this tile, split by the divider the wipe uses */
+/* the pair: this tile's picture (the After), with the Before over it up to the divider, wiping between
+   the two the way the tile does in Present: across to the whole Before, back to the whole After, again */
+@property --bp-p { syntax: '<percentage>'; inherits: true; initial-value: 50%; }
 .bp-head { position: relative; display: flex; gap: 28px; align-items: center; padding: 28px 32px 20px; flex-wrap: wrap; }
-.bp-pair { position: relative; flex: none; width: min(300px, 100%); aspect-ratio: 16 / 9; border-radius: 14px; overflow: hidden; display: flex;
+.bp-pair { position: relative; flex: none; width: min(300px, 100%); aspect-ratio: 16 / 9; border-radius: 14px; overflow: hidden; --bp-p: 50%;
   box-shadow: 0 0 0 1px rgba(255,255,255,0.12), 0 24px 50px -24px rgba(0,0,0,0.8); background: #0c0c0f; }
-.bp-half { position: relative; flex: 1; background: center / cover no-repeat; transition: flex .7s cubic-bezier(.16, 1, .3, 1); }
-.bp-half em { position: absolute; bottom: 8px; padding: 4px 7px; border-radius: 6px; background: rgba(0,0,0,0.55); font: 600 10px/1 inherit;
+.bp-half { position: absolute; inset: 0; background: center / cover no-repeat; }
+.bp-b { z-index: 1; clip-path: inset(0 calc(100% - var(--bp-p)) 0 0); }
+.bp-half em { position: absolute; bottom: 8px; padding: 4px 7px; border-radius: 6px; background: rgba(0,0,0,0.55); font-weight: 600; font-size: 10px; line-height: 1;
   font-style: normal; letter-spacing: .1em; text-transform: uppercase; color: #fff; }
 .bp-b em { left: 8px; } .bp-a em { right: 8px; }
-.bp-a { background-position: right center; }
-.bp-b:not([style*="background-image"]) { background: repeating-linear-gradient(135deg, rgba(255,255,255,0.05) 0 8px, transparent 8px 16px); }
-.bp-pair.empty .bp-b { background: repeating-linear-gradient(135deg, rgba(255,255,255,0.05) 0 8px, transparent 8px 16px) !important; }
-.bp-line { position: absolute; top: 0; bottom: 0; left: 50%; width: 2px; margin-left: -1px; background: #fff; box-shadow: 0 0 12px rgba(0,0,0,0.5);
-  transition: left .7s cubic-bezier(.16, 1, .3, 1); }
+.bp-b:not([style*="background-image"]) { background: #17171b repeating-linear-gradient(135deg, rgba(255,255,255,0.05) 0 8px, transparent 8px 16px); }
+.bp-pair.empty .bp-b { background: #17171b repeating-linear-gradient(135deg, rgba(255,255,255,0.05) 0 8px, transparent 8px 16px) !important; }
+.bp-line { position: absolute; z-index: 2; top: 0; bottom: 0; left: var(--bp-p); width: 2px; margin-left: -1px; background: #fff; box-shadow: 0 0 12px rgba(0,0,0,0.5); }
 .bp-line::after { content: ""; position: absolute; top: 50%; left: 50%; width: 22px; height: 22px; border-radius: 50%; transform: translate(-50%, -50%);
   background: #fff; box-shadow: 0 2px 10px rgba(0,0,0,0.45); }
-/* on a pick the divider sweeps across to show it */
-.bp-backdrop.done .bp-pair:not(.empty) .bp-b { flex: 3; }
-.bp-backdrop.done .bp-pair:not(.empty) .bp-line { left: 75%; }
+/* with a Before it wipes on a loop; a new pick plays it once from the start, then the picker closes */
+.bp-pair.wipes { animation: bp-wipe 5.6s cubic-bezier(.65, 0, .35, 1) .5s infinite; }
+.bp-pair.wipes.play { animation: bp-wipe-once 2.8s cubic-bezier(.65, 0, .35, 1) both; }
+@keyframes bp-wipe { 0% { --bp-p: 50%; } 20% { --bp-p: 100%; } 32% { --bp-p: 100%; } 62% { --bp-p: 0%; } 74% { --bp-p: 0%; } 92%, 100% { --bp-p: 50%; } }
+@keyframes bp-wipe-once { 0% { --bp-p: 50%; } 30% { --bp-p: 100%; } 42% { --bp-p: 100%; } 80% { --bp-p: 0%; } 100% { --bp-p: 50%; } }
+@media (prefers-reduced-motion: reduce) { .bp-pair.wipes, .bp-pair.wipes.play { animation: none; } }
 
 .bp-copy { flex: 1; min-width: min(100%, 280px); padding-right: 30px; }
 .bp-k { font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: var(--accent); font-weight: 600; }

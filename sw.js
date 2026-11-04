@@ -2,7 +2,7 @@
    connection, and installs as an app. A page comes from the cache at once and is refreshed from
    the network behind it, so a new version shows on the next visit. Change VERSION (and the list)
    when files are added or removed. */
-var VERSION = 'sleek-v6';
+var VERSION = 'sleek-v7';
 var FILES = [
   './', 'index.html', 'deck.html', 'manifest.webmanifest',
   'styles.css', 'glow.css', 'app.js', 'glow-fx.js', 'theme-boot.js',
@@ -27,7 +27,9 @@ function piece(res, range){
 }
 
 self.addEventListener('install', function(e){
-  e.waitUntil(caches.open(VERSION).then(function(c){ return c.addAll(FILES); }).then(function(){ return self.skipWaiting(); }));
+  // fresh from the network, past the browser's own cache, so a new version never keeps an old file
+  e.waitUntil(caches.open(VERSION).then(function(c){ return c.addAll(FILES.map(function(f){ return new Request(f, { cache: 'reload' }); })); })
+    .then(function(){ return self.skipWaiting(); }));
 });
 self.addEventListener('activate', function(e){
   e.waitUntil(caches.keys().then(function(keys){
@@ -48,7 +50,7 @@ self.addEventListener('fetch', function(e){
   e.respondWith(caches.open(VERSION).then(function(c){
     // deck.html?d=… is deck.html
     return c.match(req, { ignoreSearch: same }).then(function(hit){
-      var net = fetch(req).then(function(res){
+      var net = (same ? fetch(url.href, { cache: 'no-cache', credentials: 'same-origin' }) : fetch(req)).then(function(res){   // checked with the server, not the browser's cache
         if(res && (res.ok || res.type === 'opaque')) c.put(same ? url.origin + url.pathname : req, res.clone());
         return res;
       }).catch(function(){ return hit; });

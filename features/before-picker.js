@@ -26,7 +26,7 @@
       '<div class="bp-modal" role="dialog" aria-modal="true" aria-label="Before picture">' +
         '<button type="button" class="bp-close" data-close aria-label="Close">×</button>' +
         '<div class="bp-head">' +
-          '<div class="bp-pair" aria-hidden="true">' +
+          '<div class="bp-pair' + (info.src ? ' wipes' : '') + '" aria-hidden="true">' +
             '<span class="bp-half bp-b"' + (info.src ? ' style="background-image:' + css(info.src) + '"' : '') + '><em>Before</em></span>' +
             '<span class="bp-half bp-a" style="background-image:' + css(info.after || '') + '"><em>After</em></span><i class="bp-line"></i>' +
           '</div>' +
@@ -66,15 +66,18 @@
     setTimeout(function(){ node.remove(); }, 380);
     if(prevFocus && prevFocus.focus) prevFocus.focus({ preventScroll: true });
   }
-  // show the choice in the pair at the top for a moment, then close
+  // show the choice in the pair at the top (one wipe), then close
   function choose(value, src){
     if(!el || el.classList.contains('done')) return;
     D.setBefore(mid, value);
     el.classList.add('done');
     var b = el.querySelector('.bp-b');
     b.style.backgroundImage = src ? 'url("' + src.replace(/"/g, '%22') + '")' : '';
-    el.querySelector('.bp-pair').classList.toggle('empty', !src);
-    setTimeout(close, src ? 900 : 450);
+    var pair = el.querySelector('.bp-pair');
+    pair.classList.toggle('empty', !src);
+    pair.classList.remove('wipes', 'play');
+    if(src){ void pair.offsetWidth; pair.classList.add('wipes', 'play'); }   // the new pair wipes once, from the start
+    setTimeout(close, src ? 2900 : 450);
   }
   function onClick(e){
     if(e.target === el || e.target.closest('[data-close]')){ close(); return; }
