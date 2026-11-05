@@ -15,7 +15,7 @@
     tour.textContent = 'Starts in your next deck'; tour.disabled = true;
   });
   var C = window.SLEEK_CHANGES, ver = document.getElementById('set-ver');
-  if(C && C.length && ver) ver.textContent = 'Sleek, version ' + C[0].v;
+  if(C && C.length && ver) ver.textContent = 'Sleek ' + C[0].v;
 
   function open(){
     if(!box.hidden) return;
