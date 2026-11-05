@@ -138,6 +138,8 @@ img { max-width: 100%; }
   .s-fullvideo > .media.slide-bg > .tile-video { object-position: center; opacity: 0; transition: opacity 1.8s ease; }
   .s-fullvideo > .media.slide-bg > .tile-video.on { opacity: 1; }
   .s-fullvideo > .media.slide-bg .media-clear { top: auto; bottom: 16px; }   /* clear of the title */
+  /* a layout's sample film, turned to the deck's accent (app.js sets the hue and saturation) */
+  [data-sample-tint] .media.sample-film > .tile-video, [data-sample-tint] .pres-canvas .media.sample-film { filter: sepia(1) hue-rotate(var(--sample-hue, 0deg)) saturate(var(--sample-sat, 1)); }
   .s-fullvideo::before { content: ""; position: absolute; inset: 0 0 auto; height: 220px; z-index: 1; pointer-events: none;
     background: linear-gradient(to bottom, color-mix(in srgb, var(--bg) 85%, transparent), color-mix(in srgb, var(--bg) 40%, transparent) 55%, transparent); }
   .s-fullvideo > .headrow { position: relative; z-index: 2; }
@@ -744,6 +746,8 @@ img { max-width: 100%; }
   :is(.bar, .editbar) [aria-expanded="true"]::after { opacity: 0 !important; }      /* not over an open menu */
   .bar .grp > [data-tt]:last-child::after { left: auto; right: 0; transform: translate(0, 4px); }   /* the last one stays on screen */
   .bar .grp > [data-tt]:last-child:is(:hover, :focus-visible)::after { transform: none; }
+  .bar .grp > [data-tt]:first-child::after { left: 0; transform: translate(0, 4px); }   /* and so does the first */
+  .bar .grp > [data-tt]:first-child:is(:hover, :focus-visible)::after { transform: none; }
   .editbar [data-tt]::after { bottom: calc(100% + 12px); }
   .bar .icon-only[aria-expanded="true"] { color: var(--fg); border-color: var(--line-strong); }
   .swatches { position: absolute; bottom: calc(100% + 12px); right: -6px;
@@ -970,7 +974,22 @@ img { max-width: 100%; }
   body.grid-open .slides-grid { transform: none; }
   .grid-head { position: sticky; top: -26px; z-index: 2; display: flex; align-items: center; justify-content: space-between;
     margin: -26px -48px 22px; padding: 26px 48px 18px; background: linear-gradient(#000 70%, rgba(0,0,0,0)); }
-  .grid-title { font-size: 13px; letter-spacing: 0.16em; text-transform: uppercase; font-weight: 600; color: #B9B9C0; }
+  /* the breadcrumb: the Sleek mark and Decks (back to your decks), this deck (back to the slide), All slides */
+  .grid-title { display: flex; align-items: center; gap: 10px; min-width: 0; max-width: calc(50% - 44px); font-size: 14px; font-weight: 500; color: #8E8E96; white-space: nowrap; }
+  .gc-home { display: grid; place-items: center; flex: none; width: 34px; height: 34px; margin: -4px 4px -4px -6px; border-radius: 10px; transition: background .2s ease; }
+  .gc-home svg { width: 22px; height: auto; display: block; }
+  .gc-home svg path { transition: transform .35s cubic-bezier(.16, 1, .3, 1); }
+  .gc-home:hover svg path:first-child { transform: translateX(-14px); }
+  .gc-home:hover svg path:last-child { transform: translateX(14px); }
+  .gc-decks { display: contents; }
+  .gc-link { min-width: 0; padding: 5px 7px; margin: -5px -7px; border: 0; border-radius: 8px; background: none; color: #B9B9C0; font: inherit; text-decoration: none; cursor: pointer;
+    overflow: hidden; text-overflow: ellipsis; transition: background .2s ease, color .2s ease; }
+  .gc-deck { flex: 0 1 auto; max-width: 26ch; }
+  .gc-link:hover, .gc-home:hover { background: rgba(255,255,255,0.08); color: #F2F2F4; }
+  .gc-link:focus-visible, .gc-home:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .gc-sep { flex: none; color: #4A4A52; }
+  .gc-cur { flex: none; color: #F2F2F4; font-weight: 600; }
+  html.published .gc-home, html.published .gc-decks { display: none; }
   .grid-count { margin-left: 8px; color: #6E6E76; font-variant-numeric: tabular-nums; }
   .grid-back { width: 48px; height: 32px; display: grid; place-items: center; padding: 0; cursor: pointer; color: #F2F2F4;
     background: transparent; border: 1px solid rgba(255,255,255,0.22); border-radius: 16px; transition: box-shadow 0.25s, border-color 0.2s; }
@@ -1193,7 +1212,21 @@ img { max-width: 100%; }
 
 /* a published deck: it plays and presents, nothing more */
 html.published #editbtn, html.published #homebtn, html.published #filebtn, html.published .editbar { display: none !important; }
-html.published #homebtn + .bar-sep { display: none; }
+html.published #homebtn + .bar-sep, body.compact .bar .home-sep { display: none; }
+/* Back to your decks: fades in while the pointer is in the window's top-left corner (app.js) */
+.deck-back { position: fixed; z-index: 31; top: calc(16px + env(safe-area-inset-top, 0px)); left: calc(16px + env(safe-area-inset-left, 0px));
+  display: flex; align-items: center; gap: 4px; height: 36px; padding: 0 14px 0 9px; border-radius: 999px; border: 1px solid var(--line-strong);
+  background: color-mix(in srgb, var(--surface) 80%, transparent); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  color: var(--fg); font: 500 13px/1 var(--ff-body, Inter, sans-serif); letter-spacing: 0.01em; cursor: pointer;
+  opacity: 0; transform: translateX(-8px); pointer-events: none; transition: opacity .25s ease, transform .35s cubic-bezier(.16, 1, .3, 1), border-color .2s ease; }
+.deck-back svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: transform .25s ease; }
+.deck-back.on, .deck-back:focus-visible { opacity: 1; transform: none; pointer-events: auto; }
+.deck-back:hover { border-color: var(--accent); }
+.deck-back:hover svg { transform: translateX(-2px); }
+.deck-back:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+body.grid-open .deck-back { opacity: 0; pointer-events: none; }
+@media (hover: none) { .deck-back { display: none; } }
+@media (prefers-reduced-motion: reduce) { .deck-back { transform: none; transition: opacity .2s ease; } }
 
 /* the Sleek mark: the way back to your decks */
 .bar .home-mark .mark { width: 17px; height: auto; display: block; transition: transform .35s cubic-bezier(.16, 1, .3, 1); }
@@ -1336,6 +1369,10 @@ body.compact .tray .sheet-grab { display: block; width: 38px; height: 5px; margi
 
 /* All slides on phones: Edit turns on dragging, duplicating and deleting */
 .grid-edit { display: none; }
+/* on a phone the breadcrumb takes a row of its own, under the ^ and Edit */
+body.compact .grid-head { flex-wrap: wrap; row-gap: 16px; }
+body.compact .grid-title { order: 3; flex-basis: 100%; max-width: none; }
+body.compact .grid-back { top: 44px; }
 body.compact .grid-edit { display: inline-flex; align-items: center; height: 36px; padding: 0 16px; margin-left: auto; margin-right: 10px; border-radius: 999px;
   border: 1px solid var(--line-strong); background: transparent; color: var(--fg); font: 600 14px/1 var(--ff-body, Inter, sans-serif); cursor: pointer; }
 body.compact .grid-edit[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }

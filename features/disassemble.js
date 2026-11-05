@@ -36,7 +36,7 @@
       layers: [
         { id: 'background', type: 'color', box: [0, 0, 640, 360], label: 'Background',
           color: 'radial-gradient(420px 300px at 90% 20%, rgba(255,106,61,0.45), rgba(255,106,61,0) 70%), linear-gradient(120deg, #1a0f1c 0%, #2a1420 60%, #3a1a22 100%)',
-          desc: 'A deep plum, warming toward the top right.' },
+          desc: 'A dark wash, glowing toward the top right.' },
         { id: 'rings', type: 'art', src: 'assets/sample/card-rings.svg', box: [0, 0, 640, 360], label: 'Activity Rings',
           desc: 'Move, effort and recovery for the day, filling as the session goes.' },
         { id: 'headline', type: 'text', text: 'Morning strength', sub: 'Today\'s pick', box: [40, 135, 360, 90], label: 'Headline',
@@ -85,7 +85,12 @@
     ratioOf(pic, function(ratio){
       var o = JSON.parse(JSON.stringify(c));
       o.w = o.w || 640; if(!o.h) o.h = Math.round(o.w / ratio);
-      o.layers.forEach(function(L){ if(L.src === '@tile') L.src = pic; });
+      var sample = Object.keys(DEFAULTS).some(function(k){ return DEFAULTS[k] === c; });
+      o.layers.forEach(function(L){
+        if(sample && D.sampleRecolor) ['color', 'a', 'b'].forEach(function(f){ if(L[f]) L[f] = D.sampleRecolor(L[f]); });   // the built-in sample, in the deck's accent
+        if(L.src === '@tile') L.src = pic;
+        else if(D.sampleTint && /^assets\/sample\//.test(L.src || '')) L.src = D.sampleTint(L.src);   // the sample's art, in the deck's accent
+      });
       cb(o);
     });
   }

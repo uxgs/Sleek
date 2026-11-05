@@ -15,7 +15,9 @@
   if(full && !(document.fullscreenEnabled || document.webkitFullscreenEnabled)) full.hidden = true;
 
   // a label for each button, shown in the tray
-  Array.prototype.forEach.call(grp.querySelectorAll('button[data-tt], #filebtn'), function(b){
+  var labelled = Array.prototype.slice.call(grp.querySelectorAll('button[data-tt], #filebtn')), hb = document.getElementById('homebtn');
+  if(hb) labelled.unshift(hb);                          // your decks sits at the bar's left on a wide window, first in the tray here
+  labelled.forEach(function(b){
     if(b.querySelector('.tray-l')) return;
     var l = document.createElement('span'); l.className = 'tray-l'; l.textContent = b.getAttribute('data-tt') || b.getAttribute('aria-label') || '';
     b.appendChild(l);
@@ -34,13 +36,15 @@
   document.body.appendChild(tray);
   var sheet = tray.querySelector('.tray-sheet'), body = tray.querySelector('.tray-body'), scrim = tray.querySelector('.tray-scrim');
 
+  var home = document.getElementById('homebtn'), homeAt = bar.querySelector('.home-sep');
   var small = false;
   function apply(){
     var s = mq.matches;
     if(s === small) return;
     small = s;
     document.body.classList.toggle('compact', s);
-    if(s) body.appendChild(grp); else { close(true); bar.insertBefore(grp, more); }
+    if(s){ body.appendChild(grp); if(home) grp.insertBefore(home, grp.firstChild); }   // your decks: first in the tray
+    else { close(true); bar.insertBefore(grp, more); if(home) homeAt.parentNode.insertBefore(home, homeAt); }   // back at the bar's left
     window.dispatchEvent(new Event('resize'));          // the slide refits to the bar's new height
   }
   if(mq.addEventListener) mq.addEventListener('change', apply); else mq.addListener(apply);
@@ -261,10 +265,22 @@
     if(g.mode === 'wait'){
       if(Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
       holdCancel();
-      if(Math.abs(dx) < Math.abs(dy) * 1.1){ g = null; return; }   // a vertical move isn't ours
-      var list = slideList(), cur = stage.querySelector(':scope > .slide.active'), k = list.indexOf(cur);
-      g.mode = 'drag'; g.cur = cur; g.k = k; g.list = list; g.s = scale(); g.peer = null; g.dir = 0;
-      stage.classList.add('swiping');
+      if(Math.abs(dx) < Math.abs(dy) * 1.1){
+        // pushed up: on down to All slides, which sits below the slide; any other vertical move isn't ours
+        if(dy < 0 && !scrollsDown(e.target) && document.getElementById('gridbtn')){ g.mode = 'pull'; g.vy = 0; g.lastY = t.clientY; g.lastYT = Date.now(); }
+        else { g = null; return; }
+      } else {
+        var list = slideList(), cur = stage.querySelector(':scope > .slide.active'), k = list.indexOf(cur);
+        g.mode = 'drag'; g.cur = cur; g.k = k; g.list = list; g.s = scale(); g.peer = null; g.dir = 0;
+        stage.classList.add('swiping');
+      }
+    }
+    if(g.mode === 'pull'){
+      e.preventDefault();
+      var nowY = Date.now(); g.vy = (t.clientY - g.lastY) / Math.max(1, nowY - g.lastYT); g.lastY = t.clientY; g.lastYT = nowY;
+      g.dy = Math.min(0, dy);
+      pullTo(g.dy, false);
+      return;
     }
     if(g.mode !== 'drag') return;
     e.preventDefault();
@@ -278,8 +294,31 @@
     if(g.peer) setX(g.peer, x + dir * (1280 + GAP));
   }, { passive: false });
 
+  // the slide follows a push up part of the way; let go far enough (or flick) and All slides takes over
+  // from where it is
+  var PULL = 80;
+  function pullTo(dy, anim){
+    var vp = stage.parentNode;                         // the stage's own transform fits it to the screen
+    vp.style.transition = anim ? 'transform .3s cubic-bezier(.2, .8, .2, 1)' : 'none';
+    vp.style.transform = dy ? 'translate3d(0,' + Math.max(dy, -PULL * 3) * 0.45 + 'px,0)' : '';
+  }
+  function endPull(d, cancelled){
+    swallowClick = Date.now();
+    var vp = stage.parentNode, go = !cancelled && (-d.dy > PULL || d.vy < -0.5 && -d.dy > 24);
+    if(go){ vp.style.transition = ''; vp.style.transform = ''; var b = document.getElementById('gridbtn'); if(b) b.click(); return; }
+    pullTo(0, true);
+    setTimeout(function(){ vp.style.transition = ''; }, 320);
+  }
+  // not while something under the finger can still scroll that way (it scrolls instead)
+  function scrollsDown(t){
+    for(var el = t; el && el !== document.body; el = el.parentElement)
+      if(el.scrollHeight > el.clientHeight + 1 && el.scrollTop + el.clientHeight < el.scrollHeight - 1 && /auto|scroll/.test(getComputedStyle(el).overflowY)) return true;
+    return false;
+  }
+
   function endDrag(cancelled){
     var d = g; g = null; holdCancel();
+    if(d && d.mode === 'pull') return endPull(d, cancelled);
     if(!d || d.mode !== 'drag') return;
     swallowClick = Date.now();
     var go = !cancelled && d.peer && (Math.abs(d.dx) > 1280 * 0.22 || Math.abs(d.v) > 0.35 && (d.v < 0) === (d.dir > 0));
@@ -301,6 +340,46 @@
   }
   document.addEventListener('touchend', function(){ endDrag(false); }, { passive: true });
   document.addEventListener('touchcancel', function(){ endDrag(true); }, { passive: true });
+  // ---------- touch: in All slides, pull down from the top of the list to go back up to the slide ----------
+  var gridEl = document.getElementById('grid'), gp = null;
+  function gridPull(dy, anim){
+    gridEl.style.transition = anim ? 'transform .3s cubic-bezier(.2, .8, .2, 1)' : 'none';
+    gridEl.style.transform = dy ? 'translate3d(0,' + Math.min(dy, PULL * 3) * 0.45 + 'px,0)' : '';
+  }
+  if(gridEl){
+    gridEl.addEventListener('touchstart', function(e){
+      gp = null;
+      if(e.touches.length !== 1 || !document.body.classList.contains('grid-open') || document.body.classList.contains('grid-editing') || D.modal) return;
+      var t = e.touches[0]; gp = { x: t.clientX, y: t.clientY, mode: 'wait', dy: 0, vy: 0, last: t.clientY, lastT: Date.now() };
+    }, { passive: true });
+    gridEl.addEventListener('touchmove', function(e){
+      if(!gp) return;
+      var t = e.touches[0], dx = t.clientX - gp.x, dy = t.clientY - gp.y;
+      if(gp.mode === 'wait'){
+        if(Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+        // only down, only from the top of the list (anywhere else it scrolls), and not sideways
+        if(dy < 0 || Math.abs(dx) > Math.abs(dy) || gridEl.scrollTop > 0){ gp = null; return; }
+        gp.mode = 'pull'; gp.y = t.clientY; dy = 0;
+      }
+      e.preventDefault();
+      var now = Date.now(); gp.vy = (t.clientY - gp.last) / Math.max(1, now - gp.lastT); gp.last = t.clientY; gp.lastT = now;
+      gp.dy = Math.max(0, dy);
+      gridPull(gp.dy, false);
+    }, { passive: false });
+    var gridEnd = function(cancelled){
+      var d = gp; gp = null; if(!d || d.mode !== 'pull') return;
+      swallowClick = Date.now();
+      if(!cancelled && (d.dy > PULL || d.vy > 0.5 && d.dy > 24)){
+        gridEl.style.transition = ''; gridEl.style.transform = '';   // it carries on down from where it is
+        var b = document.getElementById('grid-back'); if(b) b.click(); return;
+      }
+      gridPull(0, true);
+      setTimeout(function(){ gridEl.style.transition = ''; }, 320);
+    };
+    gridEl.addEventListener('touchend', function(){ gridEnd(false); }, { passive: true });
+    gridEl.addEventListener('touchcancel', function(){ gridEnd(true); }, { passive: true });
+  }
+
   // the tap that ends a swipe or a hold doesn't also turn the page or open a tile
   document.addEventListener('click', function(e){ if(e.isTrusted && Date.now() - swallowClick < 450){ e.stopPropagation(); e.preventDefault(); } }, true);
   // a long press doesn't select text or open the browser's menu over the slide

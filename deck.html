@@ -178,7 +178,15 @@
 
 <section class="slides-grid" id="grid" hidden aria-label="All slides">
   <div class="grid-head">
-    <div class="grid-title">All slides <span class="grid-count" id="grid-count"></span></div>
+    <!-- where you are: your decks, this deck, its slides -->
+    <nav class="grid-title" aria-label="Breadcrumb">
+      <a class="gc-home" id="grid-home" href="index.html" title="Your decks" aria-label="Your decks">
+        <svg viewBox="116 130 280 252" aria-hidden="true"><defs><linearGradient id="gc-g" x1="150" y1="130" x2="362" y2="382" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#7E9CFF"/><stop offset=".5" stop-color="#B48CFF"/><stop offset="1" stop-color="#FF8EE0"/></linearGradient></defs>
+          <path d="M176 186a56 56 0 0 1 56-56h164v112H232a56 56 0 0 1-56-56Z" fill="url(#gc-g)"/><path d="M336 326a56 56 0 0 1-56 56H116V270h164a56 56 0 0 1 56 56Z" fill="url(#gc-g)"/></svg></a>
+      <span class="gc-decks"><a class="gc-link" id="grid-decks" href="index.html">Decks</a><span class="gc-sep" aria-hidden="true">/</span></span>
+      <button class="gc-link gc-deck" id="grid-deck" type="button" title="Back to the slide"></button><span class="gc-sep" aria-hidden="true">/</span>
+      <span class="gc-cur" aria-current="page">All slides<span class="grid-count" id="grid-count"></span></span>
+    </nav>
     <button class="grid-back" id="grid-back" type="button" title="Back to the slide" aria-label="Back to the slide">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 14.5 6-6 6 6"/></svg></button>
   </div>
@@ -218,6 +226,12 @@
 
 <div class="bar" id="bar">
   <div class="grp">
+    <!-- your decks, then the slide controls -->
+    <button id="homebtn" class="ibtn icon-only home-mark" title="Your decks" aria-label="Your decks">
+      <svg class="mark" viewBox="116 130 280 252" aria-hidden="true"><defs><linearGradient id="hb-g" x1="150" y1="130" x2="362" y2="382" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#7E9CFF"/><stop offset=".5" stop-color="#B48CFF"/><stop offset="1" stop-color="#FF8EE0"/></linearGradient></defs>
+        <path d="M176 186a56 56 0 0 1 56-56h164v112H232a56 56 0 0 1-56-56Z" fill="url(#hb-g)"/><path d="M336 326a56 56 0 0 1-56 56H116V270h164a56 56 0 0 1 56 56Z" fill="url(#hb-g)"/></svg>
+    </button>
+    <span class="bar-sep home-sep" aria-hidden="true"></span>
     <!-- the same chevrons as the carousels' arrows -->
     <button id="prev" class="ibtn icon-only nav-chev" aria-label="Previous slide">
       <svg class="ico" viewBox="0 0 20 20" aria-hidden="true"><path d="M12.5 4.5 7 10l5.5 5.5"/></svg></button>
@@ -230,11 +244,6 @@
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9.5 6 6 6-6"/></svg></button>
   <div class="spacer"></div>
   <div class="grp">
-    <button id="homebtn" class="ibtn icon-only home-mark" title="Your decks" aria-label="Your decks">
-      <svg class="mark" viewBox="116 130 280 252" aria-hidden="true"><defs><linearGradient id="hb-g" x1="150" y1="130" x2="362" y2="382" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#7E9CFF"/><stop offset=".5" stop-color="#B48CFF"/><stop offset="1" stop-color="#FF8EE0"/></linearGradient></defs>
-        <path d="M176 186a56 56 0 0 1 56-56h164v112H232a56 56 0 0 1-56-56Z" fill="url(#hb-g)"/><path d="M336 326a56 56 0 0 1-56 56H116V270h164a56 56 0 0 1 56 56Z" fill="url(#hb-g)"/></svg>
-    </button>
-    <span class="bar-sep" aria-hidden="true"></span>
     <button id="presentbtn" class="ibtn icon-only" title="Present" aria-label="Present">
       <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="7.5" r="3.6"/><path d="M2.5 20.5v-.8A5.7 5.7 0 0 1 8.2 14h1.6a5.7 5.7 0 0 1 5.7 5.7v.8"/><path d="M16.8 5.2a4.4 4.4 0 0 1 0 5.6"/><path d="M19.6 2.8a8 8 0 0 1 0 10.4"/></svg>
     </button>

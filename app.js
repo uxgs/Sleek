@@ -593,6 +593,7 @@
     if(gridOpen || POPOUT || MIRROR || featureOpen()) return;
     if(window.Deck && Deck.closeExpanded) Deck.closeExpanded();
     clearTimeout(gridT); gridOpen = true;
+    if(gridDeck) gridDeck.textContent = (window.SLEEK_DECK && SLEEK_DECK.title) || document.title || 'This deck';
     buildGrid(); gridEl.hidden = false; fitGrid();
     var cur = gridTiles.querySelector('.gt.current'); gridEl.scrollTop = 0;
     if(cur) gridEl.scrollTop = Math.max(0, cur.offsetTop - gridEl.clientHeight / 2 + cur.offsetHeight / 2);
@@ -612,6 +613,13 @@
   function pauseVideosFor(on){ if(on) Array.prototype.forEach.call(document.querySelectorAll('#stage video'), function(v){ v.pause(); }); else armVideos(); }
   document.getElementById('gridbtn').onclick = function(){ openGrid(); };
   document.getElementById('grid-back').onclick = function(){ closeGrid(); };
+  // the breadcrumb: your decks (the same as the bar's Sleek button, which saves first), and this deck
+  ['grid-home', 'grid-decks'].forEach(function(id){
+    var a = document.getElementById(id); if(!a) return;
+    a.addEventListener('click', function(e){ if(e.metaKey || e.ctrlKey || e.shiftKey) return; e.preventDefault(); var h = document.getElementById('homebtn'); if(h) h.click(); });
+  });
+  var gridDeck = document.getElementById('grid-deck');
+  if(gridDeck) gridDeck.onclick = function(){ closeGrid(); };
   gridTiles.addEventListener('click', function(e){
     if(Date.now() - gridDragEnd < 400) return;                 // the end of a drag, not a pick
     var act = e.target.closest('.gt-act'); if(act){ slideAction(act.getAttribute('data-act'), +act.closest('.gt').getAttribute('data-k')); return; }
@@ -967,9 +975,9 @@
     var d = document.createElement('div'); d.innerHTML = t.html;
     var c = d.firstElementChild, n = c.querySelector('template.slide-notes'); if(n) n.remove();
     Array.prototype.forEach.call(c.querySelectorAll('.media[data-default-src]'), function(m){
-      var src = m.getAttribute('data-default-src');
-      if(isVideo(src)) stillFor(src, function(url){ m.style.background = 'center / cover no-repeat url("' + url + '")'; });
-      else m.style.background = (m.getAttribute('data-bg-pos') || 'center top') + '/cover no-repeat url("' + src + '")';
+      var src = m.getAttribute('data-default-src'), pos = (m.getAttribute('data-bg-pos') || 'center top') + '/cover no-repeat url("';
+      if(isVideo(src)){ m.classList.add('sample-film'); stillFor(src, function(url){ m.style.background = 'center / cover no-repeat url("' + url + '")'; }); }
+      else m.style.background = pos + sampleTint(src, function(u){ m.style.background = pos + u + '")'; }) + '")';   // in the deck's accent
       m.classList.add('filled');
     });
     return stillCopy(c);
@@ -1024,6 +1032,22 @@
   document.getElementById('presentbtn').onclick = openPresenter;
   // back to your decks (the start screen), once this deck is saved
   document.getElementById('homebtn').onclick = function(){ flushSave().then(function(){ location.href = 'index.html'; }); };
+  // the pointer in the window's top-left corner fades in a Back button to your decks
+  if(!POPOUT && !MIRROR && !(window.SLEEK_DECK && SLEEK_DECK.published)){
+    var deckBack = document.createElement('button');
+    deckBack.type = 'button'; deckBack.className = 'deck-back'; deckBack.setAttribute('aria-label', 'Back to your decks');
+    deckBack.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12.5 4.5 7 10l5.5 5.5"/></svg><span>Decks</span>';
+    deckBack.onclick = function(){ document.getElementById('homebtn').click(); };
+    document.body.appendChild(deckBack);
+    var backOn = false;
+    var backShow = function(on){ if(on !== backOn){ backOn = on; deckBack.classList.toggle('on', on); } };
+    document.addEventListener('mousemove', function(e){
+      var b = document.body.classList;
+      backShow(e.clientX < (backOn ? 200 : 120) && e.clientY < (backOn ? 140 : 96) && !b.contains('grid-open') && !b.contains('annotating') && !D_modal());
+    }, { passive: true });
+    document.documentElement.addEventListener('mouseleave', function(){ backShow(false); });
+  }
+  function D_modal(){ return !!(window.Deck && Deck.modal); }
   document.getElementById('pres-prev').onclick = prev;
   document.getElementById('pres-next').onclick = next;
 
@@ -1411,7 +1435,7 @@
       sec._sid = sc.id;
       var media = document.createElement('div');
       media.className = 'media';
-      if(sc.img){ media.style.background = 'center top/cover no-repeat url(' + busted(sc.img) + ')'; }
+      if(sc.img){ media._img = sc.img; screenBg(media); }
       else { var cap = document.createElement('span'); cap.className = 'cap'; cap.textContent = sc.name; media.appendChild(cap); }
       sec.appendChild(media);
       var nm = document.createElement('span'); nm.className = 'screenname'; nm.textContent = sc.name; sec.appendChild(nm);
@@ -1475,7 +1499,7 @@
   // (an annotated screen's image, or the picture under it on any other slide), the After is the image.
   function annBefore(aid){
     var r = annById(aid); if(!r) return null;
-    if(r.sc.img) return busted(r.sc.img);
+    if(r.sc.img) return busted(ownSample(r.sc.img) ? sampleTint(r.sc.img) : r.sc.img);
     var el = document.querySelector('#stage .pin[data-aid="' + aid + '"], #stage .abox[data-aid="' + aid + '"], #stage .aarrow-tag[data-aid="' + aid + '"]');
     var s = el && el.closest('.slide'); if(!s) return null;
     var er = el.getBoundingClientRect(), cx = er.left + er.width / 2, cy = er.top + er.height / 2;
@@ -2638,6 +2662,96 @@
     try { localStorage.setItem(NS + 'sleek-media-ping', String(Date.now())); } catch(e){}
     try { if(bc) bc.postMessage({ media: true }); } catch(e){}
   }
+  // ---------- the layouts' sample pictures, in the deck's accent ----------
+  // The sample art is drawn in one orange (and a pale tint of it). On a deck with another accent, a tile
+  // still showing its layout's own picture shows it in that accent instead, and a sample film is turned
+  // to its hue, so a new slide (and the layout picker's previews) look like they belong. Pictures you
+  // add are never touched.
+  var SAMPLE_ORANGE = [255, 106, 61], tinted = {}, tintWait = {};
+  function deckAccent(){
+    var v = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
+    return /^#[0-9a-f]{6}$/i.test(v) ? v.toLowerCase() : null;
+  }
+  function hexRgb(h){ return [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)]; }
+  function rgbHex(c){ return '#' + c.map(function(x){ return ('0' + Math.round(x).toString(16)).slice(-2); }).join(''); }
+  function hsl(c){
+    var r = c[0] / 255, g = c[1] / 255, b = c[2] / 255, mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn, h = 0, l = (mx + mn) / 2;
+    if(d){ h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; h *= 60; if(h < 0) h += 360; }
+    return { h: h, s: d ? d / (1 - Math.abs(2 * l - 1)) : 0, l: l };
+  }
+  function hslRgb(h, s, l){
+    var q = (1 - Math.abs(2 * l - 1)) * s, x = q * (1 - Math.abs((h / 60) % 2 - 1)), m = l - q / 2, r = [0, 0, 0], i = Math.floor(h / 60) % 6;
+    r = [[q, x, 0], [x, q, 0], [0, q, x], [0, x, q], [x, 0, q], [q, 0, x]][i];
+    return r.map(function(v){ return (v + m) * 255; });
+  }
+  function sampleShift(){
+    var a = deckAccent(), de = document.documentElement;
+    if(!a || a === rgbHex(SAMPLE_ORANGE)){ de.style.removeProperty('--sample-hue'); de.style.removeProperty('--sample-sat'); de.removeAttribute('data-sample-tint'); return; }
+    // a film is toned first (sepia, whose hue is about 38°), then turned to the accent's hue, so every
+    // colour in it lands in the accent's family, not only the orange
+    var to = hsl(hexRgb(a)); de.setAttribute('data-sample-tint', '');
+    de.style.setProperty('--sample-hue', Math.round(to.h - 38) + 'deg');
+    de.style.setProperty('--sample-sat', Math.max(0.2, Math.min(3, to.s * 3)).toFixed(2));
+  }
+  // the sample's colours, written in the deck's accent: the orange becomes the accent, its pale tint a
+  // pale accent, the two other ring colours (amber, sky) a lighter accent and a neighbour of it (so the
+  // rings stay three, but one family), and the card's warm darks darks warmed by the accent
+  function sampleRecolor(text, a){
+    a = a || deckAccent();
+    if(!text || !a || a === rgbHex(SAMPLE_ORANGE)) return text;
+    var c = hexRgb(a), h = hsl(c);
+    function mixW(f){ return rgbHex(c.map(function(x){ return x + (255 - x) * f; })); }
+    function dark(f){ return rgbHex(c.map(function(x){ return 13 + (x - 13) * f; })); }
+    var map = { '#ff6a3d': a, '#ffd2c2': mixW(0.72), '#ffb648': mixW(0.42), '#7ad3ff': rgbHex(hslRgb((h.h + 40) % 360, Math.max(h.s, 0.35), 0.74)),
+                '#1a0f1c': dark(0.08), '#2a1420': dark(0.16), '#3a1a22': dark(0.24) };
+    return String(text).replace(/#(ff6a3d|ffd2c2|ffb648|7ad3ff|1a0f1c|2a1420|3a1a22)\b/gi, function(m){ return map[m.toLowerCase()]; })
+      .replace(/rgba\(\s*255\s*,\s*106\s*,\s*61\s*,/g, 'rgba(' + c.join(', ') + ',');
+  }
+  // the sample picture src in the deck's accent: at once when it's ready, else src now and cb(tinted) later
+  function sampleTint(src, cb){
+    if(!tinted) return src;   // before this part of the page has run (retint repaints after)
+    var a = deckAccent();
+    if(!src || !a || a === rgbHex(SAMPLE_ORANGE) || !/(\.svg([?#]|$))|^data:image\/svg\+xml/i.test(src)) return src;
+    var k = a + '|' + src;
+    if(tinted[k]) return tinted[k];
+    if(cb) (tintWait[k] = tintWait[k] || []).push(cb);
+    if(tintWait[k] && tintWait[k].started) return src;
+    tintWait[k] = tintWait[k] || []; tintWait[k].started = true;
+    fetch(src).then(function(r){ return r.text(); }).then(function(t){
+      tinted[k] = /#ff6a3d/i.test(t) ? 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(sampleRecolor(t, a)) : src;
+    }, function(){ tinted[k] = src; }).then(function(){
+      var w = tintWait[k] || []; delete tintWait[k];
+      w.forEach(function(f){ try { f(tinted[k]); } catch(e){} });
+    });
+    return src;
+  }
+  function samplePic(m, img){
+    if(!img || img !== m.getAttribute('data-default-src')) return img;
+    if(isVideo(img)){ m.classList.add('sample-film'); return img; }
+    return sampleTint(img, function(){ applyMedia(); });
+  }
+  // the layouts' sample pictures start tinting as the deck opens, and again when the accent changes
+  var lastAccent = null;
+  function retint(){
+    var a = deckAccent(); if(a === lastAccent) return; lastAccent = a;
+    sampleShift();
+    TEMPLATES.forEach(function(t){ (t.html.match(/assets\/sample\/[\w.-]+\.svg/g) || []).forEach(function(src){ sampleTint(src); }); });
+    sampleTint('assets/sample/card-rings.svg');
+    if(typeof applyMedia === 'function' && document.querySelector('.media[data-mid]')) applyMedia();
+    paintScreens();
+  }
+  new MutationObserver(retint).observe(document.documentElement, { attributes: true, attributeFilter: ['style'] });
+  retint();
+
+  // Sleek's own sample art used straight from its folder (the sample deck's annotated screens) follows
+  // the accent too; a picture you add never lives there
+  function ownSample(src){ return /^assets\/sample\/[\w.-]+\.svg$/.test(src || ''); }
+  function paintScreens(){ Array.prototype.forEach.call(document.querySelectorAll('#stage .slide.s-screen > .media'), screenBg); }
+  function screenBg(media){
+    var src = media._img; if(!src) return;
+    if(ownSample(src)) src = sampleTint(src, paintScreens);   // the screens on the page then, which may be new ones
+    media.style.background = 'center top/cover no-repeat url("' + busted(src) + '")';
+  }
   // a tile's picture: a device edit, then the seed, then the layout's own; 'none' is no picture at all
   // (a divider with none shows the theme behind its words)
   function picOf(mid, m){
@@ -2648,7 +2762,8 @@
     Array.prototype.forEach.call(document.querySelectorAll('.slide:not(.s-screen) .media[data-mid]'), function(m){
       var mid = m.getAttribute('data-mid');
       // a device edit, then the seed, then the tile's own data-default-src
-      var img = picOf(mid, m);
+      m.classList.remove('sample-film');
+      var img = samplePic(m, picOf(mid, m));                     // the layout's own picture, in the deck's accent
       if(img) img = busted(img);                               // a file you replaced on disk loads fresh
       if(img && isVideo(img)){ m.style.background = ''; setTileVideo(m, img); m.classList.add('filled'); }
       else if(img){ setTileVideo(m, null); m.style.background = (m.getAttribute('data-bg-pos') || 'center top') + '/cover no-repeat url("' + img + '")'; m.classList.add('filled'); }   // crops keep the top
@@ -2964,7 +3079,7 @@
   function busted(src){ return src; }
   function tileSrc(m){
     var mid = m.getAttribute('data-mid');
-    if(mid) return busted(picOf(mid, m));
+    if(mid){ var v = picOf(mid, m); return busted(v && v === m.getAttribute('data-default-src') && !isVideo(v) ? sampleTint(v) : v); }
     var tv = m.querySelector(':scope > video.tile-video'); if(tv) return vsrc(tv);
     var bg = /url\(["']?([^"')]+)["']?\)/.exec(m.style.backgroundImage || '');   // looping copies carry the image inline
     return bg ? bg[1] : null;
@@ -3713,6 +3828,8 @@
     tileSrc: function(m){ return tileSrc(m); },     // the image a tile shows (device edit or seed)
     templates: function(){ return TEMPLATES.map(function(t){ return { key: t.key, name: t.name, desc: t.desc }; }); },
     templatePreview: function(key){ return templatePreview(key); },
+    sampleTint: function(src, cb){ return sampleTint(src, cb); },   // a layout's sample picture in the deck's accent
+    sampleRecolor: function(text){ return sampleRecolor(text); },
     // add a slide from a template; the page rebuilds itself and opens on it
     addSlide: function(key){
       var t = templateBy(key); if(!t) return null;

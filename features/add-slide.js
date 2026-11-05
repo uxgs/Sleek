@@ -38,7 +38,8 @@
       '</div>';
     document.body.appendChild(el);
     Array.prototype.forEach.call(el.querySelectorAll('.as-card'), function(c){
-      var p = D.templatePreview(c.getAttribute('data-key')); if(p) c.querySelector('.pres-canvas').appendChild(p);
+      var cv = c.querySelector('.pres-canvas'), p = D.templatePreview(c.getAttribute('data-key')); if(p) cv.appendChild(p);
+      if(window.GlowFX){ cv.setAttribute('data-fx', ''); GlowFX.mount(cv); }   // the deck's effect (the grid) under each preview
     });
     // grow out of the tile that opened it
     var m = el.querySelector('.as-modal');
