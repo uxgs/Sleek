@@ -181,7 +181,17 @@ img { max-width: 100%; }
   /* edit mode: stop rolling, show only the real frames, scroll the strip to reach them all */
   body.editing .fs-track { animation: none; }
   body.editing .filmstrip { overflow-y: auto; }
-  body.editing .fs-copy { opacity: 0.3; pointer-events: none; }   /* the loop, dimmed: only the first set is edited */
+  /* only the real pictures, centred in the strip, so 2 look like 2 and 5 like 5 */
+  body.editing .fs-copy { display: none; }
+  body.editing .fs-track { min-height: 100%; justify-content: center; }
+  .filmstrip { transition: transform .45s cubic-bezier(.16, 1, .3, 1); }
+  body.editing .filmstrip { transform: rotate(3deg) scale(var(--fs-edit-scale, 1.5)); }
+  .fs-add { display: none; }
+  body.editing .fs-set:not(.fs-copy):not(.fs-full) > .fs-add { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+    flex: none; height: 142px; border-radius: 3px; border: 1.5px dashed rgba(255,255,255,0.28); background: rgba(255,255,255,0.03); color: #C7C7CE;
+    font: 600 12px/1 var(--ff-body, Inter, sans-serif); letter-spacing: 0.02em; cursor: pointer; transition: background .2s ease, border-color .2s ease, color .2s ease; }
+  body.editing .fs-set > .fs-add span { font-size: 26px; font-weight: 300; line-height: 1; }
+  body.editing .fs-set > .fs-add:hover { background: color-mix(in srgb, var(--accent) 16%, transparent); border-color: var(--accent); color: #fff; }
   @keyframes fs-roll { from { transform: translateY(0); } to { transform: translateY(calc(var(--set, 624px) * -1)); } }   /* one set; app.js sets --set */
   @media (prefers-reduced-motion: reduce) { .fs-track { animation: none; } }
 

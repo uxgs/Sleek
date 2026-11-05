@@ -61,6 +61,7 @@
     el.removeAttribute('data-before');
     var notes = el.querySelector('template.slide-notes'); if(notes) notes.remove();
     PH_TEXT.forEach(function(r){ Array.prototype.forEach.call(el.querySelectorAll(r[0]), function(x){ x.textContent = r[1]; }); });
+    Array.prototype.forEach.call(el.querySelectorAll('[data-spare] .cap'), function(x){ x.innerHTML = '<!--removed-->'; });   // a spare stays out until it's added
     Array.prototype.forEach.call(el.querySelectorAll('.lcol li'), function(li){
       var m = li.querySelector('.m'); li.removeAttribute('data-press'); li.innerHTML = (m ? m.outerHTML : '') + 'A point worth making';
     });
@@ -2112,6 +2113,7 @@
     document.getElementById('editbtn').setAttribute('aria-pressed', String(editing));
     document.getElementById('annotbtn').setAttribute('aria-pressed', String(annotating));
     document.getElementById('eb-done').title = annotating ? 'Done annotating' : 'Done editing';
+    syncFilmstrips();   // a strip measures its pictures again without Edit mode's Add picture
   }
   function toggleEdit(){
     if(PUBLISHED && !editing) return;
@@ -2291,10 +2293,36 @@
     var fr = el.classList.contains('cap') && el.closest('.fs-frame');   // a film strip picture is removed by its caption's marker
     if(fr){ fr.classList.toggle('fs-gone', el.innerHTML === TX_GONE); fsMinMark(fr.closest('.fs-set')); }
   }
-  // a film strip keeps at least FS_MIN pictures: at that many, their × can't remove one
-  var FS_MIN = 2;
+  // a film strip has 2 to 5 pictures: at the fewest their × can't remove one; below the most, Edit mode
+  // offers "Add picture", which brings back a frame that's out (the layout's spare, or one you removed)
+  var FS_MIN = 2, FS_MAX = 5;
   function fsLeft(set){ return set ? set.querySelectorAll('.fs-frame:not(.fs-gone)').length : 0; }
-  function fsMinMark(set){ if(set && !set.classList.contains('fs-copy')) set.classList.toggle('fs-min', fsLeft(set) <= FS_MIN); }
+  function fsMinMark(set){
+    if(!set || set.classList.contains('fs-copy')) return;
+    var n = fsLeft(set);
+    set.classList.toggle('fs-min', n <= FS_MIN);
+    set.classList.toggle('fs-full', n >= FS_MAX || !set.querySelector('.fs-frame.fs-gone'));
+    // in Edit mode the strip is drawn to fit its pictures (and Add picture), so every count reads whole
+    var strip = set.closest('.filmstrip'), sl = set.closest('.slide');
+    if(strip){
+      var k = n + (set.classList.contains('fs-full') ? 0 : 1), h = k * 142 + (k - 1) * 14;
+      strip.style.setProperty('--fs-edit-scale', Math.min(1.5, ((sl && sl.offsetHeight) || 900) * 0.92 / h).toFixed(3));
+    }
+    if(!set.querySelector(':scope > .fs-add')){
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'fs-add'; b.innerHTML = '<span>+</span>Add picture';
+      b.addEventListener('click', function(ev){ ev.stopPropagation(); addFrame(set); });
+      set.appendChild(b);
+    }
+  }
+  function addFrame(set){
+    var fr = set.querySelector('.fs-frame.fs-gone'), cap = fr && fr.querySelector('.cap[data-eid]');
+    if(!cap || fsLeft(set) >= FS_MAX){ showToast('A film strip holds up to ' + FS_MAX + ' pictures'); return; }
+    var eid = cap.getAttribute('data-eid'), was = domBaseline[eid];      // a removed picture comes back with its own name
+    cap.innerHTML = was && was !== TX_GONE ? was : 'Caption'; onTextInput(cap, eid);
+    curMid = fr.getAttribute('data-mid');                                  // then pick its picture
+    var f = document.getElementById('media-file'); f.value = ''; f.click();
+  }
   function removeFrame(fr){
     var set = fr.closest('.fs-set'), cap = fr.querySelector('.cap[data-eid]');
     if(!cap) return;
@@ -2761,7 +2789,7 @@
       for(var k = 0; k < copies; k++){
         var copy = real.cloneNode(true);
         copy.classList.add('fs-copy'); copy.setAttribute('aria-hidden', 'true');
-        Array.prototype.forEach.call(copy.querySelectorAll('.media-clear'), function(el){ el.remove(); });
+        Array.prototype.forEach.call(copy.querySelectorAll('.media-clear, .fs-add'), function(el){ el.remove(); });
         Array.prototype.forEach.call(copy.querySelectorAll('[data-eid],[data-mid],[contenteditable]'), function(el){
           el.removeAttribute('data-eid'); el.removeAttribute('data-mid'); el.removeAttribute('contenteditable'); el.classList.remove('tedit');
         });
