@@ -1,0 +1,41 @@
+/* The start screen's version tag and What's new (data/changelog.js): the latest few versions,
+   the rest a click away. */
+(function(){
+  var C = window.SLEEK_CHANGES; if(!C || !C.length) return;
+  var SHOWN = 3, latest = C[0];
+  var tag = document.getElementById('ver'), list = document.getElementById('news-list'), more = document.getElementById('news-more');
+  if(tag){ tag.textContent = 'v' + latest.v; tag.title = 'Version ' + latest.v + ': what’s new'; tag.hidden = false; }
+  var sec = document.getElementById('whats-new'); if(!sec || !list) return;
+  document.getElementById('news-ver').textContent = 'Version ' + latest.v;
+
+  var MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  function day(d){ var p = String(d || '').split('-'); return p.length === 3 ? (+p[2]) + ' ' + MONTHS[+p[1] - 1] + ' ' + p[0] : ''; }
+  function el(tagName, cls, text){ var e = document.createElement(tagName); if(cls) e.className = cls; if(text != null) e.textContent = text; return e; }
+
+  C.forEach(function(c, k){
+    var li = el('li', 'news-item' + (k === 0 ? ' latest' : '')); if(k >= SHOWN) li.hidden = true;
+    li.style.setProperty('--i', Math.min(k, SHOWN));
+    var side = el('div', 'news-side');
+    side.appendChild(el('span', 'news-v', 'v' + c.v));
+    var t = el('time', 'news-date', day(c.date)); if(c.date) t.dateTime = c.date; side.appendChild(t);
+    var body = el('div', 'news-body');
+    body.appendChild(el('h3', 'news-title', c.title));
+    var ul = el('ul', 'news-points'); (c.items || []).forEach(function(s){ ul.appendChild(el('li', null, s)); }); body.appendChild(ul);
+    li.appendChild(side); li.appendChild(body); list.appendChild(li);
+  });
+  sec.hidden = false;
+
+  if(more && C.length > SHOWN){
+    more.hidden = false;
+    more.textContent = 'Show all ' + C.length + ' versions';
+    more.onclick = function(){
+      var open = more.getAttribute('aria-expanded') !== 'true';
+      Array.prototype.forEach.call(list.children, function(li, k){ if(k >= SHOWN) li.hidden = !open; });
+      more.setAttribute('aria-expanded', String(open));
+      more.textContent = open ? 'Show fewer' : 'Show all ' + C.length + ' versions';
+      if(!open) sec.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    };
+  }
+  // the version tag takes you to the notes, opened up to the latest
+  if(tag) tag.addEventListener('click', function(e){ e.preventDefault(); sec.scrollIntoView({ block: 'start', behavior: 'smooth' }); });
+})();

@@ -2122,6 +2122,7 @@
   function afterShow(){
     var pe = document.getElementById('pin-ed'); if(pe) pe.hidden = true;
     if(!editing && !annotating) return;
+    if(editing) editAnns();                           // this slide's annotations, editable with it (or not)
     setAddMenu(false);
     placeHandle(); updateSizeBar();
   }
@@ -2136,24 +2137,33 @@
     document.getElementById('eb-annot').hidden = !annotating;
     document.getElementById('editbtn').setAttribute('aria-pressed', String(editing));
     document.getElementById('annotbtn').setAttribute('aria-pressed', String(annotating));
-    document.getElementById('eb-done').title = annotating ? 'Done annotating' : 'Done editing';
+    document.getElementById('eb-done').title = editing ? 'Done editing' : 'Done annotating';
     syncFilmstrips();   // a strip measures its pictures again without Edit mode's Add picture
+  }
+  // Edit on a slide that has annotations edits them too (Annotate mode alongside, its tools in the bar);
+  // moving to another slide in Edit mode follows that slide. Annotate on its own is still Annotate alone.
+  var annotByEdit = false;
+  function slideHasAnns(){ var s = slides[i]; return !!(s && s.querySelector('.pin, .abox, .aarrow')); }
+  function editAnns(){
+    var want = editing && slideHasAnns();
+    if(want === annotating || (annotating && !annotByEdit)) return;
+    annotByEdit = want; setAnnotating(want);
   }
   function toggleEdit(){
     if(PUBLISHED && !editing) return;
-    if(annotating) toggleAnnotate();
+    if(annotating && !annotByEdit) setAnnotating(false);
     editing = !editing;
+    if(!editing && annotByEdit){ annotByEdit = false; setAnnotating(false); }
     paintModes();
     setTextEditable(editing);
     setNotesEditable(editing);
     setLabelEditable(editing);
     if(!editing) activeBlock = null;
     placeHandle(); updateSizeBar();
-    if(editing) afterShow();
+    if(editing){ editAnns(); afterShow(); }
   }
-  function toggleAnnotate(){
-    if(editing) toggleEdit();
-    annotating = !annotating;
+  function setAnnotating(on){
+    annotating = on;
     paintModes();
     if(annotating){
       if(!annotOn) toggleAnnot();                     // you can't edit what's hidden
@@ -2163,7 +2173,13 @@
       document.getElementById('pin-ed').hidden = true;
     }
   }
-  function closeModes(){ if(annotating) toggleAnnotate(); else if(editing) toggleEdit(); }
+  function toggleAnnotate(){
+    var on = !annotating || annotByEdit;              // from Edit (with its annotations): Annotate alone
+    if(editing) toggleEdit();
+    annotByEdit = false;
+    setAnnotating(on);
+  }
+  function closeModes(){ if(editing) toggleEdit(); else if(annotating) toggleAnnotate(); }
 
   function shapesOut(list){
     return (list || []).map(function(x){

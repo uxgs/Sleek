@@ -15,10 +15,11 @@
   function local(k){
     var v = null;
     try { v = localStorage.getItem(KEYS[k]); } catch(e){}
+    if(v === 'null' || v === 'undefined') v = null;      // never a value
     if(k === 'font' && v != null){ try { v = JSON.parse(v); } catch(e){ v = null; } }
     return v;
   }
-  function base(k){ var s = seed(); return s[k] != null ? s[k] : DEFAULTS[k]; }
+  function base(k){ var s = seed(); return s[k] != null && s[k] !== 'null' ? s[k] : DEFAULTS[k]; }
   function same(a, b){ return JSON.stringify(a == null ? null : a) === JSON.stringify(b == null ? null : b); }
   var T = window.DeckTheme = {
     keys: KEYS,
@@ -28,7 +29,7 @@
     // write a change (the deck's Theme menu); a value equal to the seed's is just "no change"
     set: function(k, v){
       try {
-        if(same(v, base(k))) localStorage.removeItem(KEYS[k]);
+        if(v == null || same(v, base(k))) localStorage.removeItem(KEYS[k]);   // nothing (or the deck's own) is no override
         else localStorage.setItem(KEYS[k], k === 'font' ? JSON.stringify(v) : v);
       } catch(e){}
     },

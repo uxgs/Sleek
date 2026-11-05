@@ -70,13 +70,15 @@
   @keyframes pill-ring { 0% { scale: 1; opacity: 0; } 4% { opacity: 0.55; } 40% { scale: 1.12 1.55; opacity: 0; } 100% { scale: 1.12 1.55; opacity: 0; } }
   @media (prefers-reduced-motion: reduce) { .btn-new::after, .btn-new .plus::after { animation: none; } }
   .btn-new .plus { width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: var(--on-accent); font-size: 14px; line-height: 1; }
-  footer { margin-top: 28px; color: var(--faint); font-size: 13px; }
 </style>
 </head>
 <body>
 <div class="start-glow glow" data-fx aria-hidden="true"></div>
 <main>
-  <div class="brand"><img src="icons/logo.svg" alt="" width="34" height="31"><span>Sleek</span></div>
+  <div class="brand"><img src="icons/logo.svg" alt="" width="34" height="31"><span>Sleek</span><a class="ver" id="ver" href="#whats-new" hidden></a>
+    <button type="button" class="set-open" id="set-open" aria-haspopup="dialog" aria-controls="set" title="Settings" aria-label="Settings">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>
+    </button></div>
   <h1>Build a deck in your browser.</h1>
   <p class="lede">Every change saves as you make it. No account, nothing to install, and it works offline.</p>
 
@@ -99,15 +101,68 @@
     <div class="lib-grid" id="lib-if-grid"></div>
   </section>
 
-  <footer>
-    <p>Decks live in this browser, on this device. To keep one safe or move it, download its <b>.sleek</b> file (the ⋯ menu, or Share in the deck) and open it here on any device.
-      <span id="lib-folder-note" hidden>Or link a folder, and every deck keeps a .sleek copy there as you work.</span>
-      <button type="button" class="lib-link" id="lib-sample" hidden>Add the sample deck</button></p>
-  </footer>
+  <section class="news" id="whats-new" aria-labelledby="news-h" hidden>
+    <div class="lib-head"><h2 id="news-h">What’s new</h2><span class="lib-count" id="news-ver"></span></div>
+    <ol class="news-list" id="news-list"></ol>
+    <button type="button" class="lib-link news-more" id="news-more" aria-expanded="false" aria-controls="news-list" hidden></button>
+  </section>
+
 </main>
+<!-- Settings (features/settings.js): tips, the sample deck, how Sleek works, about -->
+<div class="set-backdrop" id="set" hidden>
+  <div class="set-panel" role="dialog" aria-modal="true" aria-labelledby="set-h">
+    <div class="set-head"><h2 id="set-h">Settings</h2>
+      <button type="button" class="set-close" data-close aria-label="Close">×</button></div>
+    <div class="set-body">
+      <section class="set-sec" aria-labelledby="set-tips-h">
+        <h3 id="set-tips-h">Tips</h3>
+        <label class="set-row set-toggle">
+          <span class="set-text"><b>Show tips in decks</b><span>The cards that point out Edit and Present the first times you open a deck.</span></span>
+          <input type="checkbox" id="set-tips" role="switch"><span class="set-switch" aria-hidden="true"></span>
+        </label>
+        <div class="set-row">
+          <span class="set-text"><b>See the tour again</b><span>The tips start over the next time you open a deck.</span></span>
+          <button type="button" class="btn btn-ghost set-btn" id="set-tour">Show the tour</button>
+        </div>
+      </section>
+      <section class="set-sec" aria-labelledby="set-sample-h">
+        <h3 id="set-sample-h">Sample deck</h3>
+        <div class="set-row">
+          <span class="set-text"><b>Pace</b><span>A made-up fitness app, one slide for every layout. A good way to look around.</span></span>
+          <button type="button" class="btn btn-ghost set-btn" id="lib-sample">Add the sample deck</button>
+        </div>
+      </section>
+      <section class="set-sec" aria-labelledby="set-how-h">
+        <h3 id="set-how-h">How Sleek works</h3>
+        <ul class="set-how">
+          <li><b>It saves as you go.</b> Decks live in this browser, on this device. No account, nothing to install, and it works offline once it has opened.</li>
+          <li><b>Keep a copy, or move a deck.</b> Download its <b>.sleek</b> file from a deck’s ⋯ menu here, or Share in the deck. Open it on any device with <b>Open a file…</b>, or drop it on this page.</li>
+          <li id="lib-folder-note" hidden><b>Link a folder</b> (Chrome and Edge), and every deck keeps a .sleek copy there as you work.</li>
+          <li><b>Send it as a web page.</b> Publish a deck as one page anyone can open in a browser, with nothing to install.</li>
+          <li><b>Present.</b> Present opens a presenter window with your notes, the next slide and a timer, while this one shows the room the slide.</li>
+          <li><b>Install it.</b> Add Sleek from your browser’s menu (Install, or Add to Home Screen) and it opens like an app.</li>
+        </ul>
+      </section>
+      <section class="set-sec" aria-labelledby="set-about-h">
+        <h3 id="set-about-h">About</h3>
+        <div class="set-row">
+          <span class="set-text"><b id="set-ver">Sleek</b><span>See what changed in each version.</span></span>
+          <a class="btn btn-ghost set-btn" href="#whats-new" data-close data-news>What’s new</a>
+        </div>
+        <div class="set-row">
+          <span class="set-text"><b>Made by</b><span>See more of the developer’s work.</span></span>
+          <a class="btn btn-ghost set-btn" href="https://uxgenes.com" target="_blank" rel="noopener">Portfolio <span aria-hidden="true">↗</span></a>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
 <div class="lib-drop" id="lib-drop" aria-hidden="true"><div><b>Drop to open</b><span>A .sleek deck file</span></div></div>
 <script src="glow-fx.js"></script>
 <script src="features/setup.js"></script>
 <script src="features/library.js"></script>
+<script src="data/changelog.js"></script>
+<script src="features/changelog.js"></script>
+<script src="features/settings.js"></script>
 </body>
 </html>

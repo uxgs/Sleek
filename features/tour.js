@@ -6,7 +6,8 @@
 
    Where it is lives in localStorage (sleek-tour: edit, present, presenter, done), so the presenter
    window, opened later, picks up the third step. A new deck from the start screen's setup starts it
-   again; deck.html?tips does too. "Skip tour" ends it everywhere. */
+   again; deck.html?tips does too. "Skip tour" ends it everywhere; a card's × closes that card, and
+   the next shows another time. Settings on the start screen can turn the tips off altogether. */
 (function(){
   var D = window.Deck; if(!D || D.mirror) return;
   var KEY = 'sleek-tour';
@@ -109,6 +110,7 @@
     el.className = 'et-card' + (st.place === 'inside' ? ' no-arrow' : st.place === 'below' ? ' up' : '');
     el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', st.h);
     el.innerHTML = '' +
+      '<button type="button" class="et-close" data-close aria-label="Close">×</button>' +
       '<div class="et-top"><div class="et-k">' + st.k + '</div><div class="et-dots">' +
         Array.apply(null, Array(st.of[1])).map(function(_, k){ return '<i' + (k < st.of[0] ? ' class="on"' : '') + '></i>'; }).join('') + '</div></div>' +
       '<h3 class="et-h">' + st.h + '</h3>' +
@@ -146,6 +148,7 @@
   }
   function onClick(e){
     if(e.target.closest('[data-skip]')){ setState('done'); hide(); }
+    else if(e.target.closest('[data-close]')){ setState(cur.next === 'preview' ? STEPS.preview.next : cur.next); hide(); }   // this card goes; the next one shows another time
     else if(e.target.closest('[data-act]')){ var a = cur.anchor(); setState(cur.next); hide(); if(a) a.click(); }   // in the click itself, so the window may open
     else if(e.target.closest('[data-next]')) advance();
   }
@@ -170,7 +173,10 @@
   }
 
   if(/[?&]tips\b/.test(location.search) && !IN_PRESENTER) setState('edit');
+  // tips can be turned off for good on the start screen's Settings (sleek-tips: off)
+  function tipsOff(){ try { return localStorage.getItem('sleek-tips') === 'off'; } catch(e){ return false; } }
   function start(){
+    if(tipsOff()) return;
     var s = state();
     if(IN_PRESENTER){ if(s === 'presenter') show('links'); return; }
     if(s === 'edit' || s === 'present') whenFree(function(){ show(s); });

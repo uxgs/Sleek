@@ -266,8 +266,8 @@
       if(Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
       holdCancel();
       if(Math.abs(dx) < Math.abs(dy) * 1.1){
-        // pushed up: on down to All slides, which sits below the slide; any other vertical move isn't ours
-        if(dy < 0 && !scrollsDown(e.target) && document.getElementById('gridbtn')){ g.mode = 'pull'; g.vy = 0; g.lastY = t.clientY; g.lastYT = Date.now(); }
+        // pulled down: All slides comes down over the slide; any other vertical move isn't ours
+        if(dy > 0 && !scrollsUp(e.target) && document.getElementById('gridbtn')){ g.mode = 'pull'; g.vy = 0; g.lastY = t.clientY; g.lastYT = Date.now(); }
         else { g = null; return; }
       } else {
         var list = slideList(), cur = stage.querySelector(':scope > .slide.active'), k = list.indexOf(cur);
@@ -278,7 +278,7 @@
     if(g.mode === 'pull'){
       e.preventDefault();
       var nowY = Date.now(); g.vy = (t.clientY - g.lastY) / Math.max(1, nowY - g.lastYT); g.lastY = t.clientY; g.lastYT = nowY;
-      g.dy = Math.min(0, dy);
+      g.dy = Math.max(0, dy);
       pullTo(g.dy, false);
       return;
     }
@@ -294,25 +294,38 @@
     if(g.peer) setX(g.peer, x + dir * (1280 + GAP));
   }, { passive: false });
 
-  // the slide follows a push up part of the way; let go far enough (or flick) and All slides takes over
-  // from where it is
+  // A swipe opens All slides from above (pull the slide down) and sends it back up (push it up), so it
+  // moves the way your finger does; the bar's chevron keeps it below the slide. grid-top says which.
+  function gridTop(on){
+    var b = document.body.classList; if(b.contains('grid-top') === on) return;
+    b.add('grid-snap'); b.toggle('grid-top', on);      // behind the open grid, the slide jumps sides unseen
+    void document.body.offsetWidth; b.remove('grid-snap');
+  }
+  var bySwipe = false;
+  document.getElementById('gridbtn').addEventListener('click', function(){ if(!bySwipe) gridTop(false); }, true);
+
+  // the slide follows a pull down part of the way, shrinking back; let go far enough (or flick) and
+  // All slides takes over from where it is
   var PULL = 80;
   function pullTo(dy, anim){
-    var vp = stage.parentNode;                         // the stage's own transform fits it to the screen
+    var vp = stage.parentNode, k = Math.min(1, dy / (PULL * 3));   // (the stage's own transform fits it to the screen)
     vp.style.transition = anim ? 'transform .3s cubic-bezier(.2, .8, .2, 1)' : 'none';
-    vp.style.transform = dy ? 'translate3d(0,' + Math.max(dy, -PULL * 3) * 0.45 + 'px,0)' : '';
+    vp.style.transform = dy ? 'translate3d(0,' + Math.min(dy, PULL * 3) * 0.4 + 'px,0) scale(' + (1 - k * 0.1) + ')' : '';
   }
   function endPull(d, cancelled){
     swallowClick = Date.now();
-    var vp = stage.parentNode, go = !cancelled && (-d.dy > PULL || d.vy < -0.5 && -d.dy > 24);
-    if(go){ vp.style.transition = ''; vp.style.transform = ''; var b = document.getElementById('gridbtn'); if(b) b.click(); return; }
+    var vp = stage.parentNode, go = !cancelled && (d.dy > PULL || d.vy > 0.5 && d.dy > 24);
+    if(go){
+      gridTop(true); vp.style.transition = ''; vp.style.transform = '';
+      var b = document.getElementById('gridbtn'); bySwipe = true; if(b) b.click(); bySwipe = false; return;
+    }
     pullTo(0, true);
     setTimeout(function(){ vp.style.transition = ''; }, 320);
   }
-  // not while something under the finger can still scroll that way (it scrolls instead)
-  function scrollsDown(t){
+  // not while something under the finger can still scroll up (it scrolls instead)
+  function scrollsUp(t){
     for(var el = t; el && el !== document.body; el = el.parentElement)
-      if(el.scrollHeight > el.clientHeight + 1 && el.scrollTop + el.clientHeight < el.scrollHeight - 1 && /auto|scroll/.test(getComputedStyle(el).overflowY)) return true;
+      if(el.scrollTop > 0 && /auto|scroll/.test(getComputedStyle(el).overflowY)) return true;
     return false;
   }
 
@@ -340,37 +353,45 @@
   }
   document.addEventListener('touchend', function(){ endDrag(false); }, { passive: true });
   document.addEventListener('touchcancel', function(){ endDrag(true); }, { passive: true });
-  // ---------- touch: in All slides, pull down from the top of the list to go back up to the slide ----------
+  // ---------- touch: in All slides, swipe up to go back to the slide ----------
+  // Up is also how the list scrolls, so it's ours from the end of the list (or a list too short to
+  // scroll), from the grab bar along the bottom, or starting on the header (the breadcrumb row)
   var gridEl = document.getElementById('grid'), gp = null;
+  function atEnd(){ return gridEl.scrollTop + gridEl.clientHeight >= gridEl.scrollHeight - 2; }
   function gridPull(dy, anim){
     gridEl.style.transition = anim ? 'transform .3s cubic-bezier(.2, .8, .2, 1)' : 'none';
-    gridEl.style.transform = dy ? 'translate3d(0,' + Math.min(dy, PULL * 3) * 0.45 + 'px,0)' : '';
+    gridEl.style.transform = dy ? 'translate3d(0,' + Math.max(dy, -PULL * 3) * 0.45 + 'px,0)' : '';
   }
   if(gridEl){
+    var grab = document.createElement('div'); grab.className = 'grid-grab'; grab.setAttribute('aria-hidden', 'true'); gridEl.appendChild(grab);
     gridEl.addEventListener('touchstart', function(e){
       gp = null;
       if(e.touches.length !== 1 || !document.body.classList.contains('grid-open') || document.body.classList.contains('grid-editing') || D.modal) return;
-      var t = e.touches[0]; gp = { x: t.clientX, y: t.clientY, mode: 'wait', dy: 0, vy: 0, last: t.clientY, lastT: Date.now() };
+      var t = e.touches[0];
+      var head = !!(e.target.closest && e.target.closest('.grid-head'));
+      gp = { x: t.clientX, y: t.clientY, y0: t.clientY, mode: 'wait', dy: 0, vy: 0, last: t.clientY, lastT: Date.now(), head: head,
+             ok: head || atEnd() || t.clientY > gridEl.clientHeight - 96 };
     }, { passive: true });
     gridEl.addEventListener('touchmove', function(e){
       if(!gp) return;
       var t = e.touches[0], dx = t.clientX - gp.x, dy = t.clientY - gp.y;
       if(gp.mode === 'wait'){
         if(Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
-        // only down, only from the top of the list (anywhere else it scrolls), and not sideways
-        if(dy < 0 || Math.abs(dx) > Math.abs(dy) || gridEl.scrollTop > 0){ gp = null; return; }
-        gp.mode = 'pull'; gp.y = t.clientY; dy = 0;
+        if(dy > 0 || Math.abs(dx) > Math.abs(dy) || !(gp.ok || atEnd())){ gp = null; return; }
+        gp.mode = 'push'; gp.y = t.clientY; dy = 0;
       }
       e.preventDefault();
       var now = Date.now(); gp.vy = (t.clientY - gp.last) / Math.max(1, now - gp.lastT); gp.last = t.clientY; gp.lastT = now;
-      gp.dy = Math.max(0, dy);
+      gp.dy = Math.min(0, dy);
       gridPull(gp.dy, false);
     }, { passive: false });
     var gridEnd = function(cancelled){
-      var d = gp; gp = null; if(!d || d.mode !== 'pull') return;
+      var d = gp; gp = null; if(!d || d.mode !== 'push') return;
       swallowClick = Date.now();
-      if(!cancelled && (d.dy > PULL || d.vy > 0.5 && d.dy > 24)){
-        gridEl.style.transition = ''; gridEl.style.transform = '';   // it carries on down from where it is
+      var moved = d.y0 - d.last;                        // from where the finger went down (the header has little room above it)
+      if(!cancelled && (d.head ? moved > 30 : -d.dy > PULL) || !cancelled && d.vy < -0.5 && -d.dy > 24){
+        gridTop(true);                                  // it goes on up, and the slide comes up under it
+        gridEl.style.transition = ''; gridEl.style.transform = '';
         var b = document.getElementById('grid-back'); if(b) b.click(); return;
       }
       gridPull(0, true);

@@ -100,7 +100,11 @@ body.tour-on .bar { opacity: 1; }
 .et-card::after { content: ""; position: absolute; left: var(--ax, 50%); bottom: -8px; width: 16px; height: 16px; margin-left: -8px;
   background: rgba(24, 24, 28, 0.96); border-right: 1px solid rgba(255,255,255,0.12); border-bottom: 1px solid rgba(255,255,255,0.12);
   transform: rotate(45deg); border-bottom-right-radius: 4px; }
-.et-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.et-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-right: 36px; }
+.et-close { position: absolute; top: 12px; right: 12px; width: 30px; height: 30px; border-radius: 50%; border: 0; cursor: pointer; z-index: 2;
+  background: rgba(255,255,255,0.06); color: #C7C7CE; font: 18px/1 inherit; display: grid; place-items: center; transition: background .2s ease, color .2s ease; }
+.et-close:hover { background: rgba(255,255,255,0.14); color: #fff; }
+.et-close:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 40%, transparent); }
 .et-dots { display: flex; gap: 4px; }
 .et-dots i { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,0.18); transition: background .3s ease, width .3s ease; }
 .et-dots i.on { background: var(--accent); }

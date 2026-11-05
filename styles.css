@@ -646,7 +646,7 @@ img { max-width: 100%; }
   .media-split .msp-b:hover em, .media.has-split:hover .media-split:not(:has(.msp-b:hover)) .msp-a em { background: var(--accent); }
   .media-split .msp-line { position: absolute; top: 0; bottom: 0; left: 50%; width: 2px; margin-left: -1px; background: #fff; box-shadow: 0 0 10px rgba(0,0,0,0.45); }
   .editbar { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(68px + env(safe-area-inset-bottom,0px));
-    z-index: 45; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: center; max-width: 94vw;
+    z-index: 45; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: center; width: max-content; max-width: 94vw;
     background: #0E0E11; color: #F2F2F4; border: 1px solid rgba(255,255,255,0.18); border-radius: 12px; padding: 8px 10px;
     font-family: var(--ff-body); font-size: 13px; box-shadow: 0 12px 44px rgba(0,0,0,0.55); }
   .editbar[hidden] { display: none; }
@@ -972,6 +972,15 @@ img { max-width: 100%; }
     padding: calc(26px + env(safe-area-inset-top,0px)) max(48px, env(safe-area-inset-right,0px)) calc(64px + env(safe-area-inset-bottom,0px)) max(48px, env(safe-area-inset-left,0px)); }
   .slides-grid[hidden] { display: none; }
   body.grid-open .slides-grid { transform: none; }
+  /* opened or closed by a swipe (features/mobile.js), All slides sits above the slide instead */
+  body.grid-top.grid-open .viewport, body.grid-top.grid-open .bar, body.grid-top.grid-open .zone { transform: translateY(100vh); }
+  body.grid-top .slides-grid { transform: translateY(-100vh); }
+  body.grid-top.grid-open .slides-grid { transform: none; }
+  body.grid-snap .viewport, body.grid-snap .bar, body.grid-snap .zone { transition: none !important; }
+  /* phones: a grab bar along the bottom of All slides; swipe up from it to go back to the slide */
+  .grid-grab { display: none; }
+  body.compact .grid-grab { display: block; position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); z-index: 3;
+    width: 44px; height: 5px; margin-left: -22px; border-radius: 3px; background: rgba(255,255,255,0.34); box-shadow: 0 0 0 6px rgba(0,0,0,0.35); pointer-events: none; }
   .grid-head { position: sticky; top: -26px; z-index: 2; display: flex; align-items: center; justify-content: space-between;
     margin: -26px -48px 22px; padding: 26px 48px 18px; background: linear-gradient(#000 70%, rgba(0,0,0,0)); }
   /* the breadcrumb: the Sleek mark and Decks (back to your decks), this deck (back to the slide), All slides */

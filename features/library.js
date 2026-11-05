@@ -56,7 +56,7 @@
       }
       l.forEach(function(d, i){ grid.appendChild(card(d, i)); });
       var hasSample = window.SLEEK_SAMPLE && l.some(function(d){ return d.title === window.SLEEK_SAMPLE.title; });
-      sampleBtn.hidden = !l.length || !!hasSample;
+      sampleBtn.disabled = !!hasSample; sampleBtn.textContent = hasSample ? 'In your decks' : 'Add the sample deck';   // (in Settings)
     });
   }
 
