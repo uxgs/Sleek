@@ -345,7 +345,7 @@
   // survives saving and slides moving) that opens it on the audience screen as if you'd clicked it,
   // from the deck's notes or the presenter's (the preview follows). While editing it's just text.
   function slideTiles(s){
-    return Array.prototype.filter.call(s.querySelectorAll('.media'), function(t){ return t.closest('.slide') === s && !t.closest('.car-copy, .fs-copy, .cl-copy'); });
+    return Array.prototype.filter.call(s.querySelectorAll('.media'), function(t){ return t.closest('.slide') === s && !t.closest('.car-copy, .fs-copy, .cl-copy') && !t.matches('.car-gone, .fs-gone'); });
   }
   function openTargets(s){
     var out = [], n = 0, nv = 0; if(!s) return out;
@@ -520,6 +520,7 @@
     // glow and smoke, so moving between two of them never flashes the glow through the crossfade
     stage.classList.toggle('glow-off', coversStage(slides[i]) || !themeOn(slides[i]));
     var tbn = document.getElementById('eb-theme'); if(tbn) tbn.setAttribute('aria-pressed', String(themeOn(slides[i])));
+    paintCarBar();
     renderNotes();
     renderPresenter();
     broadcast();
@@ -790,8 +791,23 @@
   function applyRemoteTheme(key, on){ var s = slides.filter(function(x){ return x._lkey === key; })[0]; if(s) setSlideTheme(s, on, true); }
   window.addEventListener('storage', function(e){ if(e.key === NS + 'sleek-themesync' && e.newValue){ try { var m = JSON.parse(e.newValue); applyRemoteTheme(m.themeKey, m.on); } catch(_){} } });
   document.getElementById('eb-theme').onclick = function(){ var s = slides[i]; if(s) setSlideTheme(s, !themeOn(s)); };
-  // carousels hold still for 2s after you land on their slide, then start rolling from the beginning
+  // carousels hold still for 2s after you land on their slide, then start rolling from the beginning,
+  // unless their slide's Auto scroll is off (Edit bar): then they stay put until you drag them or use
+  // their arrows
   var carT = 0;
+  function carAuto(s){ var id = s && s.getAttribute('data-added'), a = id && ADDED.filter(function(x){ return x.id === id; })[0]; return !(a && a.still); }
+  function paintCarBar(){
+    var g = document.getElementById('eb-carousel'), cur = slides[i], b = document.getElementById('car-auto');
+    var on = !!(editing && cur && cur.classList.contains('s-carousel') && cur.getAttribute('data-added'));
+    if(g) g.hidden = !on;
+    if(b && on){ var auto = carAuto(cur); b.setAttribute('aria-pressed', String(auto)); b.querySelector('.lbl').textContent = auto ? 'Auto scroll' : 'Auto scroll off'; }
+  }
+  document.getElementById('car-auto').onclick = function(){
+    var s = slides[i], id = s && s.getAttribute('data-added'), a = id && ADDED.filter(function(x){ return x.id === id; })[0]; if(!a) return;
+    if(a.still) delete a.still; else a.still = true;
+    saveAdded(); markChanged(); pingReload(); paintCarBar(); armCarousels();
+    showToast(a.still ? 'Auto scroll off: it moves when you drag it or use its arrows' : 'Auto scroll on');
+  };
   function armCarousels(){
     clearTimeout(carT);
     Array.prototype.forEach.call(document.querySelectorAll('#stage .s-carousel'), function(sl){
@@ -800,7 +816,7 @@
       }
     });
     var cur = slides[i];
-    if(cur && cur.classList.contains('s-carousel')) carT = setTimeout(function(){ cur.classList.add('rolling'); }, 2000);
+    if(cur && cur.classList.contains('s-carousel') && carAuto(cur)) carT = setTimeout(function(){ cur.classList.add('rolling'); }, 2000);
   }
 
   // ---------- URL slugs: every slide has an address, so a refresh or a shared link stays put ----------
@@ -1055,7 +1071,7 @@
     Array.prototype.forEach.call(c.querySelectorAll('[id],[data-eid],[data-mid],[contenteditable]'), function(el){
       el.removeAttribute('id'); el.removeAttribute('data-eid'); el.removeAttribute('data-mid'); el.removeAttribute('contenteditable');
     });
-    Array.prototype.forEach.call(c.querySelectorAll('.media-clear, .media-sizer, iframe, .size-handle, .tx-del, .screen-replace, .cl-opt, .fl-bar, .fl-h, .fl-guide'), function(el){ el.remove(); });
+    Array.prototype.forEach.call(c.querySelectorAll('.media-clear, .car-add, .media-sizer, iframe, .size-handle, .tx-del, .screen-replace, .cl-opt, .fl-bar, .fl-h, .fl-guide'), function(el){ el.remove(); });
     // a still from a couple of seconds in, as the video's poster: a preview never loads the video itself
     Array.prototype.forEach.call(c.querySelectorAll('video'), function(v){
       var src = vsrc(v).split('#')[0];
@@ -1774,6 +1790,7 @@
     var v = viewer; if(!v || v.cmp.hidden) return;
     var r = v.img.getBoundingClientRect();
     v.cmp.style.left = r.left + 'px'; v.cmp.style.top = r.top + 'px'; v.cmp.style.width = r.width + 'px'; v.cmp.style.height = r.height + 'px';
+    v.cmp.classList.toggle('tags-in', r.top < 48);              // no room above it for the Before / After pills
   }
   function setCompare(p, fromRemote){
     var v = viewer; if(!v) return;
@@ -1925,7 +1942,7 @@
   // viewer; ←/→ step through the other tiles in the same group (a carousel set, a grid).
   function isExpandable(m){
     return m && m.classList.contains('media') && m.classList.contains('filled') && !editing && !annotating &&
-      m.closest('#stage .slide.active') && !m.closest('.s-divider, .s-fullvideo, .s-screen, .filmstrip') && !m.matches('[data-dis]');
+      m.closest('#stage .slide.active') && !m.closest('.s-divider, .s-fullvideo, .s-screen, .filmstrip') && !m.matches('[data-dis], .car-gone');
   }
   function expandableTileAt(x, y){
     var els = document.elementsFromPoint(x, y);
@@ -2238,6 +2255,7 @@
     document.getElementById('editbtn').setAttribute('aria-pressed', String(editing));
     document.getElementById('annotbtn').setAttribute('aria-pressed', String(annotating));
     document.getElementById('eb-done').title = editing ? 'Done editing' : 'Done annotating';
+    paintCarBar();
     syncFilmstrips();   // a strip measures its pictures again without Edit mode's Add picture
   }
   // Edit on a slide that has annotations edits them too (Annotate mode alongside, its tools in the bar);
@@ -2432,7 +2450,50 @@
     el.classList.toggle('tx-gone', el.innerHTML === TX_GONE);
     var fr = el.classList.contains('cap') && el.closest('.fs-frame');   // a film strip picture is removed by its caption's marker
     if(fr){ fr.classList.toggle('fs-gone', el.innerHTML === TX_GONE); fsMinMark(fr.closest('.fs-set')); }
+    var ct = el.classList.contains('cap') && el.closest('.s-carousel .car-set:not(.car-copy) > .media');   // and a carousel's
+    if(ct){ ct.classList.toggle('car-gone', el.innerHTML === TX_GONE); carMark(ct.closest('.car-set')); }
   }
+  // a carousel has 1 to 5 pictures, the same way: removing one (its ×, or Delete over it in Edit mode)
+  // marks its caption, and Add picture brings back one that's out
+  var CAR_MIN = 1, CAR_MAX = 5;
+  function carLeft(set){ return set ? set.querySelectorAll(':scope > .media:not(.car-gone)').length : 0; }
+  function carMark(set){
+    if(!set || set.classList.contains('car-copy')) return;
+    var n = carLeft(set);
+    set.classList.toggle('car-min', n <= CAR_MIN);
+    set.classList.toggle('car-full', n >= CAR_MAX || !set.querySelector(':scope > .media.car-gone'));
+    if(!set.querySelector(':scope > .car-add')){
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'car-add'; b.innerHTML = '<span>+</span>Add picture';
+      b.addEventListener('click', function(ev){ ev.stopPropagation(); addCarTile(set); });
+      set.appendChild(b);
+    } else set.appendChild(set.querySelector(':scope > .car-add'));   // always last
+  }
+  function addCarTile(set){
+    var t = set.querySelector(':scope > .media.car-gone'), cap = t && t.querySelector('.cap[data-eid]');
+    if(!cap || carLeft(set) >= CAR_MAX){ showToast('A carousel holds up to ' + CAR_MAX + ' pictures'); return; }
+    var eid = cap.getAttribute('data-eid'), was = domBaseline[eid];
+    cap.innerHTML = was && was !== TX_GONE ? was : 'Caption'; onTextInput(cap, eid);
+    curMid = t.getAttribute('data-mid');                                   // then pick its picture
+    var f = document.getElementById('media-file'); f.value = ''; f.click();
+  }
+  function removeCarTile(t){
+    var set = t.closest('.car-set'), cap = t.querySelector('.cap[data-eid]');
+    if(!cap) return;
+    if(carLeft(set) <= CAR_MIN){ showToast('A carousel keeps at least one picture'); return; }
+    cap.innerHTML = TX_GONE; onTextInput(cap, cap.getAttribute('data-eid'));
+    showToast('Picture removed from the carousel', true);
+  }
+  // Delete (or Backspace) over a carousel's or film strip's picture in Edit mode takes it out
+  var overTile = null;
+  document.addEventListener('mouseover', function(e){ overTile = e.target.closest ? e.target.closest('#stage .slide.active .car-set:not(.car-copy) > .media, #stage .slide.active .fs-set:not(.fs-copy) > .fs-frame') : null; });
+  document.addEventListener('keydown', function(e){
+    if(!editing || (e.key !== 'Delete' && e.key !== 'Backspace') || !overTile || !document.body.contains(overTile)) return;
+    var a = document.activeElement; if(a && (a.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))) return;   // typing
+    if(window.Deck && Deck.modal) return;
+    e.preventDefault();
+    if(overTile.classList.contains('fs-frame')) removeFrame(overTile); else removeCarTile(overTile);
+  });
   // a film strip has 2 to 5 pictures: at the fewest their × can't remove one; below the most, Edit mode
   // offers "Add picture", which brings back a frame that's out (the layout's spare, or one you removed)
   var FS_MIN = 2, FS_MAX = 5;
@@ -2497,7 +2558,8 @@
     Array.prototype.forEach.call(statics, function(sl){
       var idx = 0, pre = (sl.getAttribute('data-added') || 'x') + '.';   // named for its slide
       Array.prototype.forEach.call(sl.querySelectorAll(TEDIT_SEL), function(el){
-        var eid = el.getAttribute('data-eid') || (pre + 't' + (idx++));
+        var sp = el.getAttribute('data-spare');
+        var eid = el.getAttribute('data-eid') || (sp ? pre + 'xt' + sp : pre + 't' + (idx++));   // a carousel's spare: its own name
         el.setAttribute('data-eid', eid);
         domBaseline[eid] = el.innerHTML;
         var html = (textOverrides[eid] != null) ? textOverrides[eid] : seedTextFor(eid);
@@ -3091,7 +3153,7 @@
       for(var k = 0; k < copies; k++){
         var copy = real.cloneNode(true);
         copy.classList.add('car-copy'); copy.setAttribute('aria-hidden', 'true');
-        Array.prototype.forEach.call(copy.querySelectorAll('.media-clear'), function(el){ el.remove(); });
+        Array.prototype.forEach.call(copy.querySelectorAll('.media-clear, .car-add'), function(el){ el.remove(); });
         Array.prototype.forEach.call(copy.querySelectorAll('[data-eid],[data-mid],[contenteditable]'), function(el){
           el.removeAttribute('data-eid'); el.removeAttribute('data-mid'); el.removeAttribute('contenteditable'); el.classList.remove('tedit');
         });
@@ -3195,6 +3257,8 @@
     Array.prototype.forEach.call(document.querySelectorAll('.slide:not(.s-screen)'), function(sl){
       var idx = 0, pre = (sl.getAttribute('data-added') || 'x') + '.';
       Array.prototype.forEach.call(sl.querySelectorAll('.media'), function(m){
+        var sp = m.getAttribute('data-spare');                 // a carousel's spare: its own name, so the rest keep theirs
+        if(sp && !m.getAttribute('data-mid')) m.setAttribute('data-mid', pre + 'xm' + sp);
         if(!m.getAttribute('data-mid')) m.setAttribute('data-mid', pre + 'm' + (idx++));   // a moodboard's tiles come named
         setupTile(m);
       });
@@ -3210,8 +3274,10 @@
     var frame = m.classList.contains('fs-frame'), board = m.classList.contains('cl-tile');
     if(frame) clr.title = 'Remove from the strip';
     if(board) clr.title = 'Remove from the board';
+    if(m.closest('.s-carousel .car-set')) clr.title = 'Remove from the carousel (or Delete over it)';
     clr.addEventListener('click', function(ev){ ev.stopPropagation();
       if(frame){ removeFrame(m); return; }                                    // the strip loses the picture, not just its image
+      if(m.closest('.s-carousel .car-set')){ removeCarTile(m); return; }       // and a carousel
       if(board){ if(Deck.collageRemove) Deck.collageRemove(m); return; }    // so does a moodboard
       if(m.closest('.s-divider')) mediaImages[mid] = 'none'; else delete mediaImages[mid];   // a divider's backdrop goes, the theme shows
       applyMedia(); saveMedia(); });
@@ -3223,7 +3289,7 @@
       m.appendChild(bb);
     }
     m.addEventListener('click', function(ev){
-      if(!editing || ev.target === clr) return;
+      if(!editing || ev.target === clr || (ev.target.closest && ev.target.closest('.cap'))) return;   // its caption is for typing
       ev.stopPropagation(); curMid = mid;
       var f = document.getElementById('media-file'); f.value = ''; f.click();
     });
@@ -3552,6 +3618,7 @@
           var copy = { id: nid, t: src.t, name: name }; if(src.fill) copy.fill = src.fill;
           if(src.cl) copy.cl = JSON.parse(JSON.stringify(src.cl));   // a moodboard's pictures (their files come with the media below)
           if(src.fl) copy.fl = JSON.parse(JSON.stringify(src.fl));   // and its free pictures
+          if(src.still) copy.still = true;                            // a carousel that stays put
           list.splice(list.indexOf(src) + 1, 0, copy); doc.added = list;
           ['text', 'style', 'media', 'components', 'press', 'fits'].forEach(function(f){ copyPrefixed(doc[f], id, nid); });
           doc.noteByKey = doc.noteByKey || {}; doc.noteByKey['add-' + nid] = s._notes || '';

@@ -6,7 +6,7 @@
    'sleek-' + that version, so the offline cache and the version you see always match. Keep each
    line to a few words. */
 window.SLEEK_CHANGES = [
-  { v: '1.0.34', date: '2026-11-06',
+  { v: '1.0.35', date: '2026-11-06',
     items: [
       'Put pictures and videos anywhere on a slide',
       'A bullet can open a picture or video',
@@ -17,7 +17,12 @@ window.SLEEK_CHANGES = [
       'Before / after slider moves only while you drag',
       'Fill, fit or crop any picture',
       'Size each take-apart layer',
-      'Turn off a picture’s backplate'
+      'Turn off a picture’s backplate',
+      'Turn off a carousel’s auto scroll',
+      'Carousels hold 1 to 5 pictures',
+      'Delete removes a carousel picture',
+      'Before / after labels sit above the picture',
+      'Carousel captions can be edited again'
     ] },
   { v: '1.0.25', date: '2026-11-05',
     items: [

@@ -281,6 +281,17 @@ img { max-width: 100%; }
   @keyframes car-roll { from { transform: translateX(0); } to { transform: translateX(calc(var(--set, 1866px) * -1)); } }
   body.editing .s-carousel .car-track { animation: none; }
   body.editing .s-carousel .car-copy { display: none; }
+  /* 1 to 5 pictures: one that's out is hidden; in Edit mode, Add picture follows the last one */
+  .s-carousel .car-set > .media.car-gone { display: none !important; }
+  .car-add { display: none; }
+  body.editing .s-carousel .car-set:not(.car-copy):not(.car-full) > .car-add { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+    flex: none; height: 334px; aspect-ratio: 16 / 9; border-radius: 16px; border: 1.5px dashed color-mix(in srgb, var(--fg) 26%, transparent);
+    background: color-mix(in srgb, var(--fg) 4%, transparent); color: var(--muted); font: 600 15px/1.2 var(--ff-body, Inter, sans-serif); cursor: pointer;
+    transition: background .2s ease, border-color .2s ease, color .2s ease; }
+  body.editing .s-carousel .car-set > .car-add span { font-size: 34px; font-weight: 300; line-height: 1; }
+  body.editing .s-carousel .car-set > .car-add:hover { background: color-mix(in srgb, var(--accent) 16%, transparent); border-color: var(--accent); color: var(--fg); }
+  body.editing .s-carousel .car-set.car-min .media-clear { opacity: 0.35; }
+  body.editing .s-carousel .car-set:not(.car-copy) > .media .media-clear { display: flex; }   /* an empty one too: it can go */
   body.editing .s-carousel .carousel { overflow-x: auto; }
   /* tile labels: always shown, centered below the tile on a light frosted-glass pill */
   .s-carousel .media .cap, .s-carousel .media.filled .cap { display: block; position: absolute; left: 50%; top: calc(100% + 10px); z-index: 3;
@@ -447,11 +458,11 @@ img { max-width: 100%; }
   .imgview.open .iv-cap { opacity: 1; }
   .imgview:not(.single) .iv-img { max-width: calc(100vw - 180px); }   /* room for the arrows */
   /* before / after: the Before over the After, clipped at the divider (--p from the left) */
-  .iv-cmp { position: fixed; z-index: 1; border-radius: 12px; overflow: hidden; cursor: ew-resize; touch-action: none; --p: 50%;
+  .iv-cmp { position: fixed; z-index: 1; border-radius: 12px; overflow: visible; cursor: ew-resize; touch-action: none; --p: 50%;
     opacity: 0; transition: opacity 0.3s ease; }
   .iv-cmp[hidden] { display: none; }
   .iv-cmp.on { opacity: 1; }
-  .iv-before { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; object-fit: cover; object-position: center top; clip-path: inset(0 calc(100% - var(--p)) 0 0); pointer-events: none; }
+  .iv-before { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; border-radius: 12px; object-fit: cover; object-position: center top; clip-path: inset(0 calc(100% - var(--p)) 0 0); pointer-events: none; }
   .iv-handle { position: absolute; top: 0; bottom: 0; left: var(--p); width: 2px; margin-left: -1px; background: rgba(255,255,255,0.92);
     box-shadow: 0 0 0 1px rgba(0,0,0,0.25), 0 0 18px rgba(0,0,0,0.4); pointer-events: none; }
   .iv-knob { position: absolute; top: 50%; left: 50%; width: 44px; height: 44px; margin: -22px 0 0 -22px; border-radius: 50%; display: grid; place-items: center;
@@ -460,10 +471,12 @@ img { max-width: 100%; }
     transition: transform 0.2s ease; }
   .iv-cmp.dragging .iv-knob, .iv-cmp:hover .iv-knob { transform: scale(1.08); }
   .iv-knob svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
-  .iv-tag { position: absolute; top: 14px; padding: 6px 12px; border-radius: 999px; font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+  /* the Before and After pills sit just above the picture, at its two edges (inside it on a window too short for that) */
+  .iv-tag { position: absolute; bottom: calc(100% + 10px); padding: 6px 12px; border-radius: 999px; font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
     color: #fff; background: rgba(20, 22, 28, 0.55); border: 1px solid rgba(255,255,255,0.18); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
     pointer-events: none; transition: opacity 0.2s ease; }
-  .iv-tag-b { left: 14px; } .iv-tag-a { right: 14px; }
+  .iv-tag-b { left: 0; } .iv-tag-a { right: 0; }
+  .iv-cmp.tags-in .iv-tag { bottom: auto; top: 14px; } .iv-cmp.tags-in .iv-tag-b { left: 14px; } .iv-cmp.tags-in .iv-tag-a { right: 14px; }
   .iv-cmp[style*="--p: 0%"] .iv-tag-b, .iv-cmp[style*="--p: 100%"] .iv-tag-a { opacity: 0; }
   /* in the presenter's preview the divider is dragged for the audience (app.js passes it along) */
   body.over-tile .zone, body.over-link .zone { pointer-events: none; }
@@ -646,6 +659,7 @@ img { max-width: 100%; }
   body.editing .slide:not(.s-screen) .media.has-split > .media-split { display: block; position: absolute; inset: 0; z-index: 1; border-radius: inherit; overflow: hidden; pointer-events: none; }
   body.editing .slide:not(.s-screen) .media.filled.has-split:not(.is-video) > .media-before { display: none; }   /* the left half does its job */
   body.editing .media.has-split > .cap { position: relative; z-index: 2; }
+  body.editing .s-carousel .media.has-split > .cap { position: absolute; z-index: 3; }   /* a carousel's label stays under its tile, where you can click it */
   .media-split .msp-b { position: absolute; inset: 0; clip-path: inset(0 50% 0 0); pointer-events: auto; cursor: pointer; }
   .media-split .msp-a { position: absolute; inset: 0 0 0 50%; }
   .media-split :is(.msp-b, .msp-a)::after { content: ""; position: absolute; inset: 0; background: var(--accent); opacity: 0; transition: opacity .2s ease; pointer-events: none; }
