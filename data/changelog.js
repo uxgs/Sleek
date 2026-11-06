@@ -6,7 +6,7 @@
    'sleek-' + that version, so the offline cache and the version you see always match. Keep each
    line to a few words. */
 window.SLEEK_CHANGES = [
-  { v: '1.0.29', date: '2026-11-06',
+  { v: '1.0.30', date: '2026-11-06',
     items: [
       'Put pictures and videos anywhere on a slide',
       'A bullet can open a picture or video',

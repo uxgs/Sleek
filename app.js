@@ -1081,7 +1081,7 @@
     broadcast();                                              // so the presenter opens on this slide
     var w = null;
     try { w = window.open(location.href.split('#')[0] + '#presenter', 'sleek-presenter', 'width=1200,height=760'); } catch(e){}
-    if(w){ try { w.focus(); } catch(e){} }
+    if(w){ try { w.focus(); } catch(e){} watchPresenter(w); }
     else { var b = document.getElementById('presentbtn'); b.setAttribute('data-tip', 'Allow pop-ups'); setTimeout(function(){ b.removeAttribute('data-tip'); }, 2500); }
   }
   if(PRESENTERWIN){
@@ -3542,6 +3542,16 @@
   var AUDIENCE = !PRESENTERWIN && !MIRROR, inputBC = null, remoteFeature = false;
   var presAliveAt = 0;                                          // last heartbeat from an open presenter window
   function presenting(){ return AUDIENCE && Date.now() - presAliveAt < 4000; }
+  // the presenter window this one opened: the moment it closes, the bar and the controls come back
+  var presWin = null, presWatch = 0;
+  function watchPresenter(w){
+    presWin = w; clearInterval(presWatch);
+    presWatch = setInterval(function(){
+      var gone = true; try { gone = !presWin || presWin.closed; } catch(e){}
+      if(!gone) return;
+      clearInterval(presWatch); presWin = null; presAliveAt = 0; setPresenting(false);
+    }, 250);
+  }
   // While a presenter window is open, this is the audience's screen: the bar and the other controls
   // go (styles.css, body.presenting) and the slide takes the whole window.
   function setPresenting(on){
@@ -3549,7 +3559,7 @@
     document.body.classList.toggle('presenting', on);
     fit();
   }
-  if(AUDIENCE) setInterval(function(){ if(!presenting()) setPresenting(false); }, 2000);   // a presenter that went quietly
+  if(AUDIENCE) setInterval(function(){ if(!presenting()) setPresenting(false); }, 500);   // a presenter that went quietly
   try { inputBC = new BroadcastChannel(NS + 'sleek-input'); } catch(e){}
   function sendInput(msg){ try { if(inputBC) inputBC.postMessage(msg); } catch(e){} }
 
@@ -3942,6 +3952,7 @@
     sendInput({ kind: 'pres-alive' });
     setInterval(function(){ sendInput({ kind: 'pres-alive' }); }, 1500);
     window.addEventListener('pagehide', function(){ sendInput({ kind: 'pres-bye' }); });
+    window.addEventListener('beforeunload', function(){ sendInput({ kind: 'pres-bye' }); });
     // ← / → always change slides here, whatever has focus (a button, a cue, the preview) and whatever is
     // open on the audience screen; only typing in the notes keeps them for the caret
     window.__presNav = function(d){ if(d > 0) next(); else prev(); };
