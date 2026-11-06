@@ -143,11 +143,12 @@
   }, true);
 
   // ---------- Crop: drag the picture to choose what shows, the wheel or the slider to zoom ----------
-  var crop = null;
+  var crop = null, START_ZOOM = 1.3;
   function startCrop(b, m, prevFit){
     endCrop(true);
     var it = itemOf(b, m); if(!it) return;
-    crop = { b: b, m: m, z: +it.z || 1, cx: it.cx != null ? +it.cx : 50, cy: it.cy != null ? +it.cy : 50 };
+    // a new crop starts zoomed in a little, so there's picture to move up, down, left and right
+    crop = { b: b, m: m, z: it.z != null ? +it.z || 1 : START_ZOOM, cx: it.cx != null ? +it.cx : 50, cy: it.cy != null ? +it.cy : 50 };
     crop.was = { z: it.z, cx: it.cx, cy: it.cy, fit: prevFit === undefined ? it.fit : prevFit };
     m.classList.add('cl-cropping'); b.classList.add('cl-cropmode');
     var src = D.tileSrc(m);
@@ -169,12 +170,12 @@
     bar.addEventListener('click', function(e){
       e.stopPropagation();
       var a = e.target.closest('[data-a]'); if(!a || !crop) return;
-      if(a.getAttribute('data-a') === 'reset'){ crop.z = 1; crop.cx = 50; crop.cy = 50; zr.value = 1; paintCrop(); }
+      if(a.getAttribute('data-a') === 'reset'){ crop.z = START_ZOOM; crop.cx = 50; crop.cy = 50; zr.value = START_ZOOM; paintCrop(); }
       else endCrop(true);
     });
     paintCrop();
     requestAnimationFrame(function(){ if(crop && crop.bar === bar) bar.classList.add('in'); });
-    D.toast('Drag to move it, scroll to zoom');
+    D.toast('Drag it up, down or sideways; scroll to zoom');
   }
   // the crop's size of picture beyond the tile, in slide px, at the current zoom
   function cropExtra(){
@@ -248,6 +249,14 @@
   document.addEventListener('keydown', function(e){
     if(!crop) return;
     if(e.key === 'Escape' || e.key === 'Enter'){ e.preventDefault(); e.stopImmediatePropagation(); endCrop(e.key === 'Enter'); }
+    var d = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
+    if(d){                                                   // the arrows move the picture a little (Shift: more)
+      e.preventDefault(); e.stopImmediatePropagation();
+      var ex = cropExtra(), step = e.shiftKey ? 40 : 8;
+      if(ex.x > 0.5) crop.cx = Math.max(0, Math.min(100, crop.cx - d[0] * step / ex.x * 100));
+      if(ex.y > 0.5) crop.cy = Math.max(0, Math.min(100, crop.cy - d[1] * step / ex.y * 100));
+      paintCrop();
+    }
   }, true);
 
   // drift: copies of the set after it, enough to fill the board while it moves one set to the left
