@@ -293,6 +293,11 @@ img { max-width: 100%; }
   body.editing .s-carousel .car-set > .car-add span { font-size: 34px; font-weight: 300; line-height: 1; }
   body.editing .s-carousel .car-set > .car-add:hover { background: color-mix(in srgb, var(--accent) 16%, transparent); border-color: var(--accent); color: var(--fg); }
   body.editing .s-carousel .car-set.car-min .media-clear { opacity: 0.35; }
+  /* Edit mode: drag a picture along to reorder it */
+  body.editing .s-carousel .car-set:not(.car-copy) > .media { cursor: grab; }
+  .s-carousel .car-set > .media.car-lift { z-index: 20; cursor: grabbing; box-shadow: 0 0 0 2px var(--accent), 0 30px 60px -20px rgba(0,0,0,0.7); transition: box-shadow .2s ease; }
+  body.car-sorting, body.car-sorting * { cursor: grabbing !important; user-select: none; }
+  body.car-sorting .s-carousel .media::after { opacity: 0 !important; }   /* no "Replace" while moving */
   body.editing .s-carousel .car-set:not(.car-copy) > .media .media-clear { display: flex; }   /* an empty one too: it can go */
   body.editing .s-carousel .carousel { overflow-x: auto; }
   /* tile labels: always shown, centered below the tile on a light frosted-glass pill */

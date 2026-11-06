@@ -2473,6 +2473,7 @@
     var t = set.querySelector(':scope > .media.car-gone'), cap = t && t.querySelector('.cap[data-eid]');
     if(!cap || carLeft(set) >= CAR_MAX){ showToast('A carousel holds up to ' + CAR_MAX + ' pictures'); return; }
     var eid = cap.getAttribute('data-eid'), was = domBaseline[eid];
+    set.insertBefore(t, set.querySelector(':scope > .car-add')); saveCarOrder(set);   // it joins at the end
     cap.innerHTML = was && was !== TX_GONE ? was : 'Caption'; onTextInput(cap, eid);
     curMid = t.getAttribute('data-mid');                                   // then pick its picture
     var f = document.getElementById('media-file'); f.value = ''; f.click();
@@ -2484,6 +2485,87 @@
     cap.innerHTML = TX_GONE; onTextInput(cap, cap.getAttribute('data-eid'));
     showToast('Picture removed from the carousel', true);
   }
+  // A carousel's own order: the slide keeps its pictures' places as a list of their names (co), so the
+  // names never move (each picture keeps its words and its Before) while the pictures do. Add picture
+  // puts the one it brings back last; in Edit mode, drag a picture to its new place.
+  function carEntry(set){ var s = set && set.closest('.slide'), id = s && s.getAttribute('data-added'); return id ? ADDED.filter(function(a){ return a.id === id; })[0] || null : null; }
+  function carKey(m){ var mid = m.getAttribute('data-mid') || ''; return mid.slice(mid.indexOf('.') + 1); }
+  function carTiles(set){ return Array.prototype.slice.call(set.querySelectorAll(':scope > .media')); }
+  function applyCarOrders(){
+    Array.prototype.forEach.call(document.querySelectorAll('#stage .s-carousel .car-set:not(.car-copy)'), function(set){
+      var a = carEntry(set); if(!a || !Array.isArray(a.co)) return;
+      var by = {}; carTiles(set).forEach(function(m){ by[carKey(m)] = m; });
+      var add = set.querySelector(':scope > .car-add');
+      a.co.forEach(function(k){ if(by[k]){ set.insertBefore(by[k], add); delete by[k]; } });
+      Object.keys(by).forEach(function(k){ set.insertBefore(by[k], add); });   // any not in the list stay after, as they were
+    });
+  }
+  function saveCarOrder(set){
+    var a = carEntry(set); if(!a) return;
+    a.co = carTiles(set).map(carKey);
+    saveAdded(); markChanged(); pingReload();
+  }
+  // drag a picture along the carousel (Edit mode): the others make room as it passes them
+  var carDrag = null;
+  document.addEventListener('pointerdown', function(e){
+    if(!editing || e.button !== 0) return;
+    var m = e.target.closest && e.target.closest('#stage .slide.active .s-carousel .car-set:not(.car-copy) > .media, #stage .slide.active.s-carousel .car-set:not(.car-copy) > .media');
+    if(!m || e.target.closest('.cap, .media-clear, .media-before, .media-split .msp-b, .cl-opt, button')) return;
+    carDrag = { m: m, set: m.parentNode, car: m.closest('.carousel'), x: e.clientX, y: e.clientY, id: e.pointerId, on: false };
+  }, true);
+  function carDragPlace(){
+    var d = carDrag; if(!d || !d.on) return;
+    var k = stage.getBoundingClientRect().width / 1280, r = d.m.getBoundingClientRect();
+    // the picture stays under the pointer wherever the others put it
+    var homeX = r.left - (d.tx || 0) * k;
+    d.tx = (d.px - d.grab - homeX) / k;
+    d.m.style.transform = 'translateX(' + d.tx + 'px) scale(1.03)';
+  }
+  document.addEventListener('pointermove', function(e){
+    var d = carDrag; if(!d || e.pointerId !== d.id) return;
+    if(!d.on){
+      if(Math.abs(e.clientX - d.x) + Math.abs(e.clientY - d.y) < 8) return;
+      d.on = true; d.grab = d.x - d.m.getBoundingClientRect().left; d.tx = 0;
+      d.m.classList.add('car-lift'); document.body.classList.add('car-sorting');
+      d.raf = requestAnimationFrame(function edge(){                    // near an edge, the strip scrolls on
+        if(carDrag !== d) return;
+        var cr = d.car.getBoundingClientRect(), v = d.px < cr.left + 90 ? -(cr.left + 90 - d.px) : d.px > cr.right - 90 ? d.px - (cr.right - 90) : 0;
+        if(v){ d.car.scrollLeft += v * 0.3; carDragPlace(); }
+        d.raf = requestAnimationFrame(edge);
+      });
+    }
+    e.preventDefault();
+    d.px = e.clientX;
+    // past the middle of a neighbour: swap places with it
+    var tiles = carTiles(d.set).filter(function(t){ return t !== d.m && !t.classList.contains('car-gone'); });
+    var mid = d.px - d.grab + d.m.offsetWidth * (stage.getBoundingClientRect().width / 1280) / 2, before = null;
+    for(var j = 0; j < tiles.length; j++){ var tr = tiles[j].getBoundingClientRect(); if(mid < tr.left + tr.width / 2){ before = tiles[j]; break; } }
+    var ref = before || d.set.querySelector(':scope > .car-add');
+    if(d.m.nextSibling !== ref && ref !== d.m){
+      var first = {}; carTiles(d.set).forEach(function(t){ if(t !== d.m) first[carKey(t)] = t.getBoundingClientRect().left; });
+      d.set.insertBefore(d.m, ref);
+      carTiles(d.set).forEach(function(t){                               // the others glide to their new places
+        if(t === d.m || first[carKey(t)] == null) return;
+        var dx = first[carKey(t)] - t.getBoundingClientRect().left; if(!dx) return;
+        t.style.transition = 'none'; t.style.transform = 'translateX(' + dx / (stage.getBoundingClientRect().width / 1280) + 'px)';
+        void t.offsetWidth; t.style.transition = 'transform .28s cubic-bezier(.2,.8,.2,1)'; t.style.transform = '';
+      });
+    }
+    carDragPlace();
+  });
+  function carDragEnd(e){
+    var d = carDrag; if(!d || (e && e.pointerId !== d.id)) return;
+    carDrag = null; cancelAnimationFrame(d.raf);
+    if(!d.on) return;
+    d.m.classList.remove('car-lift'); document.body.classList.remove('car-sorting');
+    d.m.style.transition = 'transform .25s cubic-bezier(.2,.8,.2,1)'; d.m.style.transform = '';
+    setTimeout(function(){ d.m.style.transition = ''; }, 260);
+    var swallow = function(ev){ ev.stopPropagation(); ev.preventDefault(); window.removeEventListener('click', swallow, true); };   // not "replace it"
+    window.addEventListener('click', swallow, true); setTimeout(function(){ window.removeEventListener('click', swallow, true); }, 60);
+    saveCarOrder(d.set); syncFilmstrips(); renderPresenter();
+  }
+  document.addEventListener('pointerup', carDragEnd); document.addEventListener('pointercancel', carDragEnd);
+
   // Delete (or Backspace) over a carousel's or film strip's picture in Edit mode takes it out
   var overTile = null;
   document.addEventListener('mouseover', function(e){ overTile = e.target.closest ? e.target.closest('#stage .slide.active .car-set:not(.car-copy) > .media, #stage .slide.active .fs-set:not(.fs-copy) > .fs-frame') : null; });
@@ -3624,6 +3706,7 @@
           if(src.cl) copy.cl = JSON.parse(JSON.stringify(src.cl));   // a moodboard's pictures (their files come with the media below)
           if(src.fl) copy.fl = JSON.parse(JSON.stringify(src.fl));   // and its free pictures
           if(src.still) copy.still = true;                            // a carousel that stays put
+          if(src.co) copy.co = src.co.slice();                        // and its pictures' order
           list.splice(list.indexOf(src) + 1, 0, copy); doc.added = list;
           ['text', 'style', 'media', 'components', 'press', 'fits'].forEach(function(f){ copyPrefixed(doc[f], id, nid); });
           doc.noteByKey = doc.noteByKey || {}; doc.noteByKey['add-' + nid] = s._notes || '';
@@ -4232,6 +4315,7 @@
   setupText();
   applyStyles();
   setupMedia();
+  applyCarOrders(); syncFilmstrips();                      // a carousel's own order, after the names above
   setupCarouselScrub();
   renderScreens();
   rebuildSlides();
