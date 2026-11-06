@@ -8,6 +8,10 @@
 @keyframes pr-chip-in { from { opacity: 0; transform: translateX(-4px); } }
 .pr-chip i { position: relative; width: 16px; height: 16px; border-radius: 4px; background: #F2EDE1; flex: none; }
 .pr-chip i::before { content: ""; position: absolute; left: 3px; right: 3px; top: 3.5px; height: 2px; background: #1B1A17; box-shadow: 0 3.5px 0 -0.3px #4A463E, 0 7px 0 -0.3px #4A463E; }
+/* the Picture chip: a tiny photo (a sun over a hill) instead of a column of type */
+.pc-chip i { background: linear-gradient(160deg, #8FC6FF, #3D7BD9); overflow: hidden; }
+.pc-chip i::before { left: auto; right: 3px; top: 3px; width: 4px; height: 4px; border-radius: 50%; background: #FFE58A; box-shadow: none; }
+.pc-chip i::after { content: ""; position: absolute; left: -2px; right: -2px; bottom: -5px; height: 10px; border-radius: 50%; background: #1F5130; }
 .pr-chip:hover { background: rgba(40,40,46,0.95); }
 .pr-chip.has { background: color-mix(in srgb, var(--accent) 82%, #000); }
 .pr-chip.has:hover { background: var(--accent); }

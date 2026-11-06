@@ -561,9 +561,10 @@
     var el = document.createElement('div'); el.className = 'bp-backdrop cl-mp';
     el.innerHTML = '<div class="bp-modal" role="dialog" aria-modal="true" aria-label="Add media">' +
       '<button type="button" class="bp-close" data-close aria-label="Close">×</button>' +
-      '<div class="bp-head"><div class="bp-copy"><div class="bp-k">' + esc(o.kicker || 'Add media') + '</div><h2 class="bp-h">Add media</h2>' +
-        '<p class="bp-p">Pick pictures and videos from this deck, or upload new ones. You can pick as many as you like.</p>' +
-        '<div class="bp-actions"><label class="bp-btn ghost"><input type="file" accept="image/*,video/*" multiple hidden>Upload from your computer…</label></div>' +
+      '<div class="bp-head"><div class="bp-copy"><div class="bp-k">' + esc(o.kicker || 'Add media') + '</div><h2 class="bp-h">' + esc(o.title || 'Add media') + '</h2>' +
+        '<p class="bp-p">' + esc(o.text || 'Pick pictures and videos from this deck, or upload new ones. You can pick as many as you like.') + '</p>' +
+        '<div class="bp-actions"><label class="bp-btn ghost"><input type="file" accept="image/*,video/*"' + (o.single ? '' : ' multiple') + ' hidden>Upload from your computer…</label>' +
+          (o.onRemove ? '<button type="button" class="bp-btn ghost" data-remove>' + esc(o.removeLabel || 'Remove') + '</button>' : '') + '</div>' +
       '</div></div>' +
       '<div class="bp-body">' + (groups.length ? groups.map(function(g){
         return '<div class="bp-group"><div class="bp-slide">' + esc(g.slide) + '</div><div class="bp-grid">' + g.items.map(function(c){
@@ -573,12 +574,13 @@
             (c.cap ? '<span class="bp-cap">' + esc(c.cap) + '</span>' : '') + '</button>';
         }).join('') + '</div></div>';
       }).join('') : '<p class="bp-empty">' + (b ? 'Everything in the deck is on this board already.' : 'There are no pictures in the deck yet.') + ' Upload something new instead.</p>') + '</div>' +
-      '<div class="cl-mp-foot"><span class="cl-mp-n">Nothing picked</span><button type="button" class="bp-btn ghost" data-close>Cancel</button>' +
-        '<button type="button" class="bp-btn primary" data-add disabled>Add</button></div>' +
+      (o.single ? '' : '<div class="cl-mp-foot"><span class="cl-mp-n">Nothing picked</span><button type="button" class="bp-btn ghost" data-close>Cancel</button>' +
+        '<button type="button" class="bp-btn primary" data-add disabled>Add</button></div>') +
       '</div>';
     document.body.appendChild(el);
     mp = { el: el, o: o, list: list, picked: [] };
     function paint(){
+      if(o.single) return;
       var n = mp.picked.length, v = mp.picked.filter(function(k){ return list[k].video; }).length;
       el.querySelector('.cl-mp-n').textContent = !n ? 'Nothing picked' : n + ' picked';
       var add = el.querySelector('[data-add]'); add.disabled = !n;
@@ -603,7 +605,9 @@
         var chosen = mp.picked.map(function(k){ return list[k]; }), oo = mp.o; close();
         if(chosen.length && oo.onChosen) oo.onChosen(chosen); return;
       }
+      if(e.target.closest('[data-remove]')){ var or = mp.o; close(); or.onRemove(); return; }
       var t = e.target.closest('.bp-tile'); if(!t) return;
+      if(o.single){ var one = list[+t.getAttribute('data-k')], os = mp.o; close(); if(one && os.onChosen) os.onChosen([one]); return; }
       var k = +t.getAttribute('data-k'), at = mp.picked.indexOf(k);
       if(at > -1) mp.picked.splice(at, 1); else mp.picked.push(k);
       t.classList.toggle('on', at < 0); t.setAttribute('aria-pressed', String(at < 0));

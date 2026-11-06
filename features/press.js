@@ -45,9 +45,27 @@
       else el.setAttribute('data-press', base);
     });
     if(cur && !clipOf(cur.src)) close(true);
+    marks();
+  }
+  // A bullet can show a picture (or a video) instead: its file is in the deck's media under
+  // '<the bullet's text id>.pic', and in Present the bullet carries a See it chip that opens it big.
+  function picOf(el){ var eid = el && el.getAttribute('data-eid'); return eid && D.mediaOf ? D.mediaOf(eid + '.pic') : null; }
+  function marks(){
+    Array.prototype.forEach.call(document.querySelectorAll(LIST), function(el){
+      if(el.closest('.car-copy, .fs-copy')) return;
+      var src = picOf(el);
+      if(src && !el.hasAttribute('data-press')){ el.setAttribute('data-pic', D.isVideo(src) ? 'video' : 'picture'); }
+      else el.removeAttribute('data-pic');
+    });
   }
   attach();
   if(D.onPress) D.onPress.push(attach);
+  if(D.onMedia) D.onMedia.push(marks);
+  function showPic(li){
+    var src = picOf(li); if(!src || !D.openImage) return;
+    D.hideZoom && D.hideZoom();
+    D.openImage([src], 0, li);
+  }
 
   var cur = null;   // { el, src }
   function esc(v){ return String(v == null ? '' : v).replace(/[&<>"]/g, function(c){ return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
@@ -107,17 +125,19 @@
       return;
     }
     if(D.isEditing()) return;
-    var t = e.target.closest && e.target.closest('#stage .slide.active [data-press]');
-    if(!t || !clipOf(t)) return;
+    var t = e.target.closest && e.target.closest('#stage .slide.active [data-press], #stage .slide.active [data-pic]');
+    if(!t) return;
+    if(t.hasAttribute('data-press')){ if(!clipOf(t)) return; e.stopPropagation(); e.preventDefault(); open(t); return; }
+    if(D.modal) return;
     e.stopPropagation(); e.preventDefault();
-    open(t);
+    showPic(t);
   }, true);
   document.addEventListener('keydown', function(e){
     if(cur && e.key === 'Escape'){ e.preventDefault(); e.stopPropagation(); close(); }
   }, true);
   // over the bullet, clicks go to it rather than the edge zones that change slides
   document.addEventListener('mousemove', function(e){
-    var hit = !D.isEditing() && document.elementsFromPoint(e.clientX, e.clientY).some(function(el){ return el.matches && el.matches('#stage .slide.active [data-press]'); });
+    var hit = !D.isEditing() && document.elementsFromPoint(e.clientX, e.clientY).some(function(el){ return el.matches && el.matches('#stage .slide.active [data-press], #stage .slide.active [data-pic]'); });
     document.body.classList.toggle('over-press', hit);
   });
   D.onShow.push(function(){ close(true); });
@@ -148,20 +168,32 @@
   chip.type = 'button'; chip.className = 'pr-chip'; chip.hidden = true;
   chip.innerHTML = '<i aria-hidden="true"></i><span>Clipping</span>';
   document.body.appendChild(chip);
+  // and beside it, Picture: a picture (or video) the bullet opens instead
+  var pchip = document.createElement('button');
+  pchip.type = 'button'; pchip.className = 'pr-chip pc-chip'; pchip.hidden = true;
+  pchip.innerHTML = '<i aria-hidden="true"></i><span>Picture</span>';
+  document.body.appendChild(pchip);
   var chipFor = null, hideT = 0;
+  function hideChips(){ chip.hidden = true; pchip.hidden = true; chipFor = null; }
   function place(li){
-    if(!li || !D.isEditing() || D.modal){ chip.hidden = true; chipFor = null; return; }
+    if(!li || !D.isEditing() || D.modal){ hideChips(); return; }
     clearTimeout(hideT);
     chipFor = li;
-    var r = li.getBoundingClientRect(), has = !!clipOf(li);
+    var r = li.getBoundingClientRect(), has = !!clipOf(li), pic = !has && !!picOf(li);
     chip.classList.toggle('has', has);
     chip.querySelector('span').textContent = has ? 'Clipping' : '+ Clipping';
     chip.title = has ? 'Edit this bullet’s newspaper clipping' : 'Give this bullet a newspaper clipping (it opens when clicked in Present)';
-    chip.hidden = false;
-    var w = chip.offsetWidth || 96, x = Math.min(r.right + 10, window.innerWidth - w - 8);
-    chip.style.left = Math.max(8, x) + 'px'; chip.style.top = Math.max(8, r.top + r.height / 2 - 13) + 'px';
+    pchip.classList.toggle('has', pic);
+    pchip.querySelector('span').textContent = pic ? 'Picture' : '+ Picture';
+    pchip.title = pic ? 'Change or remove this bullet’s picture' : 'Give this bullet a picture (it opens big when clicked in Present)';
+    chip.hidden = pic; pchip.hidden = has;                   // a bullet opens one thing: a clipping or a picture
+    // side by side after the bullet, or (no room there) together at the window's right edge
+    var shown = [chip, pchip].filter(function(c){ return !c.hidden; });
+    var total = shown.reduce(function(a, c){ return a + (c.offsetWidth || 96) + 6; }, -6);
+    var y = Math.max(8, r.top + r.height / 2 - 13) + 'px', x = Math.max(8, Math.min(r.right + 10, window.innerWidth - total - 8));
+    shown.forEach(function(c){ c.style.left = x + 'px'; c.style.top = y; x += (c.offsetWidth || 96) + 6; });
   }
-  function hideSoon(){ clearTimeout(hideT); hideT = setTimeout(function(){ chip.hidden = true; chipFor = null; }, 450); }
+  function hideSoon(){ clearTimeout(hideT); hideT = setTimeout(hideChips, 450); }
   document.addEventListener('mouseover', function(e){
     if(!D.isEditing() || ed) return;
     if(e.target.closest && e.target.closest('.pr-chip')){ clearTimeout(hideT); return; }
@@ -174,9 +206,27 @@
   });
   chip.addEventListener('mousedown', function(e){ e.preventDefault(); });   // the caret stays in the bullet
   chip.addEventListener('click', function(e){ e.preventDefault(); e.stopPropagation(); if(chipFor) edit(chipFor); });
+  pchip.addEventListener('mousedown', function(e){ e.preventDefault(); });
+  pchip.addEventListener('click', function(e){ e.preventDefault(); e.stopPropagation(); if(chipFor) pickPic(chipFor); });
+  function pickPic(li){
+    var eid = li.getAttribute('data-eid'), had = !!picOf(li), mid = eid + '.pic';
+    hideChips();
+    if(!D.pickMedia) return;
+    function set(src){
+      D.setMedia(mid, src); D.saveMedia(); D.applyMedia(); marks();
+      D.toast(D.isVideo(src) ? 'Video added: click the bullet in Present' : 'Picture added: click the bullet in Present');
+    }
+    D.pickMedia({ kicker: 'Picture · ' + (li.textContent || '').replace(/^\s*[+\-–!•]\s*/, '').trim().slice(0, 48), single: true,
+      title: had ? 'Change the picture' : 'Show a picture',
+      text: 'In Present, this bullet gets a See it chip; click it and the picture opens big. Pick one from the deck, or upload one.',
+      removeLabel: 'Remove picture',
+      onRemove: had ? function(){ D.setMedia(mid, null); D.saveMedia(); D.applyMedia(); marks(); D.toast('Picture removed', true); } : null,
+      onChosen: function(list){ if(list[0]) set(list[0].src); },
+      onFiles: function(files){ if(files[0]) D.mediaFromFile(files[0], set); } });
+  }
   window.addEventListener('resize', function(){ if(chipFor && !chip.hidden) place(chipFor); });
-  D.onShow.push(function(){ chip.hidden = true; chipFor = null; });
-  new MutationObserver(function(){ if(!D.isEditing()){ chip.hidden = true; chipFor = null; } }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+  D.onShow.push(hideChips);
+  new MutationObserver(function(){ if(!D.isEditing()) hideChips(); }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
 
   // the editor: fields on one side, the clipping as it will look on the other
   var ed = null;   // { el, li, eid, c, typing, prev }
@@ -190,7 +240,7 @@
   function edit(li){
     if(ed) return;
     var eid = li.getAttribute('data-eid'), have = clipOf(li);
-    chip.hidden = true;
+    hideChips();
     var c = JSON.parse(JSON.stringify(have || blank(li)));
     var el = document.createElement('div');
     el.className = 'bp-backdrop pr-backdrop';

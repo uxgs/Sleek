@@ -364,11 +364,15 @@
     Array.prototype.forEach.call(s.querySelectorAll('[data-press]'), function(p, k){   // a press clipping
       out.push({ ref: 'press:' + (k + 1), kind: 'Press', press: true, name: p.textContent.replace(/^\s*\+\s*/, '').trim() });
     });
+    Array.prototype.forEach.call(s.querySelectorAll('[data-pic]'), function(p, k){     // a picture behind a bullet
+      var src = window.Deck && Deck.mediaOf(p.getAttribute('data-eid') + '.pic'), vid = isVideo(src);
+      out.push({ ref: 'pic:' + (k + 1), kind: vid ? 'Video' : 'Picture', name: p.textContent.replace(/^\s*\+\s*/, '').trim(), src: vid ? null : src, video: vid });
+    });
     return out;
   }
   function targetEl(s, ref){
-    var m = /^(tile|pin|press):(\d+)$/.exec(ref || ''); if(!m || !s) return null;
-    return (m[1] === 'tile' ? slideTiles(s) : s.querySelectorAll(m[1] === 'pin' ? '.pin' : '[data-press]'))[+m[2] - 1] || null;
+    var m = /^(tile|pin|press|pic):(\d+)$/.exec(ref || ''); if(!m || !s) return null;
+    return (m[1] === 'tile' ? slideTiles(s) : s.querySelectorAll(m[1] === 'pin' ? '.pin' : m[1] === 'pic' ? '[data-pic]' : '[data-press]'))[+m[2] - 1] || null;
   }
   // on the audience screen (and its preview, replaying it): do what clicking it would
   // An image already open gives way: it closes, then the cue's thing opens (a cue for the image
@@ -439,7 +443,7 @@
     if(!items) html = '<div class="nl-empty">Select some words in your notes first, then Link.</div>';
     else {
       html = '<div class="nl-head">Open on this slide</div>';
-      if(!items.length) html += '<div class="nl-empty">Nothing on this slide opens: add an image, a take-apart or a pin.</div>';
+      if(!items.length) html += '<div class="nl-empty">Nothing on this slide opens: add an image, a take-apart, a pin, a clipping or a picture.</div>';
       items.forEach(function(t, k){
         var thumb = t.pin ? '<span class="nl-pin" style="' + (t.pin.style.cssText.match(/--ac[^;]*;?/g) || []).join('') + '">' + t.pin.textContent + '</span>'
           : t.video ? '<span class="nl-thumb nl-vid"></span>'
@@ -4017,6 +4021,7 @@
     mediaFromFile: function(f, place){ mediaFromFile(f, place); },
     fileKind: function(f){ return fileKind(f); },
     hideZoom: function(){ hideZoom(); },
+    openImage: function(list, k, from){ openImageViewer(list, k || 0, from); },   // the big viewer, growing out of from
     flush: function(){ return flushSave(); },      // save now (before a download or leaving)
     toast: function(text, undo){ showToast(text, undo); },
     // moodboards (features/collage.js): the slide's entry in the deck, and the tiles' pictures
