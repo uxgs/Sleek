@@ -111,6 +111,12 @@ window.SLEEK_SAMPLE = {
         "fill": "sample"
       },
       {
+        "id": "moodboard",
+        "t": "collage",
+        "name": "Moodboard",
+        "fill": "sample"
+      },
+      {
         "id": "carousel",
         "t": "carousel",
         "name": "Carousel",

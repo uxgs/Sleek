@@ -316,6 +316,14 @@ img { max-width: 100%; }
   .slide-theme { position: absolute; inset: 0; pointer-events: none; }
   /* the screen name is for you while editing; the audience sees the capture unobstructed */
   body:not(.annotating) .s-screen .screenname { display: none; }
+  /* Edit mode: swap the annotated picture (top right, clear of the screen's name) */
+  .s-screen .screen-replace { display: none; position: absolute; top: 20px; right: 24px; z-index: 8; align-items: center; gap: 7px; height: 32px;
+    padding: 0 13px 0 10px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.22); background: rgba(20,20,24,0.66); color: #fff; cursor: pointer;
+    font: 600 12px/1 var(--ff-body, Inter, sans-serif); letter-spacing: 0.01em; white-space: nowrap;
+    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); box-shadow: 0 6px 18px rgba(0,0,0,0.3); transition: background .2s ease, border-color .2s ease; }
+  .s-screen .screen-replace svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+  .s-screen .screen-replace:hover { background: var(--accent); border-color: var(--accent); }
+  body.editing .s-screen .screen-replace { display: inline-flex; }
   .s-screen .screenname { position: absolute; left: 28px; top: 24px; z-index: 3; font-size: 13px; letter-spacing: 0.14em;
     text-transform: uppercase; color: var(--fg); background: color-mix(in srgb, var(--bg) 58%, transparent);
     border: 1px solid var(--line); padding: 7px 13px; border-radius: 999px; }

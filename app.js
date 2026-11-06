@@ -57,6 +57,7 @@
     var el = d.firstElementChild;
     el.classList.remove('active');
     el.setAttribute('data-label', a.name); el.setAttribute('data-note', 'add-' + a.id); el.setAttribute('data-added', a.id);
+    if(window.SleekCollage) SleekCollage.build(el, a);          // a moodboard: a tile for each of its pictures (features/collage-layout.js)
     if(a.fill === 'sample') return el;                         // the layout's own words, pictures and notes
     el.removeAttribute('data-before');
     var notes = el.querySelector('template.slide-notes'); if(notes) notes.remove();
@@ -330,7 +331,7 @@
   // survives saving and slides moving) that opens it on the audience screen as if you'd clicked it,
   // from the deck's notes or the presenter's (the preview follows). While editing it's just text.
   function slideTiles(s){
-    return Array.prototype.filter.call(s.querySelectorAll('.media'), function(t){ return t.closest('.slide') === s && !t.closest('.car-copy, .fs-copy'); });
+    return Array.prototype.filter.call(s.querySelectorAll('.media'), function(t){ return t.closest('.slide') === s && !t.closest('.car-copy, .fs-copy, .cl-copy'); });
   }
   function openTargets(s){
     var out = [], n = 0, nv = 0; if(!s) return out;
@@ -974,6 +975,8 @@
     var t = templateBy(key); if(!t) return null;
     var d = document.createElement('div'); d.innerHTML = t.html;
     var c = d.firstElementChild, n = c.querySelector('template.slide-notes'); if(n) n.remove();
+    var board = window.SleekCollage && SleekCollage.build(c, null);   // a moodboard, laid out as it would be on the slide
+    if(board) SleekCollage.place(board, SleekCollage.NOMINAL.W, SleekCollage.NOMINAL.H, 'fit');
     Array.prototype.forEach.call(c.querySelectorAll('.media[data-default-src]'), function(m){
       var src = m.getAttribute('data-default-src'), pos = (m.getAttribute('data-bg-pos') || 'center top') + '/cover no-repeat url("';
       if(isVideo(src)){ m.classList.add('sample-film'); stillFor(src, function(url){ m.style.background = 'center / cover no-repeat url("' + url + '")'; }); }
@@ -988,7 +991,7 @@
     Array.prototype.forEach.call(c.querySelectorAll('[id],[data-eid],[data-mid],[contenteditable]'), function(el){
       el.removeAttribute('id'); el.removeAttribute('data-eid'); el.removeAttribute('data-mid'); el.removeAttribute('contenteditable');
     });
-    Array.prototype.forEach.call(c.querySelectorAll('.media-clear, .media-sizer, iframe, .size-handle, .tx-del'), function(el){ el.remove(); });
+    Array.prototype.forEach.call(c.querySelectorAll('.media-clear, .media-sizer, iframe, .size-handle, .tx-del, .screen-replace'), function(el){ el.remove(); });
     // a still from a couple of seconds in, as the video's poster: a preview never loads the video itself
     Array.prototype.forEach.call(c.querySelectorAll('video'), function(v){
       var src = vsrc(v).split('#')[0];
@@ -1439,12 +1442,41 @@
       else { var cap = document.createElement('span'); cap.className = 'cap'; cap.textContent = sc.name; media.appendChild(cap); }
       sec.appendChild(media);
       var nm = document.createElement('span'); nm.className = 'screenname'; nm.textContent = sc.name; sec.appendChild(nm);
+      sec.appendChild(screenReplaceBtn(sc, media));
       buildAnns(sec, sc, media);
       host.appendChild(sec);
     });
     if(orderReady) applyOrder();
     renderPageAnns();
     if(typeof slideThemeOverrides !== 'undefined') setTimeout(refreshSlideThemes, 0);   // the screens are new elements
+  }
+  // Edit mode: the picture being annotated can be swapped for another; its pins and shapes stay put
+  var screenFile = null;
+  function screenReplaceBtn(sc, media){
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'screen-replace';
+    b.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="4" width="14" height="12" rx="2"/><circle cx="7.5" cy="8.5" r="1.4"/><path d="m3.5 14.5 4-4 3 3 2-2 4 4"/></svg><span>' + (sc.img ? 'Replace picture' : 'Add picture') + '</span>';
+    b.addEventListener('pointerdown', function(e){ e.stopPropagation(); });
+    b.addEventListener('click', function(e){
+      e.stopPropagation(); if(!editing) return;
+      if(!screenFile){
+        screenFile = document.createElement('input'); screenFile.type = 'file'; screenFile.accept = 'image/*'; screenFile.hidden = true;
+        document.body.appendChild(screenFile);
+        screenFile.addEventListener('change', function(){
+          var f = screenFile.files && screenFile.files[0], t = screenFile._for; screenFile.value = ''; screenFile._for = null;
+          if(!f || !t) return;
+          mediaFromFile(f, function(src){
+            t.sc.img = src; t.media._img = src; screenBg(t.media);
+            var cap = t.media.querySelector(':scope > .cap'); if(cap) cap.remove();
+            t.btn.querySelector('span').textContent = 'Replace picture';
+            saveAnns(); refreshSlideThemes(); renderPresenter();
+          });
+        });
+      }
+      screenFile._for = { sc: sc, media: media, btn: b };
+      screenFile.value = ''; screenFile.click();
+    });
+    return b;
   }
   // every other slide: an annotation layer over the whole slide (only catches clicks while adding)
   function renderPageAnns(){
@@ -1760,7 +1792,7 @@
   // on the tile (a layout's own sample Before), then the tile with the same caption on the slide its
   // slide names in data-before.
   function tileByMid(mid){
-    return Array.prototype.filter.call(document.querySelectorAll('#stage .media[data-mid="' + mid + '"]'), function(m){ return !m.closest('.car-copy, .fs-copy'); })[0] || null;
+    return Array.prototype.filter.call(document.querySelectorAll('#stage .media[data-mid="' + mid + '"]'), function(m){ return !m.closest('.car-copy, .fs-copy, .cl-copy'); })[0] || null;
   }
   function beforePick(mid){ return mid ? (mediaImages['b:' + mid] || (SEED.media && SEED.media['b:' + mid]) || null) : null; }
   function pairedBefore(t){
@@ -1833,7 +1865,7 @@
     return null;
   }
   function expandTile(m){
-    var group = m.closest('.car-set, .grid, .asm-row') || m.parentNode;
+    var group = m.closest('.car-set, .grid, .asm-row, .cl-set') || m.parentNode;
     var tiles = Array.prototype.filter.call(group.querySelectorAll('.media'), isExpandable);
     if(tiles.indexOf(m) < 0) tiles = [m];
     var list = tiles.map(tileSrc), caps = tiles.map(function(t){ var c = t.querySelector('.cap'); return c ? c.textContent : ''; });
@@ -2655,6 +2687,7 @@
   // ================= image tiles (any static slide) =================
   // Seed images are relative paths in SEED.media; images you pick are stored on this device.
   var mediaImages = {}, curMid = null;
+  var mediaListeners = [];                                       // fn() after tiles are painted (features/collage.js)
   function saveMedia(){
     idbSet('media', mediaImages); markChanged();
     try { localStorage.setItem(NS + 'sleek-media-ping', String(Date.now())); } catch(e){}
@@ -2730,7 +2763,7 @@
     if(!src || !a || a === rgbHex(SAMPLE_ORANGE) || !/(\.svg([?#]|$))|^data:image\/svg\+xml/i.test(src)) return src;
     var k = a + '|' + src;
     if(tinted[k]) return tinted[k];
-    if(cb) (tintWait[k] = tintWait[k] || []).push(cb);
+    if(cb && (tintWait[k] = tintWait[k] || []).indexOf(cb) < 0) tintWait[k].push(cb);   // each waiter once
     if(tintWait[k] && tintWait[k].started) return src;
     tintWait[k] = tintWait[k] || []; tintWait[k].started = true;
     fetch(src).then(function(r){ return r.text(); }).then(function(t){
@@ -2744,8 +2777,12 @@
   function samplePic(m, img){
     if(!img || img !== m.getAttribute('data-default-src')) return img;
     if(isVideo(img)){ m.classList.add('sample-film'); return img; }
-    return sampleTint(img, function(){ applyMedia(); });
+    return sampleTint(img, repaintMedia);
   }
+  // the tiles painted again once their tinted pictures are ready: one repaint for all of them, not
+  // one per tile per repaint (a board of many sample pictures would otherwise snowball)
+  var repaintT = 0;
+  function repaintMedia(){ if(repaintT) return; repaintT = setTimeout(function(){ repaintT = 0; applyMedia(); }, 30); }
   // the layouts' sample pictures start tinting as the deck opens, and again when the accent changes
   var lastAccent = null;
   function retint(){
@@ -2789,6 +2826,7 @@
     paintBefores();
     syncFilmstrips();
     refreshSlideThemes();                                        // a picture going in or out changes the default
+    mediaListeners.forEach(function(f){ try { f(); } catch(e){ console.error(e); } });
     if(PRESENTERWIN) renderPresenter();
   }
   // a tile whose media is a video plays it silently on a loop (click it for the full player);
@@ -3046,32 +3084,38 @@
     Array.prototype.forEach.call(document.querySelectorAll('.slide:not(.s-screen)'), function(sl){
       var idx = 0, pre = (sl.getAttribute('data-added') || 'x') + '.';
       Array.prototype.forEach.call(sl.querySelectorAll('.media'), function(m){
-        var mid = m.getAttribute('data-mid') || (pre + 'm' + (idx++));
-        m.setAttribute('data-mid', mid);
-        if(m.hasAttribute('data-resize')) addMediaSizer(m);
-        var clr = document.createElement('button');
-        clr.className = 'media-clear'; clr.type = 'button'; clr.textContent = '×'; clr.title = 'Remove image';
-        var frame = m.classList.contains('fs-frame');
-        if(frame) clr.title = 'Remove from the strip';
-        clr.addEventListener('click', function(ev){ ev.stopPropagation();
-          if(frame){ removeFrame(m); return; }                                    // the strip loses the picture, not just its image
-          if(m.closest('.s-divider')) mediaImages[mid] = 'none'; else delete mediaImages[mid];   // a divider's backdrop goes, the theme shows
-          applyMedia(); saveMedia(); });
-        m.appendChild(clr);
-        if(!m.closest('.s-divider, .s-fullvideo, .filmstrip') && !m.matches('[data-dis]')){   // a tile that opens big can have a Before
-          var bb = document.createElement('button');
-          bb.className = 'media-before'; bb.type = 'button'; bb.innerHTML = '<i></i><span>Add before</span>';
-          bb.addEventListener('click', function(ev){ ev.stopPropagation(); if(Deck.openBeforePicker) Deck.openBeforePicker(mid, m); });
-          m.appendChild(bb);
-        }
-        m.addEventListener('click', function(ev){
-          if(!editing || ev.target === clr) return;
-          ev.stopPropagation(); curMid = mid;
-          var f = document.getElementById('media-file'); f.value = ''; f.click();
-        });
+        if(!m.getAttribute('data-mid')) m.setAttribute('data-mid', pre + 'm' + (idx++));   // a moodboard's tiles come named
+        setupTile(m);
       });
     });
     applyMedia();
+  }
+  // a tile's Edit-mode controls: click to replace its picture, x to remove it, and its Before
+  function setupTile(m){
+    var mid = m.getAttribute('data-mid');
+    if(m.hasAttribute('data-resize')) addMediaSizer(m);
+    var clr = document.createElement('button');
+    clr.className = 'media-clear'; clr.type = 'button'; clr.textContent = '\u00d7'; clr.title = 'Remove image';
+    var frame = m.classList.contains('fs-frame'), board = m.classList.contains('cl-tile');
+    if(frame) clr.title = 'Remove from the strip';
+    if(board) clr.title = 'Remove from the board';
+    clr.addEventListener('click', function(ev){ ev.stopPropagation();
+      if(frame){ removeFrame(m); return; }                                    // the strip loses the picture, not just its image
+      if(board){ if(Deck.collageRemove) Deck.collageRemove(m); return; }    // so does a moodboard
+      if(m.closest('.s-divider')) mediaImages[mid] = 'none'; else delete mediaImages[mid];   // a divider's backdrop goes, the theme shows
+      applyMedia(); saveMedia(); });
+    m.appendChild(clr);
+    if(!board && !m.closest('.s-divider, .s-fullvideo, .filmstrip') && !m.matches('[data-dis]')){   // a tile that opens big can have a Before
+      var bb = document.createElement('button');
+      bb.className = 'media-before'; bb.type = 'button'; bb.innerHTML = '<i></i><span>Add before</span>';
+      bb.addEventListener('click', function(ev){ ev.stopPropagation(); if(Deck.openBeforePicker) Deck.openBeforePicker(mid, m); });
+      m.appendChild(bb);
+    }
+    m.addEventListener('click', function(ev){
+      if(!editing || ev.target === clr) return;
+      ev.stopPropagation(); curMid = mid;
+      var f = document.getElementById('media-file'); f.value = ''; f.click();
+    });
   }
   // a picture or video you pick goes into the deck as it is (no resizing or re-encoding)
   function mediaFromFile(f, place){
@@ -3160,7 +3204,7 @@
       var el = els[k];
       if(el.classList && el.classList.contains('media') && el.classList.contains('filled') &&
          el.closest('#stage .slide.active') && !el.closest('.s-divider, .s-fullvideo, .s-screen, .filmstrip')){
-        glow = el;
+        if(!el.closest('.cl-board')) glow = el;                 // a moodboard's tiles lift instead
         if(!el.matches('[data-dis]')) hit = el;
         break;
       }
@@ -3381,6 +3425,7 @@
           var id = s.getAttribute('data-added'), nid = freshId(), list = doc.added || [];
           var src = list.filter(function(a){ return a.id === id; })[0]; if(!src) return false;
           var copy = { id: nid, t: src.t, name: name }; if(src.fill) copy.fill = src.fill;
+          if(src.cl) copy.cl = JSON.parse(JSON.stringify(src.cl));   // a moodboard's pictures (their files come with the media below)
           list.splice(list.indexOf(src) + 1, 0, copy); doc.added = list;
           ['text', 'style', 'media', 'components', 'press'].forEach(function(f){ copyPrefixed(doc[f], id, nid); });
           doc.noteByKey = doc.noteByKey || {}; doc.noteByKey['add-' + nid] = s._notes || '';
@@ -3867,7 +3912,7 @@
       var seen = {};
       return Array.prototype.filter.call(document.querySelectorAll('#stage .slide:not(.s-screen) .media[data-mid]'), function(m){
         var id = m.getAttribute('data-mid'), src = tileSrc(m);
-        if(seen[id] || id === mid || m.closest('.car-copy, .fs-copy') || !src || isVideo(src)) return false;
+        if(seen[id] || id === mid || m.closest('.car-copy, .fs-copy, .cl-copy') || !src || isVideo(src)) return false;
         return (seen[id] = true);
       }).map(function(m){
         var s = m.closest('.slide'), c = m.querySelector('.cap');
@@ -3890,7 +3935,18 @@
     mediaFromFile: function(f, place){ mediaFromFile(f, place); },
     hideZoom: function(){ hideZoom(); },
     flush: function(){ return flushSave(); },      // save now (before a download or leaving)
-    toast: function(text){ showToast(text); },
+    toast: function(text, undo){ showToast(text, undo); },
+    // moodboards (features/collage.js): the slide's entry in the deck, and the tiles' pictures
+    addedOf: function(s){ var id = s && s.getAttribute('data-added'); return ADDED.filter(function(a){ return a.id === id; })[0] || null; },
+    saveAdded: function(){ saveAdded(); markChanged(); },
+    setupTile: function(m){ setupTile(m); },
+    setMedia: function(mid, src){ if(src == null) delete mediaImages[mid]; else mediaImages[mid] = src; },
+    applyMedia: function(){ applyMedia(); },
+    saveMedia: function(){ saveMedia(); },
+    onMedia: mediaListeners,
+    pingReload: function(){ pingReload(); },
+    presenter: PRESENTERWIN,
+    armVideos: function(){ armVideos(true); },
     stageRect: function(el){                        // element box in slide (1280x720) coordinates
       var sr = stage.getBoundingClientRect(), k = sr.width / 1280, r = el.getBoundingClientRect();
       return { x: (r.left - sr.left) / k, y: (r.top - sr.top) / k, w: r.width / k, h: r.height / k };

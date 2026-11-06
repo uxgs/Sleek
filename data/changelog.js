@@ -6,8 +6,10 @@
    'sleek-' + that version, so the offline cache and the version you see always match. Keep each
    line to a few words. */
 window.SLEEK_CHANGES = [
-  { v: '1.0.18', date: '2026-11-05',
+  { v: '1.0.19', date: '2026-11-05',
     items: [
+      'Moodboard layout',
+      'Change the picture on an annotated screen',
       'Templates and the sample deck follow your theme',
       'Settings on the start screen',
       'Version number and changelog',

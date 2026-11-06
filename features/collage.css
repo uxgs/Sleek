@@ -1,0 +1,89 @@
+/* Moodboard: a wall of pictures (features/collage-layout.js places them, features/collage.js moves them) */
+.s-collage { padding: 64px 104px 56px; gap: 22px; }
+.s-collage h2.display { font-size: 40px; }
+.s-collage .headrow { display: flex; align-items: baseline; gap: 20px; justify-content: space-between; flex: none; }
+/* no title: the pictures fill the slide */
+.s-collage.cl-bare { padding: 40px 48px; }
+.s-collage.cl-bare .headrow { display: none; }
+
+.cl-board { position: relative; flex: 1 1 auto; min-height: 0; }
+.cl-track { position: absolute; inset: 0; }
+.cl-set { position: absolute; inset: 0; }
+.cl-tile.media { position: absolute; box-sizing: border-box; margin: 0; transform: rotate(var(--rot, 0deg));
+  transition: opacity 0.9s ease, transform 0.35s cubic-bezier(.2, .8, .2, 1), box-shadow 0.35s ease; }
+.cl-tile.cl-off { opacity: 0; pointer-events: none; }
+.cl-board.cl-instant .cl-tile { transition: none !important; }
+/* Edit mode: a change glides the pictures to their new places */
+body.editing .cl-tile.media { transition: left 0.35s ease, top 0.35s ease, width 0.35s ease, height 0.35s ease, transform 0.35s ease, opacity 0.3s ease; touch-action: none; }
+body.editing .cl-drift .cl-tile.media { touch-action: pan-x; }
+
+/* mosaic: tight, even gutters */
+.cl-mosaic .cl-tile.media { border-radius: 12px; }
+/* masonry: softer */
+.cl-masonry .cl-tile.media { border-radius: 10px; }
+/* a lifted picture in Present (Mosaic, Masonry, Contact sheet) */
+body:not(.editing) .slide.active .cl-board:not(.cl-scattered) .cl-tile.filled:hover { transform: translateY(-3px);
+  box-shadow: 0 16px 36px -12px rgba(0,0,0,0.55), 0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent); z-index: 50 !important; }
+
+/* scattered: prints on a table, a white edge (a deeper one at the bottom of a polaroid), tape on the rest */
+.cl-scattered .cl-tile.media { border-radius: 3px; overflow: visible; border-style: solid; border-color: #FBF8F3;
+  border-width: var(--pb, 8px) var(--pb, 8px) var(--pbb, 8px); background-color: #FBF8F3;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.22), 0 18px 40px -14px rgba(0,0,0,0.55); }
+.cl-scattered .cl-tile.media:not(.cl-pol)::before { content: ""; position: absolute; left: 50%; top: calc(var(--pb, 8px) * -1 - 9px); z-index: 2;
+  width: 34%; max-width: 110px; height: 22px; transform: translateX(-50%) rotate(-3deg); pointer-events: none;
+  background: color-mix(in srgb, #F4EBD9 72%, transparent); box-shadow: 0 1px 2px rgba(0,0,0,0.12); }
+.cl-scattered .cl-tile.media > .tile-video { border-radius: 0; }
+body:not(.editing) .slide.active .cl-scattered .cl-tile.filled:hover { transform: rotate(0deg) scale(1.08); z-index: 900 !important;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2), 0 30px 60px -16px rgba(0,0,0,0.6); }
+
+/* contact sheet: square frames, numbered underneath, the best ones circled in the accent */
+.cl-contact .cl-tile.media { border-radius: 2px; overflow: visible; border-color: color-mix(in srgb, var(--fg) 16%, transparent); }
+.cl-contact .cl-tile.media > .tile-video { border-radius: 0; }
+.cl-no { position: absolute; left: 1px; top: 100%; padding-top: calc(var(--lab, 16px) * 0.22); pointer-events: none;
+  font: 600 calc(var(--lab, 16px) * 0.6)/1 ui-monospace, "SF Mono", Menlo, Consolas, monospace; letter-spacing: 0.08em;
+  color: color-mix(in srgb, var(--accent) 80%, var(--fg)); }
+.cl-contact .cl-tile.cl-pick::before { content: ""; position: absolute; inset: -8px; z-index: 3; pointer-events: none;
+  border: 2.5px solid var(--accent); border-radius: 48% 52% 46% 54% / 55% 45% 55% 45%; transform: rotate(-2.5deg); opacity: 0.9; }
+
+/* drift sideways: an endless strip, edge to edge, fading at the sides; hover pauses it */
+.cl-board.cl-drift { margin-inline: -104px; overflow: hidden;
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 6%, #000 94%, transparent);
+          mask-image: linear-gradient(to right, transparent, #000 6%, #000 94%, transparent); }
+.s-collage.cl-bare .cl-board.cl-drift { margin-inline: -48px; }
+.cl-drift .cl-track { position: relative; inset: auto; display: flex; width: max-content; height: 100%;
+  animation: cl-drift 60s linear infinite; animation-play-state: paused; will-change: transform; }
+.cl-drift .cl-set { position: relative; inset: auto; flex: none; height: 100%; }
+.s-collage.rolling .cl-drift .cl-track { animation-play-state: running; }
+.s-collage.rolling .cl-drift:hover .cl-track, body.deck-modal .cl-drift .cl-track { animation-play-state: paused; }
+.cl-board.cl-reset .cl-track { animation: none !important; }
+@keyframes cl-drift { from { transform: translateX(0); } to { transform: translateX(calc(var(--set, 2000px) * -1)); } }
+/* in Edit mode the strip holds still, and scrolls to the rest */
+body.editing .cl-drift .cl-track { animation: none; }
+body.editing .cl-drift .cl-copy { display: none; }
+body.editing .cl-board.cl-drift { overflow-x: auto; overflow-y: hidden; -webkit-mask-image: none; mask-image: none; }
+@media (prefers-reduced-motion: reduce) {
+  .cl-drift .cl-track { animation: none; }
+  .cl-drift .cl-copy { display: none; }
+  .cl-board.cl-drift { overflow-x: auto; overflow-y: hidden; }
+  .cl-tile.media { transition: none; }
+}
+
+/* Edit mode: swapping, dropping files, an empty board */
+.cl-tile.media.cl-drag { z-index: 1000 !important; transition: none !important; cursor: grabbing; opacity: 0.9; pointer-events: none;
+  transform: translate(var(--dx, 0), var(--dy, 0)) rotate(var(--rot, 0deg)) scale(1.04); box-shadow: 0 24px 50px -14px rgba(0,0,0,0.6); }
+.cl-tile.media.cl-target { outline: 3px solid var(--accent); outline-offset: 3px; }
+body.cl-dragging, body.cl-dragging * { cursor: grabbing !important; }
+body.editing .cl-board.cl-drop { outline: 2px dashed var(--accent); outline-offset: 6px; border-radius: 14px; }
+body.editing .cl-board.cl-none { border: 1.5px dashed var(--line-strong); border-radius: 16px; cursor: pointer; }
+body.editing .cl-board.cl-none::after { content: "Add pictures, or drop them here"; position: absolute; inset: 0; display: grid; place-items: center;
+  color: var(--muted); font-size: 16px; letter-spacing: 0.01em; }
+
+/* the Edit bar's Moodboard group */
+.editbar .eb-pick { padding: 0 8px 0 10px; gap: 7px; }
+.editbar .eb-pick svg { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.editbar .eb-pick .chev { width: 13px; height: 13px; opacity: 0.6; }
+.editbar .eb-pick[aria-expanded="true"] { border-color: rgba(255,255,255,0.55); }
+.editbar #eb-collage .eb-menu { min-width: 186px; }
+.editbar #eb-collage .eb-menu button[aria-checked="true"] { color: #fff; background: color-mix(in srgb, var(--accent) 22%, transparent); }
+.editbar #cl-title[aria-pressed="true"] { color: #fff; border-color: var(--accent); background: color-mix(in srgb, var(--accent) 22%, transparent); }
+body.compact .editbar .eb-pick .pick-v, body.compact .editbar #cl-add .lbl { display: none; }

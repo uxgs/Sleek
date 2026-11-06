@@ -5,8 +5,8 @@
    feature; it doesn't edit. Built from this page's own files, so it needs a page served over
    http(s) or one where the browser allows reading them. */
 (function(){
-  var CSS = ['styles.css', 'glow.css', 'features/features.css', 'features/add-slide.css', 'features/before-picker.css'];
-  var JS = ['app.js', 'glow-fx.js', 'features/disassemble.js', 'features/press.js', 'features/mobile.js'];
+  var CSS = ['styles.css', 'glow.css', 'features/features.css', 'features/add-slide.css', 'features/before-picker.css', 'features/collage.css'];
+  var JS = ['features/collage-layout.js', 'app.js', 'glow-fx.js', 'features/disassemble.js', 'features/press.js', 'features/mobile.js', 'features/collage.js'];
   var HEAD_JS = ['theme-boot.js'];
 
   function text(u){ return fetch(u, { cache: 'no-cache' }).then(function(r){ if(!r.ok) throw new Error(u + ': ' + r.status); return r.text(); }); }

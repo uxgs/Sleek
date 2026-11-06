@@ -22,6 +22,7 @@
 <link rel="stylesheet" href="features/take-apart-editor.css">
 <link rel="stylesheet" href="features/press-editor.css">
 <link rel="stylesheet" href="features/deck-file.css">
+<link rel="stylesheet" href="features/collage.css">
 <!-- the storage, the sample deck, then the loader: it opens the deck and starts the engine on it -->
 <script src="core/store.js"></script>
 <script src="data/sample.js"></script>
@@ -139,6 +140,34 @@
 <div class="editbar" id="editbar" hidden>
   <button id="eb-done" class="eb-close" title="Done editing" aria-label="Done editing">
     <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5.5 5.5 9 9M14.5 5.5l-9 9"/></svg></button>
+  <span class="eb-group" id="eb-collage" hidden>
+    <span class="eb-addwrap">
+      <button id="cl-style" class="eb-pick" type="button" aria-haspopup="menu" aria-expanded="false" data-tt="Style" aria-label="Style">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="3" width="8" height="8" rx="1.6"/><rect x="13" y="3" width="4" height="5" rx="1.2"/><rect x="13" y="10" width="4" height="7" rx="1.2"/><rect x="3" y="13" width="8" height="4" rx="1.2"/></svg><span class="pick-v">Mosaic</span><svg class="chev" viewBox="0 0 20 20" aria-hidden="true"><path d="m6 8 4 4 4-4"/></svg></button>
+      <span class="eb-menu" id="cl-style-menu" role="menu" hidden>
+        <button type="button" role="menuitemradio" data-v="mosaic"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="3" width="8" height="8" rx="1.6"/><rect x="13" y="3" width="4" height="5" rx="1.2"/><rect x="13" y="10" width="4" height="7" rx="1.2"/><rect x="3" y="13" width="8" height="4" rx="1.2"/></svg>Mosaic</button>
+        <button type="button" role="menuitemradio" data-v="masonry"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="3" width="4" height="8" rx="1.2"/><rect x="3" y="13" width="4" height="4" rx="1.2"/><rect x="8.5" y="3" width="4" height="4" rx="1.2"/><rect x="8.5" y="9" width="4" height="8" rx="1.2"/><rect x="14" y="3" width="3.5" height="10" rx="1.2"/></svg>Masonry</button>
+        <button type="button" role="menuitemradio" data-v="scattered"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.8" y="4.5" width="8" height="7" rx="1" transform="rotate(-8 6.8 8)"/><rect x="9" y="8.5" width="8" height="7" rx="1" transform="rotate(7 13 12)"/></svg>Scattered</button>
+        <button type="button" role="menuitemradio" data-v="contact"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="3.5" width="15" height="13" rx="1.6"/><path d="M2.5 10h15M7.5 3.5v13M12.5 3.5v13"/></svg>Contact sheet</button>
+      </span>
+    </span>
+    <span class="eb-addwrap">
+      <button id="cl-motion" class="eb-pick" type="button" aria-haspopup="menu" aria-expanded="false" data-tt="Motion" aria-label="Motion">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 10h10"/><path d="m10 6 4 4-4 4"/><path d="M17 4v12"/></svg><span class="pick-v">Static</span><svg class="chev" viewBox="0 0 20 20" aria-hidden="true"><path d="m6 8 4 4 4-4"/></svg></button>
+      <span class="eb-menu" id="cl-motion-menu" role="menu" hidden>
+        <button type="button" role="menuitemradio" data-v="static"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="4" width="14" height="12" rx="2"/></svg>Static</button>
+        <button type="button" role="menuitemradio" data-v="drift"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2.5 10h12"/><path d="m11 6 4 4-4 4"/></svg>Drift sideways</button>
+        <button type="button" role="menuitemradio" data-v="shuffle"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 6h3.5c3.5 0 4.5 8 8 8H17"/><path d="M3 14h3.5c1.4 0 2.4-1.3 3.2-2.8M12 7c.7-.6 1.5-1 2.5-1H17"/><path d="m15 4 2 2-2 2M15 12l2 2-2 2"/></svg>Shuffle in place</button>
+      </span>
+    </span>
+    <button id="cl-title" class="eb-icon" type="button" aria-pressed="true" data-tt="Show the title" aria-label="Show the title">
+      <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 5h12M10 5v10"/></svg></button>
+    <button id="cl-mix" class="eb-icon" type="button" data-tt="Remix the arrangement" aria-label="Remix the arrangement">
+      <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M15.5 8.5A6 6 0 0 0 4.7 6.6"/><path d="M4.5 3.5v3.3h3.3"/><path d="M4.5 11.5a6 6 0 0 0 10.8 1.9"/><path d="M15.5 16.5v-3.3h-3.3"/></svg></button>
+    <button id="cl-add" class="eb-ico" type="button" title="Add pictures">
+      <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4.5v11M4.5 10h11"/></svg><span class="lbl">Add pictures</span></button>
+    <span class="sep"></span>
+  </span>
   <span class="eb-group" id="eb-text">
     <button id="eb-fs-down" title="Smaller text" disabled>A−</button>
     <span class="eb-fs" id="eb-fs" title="Text size (slide px)">–</span>
@@ -193,6 +222,7 @@
   <div class="grid-tiles" id="grid-tiles"></div>
 </section>
 <input type="file" accept="image/*,video/*" id="media-file" hidden>
+<input type="file" accept="image/*,video/*" id="cl-file" multiple hidden>
 
 <div class="pin-ed" id="pin-ed" hidden>
   <input class="pe-title" placeholder="Label (e.g. Start button)">
@@ -463,6 +493,15 @@
 <ul><li>In Edit mode, click the film to swap it for your own video or picture.</li></ul></template>
       <div class="media slide-bg" data-default-src="assets/sample/clip-a.mp4"></div>
       <div class="headrow"><h2 class="display">Launch day.</h2><span class="meta">Spring 2026</span></div>
+    </section>
+
+    <!-- Moodboard: any number of pictures, pieced together in one of four styles, still or moving -->
+    <section class="slide s-collage" data-label="Moodboard" data-note="collage">
+      <template class="slide-notes"><p>A wall of pictures in mosaic, masonry, scattered or contact-sheet style, still or always moving.</p>
+<ul><li>In Edit mode, the bar picks the style and the motion, adds as many pictures as you like (or drop them on the board), and turns the title off so the pictures fill the slide.</li><li>Drag one picture onto another to swap them; Remix shuffles the arrangement.</li></ul></template>
+      <div class="headrow"><h2 class="display">The feel of it.</h2><span class="meta">Moodboard</span></div>
+      <div class="cl-board" data-style="mosaic" data-motion="static"
+           data-samples="assets/sample/today.svg|1.7778 assets/sample/phone.svg|0.5625 assets/sample/swatch.svg|1 assets/sample/workout.svg|1.7778 assets/sample/type.svg|0.8 assets/sample/plan.svg|1.7778 assets/sample/icon.svg|1 assets/sample/you.svg|1.7778 assets/sample/card.svg|1.7778 assets/sample/backdrop.svg|1.7778"></div>
     </section>
 
     <!-- Lessons: what landed and what to watch -->
