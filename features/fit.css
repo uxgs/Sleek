@@ -11,6 +11,11 @@
   clip-path: inset(calc((var(--cz, 1) - 1) * var(--cyn, .5) / var(--cz, 1) * 100%) calc((var(--cz, 1) - 1) * (1 - var(--cxn, .5)) / var(--cz, 1) * 100%)
                    calc((var(--cz, 1) - 1) * (1 - var(--cyn, .5)) / var(--cz, 1) * 100%) calc((var(--cz, 1) - 1) * var(--cxn, .5) / var(--cz, 1) * 100%)); }
 
+/* no backplate: the picture alone on the slide, without the tile's border or Fit's mat behind it
+   (Edit mode marks where the tile is with a faint dashed line) */
+#stage .media.fit-bare, #stage .media.fit-bare.cl-fit { background-color: transparent !important; border-color: transparent; box-shadow: none; }
+body.editing .slide .media.fit-bare { outline: 1px dashed color-mix(in srgb, var(--fg) 26%, transparent); outline-offset: -1px; }
+
 /* each picture's switch in Edit mode: shown on hover, and always once it's set to something other than Fill.
    A moodboard's sits top left; any other tile's bottom left (Add before has the top left) */
 .cl-opt { display: none; position: absolute; left: 8px; top: 8px; z-index: 6; height: 26px; padding: 0 9px 0 7px; gap: 5px; align-items: center;

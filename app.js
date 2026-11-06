@@ -2903,7 +2903,9 @@
   // copy their tiles, so the copies match.
   function fitOf(mid){ return (mid && SEED.fits && SEED.fits[mid]) || null; }
   function setFit(mid, o){
-    var e = {};
+    var e = {}, had = fitOf(mid);
+    var bare = o && o.bare !== undefined ? !!o.bare : !!(had && had.bare);   // the backplate stays as it was unless asked
+    if(bare) e.bare = true;
     if(o && (o.fit === 'fit' || o.fit === 'crop')) e.fit = o.fit;
     ['z', 'cx', 'cy'].forEach(function(k){ if(o && o[k] != null && isFinite(+o[k])) e[k] = +o[k]; });   // a crop stays for next time
     if(Object.keys(e).length) (SEED.fits = SEED.fits || {})[mid] = e;
@@ -2918,6 +2920,7 @@
     if(m.classList.contains('cl-tile') || !window.SleekCollage) return;
     if(window.Deck && Deck.fitUI && Deck.fitUI.cropping() === m) return;   // the crop being made keeps its live values
     var o = fitOf(m.getAttribute('data-mid')), f = src && o && (o.fit === 'fit' || o.fit === 'crop') ? o.fit : null;
+    m.classList.toggle('fit-bare', !!(o && o.bare));          // no backplate: the picture alone on the slide
     if(!f){
       if(m.hasAttribute('data-fit')){ m.removeAttribute('data-fit'); SleekCollage.fitTile(m); }
       return;

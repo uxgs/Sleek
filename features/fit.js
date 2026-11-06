@@ -24,6 +24,7 @@
     crop: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 1.5v10h10"/><path d="M1.5 4.5h10v10"/></svg>'
   };
   var NAMES = { fill: 'Fill', fit: 'Fit', crop: 'Crop' };
+  var PLATE_SVG = '<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="2.5" stroke-dasharray="2 1.6"/><rect x="4.5" y="5.5" width="7" height="5" rx="1"/></svg>';
   function fitName(f){ return f === 'fit' || f === 'crop' ? f : 'fill'; }
   function editing(){ return document.body.classList.contains('editing'); }
   function scale(){ return stage.getBoundingClientRect().width / 1280 || 1; }
@@ -203,7 +204,10 @@
       scope: m.closest('.slide'),
       get: function(){ var o = D.fitOf(mid) || {}; return { fit: o.fit, z: num(o.z), cx: num(o.cx), cy: num(o.cy) }; },
       set: function(o){ D.setFit(mid, o); },
-      paint: function(t){ C.fitTile(t, t.clientWidth, t.clientHeight); }
+      paint: function(t){ C.fitTile(t, t.clientWidth, t.clientHeight); },
+      // the tile behind the picture (its border, and Fit's mat): off, and the picture sits alone on the slide
+      extra: [{ v: 'bare', label: 'Backplate', sub: 'The tile behind the picture', checked: !(D.fitOf(mid) || {}).bare, svg: PLATE_SVG }],
+      onExtra: function(){ var bare = !(D.fitOf(mid) || {}).bare; D.setFit(mid, Object.assign(this.get(), { bare: bare })); D.toast(bare ? 'Backplate off' : 'Backplate on'); }
     };
   }
   function realTiles(){
@@ -221,11 +225,11 @@
         k.addEventListener('click', function(e){ e.preventDefault(); e.stopPropagation(); if(editing()) open(m, k, tileHost(m)); });
         m.appendChild(k);
       }
-      var o = D.fitOf(m.getAttribute('data-mid')), f = fitName(o && o.fit);
-      k.innerHTML = SVG[f] + '<span>' + NAMES[f] + '</span>';
-      k.setAttribute('data-set', String(f !== 'fill'));
-      k.setAttribute('aria-label', 'Picture: ' + NAMES[f]);
-      k.title = 'Fill, fit or crop this picture';
+      var o = D.fitOf(m.getAttribute('data-mid')), f = fitName(o && o.fit), bare = !!(o && o.bare);
+      k.innerHTML = SVG[f] + '<span>' + NAMES[f] + '</span>' + (bare ? '<i></i><span>No plate</span>' : '');
+      k.setAttribute('data-set', String(f !== 'fill' || bare));
+      k.setAttribute('aria-label', 'Picture: ' + NAMES[f] + (bare ? ', no backplate' : ''));
+      k.title = 'Fill, fit or crop this picture, or take away the tile behind it';
     });
   }
   D.onMedia.push(syncSwitches);
