@@ -3809,7 +3809,10 @@
         setTimeout(announceFeature, 50);
       }
       else if(m.kind === 'ask'){ announceFeature(); broadcast(); }   // a presenter or preview just opened: here's where we are
-      else if(m.kind === 'pres-alive'){ presAliveAt = Date.now(); setPresenting(true); }
+      else if(m.kind === 'pres-alive'){
+        presAliveAt = Date.now(); setPresenting(true);
+        if(document.body.classList.contains('pres-bar') !== !!m.bar){ document.body.classList.toggle('pres-bar', !!m.bar); fit(); }   // the presenter's Show bottom bar
+      }
       else if(m.kind === 'pres-bye'){ presAliveAt = 0; setPresenting(false); }
     } else if(MIRROR){
       if(m.kind === 'echo') applyAct(m.act);
@@ -3949,8 +3952,19 @@
   if(PRESENTERWIN){
     sendInput({ kind: 'ask' });
     // Present Mode: while this window is open, the audience deck knows (a before / after plays its wipe on open)
-    sendInput({ kind: 'pres-alive' });
-    setInterval(function(){ sendInput({ kind: 'pres-alive' }); }, 1500);
+    // Show bottom bar (under the notes): the audience screen keeps its bar while you present. It's
+    // remembered on this device, and every heartbeat carries it, so a reloaded audience screen follows too.
+    var barOn = false; try { barOn = localStorage.getItem(NS + 'pres-bar') === '1'; } catch(e){}
+    var barBtn = document.getElementById('pres-bar');
+    function paintBarBtn(){ if(barBtn){ barBtn.setAttribute('aria-pressed', String(barOn)); barBtn.title = barOn ? 'The audience sees the bottom bar: click to hide it' : 'Show the bottom bar on the audience screen'; } }
+    function alive(){ sendInput({ kind: 'pres-alive', bar: barOn }); }
+    if(barBtn) barBtn.onclick = function(){
+      barOn = !barOn; paintBarBtn(); alive();
+      try { localStorage.setItem(NS + 'pres-bar', barOn ? '1' : '0'); } catch(e){}
+    };
+    paintBarBtn();
+    alive();
+    setInterval(alive, 1500);
     window.addEventListener('pagehide', function(){ sendInput({ kind: 'pres-bye' }); });
     window.addEventListener('beforeunload', function(){ sendInput({ kind: 'pres-bye' }); });
     // ← / → always change slides here, whatever has focus (a button, a cue, the preview) and whatever is

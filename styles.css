@@ -944,7 +944,7 @@ img { max-width: 100%; }
   .mk-cursor.on { opacity: 0.92; }
   body.presenterwin .marks { display: none; }
   /* the audience's screen while a presenter window is open: just the slides */
-  body.presenting .bar, body.presenting .deck-back, body.presenting .notes { display: none !important; }
+  body.presenting:not(.pres-bar) .bar, body.presenting .deck-back, body.presenting .notes { display: none !important; }   /* the presenter's Show bottom bar keeps the bar */
   body.mirror .bar, body.mirror .zone, body.mirror .notes, body.mirror .editbar, body.mirror .presenter { display: none !important; }
   body.mirror { background: #000; }
   body.mirror .stage { box-shadow: none; }
@@ -958,6 +958,8 @@ img { max-width: 100%; }
   .pres-nhead { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
   .presenter .pres-nfoot button { font-size: 13px; padding: 7px 13px; }
   .presenter .pres-edit[aria-pressed="true"] { border-color: var(--accent); color: #fff; }
+  .presenter .pres-barbtn[aria-pressed="true"] { border-color: var(--accent); color: #fff; background: color-mix(in srgb, var(--accent) 18%, transparent); }
+  .pres-nfoot .pres-barbtn { margin-right: auto; }
   .pres-notes.editing .n-fmt { display: flex; margin: 12px 0 0; background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.12); }
   .presenter .n-fmt button { color: #B9B9C0; border: 1px solid transparent; padding: 0; width: 34px; height: 30px; border-radius: 7px; }
   .presenter .n-fmt button:is(:hover, :focus-visible), .presenter .n-fmt button[aria-pressed="true"] { color: #fff; background: rgba(255,255,255,0.06); }
