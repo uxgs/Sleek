@@ -68,6 +68,9 @@ body:not(.editing) .slide.active .cl-scattered .cl-tile.filled:hover { transform
 .cl-drift .cl-set { position: relative; inset: auto; flex: none; height: 100%; }
 .s-collage.rolling .cl-drift .cl-track { animation-play-state: running; }
 .s-collage.rolling .cl-drift:hover .cl-track, body.deck-modal .cl-drift .cl-track { animation-play-state: paused; }
+/* dragging the strip by hand */
+.cl-board.cl-scrub .cl-tile.media { pointer-events: none; }
+body.cl-scrubbing, body.cl-scrubbing * { cursor: grabbing !important; user-select: none; }
 .cl-board.cl-reset .cl-track { animation: none !important; }
 @keyframes cl-drift { from { transform: translateX(0); } to { transform: translateX(calc(var(--set, 2000px) * -1)); } }
 /* in Edit mode the strip holds still, and scrolls to the rest */
@@ -88,7 +91,7 @@ body.editing .cl-board.cl-drift { overflow-x: auto; overflow-y: hidden; -webkit-
 body.cl-dragging, body.cl-dragging * { cursor: grabbing !important; }
 body.editing .cl-board.cl-drop { outline: 2px dashed var(--accent); outline-offset: 6px; border-radius: 14px; }
 body.editing .cl-board.cl-none { border: 1.5px dashed var(--line-strong); border-radius: 16px; cursor: pointer; }
-body.editing .cl-board.cl-none::after { content: "Add pictures, or drop them here"; position: absolute; inset: 0; display: grid; place-items: center;
+body.editing .cl-board.cl-none::after { content: "Add pictures and videos, or drop them here"; position: absolute; inset: 0; display: grid; place-items: center;
   color: var(--muted); font-size: 16px; letter-spacing: 0.01em; }
 
 /* the Edit bar's Moodboard group */

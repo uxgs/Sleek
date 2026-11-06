@@ -199,7 +199,7 @@
 
   // ---------- adding, removing, swapping ----------
   function addFiles(b, list){
-    var files = Array.prototype.filter.call(list || [], function(f){ return /^(image|video)\//.test(f.type); });
+    var files = Array.prototype.filter.call(list || [], function(f){ return !!D.fileKind(f); });
     if(!files.length || !editing()) return;
     var cl = own(b); if(!cl) return;
     var sid = slideOf(b).getAttribute('data-added'), got = new Array(files.length), left = files.length;
@@ -215,19 +215,21 @@
             D.setMedia(sid + '.c' + it.id, x.src);
           });
           D.saveMedia(); commit(b); D.applyMedia();
-          D.toast(files.length === 1 ? 'Picture added' : files.length + ' pictures added');
+          var nv = files.filter(function(f){ return /^video/.test(D.fileKind(f)); }).length, n = files.length;
+          D.toast(n === 1 ? (nv ? 'Video added' : 'Picture added')
+                          : n + (nv === n ? ' videos' : nv ? ' pictures and videos' : ' pictures') + ' added');
         });
       });
     });
   }
   D.collageRemove = function(m){
     var b = m.closest('.cl-board'), cl = b && own(b); if(!cl) return;
-    var id = m.getAttribute('data-cid');
+    var id = m.getAttribute('data-cid'), wasVideo = !!m.querySelector(':scope > video');
     cl.items = cl.items.filter(function(it){ return it.id !== id; });
     D.setMedia(m.getAttribute('data-mid'), null);
     m.remove();
     D.saveMedia(); commit(b);
-    D.toast('Picture removed', true);                           // Undo puts it back
+    D.toast(wasVideo ? 'Video removed' : 'Picture removed', true);                           // Undo puts it back
   };
   function swap(b, idA, idB){
     var cl = own(b); if(!cl) return;
@@ -277,6 +279,57 @@
   }
   document.addEventListener('pointerup', endDrag);
   document.addEventListener('pointercancel', endDrag);
+
+  // ---------- drift: moving the strip by hand ----------
+  // With the pointer over a drifting board the strip holds still; the wheel, a sideways trackpad
+  // swipe or a drag moves it left and right, and it carries on drifting from there when the pointer
+  // leaves. (In Edit mode, or with reduced motion, the board is a plain scroller: the wheel scrolls it.)
+  function driftAnim(b){
+    var t = b.querySelector('.cl-track'); if(!t || !t.getAnimations) return null;
+    return t.getAnimations().filter(function(a){ return a.animationName === 'cl-drift'; })[0] || null;
+  }
+  function nudge(b, px){                                     // px in slide pixels; more than 0 moves the pictures left
+    if(editing() || reduce.matches){ b.scrollLeft += px; return; }
+    var a = driftAnim(b), set = parseFloat(b.querySelector('.cl-track').style.getPropertyValue('--set')) || 0;
+    if(!a || !set) return;
+    var dur = a.effect.getComputedTiming().duration; if(!dur || !isFinite(dur)) return;
+    var t = ((a.currentTime || 0) + px / set * dur) % dur;
+    a.currentTime = t < 0 ? t + dur : t;
+  }
+  function driftAt(e){
+    var b = e.target.closest && e.target.closest('.slide.active .cl-board.cl-drift');
+    return b && !document.body.classList.contains('deck-modal') ? b : null;
+  }
+  stage.addEventListener('wheel', function(e){
+    var b = driftAt(e); if(!b) return;
+    var d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY; if(!d) return;
+    if((editing() || reduce.matches) && b.scrollWidth <= b.clientWidth + 1) return;
+    e.preventDefault();
+    nudge(b, d * (e.deltaMode === 1 ? 32 : e.deltaMode === 2 ? b.clientWidth : 1) / scale());
+  }, { passive: false });
+  var scrub = null, scrubbed = 0;
+  stage.addEventListener('pointerdown', function(e){
+    if(editing() || e.button !== 0 || e.pointerType === 'touch') return;
+    var b = driftAt(e); if(!b) return;
+    scrub = { b: b, x: e.clientX, last: e.clientX, id: e.pointerId, moved: false };
+  });
+  document.addEventListener('pointermove', function(e){
+    if(!scrub || e.pointerId !== scrub.id) return;
+    if(!scrub.moved && Math.abs(e.clientX - scrub.x) < 6) return;
+    if(!scrub.moved){ scrub.moved = true; scrub.b.classList.add('cl-scrub'); document.body.classList.add('cl-scrubbing'); }
+    nudge(scrub.b, (scrub.last - e.clientX) / scale()); scrub.last = e.clientX;
+  });
+  function endScrub(e){
+    if(!scrub || (e && e.pointerId !== scrub.id)) return;
+    if(scrub.moved){ scrubbed = Date.now(); scrub.b.classList.remove('cl-scrub'); document.body.classList.remove('cl-scrubbing'); }
+    scrub = null;
+  }
+  document.addEventListener('pointerup', endScrub);
+  document.addEventListener('pointercancel', endScrub);
+  // the click that ends a drag doesn't open the picture
+  document.addEventListener('click', function(e){
+    if(Date.now() - scrubbed < 400 && e.target.closest && e.target.closest('.cl-board')){ e.preventDefault(); e.stopPropagation(); scrubbed = 0; }
+  }, true);
 
   // drop pictures from your computer onto the board
   function boardAt(e){ var b = e.target.closest && e.target.closest('.slide.active .cl-board'); return editing() ? b : null; }

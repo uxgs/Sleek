@@ -3134,7 +3134,21 @@
   }
   // a picture or video you pick goes into the deck as it is (no resizing or re-encoding)
   function mediaFromFile(f, place){
+    var t = fileKind(f);
+    if(t && t !== f.type){ try { f = new File([f], f.name, { type: t }); } catch(e){} }
     var rd = new FileReader(); rd.onload = function(){ place(rd.result); }; rd.readAsDataURL(f);
+  }
+  // what a picked file is, from its type or (when the browser doesn't say) its name. A QuickTime
+  // film (.mov) goes in as MP4, which is the same kind of file and plays in every browser that can
+  // play its contents.
+  var EXT = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif', webp: 'image/webp', avif: 'image/avif',
+              svg: 'image/svg+xml', heic: 'image/heic', mp4: 'video/mp4', m4v: 'video/mp4', mov: 'video/mp4', webm: 'video/webm' };
+  function fileKind(f){
+    var t = (f && f.type) || '';
+    if(t === 'video/quicktime' || t === 'video/x-m4v') return 'video/mp4';
+    if(/^(image|video)\//.test(t)) return t;
+    var m = /\.([a-z0-9]+)$/i.exec((f && f.name) || '');
+    return (m && EXT[m[1].toLowerCase()]) || '';
   }
   document.getElementById('media-file').onchange = function(e){
     var f = e.target.files && e.target.files[0], mid = curMid; if(!f || !mid) return;
@@ -3948,6 +3962,7 @@
     tilePicture: function(tile){ return tile ? tileSrc(tile) : null; },
     isVideo: function(src){ return isVideo(src); },
     mediaFromFile: function(f, place){ mediaFromFile(f, place); },
+    fileKind: function(f){ return fileKind(f); },
     hideZoom: function(){ hideZoom(); },
     flush: function(){ return flushSave(); },      // save now (before a download or leaving)
     toast: function(text, undo){ showToast(text, undo); },
