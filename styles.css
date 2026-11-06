@@ -943,6 +943,8 @@ img { max-width: 100%; }
     transition: opacity .2s ease; }
   .mk-cursor.on { opacity: 0.92; }
   body.presenterwin .marks { display: none; }
+  /* the audience's screen while a presenter window is open: just the slides */
+  body.presenting .bar, body.presenting .deck-back, body.presenting .notes { display: none !important; }
   body.mirror .bar, body.mirror .zone, body.mirror .notes, body.mirror .editbar, body.mirror .presenter { display: none !important; }
   body.mirror { background: #000; }
   body.mirror .stage { box-shadow: none; }

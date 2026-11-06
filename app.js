@@ -3537,7 +3537,14 @@
   var AUDIENCE = !PRESENTERWIN && !MIRROR, inputBC = null, remoteFeature = false;
   var presAliveAt = 0;                                          // last heartbeat from an open presenter window
   function presenting(){ return AUDIENCE && Date.now() - presAliveAt < 4000; }
-  if(AUDIENCE) setInterval(function(){ if(!presenting()) document.body.classList.remove('presenting'); }, 2000);   // a presenter that went quietly
+  // While a presenter window is open, this is the audience's screen: the bar and the other controls
+  // go (styles.css, body.presenting) and the slide takes the whole window.
+  function setPresenting(on){
+    if(document.body.classList.contains('presenting') === on) return;
+    document.body.classList.toggle('presenting', on);
+    fit();
+  }
+  if(AUDIENCE) setInterval(function(){ if(!presenting()) setPresenting(false); }, 2000);   // a presenter that went quietly
   try { inputBC = new BroadcastChannel(NS + 'sleek-input'); } catch(e){}
   function sendInput(msg){ try { if(inputBC) inputBC.postMessage(msg); } catch(e){} }
 
@@ -3787,8 +3794,8 @@
         setTimeout(announceFeature, 50);
       }
       else if(m.kind === 'ask'){ announceFeature(); broadcast(); }   // a presenter or preview just opened: here's where we are
-      else if(m.kind === 'pres-alive'){ presAliveAt = Date.now(); document.body.classList.add('presenting'); }
-      else if(m.kind === 'pres-bye'){ presAliveAt = 0; document.body.classList.remove('presenting'); }
+      else if(m.kind === 'pres-alive'){ presAliveAt = Date.now(); setPresenting(true); }
+      else if(m.kind === 'pres-bye'){ presAliveAt = 0; setPresenting(false); }
     } else if(MIRROR){
       if(m.kind === 'echo') applyAct(m.act);
     } else if(PRESENTERWIN){
