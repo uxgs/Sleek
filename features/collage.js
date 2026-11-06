@@ -533,9 +533,9 @@
   // every picture and video on the deck's slides (once each), in deck order, by slide
   function deckMedia(b){
     var seen = {}, out = [];
-    Array.prototype.forEach.call(stage.querySelectorAll('.slide:not(.s-screen) .media[data-mid]'), function(m){
-      if(m.closest('.car-copy, .fs-copy, .cl-copy') || b.contains(m)) return;
-      var src = D.tileSrc(m); if(!src || src === 'none' || seen[src]) return;
+    Array.prototype.forEach.call(stage.querySelectorAll('.slide:not(.s-screen) .media[data-mid], .slide .fl-pic[data-mid]'), function(m){
+      if(m.closest('.car-copy, .fs-copy, .cl-copy') || (b && b.contains(m))) return;
+      var src = m.classList.contains('fl-pic') ? D.mediaOf(m.getAttribute('data-mid')) : D.tileSrc(m); if(!src || src === 'none' || seen[src]) return;
       var mid = m.getAttribute('data-mid'), def = m.getAttribute('data-default-src');
       seen[src] = true;
       var s = m.closest('.slide'), c = m.querySelector('.cap');
@@ -543,19 +543,25 @@
                  slide: (s && s.getAttribute('data-label')) || 'Slide', cap: c ? c.textContent.trim() : '' });
     });
     // pictures already on this board don't need adding again
-    var mine = {}; tiles(b).forEach(function(m){ var x = D.tileSrc(m); if(x) mine[x] = true; });
+    var mine = {}; if(b) tiles(b).forEach(function(m){ var x = D.tileSrc(m); if(x) mine[x] = true; });
     return out.filter(function(x){ return !mine[x.src]; });
   }
   var mp = null;
   function openPicker(b){
+    pickMedia({ board: b, kicker: 'Moodboard',
+      onChosen: function(list){ addChosen(b, list); }, onFiles: function(files){ addFiles(b, files); } });
+  }
+  // The Add media window: every picture and video in the deck (pick several), or upload new ones.
+  // Moodboards use it, and so does Edit mode's Image button (features/floats.js) as Deck.pickMedia.
+  function pickMedia(o){
     if(mp || !editing()) return;
     closeMenus(); closeTileMenu();
-    var list = deckMedia(b), groups = [], prevFocus = document.activeElement;
+    var b = o.board || null, list = deckMedia(b), groups = [], prevFocus = document.activeElement;
     list.forEach(function(c, j){ c.k = j; var g = groups[groups.length - 1]; if(!g || g.slide !== c.slide){ g = { slide: c.slide, items: [] }; groups.push(g); } g.items.push(c); });
     var el = document.createElement('div'); el.className = 'bp-backdrop cl-mp';
     el.innerHTML = '<div class="bp-modal" role="dialog" aria-modal="true" aria-label="Add media">' +
       '<button type="button" class="bp-close" data-close aria-label="Close">×</button>' +
-      '<div class="bp-head"><div class="bp-copy"><div class="bp-k">Moodboard</div><h2 class="bp-h">Add media</h2>' +
+      '<div class="bp-head"><div class="bp-copy"><div class="bp-k">' + esc(o.kicker || 'Add media') + '</div><h2 class="bp-h">Add media</h2>' +
         '<p class="bp-p">Pick pictures and videos from this deck, or upload new ones. You can pick as many as you like.</p>' +
         '<div class="bp-actions"><label class="bp-btn ghost"><input type="file" accept="image/*,video/*" multiple hidden>Upload from your computer…</label></div>' +
       '</div></div>' +
@@ -566,12 +572,12 @@
                      : '<span class="bp-shot" style="background-image:url(&quot;' + esc(c.src) + '&quot;)"></span>') +
             (c.cap ? '<span class="bp-cap">' + esc(c.cap) + '</span>' : '') + '</button>';
         }).join('') + '</div></div>';
-      }).join('') : '<p class="bp-empty">Everything in the deck is on this board already. Upload something new instead.</p>') + '</div>' +
+      }).join('') : '<p class="bp-empty">' + (b ? 'Everything in the deck is on this board already.' : 'There are no pictures in the deck yet.') + ' Upload something new instead.</p>') + '</div>' +
       '<div class="cl-mp-foot"><span class="cl-mp-n">Nothing picked</span><button type="button" class="bp-btn ghost" data-close>Cancel</button>' +
         '<button type="button" class="bp-btn primary" data-add disabled>Add</button></div>' +
       '</div>';
     document.body.appendChild(el);
-    mp = { el: el, b: b, list: list, picked: [] };
+    mp = { el: el, o: o, list: list, picked: [] };
     function paint(){
       var n = mp.picked.length, v = mp.picked.filter(function(k){ return list[k].video; }).length;
       el.querySelector('.cl-mp-n').textContent = !n ? 'Nothing picked' : n + ' picked';
@@ -594,8 +600,8 @@
     el.addEventListener('click', function(e){
       if(e.target === el || e.target.closest('[data-close]')){ close(); return; }
       if(e.target.closest('[data-add]')){
-        var chosen = mp.picked.map(function(k){ return list[k]; }), bb = mp.b; close();
-        addChosen(bb, chosen); return;
+        var chosen = mp.picked.map(function(k){ return list[k]; }), oo = mp.o; close();
+        if(chosen.length && oo.onChosen) oo.onChosen(chosen); return;
       }
       var t = e.target.closest('.bp-tile'); if(!t) return;
       var k = +t.getAttribute('data-k'), at = mp.picked.indexOf(k);
@@ -604,12 +610,15 @@
       paint();
     });
     el.querySelector('input[type=file]').addEventListener('change', function(e){
-      var f = e.target.files, bb = mp && mp.b; if(!f || !f.length || !bb) return;
-      var files = Array.prototype.slice.call(f); close(); addFiles(bb, files);
+      var f = e.target.files, oo = mp && mp.o; if(!f || !f.length || !oo) return;
+      var files = Array.prototype.slice.call(f).filter(function(x){ return !!D.fileKind(x); }); close();
+      if(files.length && oo.onFiles) oo.onFiles(files);
     });
     document.addEventListener('keydown', onKey, true);
     requestAnimationFrame(function(){ requestAnimationFrame(function(){ if(mp && mp.el === el) el.classList.add('in'); }); });
   }
+  D.pickMedia = pickMedia;
+  D.shapeOf = shapeOf;
   // what was picked from the deck goes on the end of the board; sample art stays sample art (it takes the deck's colour)
   function addChosen(b, chosen){
     if(!chosen.length) return;

@@ -23,6 +23,7 @@
 <link rel="stylesheet" href="features/press-editor.css">
 <link rel="stylesheet" href="features/deck-file.css">
 <link rel="stylesheet" href="features/collage.css">
+<link rel="stylesheet" href="features/floats.css">
 <!-- the storage, the sample deck, then the loader: it opens the deck and starts the engine on it -->
 <script src="core/store.js"></script>
 <script src="data/sample.js"></script>
@@ -140,6 +141,11 @@
 <div class="editbar" id="editbar" hidden>
   <button id="eb-done" class="eb-close" title="Done editing" aria-label="Done editing">
     <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5.5 5.5 9 9M14.5 5.5l-9 9"/></svg></button>
+  <span class="eb-group" id="eb-insert" hidden>
+    <button id="eb-image" class="eb-ico" type="button" title="Put a picture or video anywhere on this slide">
+      <svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="4" width="15" height="12" rx="2"/><circle cx="7.2" cy="8.3" r="1.5"/><path d="m2.8 14 4.4-3.8 3 2.6 2.6-2 4.4 3.6"/></svg><span class="lbl">Image</span></button>
+    <span class="sep"></span>
+  </span>
   <span class="eb-group" id="eb-collage" hidden>
     <span class="eb-addwrap">
       <button id="cl-style" class="eb-pick" type="button" aria-haspopup="menu" aria-expanded="false" data-tt="Style" aria-label="Style">

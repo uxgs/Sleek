@@ -1051,7 +1051,7 @@
     Array.prototype.forEach.call(c.querySelectorAll('[id],[data-eid],[data-mid],[contenteditable]'), function(el){
       el.removeAttribute('id'); el.removeAttribute('data-eid'); el.removeAttribute('data-mid'); el.removeAttribute('contenteditable');
     });
-    Array.prototype.forEach.call(c.querySelectorAll('.media-clear, .media-sizer, iframe, .size-handle, .tx-del, .screen-replace, .cl-opt'), function(el){ el.remove(); });
+    Array.prototype.forEach.call(c.querySelectorAll('.media-clear, .media-sizer, iframe, .size-handle, .tx-del, .screen-replace, .cl-opt, .fl-bar, .fl-h, .fl-guide'), function(el){ el.remove(); });
     // a still from a couple of seconds in, as the video's poster: a preview never loads the video itself
     Array.prototype.forEach.call(c.querySelectorAll('video'), function(v){
       var src = vsrc(v).split('#')[0];
@@ -3500,6 +3500,7 @@
           var src = list.filter(function(a){ return a.id === id; })[0]; if(!src) return false;
           var copy = { id: nid, t: src.t, name: name }; if(src.fill) copy.fill = src.fill;
           if(src.cl) copy.cl = JSON.parse(JSON.stringify(src.cl));   // a moodboard's pictures (their files come with the media below)
+          if(src.fl) copy.fl = JSON.parse(JSON.stringify(src.fl));   // and its free pictures
           list.splice(list.indexOf(src) + 1, 0, copy); doc.added = list;
           ['text', 'style', 'media', 'components', 'press'].forEach(function(f){ copyPrefixed(doc[f], id, nid); });
           doc.noteByKey = doc.noteByKey || {}; doc.noteByKey['add-' + nid] = s._notes || '';
@@ -4022,6 +4023,7 @@
     addedOf: function(s){ var id = s && s.getAttribute('data-added'); return ADDED.filter(function(a){ return a.id === id; })[0] || null; },
     saveAdded: function(){ saveAdded(); markChanged(); },
     setupTile: function(m){ setupTile(m); },
+    mediaOf: function(mid){ var v = mid && (mediaImages[mid] || (SEED.media && SEED.media[mid])); return v && v !== 'none' ? v : null; },
     setMedia: function(mid, src){ if(src == null) delete mediaImages[mid]; else mediaImages[mid] = src; },
     applyMedia: function(){ applyMedia(); },
     saveMedia: function(){ saveMedia(); },

@@ -1,0 +1,41 @@
+/* Free pictures (features/floats.js): pictures and videos anywhere on a slide, over its layout and
+   under its annotations. In Present they're part of the slide; in Edit mode you move and size them. */
+.fl-layer { position: absolute; inset: 0; z-index: 15; pointer-events: none; }
+.fl-pic { position: absolute; box-sizing: border-box; border-radius: 6px; overflow: hidden;
+  background: center / cover no-repeat; pointer-events: none; }
+.fl-pic > video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+.fl-pic.fl-empty { background: color-mix(in srgb, var(--fg) 8%, transparent); }
+
+/* Edit mode: grab it, a frame when picked, a corner in each corner */
+body.editing .slide.active .fl-pic { pointer-events: auto; cursor: grab; touch-action: none; overflow: visible; }
+body.editing .slide.active .fl-pic > video { border-radius: inherit; }
+body.editing .slide.active .fl-pic:hover:not(.fl-on) { box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--accent) 70%, transparent); }
+.fl-pic.fl-on { box-shadow: 0 0 0 2px var(--accent), 0 18px 40px -18px rgba(0,0,0,0.6); }
+body.fl-moving, body.fl-moving * { cursor: grabbing !important; }
+.fl-h { position: absolute; z-index: 2; width: 14px; height: 14px; margin: -7px; border-radius: 4px; background: #fff;
+  box-shadow: 0 0 0 1.5px var(--accent), 0 2px 6px rgba(0,0,0,0.35); }
+.fl-h[data-c="nw"] { left: 0; top: 0; cursor: nwse-resize; }
+.fl-h[data-c="se"] { left: 100%; top: 100%; cursor: nwse-resize; }
+.fl-h[data-c="ne"] { left: 100%; top: 0; cursor: nesw-resize; }
+.fl-h[data-c="sw"] { left: 0; top: 100%; cursor: nesw-resize; }
+body.fl-sizing, body.fl-sizing * { cursor: nwse-resize !important; }
+.fl-read { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); padding: 4px 8px; border-radius: 6px;
+  background: rgba(12,12,14,0.75); color: #fff; font: 600 12px/1 ui-monospace, "SF Mono", Menlo, Consolas, monospace; white-space: nowrap; }
+
+/* the picked picture's bar: front, back, replace, delete */
+.fl-bar { position: absolute; z-index: 999; display: flex; align-items: center; gap: 2px; padding: 4px; border-radius: 12px; pointer-events: auto;
+  background: rgba(22,22,26,0.94); border: 1px solid rgba(255,255,255,0.12); box-shadow: 0 16px 40px -14px rgba(0,0,0,0.7);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+.fl-bar button { width: 34px; height: 32px; display: grid; place-items: center; border: 0; border-radius: 8px; background: none; color: #E5E5EA; cursor: pointer; }
+.fl-bar button:hover { background: rgba(255,255,255,0.1); color: #fff; }
+.fl-bar button.fl-del:hover { background: rgba(255,69,58,0.18); color: #FF6961; }
+.fl-bar svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.fl-sep { width: 1px; height: 18px; margin: 0 3px; background: rgba(255,255,255,0.14); }
+body.fl-moving .fl-bar, body.fl-sizing .fl-bar { opacity: 0; pointer-events: none; }
+
+/* lining up: the slide's middle and edges */
+.fl-guide { position: absolute; z-index: 998; pointer-events: none; background: var(--accent); opacity: 0.85; }
+.fl-guide.v { top: 0; bottom: 0; width: 1px; margin-left: -0.5px; }
+.fl-guide.h { left: 0; right: 0; height: 1px; margin-top: -0.5px; }
+/* files dragged over a slide */
+body.editing .slide.fl-drop { outline: 2px dashed var(--accent); outline-offset: -10px; }
