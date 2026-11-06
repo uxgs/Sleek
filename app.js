@@ -1006,7 +1006,7 @@
     Array.prototype.forEach.call(c.querySelectorAll('[id],[data-eid],[data-mid],[contenteditable]'), function(el){
       el.removeAttribute('id'); el.removeAttribute('data-eid'); el.removeAttribute('data-mid'); el.removeAttribute('contenteditable');
     });
-    Array.prototype.forEach.call(c.querySelectorAll('.media-clear, .media-sizer, iframe, .size-handle, .tx-del, .screen-replace'), function(el){ el.remove(); });
+    Array.prototype.forEach.call(c.querySelectorAll('.media-clear, .media-sizer, iframe, .size-handle, .tx-del, .screen-replace, .cl-lock'), function(el){ el.remove(); });
     // a still from a couple of seconds in, as the video's poster: a preview never loads the video itself
     Array.prototype.forEach.call(c.querySelectorAll('video'), function(v){
       var src = vsrc(v).split('#')[0];

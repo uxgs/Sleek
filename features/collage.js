@@ -45,6 +45,7 @@
       return;
     }
     b._slots = null;
+    if(st.style === 'masonry') lockButtons(b);
     var res = C.place(b, W, H, drifting(b) ? 'strip' : 'fit');
     if(drifting(b) && res){
       track.style.setProperty('--set', res.W + 'px');
@@ -53,13 +54,37 @@
     }
   }
   function renderAll(){ boards().forEach(render); }
+  // Masonry: a picture can be locked to 16:9, so it isn't cropped (Edit mode shows the switch)
+  var LOCK_SVG = '<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="3.5" y="7" width="9" height="6.5" rx="1.5"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg>';
+  function lockButtons(b){
+    tiles(b).forEach(function(m){
+      var it = itemOf(b, m); if(!it) return;
+      var k = m.querySelector(':scope > .cl-lock');
+      if(!k){
+        k = document.createElement('button'); k.type = 'button'; k.className = 'cl-lock';
+        k.innerHTML = LOCK_SVG + '<span>16:9</span>';
+        k.addEventListener('pointerdown', function(e){ e.stopPropagation(); });
+        k.addEventListener('click', function(e){
+          e.preventDefault(); e.stopPropagation();
+          var cl = own(b); if(!cl) return;
+          var id = m.getAttribute('data-cid'), x = cl.items.filter(function(i){ return i.id === id; })[0]; if(!x) return;
+          if(x.lock) delete x.lock; else x.lock = true;
+          commit(b);
+          D.toast(x.lock ? 'Locked to 16:9' : 'Unlocked');
+        });
+        m.appendChild(k);
+      }
+      k.setAttribute('aria-pressed', it.lock ? 'true' : 'false');
+      k.title = it.lock ? 'Locked to 16:9: click to let it fit the column' : 'Lock to 16:9, so this picture isn\u2019t cropped';
+    });
+  }
   // drift: copies of the set after it, enough to fill the board while it moves one set to the left
   function makeCopies(b, setW, viewW){
     var real = realSet(b), n = Math.max(1, Math.ceil(viewW / setW));
     for(var k = 0; k < n; k++){
       var c = real.cloneNode(true);
       c.classList.add('cl-copy'); c.setAttribute('aria-hidden', 'true');
-      Array.prototype.forEach.call(c.querySelectorAll('.media-clear, .media-before'), function(el){ el.remove(); });
+      Array.prototype.forEach.call(c.querySelectorAll('.media-clear, .media-before, .cl-lock'), function(el){ el.remove(); });
       Array.prototype.forEach.call(c.querySelectorAll('[data-mid],[data-eid],[contenteditable]'), function(el){
         el.removeAttribute('data-mid'); el.removeAttribute('data-eid'); el.removeAttribute('contenteditable');
       });
@@ -222,7 +247,7 @@
   stage.addEventListener('pointerdown', function(e){
     if(!editing() || e.button !== 0) return;
     var m = e.target.closest && e.target.closest('.cl-set:not(.cl-copy) > .cl-tile');
-    if(!m || e.target.closest('.media-clear')) return;
+    if(!m || e.target.closest('.media-clear, .cl-lock')) return;
     drag = { m: m, b: m.closest('.cl-board'), x: e.clientX, y: e.clientY, id: e.pointerId, moved: false, over: null };
   });
   document.addEventListener('pointermove', function(e){

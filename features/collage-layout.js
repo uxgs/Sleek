@@ -133,6 +133,30 @@
   }
 
   // ---------- masonry: columns of pictures at their own shapes ----------
+  // Columns (rows, on a strip) are stretched to fill the board, which crops their pictures a little.
+  // A locked tile (item.lock) stays exactly 16:9: the unlocked pictures beside it take the stretch.
+  var LOCK = 16 / 9;
+  function mshape(it){ return it.lock ? LOCK : ratio(it); }
+  // one column's pictures, fitted to the board's height: [{ e, h, w (of the column), dx }]
+  function fitColumn(list, cw, H, g){
+    var avail = H - (list.length - 1) * g, lockH = 0, freeH = 0, nu = 0;
+    list.forEach(function(e){ if(e.it.lock) lockH += e.h; else { freeH += e.h; nu++; } });
+    var s = 1, minFree = 48 * nu;
+    if(lockH > 0 && lockH > avail - minFree) s = Math.max(0.2, (avail - minFree) / lockH);   // too many to fit: locked tiles go narrower
+    var f = nu ? (avail - lockH * s) / freeH : 1;
+    var used = list.reduce(function(a, e){ return a + e.h * (e.it.lock ? s : f); }, 0) + (list.length - 1) * g;
+    var y = nu ? 0 : Math.max(0, (H - used) / 2);             // only locked tiles: centred in the column
+    return list.map(function(e){
+      var lk = e.it.lock, h = e.h * (lk ? s : f), w = lk ? cw * s : cw, o = { e: e, y: y, h: h, w: w, dx: (cw - w) / 2 };
+      y += h + g; return o;
+    });
+  }
+  function columnScore(list, H, g){
+    var avail = H - (list.length - 1) * g, lockH = 0, freeH = 0;
+    list.forEach(function(e){ if(e.it.lock) lockH += e.h; else freeH += e.h; });
+    if(freeH) return avail - lockH > 0 ? Math.abs(Math.log((avail - lockH) / freeH)) : 3;
+    return Math.abs(Math.log(Math.max(1, avail) / lockH)) * 0.6;   // a gap (or narrower tiles), not a crop
+  }
   function masonry(items, W, H, strip, mix){
     var g = GAP.masonry, n = items.length, rects = [];
     if(strip){
@@ -141,12 +165,14 @@
       for(var k = 0; k < R; k++) rows.push({ len: 0, list: [] });
       items.forEach(function(it){
         var row = rows.reduce(function(a, b){ return b.len < a.len ? b : a; });
-        var w = rh * ratio(it); row.list.push({ it: it, w: w }); row.len += w + g;
+        var w = rh * mshape(it); row.list.push({ it: it, w: w }); row.len += w + g;
       });
       var S = Math.max.apply(null, rows.map(function(r){ return r.len; }));
       rows.forEach(function(row, ri){
-        var sum = row.list.reduce(function(a, b){ return a + b.w; }, 0), f = row.list.length ? (S - row.list.length * g) / sum : 1, x = 0;
-        row.list.forEach(function(e){ var w = e.w * f; rects.push({ id: e.it.id, x: x, y: ri * (rh + g), w: w, h: rh, rot: 0, z: 1 }); x += w + g; });
+        var lockW = 0, freeW = 0;
+        row.list.forEach(function(e){ if(e.it.lock) lockW += e.w; else freeW += e.w; });
+        var room = S - row.list.length * g - lockW, f = freeW && room > 0 ? room / freeW : 1, x = 0;
+        row.list.forEach(function(e){ var w = e.it.lock ? e.w : e.w * f; rects.push({ id: e.it.id, x: x, y: ri * (rh + g), w: w, h: rh, rot: 0, z: 1, lock: !!e.it.lock }); x += w + g; });
       });
       return { rects: rects, W: S, H: H };
     }
@@ -157,19 +183,20 @@
       for(var j = 0; j < c; j++) cols.push({ h: 0, list: [] });
       items.forEach(function(it){
         var col = cols.reduce(function(a, b){ return b.h < a.h ? b : a; });
-        var h = cw / ratio(it); col.list.push({ it: it, h: h }); col.h += h;
+        var h = cw / mshape(it); col.list.push({ it: it, h: h }); col.h += h;
       });
       var score = 0;
       cols.forEach(function(col){
         if(!col.list.length){ score += 9; return; }
-        var avail = H - (col.list.length - 1) * g; score = Math.max(score, Math.abs(Math.log(Math.max(1, avail) / col.h)));
+        score = Math.max(score, columnScore(col.list, H, g));
       });
       if(c === 1 && n > 2) score += 0.6;                       // one picture on top of another isn't a wall
       if(!best || score < best.score - 0.02) best = { score: score, cols: cols, cw: cw };
     }
     best.cols.forEach(function(col, ci){
-      var avail = H - (col.list.length - 1) * g, f = avail / (col.h || 1), y = 0;
-      col.list.forEach(function(e){ var h = e.h * f; rects.push({ id: e.it.id, x: ci * (best.cw + g), y: y, w: best.cw, h: h, rot: 0, z: 1 }); y += h + g; });
+      fitColumn(col.list, best.cw, H, g).forEach(function(o){
+        rects.push({ id: o.e.it.id, x: ci * (best.cw + g) + o.dx, y: o.y, w: o.w, h: o.h, rot: 0, z: 1, lock: !!o.e.it.lock });
+      });
     });
     return { rects: rects, W: W, H: H };
   }
@@ -258,7 +285,7 @@
   var memo = {}, memoN = 0;
   function layout(style, mode, items, W, H, mix){
     if(!items.length) return { rects: [], W: mode === 'strip' ? 0 : W, H: H };
-    var key = [style, mode, Math.round(W), Math.round(H), mix || 0].concat(items.map(function(it){ return it.id + ':' + ratio(it).toFixed(3); })).join('|');
+    var key = [style, mode, Math.round(W), Math.round(H), mix || 0].concat(items.map(function(it){ return it.id + ':' + ratio(it).toFixed(3) + (it.lock ? 'L' : ''); })).join('|');
     if(memo[key]) return memo[key];
     if(++memoN > 60){ memo = {}; memoN = 1; }
     return (memo[key] = (BY[style] || mosaic)(items, Math.max(40, W), Math.max(40, H), mode === 'strip', mix || 0));
@@ -321,6 +348,7 @@
     var s = m.style;
     s.left = r.x.toFixed(1) + 'px'; s.top = r.y.toFixed(1) + 'px'; s.width = r.w.toFixed(1) + 'px'; s.height = r.h.toFixed(1) + 'px';
     s.zIndex = r.z || 1;
+    m.classList.toggle('cl-locked', !!r.lock);
     m.setAttribute('data-rot', (r.rot || 0).toFixed(2));
     s.setProperty('--rot', (r.rot || 0).toFixed(2) + 'deg');
     if(r.frame){ s.setProperty('--pb', r.frame.b + 'px'); s.setProperty('--pbb', r.frame.bb + 'px'); m.classList.toggle('cl-pol', r.frame.pol); }

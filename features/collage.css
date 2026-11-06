@@ -25,6 +25,19 @@ body.editing .cl-drift .cl-tile.media { touch-action: pan-x; }
 body:not(.editing) .slide.active .cl-board:not(.cl-scattered) .cl-tile.filled:hover { transform: translateY(-3px);
   box-shadow: 0 16px 36px -12px rgba(0,0,0,0.55), 0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent); z-index: 50 !important; }
 
+/* masonry's 16:9 lock: a switch on each picture in Edit mode */
+.cl-lock { display: none; position: absolute; left: 8px; top: 8px; z-index: 4; height: 26px; padding: 0 9px 0 7px; gap: 5px; align-items: center;
+  border: 1px solid rgba(255,255,255,0.28); border-radius: 13px; background: rgba(12,12,14,0.62); color: rgba(255,255,255,0.88);
+  font: 600 11.5px/1 ui-monospace, "SF Mono", Menlo, Consolas, monospace; letter-spacing: 0.04em; cursor: pointer;
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); transition: background 0.2s ease, border-color 0.2s ease, opacity 0.2s ease; }
+.cl-lock svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.cl-lock[aria-pressed="false"] { opacity: 0; }
+.cl-lock[aria-pressed="false"] svg path { transform: translate(2.5px, -1px); }
+.cl-lock[aria-pressed="true"] { color: #fff; border-color: var(--accent); background: color-mix(in srgb, var(--accent) 70%, rgba(12,12,14,0.6)); }
+body.editing .cl-masonry .cl-set:not(.cl-copy) > .cl-tile > .cl-lock { display: inline-flex; }
+body.editing .cl-masonry .cl-tile:hover > .cl-lock, .cl-lock:focus-visible, body.compact .cl-lock { opacity: 1; }
+.cl-lock:hover { border-color: rgba(255,255,255,0.6); }
+
 /* scattered: prints on a table, a white edge (a deeper one at the bottom of a polaroid), tape on the rest */
 .cl-scattered .cl-tile.media { border-radius: 3px; overflow: visible; border-style: solid; border-color: #FBF8F3;
   border-width: var(--pb, 8px) var(--pb, 8px) var(--pbb, 8px); background-color: #FBF8F3;

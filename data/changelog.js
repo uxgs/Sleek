@@ -6,9 +6,10 @@
    'sleek-' + that version, so the offline cache and the version you see always match. Keep each
    line to a few words. */
 window.SLEEK_CHANGES = [
-  { v: '1.0.21', date: '2026-11-05',
+  { v: '1.0.22', date: '2026-11-05',
     items: [
       'Moodboard layout',
+      'Lock a Masonry picture to 16:9',
       'Fullscreen image layout',
       'Annotations show in your speaker notes',
       'Change the picture on an annotated screen',
