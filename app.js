@@ -179,18 +179,28 @@
     nK.textContent = label;
     nT.textContent = 'Slide ' + (i+1) + ' of ' + slides.length;
     var s = slides[i];
-    if(s && s._screen) paintAnnNotes(nText, s._screen, editing);       // an annotated screen: its notes, then each annotation
+    var ns = notesSet(s);
+    if(ns) paintAnnNotes(nText, ns, editing);                          // an annotated slide: its notes, then each annotation
     else { nText.classList.remove('an-notes'); nText.contentEditable = editing ? 'true' : 'false'; nText.innerHTML = (s && s._notes) || (editing ? '' : '<p>(no notes yet)</p>'); }
     if(notesShown !== i) notesEl.scrollTop = 0;                         // keep your place when the same slide re-renders
     notesShown = i;
   }
-  // ---------- annotated screen slides: the annotations, broken out as speaker notes ----------
-  // The screen's own notes, then every pin (by number), box and arrow with its label and note.
-  // Editing here edits the annotation itself (and the callout on the slide), and the other way round.
-  function annNotesHTML(sc){
+  // ---------- annotated slides: the annotations, broken out as speaker notes ----------
+  // The slide's own notes, then every pin (by number), box and arrow with its label and note: on an
+  // annotated screen, and on any other slide once something is annotated on it. Editing here edits the
+  // annotation itself (and the callout on the slide), and the other way round; your own notes stay yours.
+  function notesSet(s){
+    if(!s) return null;
+    if(s._screen) return { sc: s._screen, intro: s._screen.notes || '', ph: 'Notes for this screen\u2026', none: true };
+    var pg = s._lkey != null && annData.pages && annData.pages[s._lkey];
+    if(pg && ((pg.ann || []).length || (pg.shapes || []).length)) return { sc: pg, intro: s._notes || '', ph: 'Notes for this slide\u2026' };
+    return null;
+  }
+  function annNotesHTML(ns){
+    var sc = ns.sc;
     var items = (sc.ann || []).map(function(a, k){ return { a: a, mark: String(k + 1), kind: 'pin', def: 'Note' }; })
       .concat((sc.shapes || []).map(function(x){ return { a: x, mark: x.type === 'box' ? '\u25a2' : '\u2197', kind: x.type, def: x.type === 'box' ? 'Area' : 'Note' }; }));
-    var h = '<div class="an-intro" data-part="screen" data-ph="Notes for this screen\u2026">' + (sc.notes || '') + '</div>';
+    var h = '<div class="an-intro" data-part="screen" data-ph="' + ns.ph + '">' + (ns.intro || '') + '</div>';
     if(items.length) h += '<div class="an-list" contenteditable="false">' + items.map(function(it){
       var imgs = (it.a.images || []).map(function(src, k){ return '<button type="button" class="an-img" data-k="' + k + '"><img src="' + src + '" alt=""></button>'; }).join('');
       var tint = it.a.color ? ' style="--ac:' + it.a.color + ';--on-ac:' + (/^#(FFD60A|64D2FF|30D158|FF9F0A)$/i.test(it.a.color) ? '#121214' : '#fff') + '"' : '';
@@ -199,12 +209,12 @@
         '<div class="an-b" data-part="note" data-ph="Add a note\u2026">' + noteHTML(it.a.note) + '</div>' +
         (imgs ? '<div class="an-imgs">' + imgs + '</div>' : '') + '</div></div>';
     }).join('') + '</div>';
-    else h += '<p class="an-none">No annotations on this screen yet.</p>';
+    else if(ns.none) h += '<p class="an-none">No annotations on this screen yet.</p>';
     return h;
   }
-  function paintAnnNotes(el, sc, editable){
+  function paintAnnNotes(el, ns, editable){
     el.contentEditable = 'false';
-    el.innerHTML = annNotesHTML(sc);
+    el.innerHTML = annNotesHTML(ns);
     el.classList.add('an-notes');
     Array.prototype.forEach.call(el.querySelectorAll('[data-part]'), function(p){ p.contentEditable = editable ? 'true' : 'false'; });
   }
@@ -219,7 +229,11 @@
   // an edit made in the notes (drawer or presenter)
   function editAnnPart(s, part){
     var sc = s._screen, kind = part.getAttribute('data-part');
-    if(kind === 'screen'){ var html = cleanNotesHtml(part); sc.notes = html; s._notes = html; saveAnns(); return; }
+    if(kind === 'screen'){
+      var html = cleanNotesHtml(part);
+      if(sc){ sc.notes = html; s._notes = html; saveAnns(); } else saveNoteFor(s, html);   // a slide's own notes
+      return;
+    }
     var item = part.closest('.an-item'), r = item && annById(item.getAttribute('data-aid')); if(!r) return;
     if(kind === 'title') r.a.title = part.textContent.replace(/\s+/g, ' ').trim();
     else r.a.note = cleanNote(part.innerHTML);
@@ -233,7 +247,7 @@
   }
   // an annotation changed elsewhere: refresh the notes unless you're typing in them
   function refreshAnnNotes(){
-    var s = slides[i]; if(!s || !s._screen) return;
+    var s = slides[i]; if(!s) return;                                 // (a slide's first or last annotation changes its notes too)
     if(!nText.contains(document.activeElement)) renderNotes();
     var pn = document.getElementById('pres-ntext');
     if(pn && !pn.contains(document.activeElement)) renderPresenter();
@@ -275,7 +289,7 @@
     if(idx !== i) return;
     if(!nText.contains(document.activeElement)) renderNotes();
     var pn = document.getElementById('pres-ntext');
-    if(pn && document.activeElement !== pn) pn.innerHTML = html || (presEditing ? '' : '<p>(no notes yet)</p>');
+    if(pn && !pn.contains(document.activeElement)){ if(notesSet(s)) renderPresenter(); else pn.innerHTML = html || (presEditing ? '' : '<p>(no notes yet)</p>'); }
   }
   // make an element a rich notes editor: "- " bullets, Tab nesting, and a formatting bar
   function notesEditor(el, bar, isOn){
@@ -283,7 +297,7 @@
       if(!isOn()) return;
       var s = slides[i]; if(!s) return;
       var part = e.target.closest && e.target.closest('[data-part]');
-      if(s._screen){                                               // an annotated slide: edit that piece of it
+      if(notesSet(s)){                                             // an annotated slide: edit that piece of it
         if(part && el.contains(part)){ if(e.inputType) dashToBullet(part, e); editAnnPart(s, part); }
         return;
       }
@@ -954,7 +968,8 @@
     var pn = document.getElementById('pres-ntext');
     // don't pull the text out from under the caret while it's being edited
     if(!(presEditing && pn.contains(document.activeElement) && presShown === i)){
-      if(slides[i] && slides[i]._screen) paintAnnNotes(pn, slides[i]._screen, presEditing);
+      var pns = notesSet(slides[i]);
+      if(pns) paintAnnNotes(pn, pns, presEditing);
       else { pn.classList.remove('an-notes'); pn.contentEditable = presEditing ? 'true' : 'false'; pn.innerHTML = (slides[i] && slides[i]._notes) || (presEditing ? '' : '<p>(no notes yet)</p>'); }
     }
     if(presShown !== i) pn.scrollTop = 0;                       // a new slide's notes start at the top
@@ -3961,10 +3976,12 @@
   function uiAnim(el, kind, inOnly){
     if(!el) return;
     el.setAttribute('data-ui', kind);
-    var disp = el.hidden ? '' : getComputedStyle(el).display, t = 0;
+    var disp = el.hidden ? '' : getComputedStyle(el).display, t = 0, was = el.hidden;
     function done(e){ if(e && e.target !== el) return; clearTimeout(t); el.classList.remove('ui-in', 'ui-out'); }
     el.addEventListener('animationend', done); el.addEventListener('animationcancel', done);
     new MutationObserver(function(){
+      if(el.hidden === was) return;                         // closing what's already closed (every slide change) plays nothing
+      was = el.hidden;
       el.classList.remove('ui-in', 'ui-out'); clearTimeout(t);
       if(!el.hidden){
         disp = getComputedStyle(el).display;
