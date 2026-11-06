@@ -8,7 +8,7 @@
   var de = document.documentElement;
   de.classList.add('booting');
   var SCRIPTS = ['theme-boot.js', '@body', 'features/collage-layout.js', 'app.js', 'glow-fx.js', 'features/disassemble.js', 'features/press.js',
-                 'features/add-slide.js', 'features/before-picker.js', 'features/take-apart-editor.js', 'features/deck-file.js', 'features/tour.js', 'features/mobile.js', 'features/collage.js', 'features/floats.js'];
+                 'features/add-slide.js', 'features/before-picker.js', 'features/take-apart-editor.js', 'features/deck-file.js', 'features/tour.js', 'features/mobile.js', 'features/fit.js', 'features/collage.js', 'features/floats.js'];
   var params = new URLSearchParams(location.search), id = params.get('d');
   var mirror = params.get('mirror') === '1', presenter = location.hash === '#presenter';
 

@@ -25,74 +25,11 @@ body.editing .cl-drift .cl-tile.media { touch-action: pan-x; }
 body:not(.editing) .slide.active .cl-board:not(.cl-scattered) .cl-tile.filled:hover { transform: translateY(-3px);
   box-shadow: 0 16px 36px -12px rgba(0,0,0,0.55), 0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent); z-index: 50 !important; }
 
-/* how a picture sits in its tile: Fit shows all of it on a quiet mat; Crop is your own zoom and spot */
-.cl-tile.media.cl-fit { background-size: contain !important; background-position: center !important;
-  background-color: color-mix(in srgb, var(--fg) 7%, transparent) !important; }
+/* a moodboard's own touches on Fill / Fit / Crop (features/fit.css has the rest) */
 .cl-scattered .cl-tile.media.cl-fit { background-color: #FBF8F3 !important; }
-.cl-tile.media.cl-fit > .tile-video { object-fit: contain; object-position: center; }
-.cl-tile.media.cl-crop { background-size: var(--csw, cover) var(--csh, auto) !important; background-position: var(--cx, 50%) var(--cy, 50%) !important; }
-/* a film is drawn larger than its tile and clipped back to it: the same zoom and spot as a picture */
-.cl-tile.media.cl-crop > .tile-video { inset: auto; width: calc(var(--cz, 1) * 100%); height: calc(var(--cz, 1) * 100%);
-  left: calc((1 - var(--cz, 1)) * var(--cxn, .5) * 100%); top: calc((1 - var(--cz, 1)) * var(--cyn, .5) * 100%);
-  object-fit: cover; object-position: var(--cx, 50%) var(--cy, 50%);
-  clip-path: inset(calc((var(--cz, 1) - 1) * var(--cyn, .5) / var(--cz, 1) * 100%) calc((var(--cz, 1) - 1) * (1 - var(--cxn, .5)) / var(--cz, 1) * 100%)
-                   calc((var(--cz, 1) - 1) * (1 - var(--cyn, .5)) / var(--cz, 1) * 100%) calc((var(--cz, 1) - 1) * var(--cxn, .5) / var(--cz, 1) * 100%)); }
-
-/* each picture's switch in Edit mode (Fill / Fit / Crop, and Masonry's 16:9 lock): shown on hover,
-   and always once it's set to something other than Fill */
-.cl-opt { display: none; position: absolute; left: 8px; top: 8px; z-index: 4; height: 26px; padding: 0 9px 0 7px; gap: 5px; align-items: center;
-  border: 1px solid rgba(255,255,255,0.28); border-radius: 13px; background: rgba(12,12,14,0.62); color: rgba(255,255,255,0.88);
-  font: 600 11.5px/1 ui-monospace, "SF Mono", Menlo, Consolas, monospace; letter-spacing: 0.04em; cursor: pointer; white-space: nowrap;
-  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); transition: background 0.2s ease, border-color 0.2s ease, opacity 0.2s ease; }
-.cl-opt svg { width: 13px; height: 13px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
-.cl-opt i { width: 3px; height: 3px; border-radius: 50%; background: currentColor; opacity: 0.7; }
-.cl-opt[data-set="false"] { opacity: 0; }
-.cl-opt[data-set="true"] { color: #fff; border-color: var(--accent); background: color-mix(in srgb, var(--accent) 70%, rgba(12,12,14,0.6)); }
 body.editing .cl-set:not(.cl-copy) > .cl-tile > .cl-opt { display: inline-flex; }
-body.editing .cl-tile:hover > .cl-opt, .cl-opt:focus-visible, .cl-opt[aria-expanded="true"], body.compact .cl-opt { opacity: 1; }
-.cl-opt:hover { border-color: rgba(255,255,255,0.6); }
 .cl-scattered .cl-opt { left: calc(var(--pb, 8px) + 6px); top: calc(var(--pb, 8px) + 6px); }
-.cl-cropmode .cl-opt { display: none !important; }
-
-/* the switch's menu: dark glass, like the Edit bar */
-.cl-tmenu { position: fixed; z-index: 70; min-width: 236px; padding: 6px; border-radius: 14px; display: flex; flex-direction: column; gap: 2px;
-  background: rgba(22,22,26,0.94); border: 1px solid rgba(255,255,255,0.12); box-shadow: 0 24px 60px -18px rgba(0,0,0,0.7);
-  -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); color: #F2F2F4;
-  font-family: "Inter", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-  opacity: 0; transform: translateY(-4px) scale(.98); transform-origin: top left; transition: opacity .16s ease, transform .2s cubic-bezier(.16,1,.3,1); }
-.cl-tmenu.in { opacity: 1; transform: none; }
-.cl-tmenu button { display: flex; gap: 10px; align-items: flex-start; width: 100%; padding: 8px 10px; border: 0; border-radius: 9px; background: none;
-  color: inherit; font: inherit; text-align: left; cursor: pointer; }
-.cl-tmenu button:hover, .cl-tmenu button:focus-visible { background: rgba(255,255,255,0.08); outline: none; }
-.cl-tmenu button[aria-checked="true"] { background: color-mix(in srgb, var(--accent) 22%, transparent); }
-.cl-tmenu svg { width: 16px; height: 16px; flex: none; margin-top: 1px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
-.cl-tmenu button[aria-checked="true"] svg { color: var(--accent); }
-.cl-tmenu b { display: block; font-size: 13px; font-weight: 600; }
-.cl-tmenu em { display: block; margin-top: 2px; font-style: normal; font-size: 11.5px; color: #A1A1A6; }
-.cl-tmenu hr { width: 100%; margin: 4px 0; border: 0; border-top: 1px solid rgba(255,255,255,0.1); }
-
-/* Crop: the picture in its tile, the rest of it faint around it, the other tiles stepped back */
 .cl-cropmode .cl-tile:not(.cl-cropping) { opacity: 0.25; pointer-events: none; }
-.cl-tile.media.cl-cropping { z-index: 1001 !important; cursor: grab; touch-action: none;
-  box-shadow: 0 0 0 2px var(--accent), 0 0 0 6px color-mix(in srgb, var(--accent) 25%, transparent), 0 24px 50px -18px rgba(0,0,0,0.7); }
-body.editing .cl-tile.media.cl-cropping { transition: none; }
-.cl-tile.media.cl-cropping.cl-panning { cursor: grabbing; }
-.cl-tile.cl-cropping > .media-clear { display: none; }
-.cl-ghost { position: absolute; z-index: 1000; pointer-events: none; background: center / 100% 100% no-repeat; opacity: 0.32; border-radius: 4px;
-  box-shadow: 0 0 0 1px rgba(255,255,255,0.25); }
-.cl-cropbar { position: fixed; z-index: 70; display: flex; gap: 10px; align-items: center; height: 44px; padding: 0 6px 0 14px; border-radius: 22px;
-  background: rgba(22,22,26,0.94); border: 1px solid rgba(255,255,255,0.12); box-shadow: 0 24px 60px -18px rgba(0,0,0,0.7);
-  -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); color: #E5E5EA;
-  font: 600 12.5px/1 "Inter", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-  opacity: 0; transform: translateY(6px); transition: opacity .18s ease, transform .25s cubic-bezier(.16,1,.3,1); }
-.cl-cropbar.in { opacity: 1; transform: none; }
-.cl-cb-k { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
-.cl-cropbar svg { width: 15px; height: 15px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; opacity: .75; }
-.cl-cropbar input[type=range] { width: 140px; accent-color: var(--accent); }
-.cl-cropbar button { height: 32px; padding: 0 14px; border-radius: 16px; border: 0; cursor: pointer; font: inherit;
-  background: rgba(255,255,255,0.08); color: inherit; }
-.cl-cropbar button:hover { background: rgba(255,255,255,0.15); }
-.cl-cropbar button.on { background: var(--accent); color: #fff; }
 
 /* scattered: prints on a table, a white edge (a deeper one at the bottom of a polaroid), tape on the rest */
 .cl-scattered .cl-tile.media { border-radius: 3px; overflow: visible; border-style: solid; border-color: #FBF8F3;

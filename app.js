@@ -2890,12 +2890,52 @@
       else if(img){ setTileVideo(m, null); m.style.background = (m.getAttribute('data-bg-pos') || 'center top') + '/cover no-repeat url("' + img + '")'; m.classList.add('filled'); }   // crops keep the top
       else { setTileVideo(m, null); m.style.background = ''; m.classList.remove('filled'); }
       m.classList.toggle('is-video', !!(img && isVideo(img)));   // the edit-mode hint names what you are replacing
+      paintFit(m, img);
     });
     paintBefores();
     syncFilmstrips();
     refreshSlideThemes();                                        // a picture going in or out changes the default
     mediaListeners.forEach(function(f){ try { f(); } catch(e){ console.error(e); } });
     if(PRESENTERWIN) renderPresenter();
+  }
+  // Fill / Fit / Crop (features/fit.js): how the picture sits in its tile, from the deck's fits by media
+  // id. A moodboard keeps its own (features/collage.js). Painted here, before the strips and carousels
+  // copy their tiles, so the copies match.
+  function fitOf(mid){ return (mid && SEED.fits && SEED.fits[mid]) || null; }
+  function setFit(mid, o){
+    var e = {};
+    if(o && (o.fit === 'fit' || o.fit === 'crop')) e.fit = o.fit;
+    ['z', 'cx', 'cy'].forEach(function(k){ if(o && o[k] != null && isFinite(+o[k])) e[k] = +o[k]; });   // a crop stays for next time
+    if(Object.keys(e).length) (SEED.fits = SEED.fits || {})[mid] = e;
+    else if(SEED.fits){ delete SEED.fits[mid]; if(!Object.keys(SEED.fits).length) delete SEED.fits; }
+    applyMedia();
+    Promise.resolve(flushSave()).then(function(){ pingReload(); }, function(){ pingReload(); });   // the other windows load it from the saved deck
+  }
+  var fitShapes = {}, fitRO = window.ResizeObserver ? new ResizeObserver(function(es){
+    es.forEach(function(en){ var m = en.target; if(m.getAttribute('data-fit') === 'crop') SleekCollage.fitTile(m, m.clientWidth, m.clientHeight); });
+  }) : null;
+  function paintFit(m, src){
+    if(m.classList.contains('cl-tile') || !window.SleekCollage) return;
+    if(window.Deck && Deck.fitUI && Deck.fitUI.cropping() === m) return;   // the crop being made keeps its live values
+    var o = fitOf(m.getAttribute('data-mid')), f = src && o && (o.fit === 'fit' || o.fit === 'crop') ? o.fit : null;
+    if(!f){
+      if(m.hasAttribute('data-fit')){ m.removeAttribute('data-fit'); SleekCollage.fitTile(m); }
+      return;
+    }
+    m.setAttribute('data-fit', f);
+    ['z', 'cx', 'cy'].forEach(function(k){ if(o[k] != null) m.setAttribute('data-' + k, String(o[k])); else m.removeAttribute('data-' + k); });
+    if(f === 'crop'){
+      var r = fitShapes[src];
+      if(r) m.setAttribute('data-r', String(r));
+      else if(r !== 0){                                         // the picture's own shape, once; then paint again
+        fitShapes[src] = 0;
+        var done = function(v){ if(v){ fitShapes[src] = v; clearTimeout(fitShapes._t); fitShapes._t = setTimeout(applyMedia, 30); } };
+        if(isVideo(src)){ var v = document.createElement('video'); v.muted = true; v.preload = 'metadata'; v.onloadedmetadata = function(){ done(v.videoWidth / v.videoHeight); v.removeAttribute('src'); }; v.src = src; }
+        else { var im = new Image(); im.onload = function(){ done(im.naturalWidth / im.naturalHeight); }; im.src = src; }
+      }
+      if(fitRO) fitRO.observe(m);
+    }
+    SleekCollage.fitTile(m, m.clientWidth, m.clientHeight);
   }
   // a tile whose media is a video plays it silently on a loop (click it for the full player);
   // it waits for its own slide (armVideos), so videos elsewhere in the deck stay still
@@ -3486,7 +3526,7 @@
         } else {
           var id = s.getAttribute('data-added');
           doc.added = (doc.added || []).filter(function(a){ return a.id !== id; });
-          ['text', 'style', 'media', 'components', 'press'].forEach(function(f){ dropPrefixed(doc[f], id); });
+          ['text', 'style', 'media', 'components', 'press', 'fits'].forEach(function(f){ dropPrefixed(doc[f], id); });
           if(doc.noteByKey) delete doc.noteByKey['add-' + id];
           doc.order = keys.filter(function(x){ return x !== key; });
         }
@@ -3510,7 +3550,7 @@
           if(src.cl) copy.cl = JSON.parse(JSON.stringify(src.cl));   // a moodboard's pictures (their files come with the media below)
           if(src.fl) copy.fl = JSON.parse(JSON.stringify(src.fl));   // and its free pictures
           list.splice(list.indexOf(src) + 1, 0, copy); doc.added = list;
-          ['text', 'style', 'media', 'components', 'press'].forEach(function(f){ copyPrefixed(doc[f], id, nid); });
+          ['text', 'style', 'media', 'components', 'press', 'fits'].forEach(function(f){ copyPrefixed(doc[f], id, nid); });
           doc.noteByKey = doc.noteByKey || {}; doc.noteByKey['add-' + nid] = s._notes || '';
           if(doc.slideTheme && s._lkey != null && doc.slideTheme[s._lkey] != null) doc.slideTheme[name] = doc.slideTheme[s._lkey];
           var pg = doc.annotations && doc.annotations.pages && s._lkey != null && doc.annotations.pages[s._lkey];
@@ -4057,6 +4097,8 @@
     addedOf: function(s){ var id = s && s.getAttribute('data-added'); return ADDED.filter(function(a){ return a.id === id; })[0] || null; },
     saveAdded: function(){ saveAdded(); markChanged(); },
     setupTile: function(m){ setupTile(m); },
+    fitOf: function(mid){ return fitOf(mid); },       // Fill / Fit / Crop (features/fit.js)
+    setFit: function(mid, o){ setFit(mid, o); },
     mediaOf: function(mid){ var v = mid && (mediaImages[mid] || (SEED.media && SEED.media[mid])); return v && v !== 'none' ? v : null; },
     setMedia: function(mid, src){ if(src == null) delete mediaImages[mid]; else mediaImages[mid] = src; },
     applyMedia: function(){ applyMedia(); },
