@@ -359,7 +359,26 @@
       if(!no){ no = document.createElement('span'); no.className = 'cl-no'; no.setAttribute('aria-hidden', 'true'); m.appendChild(no); }
       no.textContent = String(r.no).padStart(2, '0') + 'A';
     } else if(no) no.remove();
+    var f = r.frame, w = f ? r.w - 2 * f.b : r.w, h = f ? r.h - f.b - f.bb : r.h;
+    fitTile(m, w, h);
   }
+  // How a picture sits in its tile (data-fit): fill it, the edges cut off (the default); fit, all of
+  // it showing; or crop, your own zoom (data-z, 1 = just filling) and spot (data-cx / data-cy, 0-100,
+  // like a background position). w and h are the picture's own area of the tile.
+  function fitTile(m, w, h){
+    var f = m.getAttribute('data-fit') || 'fill', s = m.style;
+    m.classList.toggle('cl-fit', f === 'fit'); m.classList.toggle('cl-crop', f === 'crop');
+    if(w && h){ m._fw = w; m._fh = h; } else { w = m._fw; h = m._fh; }
+    if(f !== 'crop' || !w || !h) return;
+    var z = Math.max(1, Math.min(6, +m.getAttribute('data-z') || 1)), ir = +m.getAttribute('data-r') || 4 / 3, tr = w / h;
+    var cx = clampP(m.getAttribute('data-cx')), cy = clampP(m.getAttribute('data-cy'));
+    s.setProperty('--csw', ((ir > tr ? z * ir / tr : z) * 100).toFixed(3) + '%');
+    s.setProperty('--csh', ((ir > tr ? z : z * tr / ir) * 100).toFixed(3) + '%');
+    s.setProperty('--cz', z.toFixed(4));
+    s.setProperty('--cx', cx.toFixed(2) + '%'); s.setProperty('--cy', cy.toFixed(2) + '%');
+    s.setProperty('--cxn', (cx / 100).toFixed(4)); s.setProperty('--cyn', (cy / 100).toFixed(4));
+  }
+  function clampP(v){ v = parseFloat(v); return isFinite(v) ? Math.max(0, Math.min(100, v)) : 50; }
   function place(board, W, H, mode){
     var st = board._cl; if(!st) return null;
     var res = layout(st.style, mode, st.items, W, H, st.mix);
@@ -369,7 +388,7 @@
 
   window.SleekCollage = {
     NOMINAL: NOMINAL, STYLES: STYLES, MOTIONS: MOTIONS,
-    rnd: rnd, layout: layout, build: build, place: place, placeTile: placeTile, tileFor: tileFor,
+    rnd: rnd, layout: layout, build: build, place: place, placeTile: placeTile, fitTile: fitTile, tileFor: tileFor,
     stateOf: stateOf, sampleItems: sampleItems, paintClasses: paintClasses
   };
 })();

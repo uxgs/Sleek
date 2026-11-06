@@ -36,6 +36,7 @@
     var W = b.clientWidth, H = b.clientHeight; if(!W || !H) return;
     var track = b.querySelector('.cl-track'); if(!track) return;
     dropCopies(b);
+    syncTiles(b);
     if(shuffling(b)){
       var k = Math.max(1, Math.min(st.items.length - 1, K[st.style] || 9));
       b._slots = C.layout(st.style, 'fit', st.items.slice(0, k), W, H, st.mix).rects;
@@ -45,7 +46,6 @@
       return;
     }
     b._slots = null;
-    if(st.style === 'masonry') lockButtons(b);
     var res = C.place(b, W, H, drifting(b) ? 'strip' : 'fit');
     if(drifting(b) && res){
       track.style.setProperty('--set', res.W + 'px');
@@ -54,37 +54,209 @@
     }
   }
   function renderAll(){ boards().forEach(render); }
-  // Masonry: a picture can be locked to 16:9, so it isn't cropped (Edit mode shows the switch)
+  // ---------- each picture's own settings: Fill / Fit / Crop, and Masonry's 16:9 lock ----------
+  // The tile carries them as attributes (the layout reads them as it places it), and Edit mode
+  // puts a small switch on it that opens a menu.
   var LOCK_SVG = '<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="3.5" y="7" width="9" height="6.5" rx="1.5"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg>';
-  function lockButtons(b){
+  var FIT_SVG = {
+    fill: '<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3.5" width="12" height="9" rx="1.5"/><path d="M2 10.5l3.5-3 3 2.5 2-1.5 3.5 2.5"/></svg>',
+    fit: '<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3.5" width="12" height="9" rx="1.5"/><rect x="5" y="5.5" width="6" height="5" rx=".8"/></svg>',
+    crop: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 1.5v10h10"/><path d="M1.5 4.5h10v10"/></svg>'
+  };
+  var FIT_NAMES = { fill: 'Fill', fit: 'Fit', crop: 'Crop' };
+  function fitOf(it){ return it && (it.fit === 'fit' || it.fit === 'crop') ? it.fit : 'fill'; }
+  function syncTiles(b){
+    var masonry = b._cl.style === 'masonry';
     tiles(b).forEach(function(m){
       var it = itemOf(b, m); if(!it) return;
-      var k = m.querySelector(':scope > .cl-lock');
+      var f = fitOf(it);
+      if(f === 'fill') m.removeAttribute('data-fit'); else m.setAttribute('data-fit', f);
+      m.setAttribute('data-r', String(+it.r || 4 / 3));
+      ['z', 'cx', 'cy'].forEach(function(k){ if(it[k] != null) m.setAttribute('data-' + k, String(it[k])); else m.removeAttribute('data-' + k); });
+      if(crop && crop.m === m) return;                          // the crop being made keeps its live values
+      var k = m.querySelector(':scope > .cl-opt');
       if(!k){
-        k = document.createElement('button'); k.type = 'button'; k.className = 'cl-lock';
-        k.innerHTML = LOCK_SVG + '<span>16:9</span>';
+        k = document.createElement('button'); k.type = 'button'; k.className = 'cl-opt';
+        k.setAttribute('aria-haspopup', 'menu');
         k.addEventListener('pointerdown', function(e){ e.stopPropagation(); });
-        k.addEventListener('click', function(e){
-          e.preventDefault(); e.stopPropagation();
-          var cl = own(b); if(!cl) return;
-          var id = m.getAttribute('data-cid'), x = cl.items.filter(function(i){ return i.id === id; })[0]; if(!x) return;
-          if(x.lock) delete x.lock; else x.lock = true;
-          commit(b);
-          D.toast(x.lock ? 'Locked to 16:9' : 'Unlocked');
-        });
+        k.addEventListener('click', function(e){ e.preventDefault(); e.stopPropagation(); openTileMenu(b, m, k); });
         m.appendChild(k);
       }
-      k.setAttribute('aria-pressed', it.lock ? 'true' : 'false');
-      k.title = it.lock ? 'Locked to 16:9: click to let it fit the column' : 'Lock to 16:9, so this picture isn\u2019t cropped';
+      var locked = masonry && !!it.lock;
+      k.innerHTML = (locked ? LOCK_SVG + '<span>16:9</span>' + (f !== 'fill' ? '<i></i>' : '') : '') +
+                    (!locked || f !== 'fill' ? (locked ? '' : FIT_SVG[f]) + '<span>' + FIT_NAMES[f] + '</span>' : '');
+      k.setAttribute('data-set', String(locked || f !== 'fill'));
+      k.setAttribute('aria-label', 'Picture: ' + FIT_NAMES[f] + (locked ? ', locked to 16:9' : ''));
+      k.title = 'Fill, fit or crop this picture' + (masonry ? ', or lock it to 16:9' : '');
     });
   }
+  // the menu behind a tile's switch (one, shared, on the page)
+  var tmenu = null, tmenuFor = null;
+  function openTileMenu(b, m, btn){
+    if(tmenu && tmenuFor === m){ closeTileMenu(); return; }
+    closeTileMenu(); closeMenus();
+    var it = itemOf(b, m); if(!it) return;
+    var f = fitOf(it), masonry = b._cl.style === 'masonry';
+    function row(v, label, sub, checked, role){
+      return '<button type="button" role="' + role + '" data-v="' + v + '" aria-checked="' + checked + '">' +
+        (v === 'lock' ? LOCK_SVG : FIT_SVG[v]) + '<span><b>' + label + '</b><em>' + sub + '</em></span></button>';
+    }
+    tmenu = document.createElement('div'); tmenu.className = 'cl-tmenu'; tmenu.setAttribute('role', 'menu');
+    tmenu.innerHTML = row('fill', 'Fill', 'Fills the tile; the edges may be cut off', f === 'fill', 'menuitemradio') +
+      row('fit', 'Fit', 'Shows all of it', f === 'fit', 'menuitemradio') +
+      row('crop', 'Crop…', 'Zoom in and choose what shows', f === 'crop', 'menuitemradio') +
+      (masonry ? '<hr>' + row('lock', 'Lock to 16:9', 'Keeps this tile 16:9 in the column', !!it.lock, 'menuitemcheckbox') : '');
+    document.body.appendChild(tmenu); tmenuFor = m; btn.setAttribute('aria-expanded', 'true');
+    var r = btn.getBoundingClientRect(), mw = tmenu.offsetWidth, mh = tmenu.offsetHeight;
+    var x = Math.min(Math.max(8, r.left), innerWidth - mw - 8), y = r.bottom + 6;
+    if(y + mh > innerHeight - 8) y = Math.max(8, r.top - mh - 6);
+    tmenu.style.left = x + 'px'; tmenu.style.top = y + 'px';
+    requestAnimationFrame(function(){ if(tmenu) tmenu.classList.add('in'); });
+    tmenu.addEventListener('pointerdown', function(e){ e.stopPropagation(); });
+    tmenu.addEventListener('click', function(e){
+      var x = e.target.closest('[data-v]'); if(!x) return;
+      e.stopPropagation();
+      var v = x.getAttribute('data-v'); closeTileMenu();
+      var cl = own(b); if(!cl) return;
+      var id = m.getAttribute('data-cid'), t = cl.items.filter(function(i){ return i.id === id; })[0]; if(!t) return;
+      if(v === 'lock'){
+        if(t.lock) delete t.lock; else t.lock = true;
+        commit(b); D.toast(t.lock ? 'Locked to 16:9' : 'Unlocked'); return;
+      }
+      var prev = t.fit;
+      if(v === 'fill') delete t.fit; else t.fit = v;
+      commit(b);
+      if(v === 'crop') startCrop(b, m, prev);
+    });
+  }
+  function closeTileMenu(){
+    if(!tmenu) return;
+    var n = tmenu, k = tmenuFor && tmenuFor.querySelector(':scope > .cl-opt'); tmenu = null; tmenuFor = null;
+    if(k) k.setAttribute('aria-expanded', 'false');
+    n.classList.remove('in'); setTimeout(function(){ n.remove(); }, 160);
+  }
+  document.addEventListener('pointerdown', function(e){
+    if(!tmenu || tmenu.contains(e.target)) return;
+    var own = e.target.closest && e.target.closest('.cl-opt');
+    if(own && tmenuFor && tmenuFor.contains(own)) return;     // its own switch: the click closes it
+    closeTileMenu();
+  }, true);
+
+  // ---------- Crop: drag the picture to choose what shows, the wheel or the slider to zoom ----------
+  var crop = null;
+  function startCrop(b, m, prevFit){
+    endCrop(true);
+    var it = itemOf(b, m); if(!it) return;
+    crop = { b: b, m: m, z: +it.z || 1, cx: it.cx != null ? +it.cx : 50, cy: it.cy != null ? +it.cy : 50 };
+    crop.was = { z: it.z, cx: it.cx, cy: it.cy, fit: prevFit === undefined ? it.fit : prevFit };
+    m.classList.add('cl-cropping'); b.classList.add('cl-cropmode');
+    var src = D.tileSrc(m);
+    if(src && !D.isVideo(src)){                                // the rest of the picture, faint, around the tile
+      crop.ghost = document.createElement('div'); crop.ghost.className = 'cl-ghost';
+      crop.ghost.style.backgroundImage = 'url("' + src.replace(/"/g, '%22') + '")';
+      m.parentNode.appendChild(crop.ghost);
+    }
+    var bar = crop.bar = document.createElement('div'); bar.className = 'cl-cropbar';
+    bar.innerHTML = '<span class="cl-cb-k">Crop</span>' +
+      '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5L14 14M5 7h4"/></svg>' +
+      '<input type="range" min="1" max="4" step="0.01" aria-label="Zoom">' +
+      '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5L14 14M5 7h4M7 5v4"/></svg>' +
+      '<button type="button" data-a="reset">Reset</button><button type="button" class="on" data-a="done">Done</button>';
+    document.body.appendChild(bar);
+    var zr = bar.querySelector('input'); zr.value = crop.z;
+    zr.addEventListener('input', function(){ if(crop){ crop.z = +zr.value; paintCrop(); } });
+    bar.addEventListener('pointerdown', function(e){ e.stopPropagation(); });
+    bar.addEventListener('click', function(e){
+      e.stopPropagation();
+      var a = e.target.closest('[data-a]'); if(!a || !crop) return;
+      if(a.getAttribute('data-a') === 'reset'){ crop.z = 1; crop.cx = 50; crop.cy = 50; zr.value = 1; paintCrop(); }
+      else endCrop(true);
+    });
+    paintCrop();
+    requestAnimationFrame(function(){ if(crop && crop.bar === bar) bar.classList.add('in'); });
+    D.toast('Drag to move it, scroll to zoom');
+  }
+  // the crop's size of picture beyond the tile, in slide px, at the current zoom
+  function cropExtra(){
+    var m = crop.m, w = m._fw || m.clientWidth, h = m._fh || m.clientHeight, ir = +m.getAttribute('data-r') || 4 / 3, tr = w / h, z = crop.z;
+    var iw = (ir > tr ? z * ir / tr : z) * w, ih = (ir > tr ? z : z * tr / ir) * h;
+    return { w: w, h: h, iw: iw, ih: ih, x: iw - w, y: ih - h };
+  }
+  function paintCrop(){
+    if(!crop) return;
+    var m = crop.m;
+    m.setAttribute('data-z', crop.z.toFixed(3)); m.setAttribute('data-cx', crop.cx.toFixed(2)); m.setAttribute('data-cy', crop.cy.toFixed(2));
+    C.fitTile(m);
+    var e = cropExtra();
+    if(crop.ghost){
+      var bl = m.clientLeft || 0, bt = m.clientTop || 0, g = crop.ghost.style;
+      g.left = (m.offsetLeft + bl - e.x * crop.cx / 100) + 'px'; g.top = (m.offsetTop + bt - e.y * crop.cy / 100) + 'px';
+      g.width = e.iw + 'px'; g.height = e.ih + 'px';
+    }
+    if(crop.bar){
+      var r = m.getBoundingClientRect(), bw = crop.bar.offsetWidth, bh = crop.bar.offsetHeight;
+      var x = Math.min(Math.max(8, r.left + r.width / 2 - bw / 2), innerWidth - bw - 8), y = r.bottom + 12;
+      if(y + bh > innerHeight - 70) y = Math.max(8, r.top - bh - 12);
+      if(y < 8) y = r.top + 12;
+      crop.bar.style.left = x + 'px'; crop.bar.style.top = y + 'px';
+    }
+  }
+  function endCrop(save){
+    if(!crop) return;
+    var c = crop; crop = null;
+    c.m.classList.remove('cl-cropping'); c.b.classList.remove('cl-cropmode');
+    if(c.ghost) c.ghost.remove();
+    if(c.bar){ var bar = c.bar; bar.classList.remove('in'); setTimeout(function(){ bar.remove(); }, 180); }
+    var cl = own(c.b), id = c.m.getAttribute('data-cid'), t = cl && cl.items.filter(function(i){ return i.id === id; })[0];
+    if(t && save){ t.fit = 'crop'; t.z = Math.round(c.z * 1000) / 1000; t.cx = Math.round(c.cx * 10) / 10; t.cy = Math.round(c.cy * 10) / 10; }
+    else if(t){ ['z', 'cx', 'cy', 'fit'].forEach(function(k){ if(c.was[k] == null) delete t[k]; else t[k] = c.was[k]; }); }   // Esc: as it was
+    commit(c.b);
+  }
+  var pan = null;
+  stage.addEventListener('pointerdown', function(e){
+    if(!crop || e.button !== 0) return;
+    if(!crop.m.contains(e.target)) return;
+    e.preventDefault(); e.stopPropagation();
+    pan = { x: e.clientX, y: e.clientY, id: e.pointerId };
+    crop.m.classList.add('cl-panning');
+    try { crop.m.setPointerCapture(e.pointerId); } catch(_){}
+  }, true);
+  document.addEventListener('pointermove', function(e){
+    if(!pan || !crop || e.pointerId !== pan.id) return;
+    var k = scale(), dx = (e.clientX - pan.x) / k, dy = (e.clientY - pan.y) / k, ex = cropExtra();
+    pan.x = e.clientX; pan.y = e.clientY;
+    if(ex.x > 0.5) crop.cx = Math.max(0, Math.min(100, crop.cx - dx / ex.x * 100));
+    if(ex.y > 0.5) crop.cy = Math.max(0, Math.min(100, crop.cy - dy / ex.y * 100));
+    paintCrop();
+  });
+  function endPan(e){ if(pan && (!e || e.pointerId === pan.id)){ pan = null; if(crop) crop.m.classList.remove('cl-panning'); } }
+  document.addEventListener('pointerup', endPan); document.addEventListener('pointercancel', endPan);
+  stage.addEventListener('wheel', function(e){
+    if(!crop || !crop.m.contains(e.target)) return;
+    e.preventDefault(); e.stopPropagation();
+    crop.z = Math.max(1, Math.min(4, crop.z * Math.exp(-e.deltaY * (e.deltaMode === 1 ? 0.05 : 0.0025))));
+    crop.bar.querySelector('input').value = crop.z;
+    paintCrop();
+  }, { passive: false, capture: true });
+  // while cropping, a click on the picture isn't "replace it", and a click anywhere else finishes
+  document.addEventListener('click', function(e){
+    if(!crop) return;
+    if(crop.bar && crop.bar.contains(e.target)) return;
+    e.preventDefault(); e.stopPropagation();
+    if(!crop.m.contains(e.target)) endCrop(true);
+  }, true);
+  document.addEventListener('keydown', function(e){
+    if(!crop) return;
+    if(e.key === 'Escape' || e.key === 'Enter'){ e.preventDefault(); e.stopImmediatePropagation(); endCrop(e.key === 'Enter'); }
+  }, true);
+
   // drift: copies of the set after it, enough to fill the board while it moves one set to the left
   function makeCopies(b, setW, viewW){
     var real = realSet(b), n = Math.max(1, Math.ceil(viewW / setW));
     for(var k = 0; k < n; k++){
       var c = real.cloneNode(true);
       c.classList.add('cl-copy'); c.setAttribute('aria-hidden', 'true');
-      Array.prototype.forEach.call(c.querySelectorAll('.media-clear, .media-before, .cl-lock'), function(el){ el.remove(); });
+      Array.prototype.forEach.call(c.querySelectorAll('.media-clear, .media-before, .cl-opt'), function(el){ el.remove(); });
       Array.prototype.forEach.call(c.querySelectorAll('[data-mid],[data-eid],[contenteditable]'), function(el){
         el.removeAttribute('data-mid'); el.removeAttribute('data-eid'); el.removeAttribute('contenteditable');
       });
@@ -158,7 +330,7 @@
       if(b._slots && shuffling(b)) shuffleTo(b, true);
     });
   }
-  D.onShow.push(function(s){ arm(s); paintBar(); });
+  D.onShow.push(function(s){ closeTileMenu(); endCrop(true); arm(s); paintBar(); });
 
   // ---------- the slide's own moodboard in the deck ----------
   // the first change to a board saves its pictures (the layout's own, at first) into its entry
@@ -249,7 +421,7 @@
   stage.addEventListener('pointerdown', function(e){
     if(!editing() || e.button !== 0) return;
     var m = e.target.closest && e.target.closest('.cl-set:not(.cl-copy) > .cl-tile');
-    if(!m || e.target.closest('.media-clear, .cl-lock')) return;
+    if(!m || crop || e.target.closest('.media-clear, .cl-opt')) return;
     drag = { m: m, b: m.closest('.cl-board'), x: e.clientX, y: e.clientY, id: e.pointerId, moved: false, over: null };
   });
   document.addEventListener('pointermove', function(e){
@@ -344,8 +516,113 @@
   // an empty board in Edit mode: click it to add pictures
   stage.addEventListener('click', function(e){
     var b = boardAt(e); if(!b || !b.classList.contains('cl-none') || e.target.closest('.cl-tile')) return;
-    pickFiles(b);
+    openPicker(b);
   });
+
+  // ---------- Add media: what's in the deck already, or new files ----------
+  function esc(x){ return String(x == null ? '' : x).replace(/[&<>"]/g, function(c){ return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  // every picture and video on the deck's slides (once each), in deck order, by slide
+  function deckMedia(b){
+    var seen = {}, out = [];
+    Array.prototype.forEach.call(stage.querySelectorAll('.slide:not(.s-screen) .media[data-mid]'), function(m){
+      if(m.closest('.car-copy, .fs-copy, .cl-copy') || b.contains(m)) return;
+      var src = D.tileSrc(m); if(!src || src === 'none' || seen[src]) return;
+      var mid = m.getAttribute('data-mid'), def = m.getAttribute('data-default-src');
+      seen[src] = true;
+      var s = m.closest('.slide'), c = m.querySelector('.cap');
+      out.push({ src: src, def: def && !D.mediaIsCustom(mid) ? def : null, video: D.isVideo(src),
+                 slide: (s && s.getAttribute('data-label')) || 'Slide', cap: c ? c.textContent.trim() : '' });
+    });
+    // pictures already on this board don't need adding again
+    var mine = {}; tiles(b).forEach(function(m){ var x = D.tileSrc(m); if(x) mine[x] = true; });
+    return out.filter(function(x){ return !mine[x.src]; });
+  }
+  var mp = null;
+  function openPicker(b){
+    if(mp || !editing()) return;
+    closeMenus(); closeTileMenu();
+    var list = deckMedia(b), groups = [], prevFocus = document.activeElement;
+    list.forEach(function(c, j){ c.k = j; var g = groups[groups.length - 1]; if(!g || g.slide !== c.slide){ g = { slide: c.slide, items: [] }; groups.push(g); } g.items.push(c); });
+    var el = document.createElement('div'); el.className = 'bp-backdrop cl-mp';
+    el.innerHTML = '<div class="bp-modal" role="dialog" aria-modal="true" aria-label="Add media">' +
+      '<button type="button" class="bp-close" data-close aria-label="Close">×</button>' +
+      '<div class="bp-head"><div class="bp-copy"><div class="bp-k">Moodboard</div><h2 class="bp-h">Add media</h2>' +
+        '<p class="bp-p">Pick pictures and videos from this deck, or upload new ones. You can pick as many as you like.</p>' +
+        '<div class="bp-actions"><label class="bp-btn ghost"><input type="file" accept="image/*,video/*" multiple hidden>Upload from your computer…</label></div>' +
+      '</div></div>' +
+      '<div class="bp-body">' + (groups.length ? groups.map(function(g){
+        return '<div class="bp-group"><div class="bp-slide">' + esc(g.slide) + '</div><div class="bp-grid">' + g.items.map(function(c){
+          return '<button type="button" class="bp-tile" style="--i:' + c.k + '" data-k="' + c.k + '" aria-pressed="false" aria-label="' + esc((c.cap || (c.video ? 'Video' : 'Picture')) + ', ' + g.slide) + '">' +
+            (c.video ? '<span class="bp-shot cl-mp-vid"><video muted playsinline preload="metadata" src="' + esc(c.src.split('#')[0]) + '#t=0.5"></video><i>Video</i></span>'
+                     : '<span class="bp-shot" style="background-image:url(&quot;' + esc(c.src) + '&quot;)"></span>') +
+            (c.cap ? '<span class="bp-cap">' + esc(c.cap) + '</span>' : '') + '</button>';
+        }).join('') + '</div></div>';
+      }).join('') : '<p class="bp-empty">Everything in the deck is on this board already. Upload something new instead.</p>') + '</div>' +
+      '<div class="cl-mp-foot"><span class="cl-mp-n">Nothing picked</span><button type="button" class="bp-btn ghost" data-close>Cancel</button>' +
+        '<button type="button" class="bp-btn primary" data-add disabled>Add</button></div>' +
+      '</div>';
+    document.body.appendChild(el);
+    mp = { el: el, b: b, list: list, picked: [] };
+    function paint(){
+      var n = mp.picked.length, v = mp.picked.filter(function(k){ return list[k].video; }).length;
+      el.querySelector('.cl-mp-n').textContent = !n ? 'Nothing picked' : n + ' picked';
+      var add = el.querySelector('[data-add]'); add.disabled = !n;
+      add.textContent = !n ? 'Add' : 'Add ' + n + (v === n ? (n === 1 ? ' video' : ' videos') : v ? '' : (n === 1 ? ' picture' : ' pictures'));
+    }
+    function close(){
+      if(!mp) return;
+      var node = mp.el; mp = null;
+      document.removeEventListener('keydown', onKey, true);
+      node.classList.remove('in'); node.classList.add('out');
+      setTimeout(function(){ node.remove(); }, 380);
+      if(prevFocus && prevFocus.focus) prevFocus.focus({ preventScroll: true });
+    }
+    function onKey(e){
+      if(!mp) return;
+      e.stopImmediatePropagation();
+      if(e.key === 'Escape'){ e.preventDefault(); close(); }
+    }
+    el.addEventListener('click', function(e){
+      if(e.target === el || e.target.closest('[data-close]')){ close(); return; }
+      if(e.target.closest('[data-add]')){
+        var chosen = mp.picked.map(function(k){ return list[k]; }), bb = mp.b; close();
+        addChosen(bb, chosen); return;
+      }
+      var t = e.target.closest('.bp-tile'); if(!t) return;
+      var k = +t.getAttribute('data-k'), at = mp.picked.indexOf(k);
+      if(at > -1) mp.picked.splice(at, 1); else mp.picked.push(k);
+      t.classList.toggle('on', at < 0); t.setAttribute('aria-pressed', String(at < 0));
+      paint();
+    });
+    el.querySelector('input[type=file]').addEventListener('change', function(e){
+      var f = e.target.files, bb = mp && mp.b; if(!f || !f.length || !bb) return;
+      var files = Array.prototype.slice.call(f); close(); addFiles(bb, files);
+    });
+    document.addEventListener('keydown', onKey, true);
+    requestAnimationFrame(function(){ requestAnimationFrame(function(){ if(mp && mp.el === el) el.classList.add('in'); }); });
+  }
+  // what was picked from the deck goes on the end of the board; sample art stays sample art (it takes the deck's colour)
+  function addChosen(b, chosen){
+    if(!chosen.length) return;
+    var cl = own(b); if(!cl) return;
+    var sid = slideOf(b).getAttribute('data-added'), got = new Array(chosen.length), left = chosen.length;
+    chosen.forEach(function(c, j){
+      shapeOf(c.src, function(r){
+        got[j] = { c: c, r: r || 4 / 3 };
+        if(--left) return;
+        got.forEach(function(x){
+          var it = { id: freshId(), r: round(x.r) };
+          if(x.c.def) it.def = x.c.def;
+          cl.items.push(it);
+          var m = C.tileFor(it, sid); realSet(b).appendChild(m); D.setupTile(m);
+          if(!x.c.def) D.setMedia(sid + '.c' + it.id, x.c.src);
+        });
+        D.saveMedia(); commit(b); D.applyMedia();
+        var nv = chosen.filter(function(c){ return c.video; }).length, n = chosen.length;
+        D.toast(n === 1 ? (nv ? 'Video added' : 'Picture added') : n + (nv === n ? ' videos' : nv ? ' pictures and videos' : ' pictures') + ' added');
+      });
+    });
+  }
 
   // ---------- the Edit bar's Moodboard group ----------
   var bar = document.getElementById('eb-collage'), fileIn = document.getElementById('cl-file');
@@ -391,16 +668,24 @@
   });
   document.addEventListener('click', function(e){ if(!(e.target.closest && e.target.closest('#eb-collage .eb-addwrap'))) closeMenus(); });
   document.addEventListener('keydown', function(e){ if(e.key === 'Escape') closeMenus(); });
-  function pickFiles(b){ if(!fileIn) return; fileIn._board = b; fileIn.value = ''; fileIn.click(); }
   if(fileIn) fileIn.addEventListener('change', function(){
     var b = fileIn._board || curBoard(), f = fileIn.files; fileIn._board = null;
     if(b && f && f.length) addFiles(b, Array.prototype.slice.call(f));
     fileIn.value = '';
   });
   function on(id, fn){ var el = document.getElementById(id); if(el) el.addEventListener('click', function(e){ e.stopPropagation(); var b = curBoard(); if(b) fn(b); }); }
-  on('cl-add', pickFiles);
+  on('cl-add', openPicker);
   on('cl-title', function(b){ setState(b, 'title', !b._cl.title); });
-  on('cl-mix', function(b){ setState(b, 'mix', 1 + Math.floor(Math.random() * 99999)); });
+  on('cl-mix', function(b){
+    if(b._cl.style !== 'masonry' || b._cl.items.length < 2){ setState(b, 'mix', 1 + Math.floor(Math.random() * 99999)); return; }
+    // Masonry places pictures in their order, so a remix is a new order
+    var cl = own(b); if(!cl) return;
+    var before = cl.items.map(function(i){ return i.id; }).join(), list = cl.items.slice();
+    for(var tries = 0; tries < 8 && list.map(function(i){ return i.id; }).join() === before; tries++){
+      for(var j = list.length - 1; j > 0; j--){ var r = Math.floor(Math.random() * (j + 1)), t = list[j]; list[j] = list[r]; list[r] = t; }
+    }
+    cl.items = list; commit(b);
+  });
 
   // ---------- keeping boards laid out ----------
   // a picture replaced in Edit mode may have another shape: the board takes it from the picture
@@ -429,7 +714,7 @@
   var wasEditing = editing();
   new MutationObserver(function(){
     var now = editing(); if(now === wasEditing) return;
-    wasEditing = now; renderAll(); paintBar(); arm(D.current());
+    wasEditing = now; if(!now){ closeTileMenu(); endCrop(true); } renderAll(); paintBar(); arm(D.current());
   }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
   if(reduce.addEventListener) reduce.addEventListener('change', renderAll);
 
