@@ -827,7 +827,52 @@
 
   // while a take-apart is open, clicks never move the deck: close it first
   function featureOpen(){ return !!(window.Deck && Deck.modal); }
-  document.getElementById('next').onclick = function(){ if(!featureOpen()) next(); };
+  // the Next chevron on the last slide asks whether to start the deck over
+  document.getElementById('next').onclick = function(){
+    if(featureOpen()) return;
+    if(i >= slides.length - 1 && slides.length > 1) askStartOver(); else next();
+  };
+  function askStartOver(){
+    if(document.querySelector('.so-back')) return;
+    var prevFocus = document.activeElement, el = document.createElement('div');
+    el.className = 'so-back';
+    el.innerHTML = '<div class="so-box" role="alertdialog" aria-modal="true" aria-labelledby="so-h" aria-describedby="so-p">' +
+      '<div class="so-k">End of the deck \u00b7 ' + slides.length + ' of ' + slides.length + '</div>' +
+      '<h2 class="so-h" id="so-h">Start the deck over?</h2>' +
+      '<p class="so-p" id="so-p">This is the last slide. Go back to the first one and run it again from the top.</p>' +
+      '<div class="so-acts"><button type="button" class="so-btn yes" data-v="yes">' +
+        '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4.5 10a5.5 5.5 0 1 0 1.8-4.1"/><path d="M4.5 3.5v3.2h3.2"/></svg>Start over</button>' +
+      '<button type="button" class="so-btn no" data-v="no">Stay here</button></div></div>';
+    document.body.appendChild(el);
+    Deck.modal = true;
+    requestAnimationFrame(function(){ requestAnimationFrame(function(){ el.classList.add('in'); }); });
+    setTimeout(function(){ var y = el.querySelector('.yes'); if(y) y.focus({ preventScroll: true }); }, 30);
+    function done(go){
+      if(!el) return;
+      var node = el; el = null;
+      document.removeEventListener('keydown', onKey, true);
+      Deck.modal = false;
+      node.classList.remove('in'); node.classList.add('out');
+      setTimeout(function(){ node.remove(); }, 300);
+      if(go) show(0);
+      else if(prevFocus && prevFocus.focus) prevFocus.focus({ preventScroll: true });
+    }
+    function onKey(e){
+      if(e.key === 'Escape'){ e.preventDefault(); e.stopImmediatePropagation(); done(false); return; }
+      if(e.key === 'Tab'){                                   // focus stays in the box
+        var bs = el.querySelectorAll('button'), a = bs[0], z = bs[bs.length - 1];
+        if(e.shiftKey && document.activeElement === a){ e.preventDefault(); z.focus(); }
+        else if(!e.shiftKey && document.activeElement === z){ e.preventDefault(); a.focus(); }
+        return;
+      }
+      if(e.key !== 'Enter' && e.key !== ' ') e.stopImmediatePropagation();   // the deck underneath stays put
+    }
+    document.addEventListener('keydown', onKey, true);
+    el.addEventListener('click', function(e){
+      if(e.target === el){ done(false); return; }
+      var b = e.target.closest('[data-v]'); if(b) done(b.getAttribute('data-v') === 'yes');
+    });
+  }
   document.getElementById('prev').onclick = function(){ if(!featureOpen()) prev(); };
   // The left/right edge zones turn slides, but an annotation (or its open note) underneath wins.
   var ANNOT_SEL = '#stage .slide.active .pin, #stage .slide.active .abox, #stage .slide.active .aarrow, ' +
