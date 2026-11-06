@@ -41,6 +41,9 @@
     var el = document.createElement('article');
     el.className = 'lib-card'; el.dataset.id = d.id; el.style.setProperty('--i', i);
     el.innerHTML =
+      // the bloom: the cover's own light, blurred out behind it, that comes up as you point at the deck
+      '<span class="lib-bloom" aria-hidden="true" style="--a:' + esc(t.accent) + ';--g1:' + esc(g[0]) + ';--g2:' + esc(g[1]) + '">' +
+        (pic ? '<img alt="" src="' + d.thumb + '">' : '') + '</span>' +
       '<a class="lib-thumb' + (pic ? ' has-pic' : '') + '" href="deck.html?d=' + encodeURIComponent(d.id) + '" data-mode="' + (t.mode === 'light' ? 'light' : 'dark') + '" data-glow="' + esc(t.glow) + '"' +
         ' style="--a:' + esc(t.accent) + ';--g1:' + esc(g[0]) + ';--g2:' + esc(g[1]) + '" aria-label="Open ' + esc(d.title) + '">' +
         (pic ? '<img class="lib-pic" alt="" src="' + d.thumb + '">' : '') +
