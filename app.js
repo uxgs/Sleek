@@ -718,7 +718,7 @@
   function coversStage(s){
     if(!s) return false;
     if(s._screen) return !!s._screen.img;
-    if(!s.classList.contains('s-divider')) return false;
+    if(!s.classList.contains('s-divider') && !s.classList.contains('s-fullimage')) return false;
     var m = s.querySelector(':scope > .media');                 // a divider's background picture
     return !!(m && m.classList.contains('filled'));
   }

@@ -143,6 +143,11 @@ img { max-width: 100%; }
   .s-fullvideo::before { content: ""; position: absolute; inset: 0 0 auto; height: 220px; z-index: 1; pointer-events: none;
     background: linear-gradient(to bottom, color-mix(in srgb, var(--bg) 85%, transparent), color-mix(in srgb, var(--bg) 40%, transparent) 55%, transparent); }
   .s-fullvideo > .headrow { position: relative; z-index: 2; }
+  /* fullscreen image: the full-video layout with no title, its picture shown whole (a picture of
+     another shape sits centred on the page colour), so it can be annotated edge to edge */
+  .s-fullimage::before { display: none; }
+  .s-fullimage > .media.slide-bg { background-size: contain !important; background-position: center !important; }
+  .s-fullimage > .media.slide-bg > .tile-video { object-fit: contain; }
   /* bullets + two videos: the copy on the left, two 16:9 videos stacked on the right */
   .slide.s-twovideo { display: grid; grid-template-columns: minmax(0, 1fr) 500px; gap: 48px; align-items: center; }
   .s-twovideo .tv-copy { display: flex; flex-direction: column; gap: 28px; min-width: 0; }
