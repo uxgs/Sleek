@@ -191,3 +191,12 @@ footer b { color: var(--muted); font-weight: 600; }
   .set-toggle { flex-wrap: nowrap; }
 }
 @media (prefers-reduced-motion: reduce) { .set-panel, .set-backdrop { transition: none; } }
+
+/* your own thumbnail (Choose thumbnail… in the card's menu, or a picture dropped on the card) */
+.lib-thumb.has-pic::before { display: none; }
+.lib-pic { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; max-width: none; object-fit: cover; }
+.lib-thumb.has-pic > span, .lib-thumb.has-pic > .lib-bar { display: none; }
+.lib-card.pic-drop .lib-thumb { box-shadow: 0 0 0 2px var(--a), 0 0 0 7px color-mix(in srgb, var(--a) 22%, transparent); transform: translateY(-3px); }
+.lib-card.pic-drop .lib-thumb::after { content: "Drop for its thumbnail"; position: absolute; inset: 0; display: grid; place-items: center;
+  background: rgba(10,10,12,0.55); color: #fff; font-size: 14px; font-weight: 600; letter-spacing: -0.01em;
+  -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); }

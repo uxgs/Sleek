@@ -133,7 +133,7 @@
   }
   function list(){
     return tx('decks', 'readonly', function(st){ return st.getAll(); }).then(function(all){
-      return (all || []).map(function(d){ var s = summary(d.seed); return { id: d.id, title: d.title, created: d.created, updated: d.updated, slides: s.slides, theme: s.theme, cover: d.cover || null }; })
+      return (all || []).map(function(d){ var s = summary(d.seed); return { id: d.id, title: d.title, created: d.created, updated: d.updated, slides: s.slides, theme: s.theme, cover: d.cover || null, thumb: d.thumb || null }; })
         .sort(function(a, b){ return b.updated - a.updated; });
     });
   }
@@ -143,6 +143,7 @@
     o = o || {};
     var deck = { id: o.id || uid(), title: o.title || 'Untitled deck', created: now(), updated: now(), seed: o.seed || { added: [] } };
     if(o.cover) deck.cover = o.cover;
+    if(okThumb(o.thumb)) deck.thumb = o.thumb;
     return dehydrate(deck.seed).then(function(s){ deck.seed = s; return put(deck); });
   }
   // save the page's seed as the deck (and remember the one before it for Undo)
@@ -167,9 +168,15 @@
       return put(deck);
     });
   }
+  // your own picture for the deck's card on the start screen (a small JPEG data URL), or null for the
+  // first slide again. It isn't an edit to the deck, so the deck keeps its place in the list.
+  function okThumb(u){ return typeof u === 'string' && /^data:image\/(jpeg|png|webp);base64,/.test(u) && u.length < 3e6; }
+  function setThumb(id, url){
+    return get(id).then(function(d){ if(!d) return null; if(okThumb(url)) d.thumb = url; else delete d.thumb; return put(d); });
+  }
   function rename(id, title){ return get(id).then(function(d){ if(!d) return null; d.title = title; d.updated = now(); return put(d); }); }
   function duplicate(id){
-    return get(id).then(function(d){ if(!d) return null; return create({ title: d.title + ' copy', seed: d.seed, cover: d.cover }); });
+    return get(id).then(function(d){ if(!d) return null; return create({ title: d.title + ' copy', seed: d.seed, cover: d.cover, thumb: d.thumb }); });
   }
   // every edit store the engine keeps for a deck on this device
   function clearDeviceState(id){
@@ -232,7 +239,7 @@
     return get(id).then(function(d){
       if(!d) return null;
       return inline(opts && opts.notes === false ? stripNotes(JSON.parse(JSON.stringify(d.seed))) : d.seed, true).then(function(seed){
-        return JSON.stringify({ format: FORMAT, version: FORMAT_VERSION, id: d.id, title: d.title, exported: new Date().toISOString(), updated: d.updated, seed: seed });
+        return JSON.stringify({ format: FORMAT, version: FORMAT_VERSION, id: d.id, title: d.title, exported: new Date().toISOString(), updated: d.updated, thumb: d.thumb || undefined, seed: seed });
       });
     });
   }
@@ -253,7 +260,7 @@
       if(keep == null) return null;
       if(keep === false) stripNotes(o.seed);
       return (id ? get(id) : Promise.resolve(null)).then(function(have){
-        return create({ id: have ? null : id, title: o.title || 'Imported deck', seed: o.seed });
+        return create({ id: have ? null : id, title: o.title || 'Imported deck', seed: o.seed, thumb: o.thumb });
       });
     });
   }
@@ -275,7 +282,7 @@
 
   window.SleekStore = {
     open: open, ns: ns, uid: uid,
-    list: list, get: get, create: create, save: save, rename: rename, duplicate: duplicate, remove: remove,
+    list: list, get: get, create: create, save: save, rename: rename, setThumb: setThumb, duplicate: duplicate, remove: remove,
     hydrate: hydrate, dehydrate: dehydrate, inline: inline,
     undo: function(id, o){ return step(id, -1, o); }, redo: function(id, o){ return step(id, 1, o); }, canStep: canStep,
     exportDeck: exportDeck, importDeck: importDeck, parseFile: parseFile, hasNotes: hasNotes,

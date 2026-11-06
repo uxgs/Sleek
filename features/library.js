@@ -1,5 +1,7 @@
 /* The start screen's deck library: every deck in this browser (core/store.js) as a card, newest
-   first, each with a menu (open, rename, duplicate, download, publish, delete). Decks come in
+   first, each with a menu (open, rename, thumbnail, duplicate, download, publish, delete). A card
+   shows the deck's first slide, or a picture you chose for it (Choose thumbnail…, or drop a picture
+   on the card). Decks come in
    from the New deck setup (features/setup.js), a .sleek file (Open a file…, or dropped anywhere
    on the page) or the sample. */
 (function(){
@@ -10,7 +12,12 @@
 
   var GLOW = { dusk: ['#7E9CFF', '#FF8EE0'], ember: ['#FFB270', '#FF7092'], ocean: ['#6ECCFF', '#7C8CFF'],
                verdant: ['#76E6BC', '#7CCCFF'], gold: ['#FFD678', '#FF9E76'] };
-  var MENU = [['open', 'Open'], ['rename', 'Rename'], ['dup', 'Duplicate'], ['file', 'Download .sleek file'], ['pub', 'Publish as a web page'], ['-'], ['del', 'Delete…']];
+  function menuFor(d){
+    var m = [['open', 'Open'], ['rename', 'Rename'], ['thumb', d && d.thumb ? 'Change thumbnail…' : 'Choose thumbnail…']];
+    if(d && d.thumb) m.push(['nothumb', 'Use the first slide']);
+    return m.concat([['dup', 'Duplicate'], ['file', 'Download .sleek file'], ['pub', 'Publish as a web page'], ['-'], ['del', 'Delete…']]);
+  }
+  function isPic(u){ return typeof u === 'string' && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+\/=]+$/.test(u); }
 
   function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function ago(t){
@@ -30,12 +37,13 @@
   function openDeck(id){ location.href = 'deck.html?d=' + encodeURIComponent(id); }
 
   function card(d, i){
-    var t = d.theme || {}, g = GLOW[t.glowColor] || [t.accent, t.accent], cv = d.cover || {};
+    var t = d.theme || {}, g = GLOW[t.glowColor] || [t.accent, t.accent], cv = d.cover || {}, pic = isPic(d.thumb);
     var el = document.createElement('article');
     el.className = 'lib-card'; el.dataset.id = d.id; el.style.setProperty('--i', i);
     el.innerHTML =
-      '<a class="lib-thumb" href="deck.html?d=' + encodeURIComponent(d.id) + '" data-mode="' + (t.mode === 'light' ? 'light' : 'dark') + '" data-glow="' + esc(t.glow) + '"' +
+      '<a class="lib-thumb' + (pic ? ' has-pic' : '') + '" href="deck.html?d=' + encodeURIComponent(d.id) + '" data-mode="' + (t.mode === 'light' ? 'light' : 'dark') + '" data-glow="' + esc(t.glow) + '"' +
         ' style="--a:' + esc(t.accent) + ';--g1:' + esc(g[0]) + ';--g2:' + esc(g[1]) + '" aria-label="Open ' + esc(d.title) + '">' +
+        (pic ? '<img class="lib-pic" alt="" src="' + d.thumb + '">' : '') +
         '<span class="lib-k">' + esc(cv.k || '') + '</span><span class="lib-h">' + esc(cv.h || d.title) + '</span><i class="lib-bar"></i></a>' +
       '<div class="lib-meta"><div class="lib-text"><h3 class="lib-title">' + esc(d.title) + '</h3>' +
         '<span class="lib-sub">' + d.slides + (d.slides === 1 ? ' slide' : ' slides') + ' · edited ' + ago(d.updated) + '</span></div>' +
@@ -66,7 +74,8 @@
   function openMenu(btn, id){
     closeMenu();
     var el = document.createElement('div'); el.className = 'lib-menu'; el.setAttribute('role', 'menu');
-    el.innerHTML = MENU.map(function(m){
+    var d = decks.filter(function(x){ return x.id === id; })[0];
+    el.innerHTML = menuFor(d).map(function(m){
       return m[0] === '-' ? '<hr>' : '<button type="button" role="menuitem" data-act="' + m[0] + '"' + (m[0] === 'del' ? ' class="danger"' : '') + '>' + m[1] + '</button>';
     }).join('');
     btn.closest('.lib-meta').appendChild(el);
@@ -83,11 +92,43 @@
     if(!d) return;
     if(a === 'open') openDeck(id);
     else if(a === 'rename') startRename(c, d);
+    else if(a === 'thumb'){ thumbFor = d; thumbIn.value = ''; thumbIn.click(); }
+    else if(a === 'nothumb') S.setThumb(d.id, null).then(render).then(function(){ toast(d.title + ' shows its first slide again.'); });
     else if(a === 'dup'){ busy(c, true); S.duplicate(id).then(function(){ return render(); }).then(function(){ toast('Made a copy of ' + d.title + '.'); }); }
     else if(a === 'file'){ busy(c, true); P.exportFile(id).then(function(n){ busy(c, false); if(n) toast('Downloaded ' + n + '.'); }, function(e){ console.error(e); busy(c, false); toast('Couldn’t make the file.'); }); }
     else if(a === 'pub'){ busy(c, true); P.publish(id).then(function(r){ busy(c, false); toast('Downloaded ' + r.name + '. It plays in any browser.'); }, function(e){ console.error(e); busy(c, false); toast('Couldn’t build the page.'); }); }
     else if(a === 'del') confirmDelete(c, d);
   }
+  // ---------- your own thumbnail: any picture, cropped to the card's 16:9 and kept small ----------
+  var thumbIn = document.createElement('input'), thumbFor = null;
+  thumbIn.type = 'file'; thumbIn.accept = 'image/*'; thumbIn.hidden = true; document.body.appendChild(thumbIn);
+  thumbIn.addEventListener('change', function(){ var f = thumbIn.files[0], d = thumbFor; thumbFor = null; if(f && d) setThumb(d, f); });
+  function shrink(file){
+    return new Promise(function(ok, no){
+      var url = URL.createObjectURL(file), img = new Image();
+      img.onload = function(){
+        var W = 960, H = 540, iw = img.naturalWidth, ih = img.naturalHeight;
+        if(!iw || !ih){ URL.revokeObjectURL(url); no(new Error('empty')); return; }
+        var k = Math.max(W / iw, H / ih), sw = W / k, sh = H / k;                 // cover: fill the card, crop the overflow evenly
+        var cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+        var g = cv.getContext('2d'); g.fillStyle = '#0B0B0D'; g.fillRect(0, 0, W, H);
+        g.imageSmoothingQuality = 'high';
+        g.drawImage(img, (iw - sw) / 2, (ih - sh) / 2, sw, sh, 0, 0, W, H);
+        URL.revokeObjectURL(url); ok(cv.toDataURL('image/jpeg', 0.86));
+      };
+      img.onerror = function(){ URL.revokeObjectURL(url); no(new Error('unreadable')); };
+      img.src = url;
+    });
+  }
+  function setThumb(d, f){
+    var c = grid.querySelector('.lib-card[data-id="' + d.id + '"]');
+    busy(c, true);
+    shrink(f).then(function(u){ return S.setThumb(d.id, u); }).then(render).then(function(){
+      toast('New thumbnail for ' + d.title + '.');
+      var n = grid.querySelector('.lib-card[data-id="' + d.id + '"]'); if(n) n.classList.add('fresh');
+    }, function(e){ console.error(e); busy(c, false); toast('That picture couldn’t be used. Try a JPEG or PNG.'); });
+  }
+
   function startRename(c, d){
     var h = c.querySelector('.lib-title');
     var input = document.createElement('input'); input.type = 'text'; input.className = 'lib-rename'; input.value = d.title; input.maxLength = 120;
@@ -154,11 +195,21 @@
   var depth = 0;
   function hasFiles(e){ return e.dataTransfer && Array.prototype.indexOf.call(e.dataTransfer.types || [], 'Files') >= 0; }
   document.addEventListener('dragenter', function(e){ if(!hasFiles(e)) return; e.preventDefault(); depth++; drop.classList.add('on'); });
-  document.addEventListener('dragover', function(e){ if(hasFiles(e)) e.preventDefault(); });
-  document.addEventListener('dragleave', function(e){ if(!hasFiles(e)) return; depth = Math.max(0, depth - 1); if(!depth) drop.classList.remove('on'); });
+  // a picture held over a deck's card: the card says it'll take it as its thumbnail
+  var picOver = null;
+  function picCard(c){ if(c === picOver) return; if(picOver) picOver.classList.remove('pic-drop'); picOver = c; if(c) c.classList.add('pic-drop'); drop.classList.toggle('on', !c && depth > 0); }
+  function holdsPic(e){ var it = e.dataTransfer && e.dataTransfer.items; return !!(it && it.length && /^image\//.test(it[0].type)); }
+  document.addEventListener('dragover', function(e){
+    if(!hasFiles(e)) return; e.preventDefault();
+    picCard(holdsPic(e) && e.target.closest ? e.target.closest('#lib-grid .lib-card') : null);
+  });
+  document.addEventListener('dragleave', function(e){ if(!hasFiles(e)) return; depth = Math.max(0, depth - 1); if(!depth){ drop.classList.remove('on'); picCard(null); } });
   document.addEventListener('drop', function(e){
     if(!hasFiles(e)) return;
-    e.preventDefault(); depth = 0; drop.classList.remove('on');
+    e.preventDefault(); depth = 0; drop.classList.remove('on'); picCard(null);
+    // a picture dropped on a deck's card becomes its thumbnail
+    var on = e.target.closest && e.target.closest('#lib-grid .lib-card'), f0 = e.dataTransfer.files[0];
+    if(on && f0 && /^image\//.test(f0.type)){ var dd = decks.filter(function(x){ return x.id === on.dataset.id; })[0]; if(dd) setThumb(dd, f0); return; }
     // one after another, so each file's question comes up on its own
     Array.prototype.reduce.call(e.dataTransfer.files, function(p, f){ return p.then(function(){ return importFile(f); }); }, Promise.resolve());
   });
@@ -192,7 +243,7 @@
       folderFiles = fs.filter(function(f){ return !f.id || !have[f.id]; });
       ifGrid.innerHTML = '';
       folderFiles.forEach(function(f, i){
-        var c = card({ id: 'file:' + f.name, title: f.title, updated: f.modified, slides: f.slides, theme: f.theme }, i);
+        var c = card({ id: 'file:' + f.name, title: f.title, updated: f.modified, slides: f.slides, theme: f.theme, thumb: f.thumb }, i);
         c.classList.add('lib-file');
         var a = c.querySelector('.lib-thumb'); a.removeAttribute('href'); a.setAttribute('role', 'button'); a.tabIndex = 0; a.setAttribute('aria-label', 'Open ' + f.title + ' from the folder');
         var more = c.querySelector('.lib-more'); more.outerHTML = '<span class="lib-file-tag">' + esc(f.name) + '</span>';

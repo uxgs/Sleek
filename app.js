@@ -1833,7 +1833,7 @@
       });
     }, delay);
   }
-  function hideCompare(){ var v = viewer; if(!v) return; clearTimeout(v.showT); v.remoteP = null; v.cmp.classList.remove('on'); v.cmp.hidden = true; }
+  function hideCompare(){ var v = viewer; if(!v) return; clearTimeout(v.showT); if(v.stopCmpDrag) v.stopCmpDrag(); v.remoteP = null; v.cmp.classList.remove('on'); v.cmp.hidden = true; }
   function setupCompare(v){
     var drag = false;
     function at(e){
@@ -1841,9 +1841,13 @@
       if(MIRROR) sendInput({ kind: 'req', act: { t: 'viewer', op: 'cmp', p: Math.max(0, Math.min(100, p)) } });   // the audience moves it, then this follows
       else setCompare(p);
     }
-    v.cmp.addEventListener('pointerdown', function(e){ e.stopPropagation(); drag = true; v.sweepId = (v.sweepId || 0) + 1; try { v.cmp.setPointerCapture(e.pointerId); } catch(_){} at(e); v.cmp.classList.add('dragging'); });
-    v.cmp.addEventListener('pointermove', function(e){ if(drag) at(e); });
-    ['pointerup', 'pointercancel'].forEach(function(t){ v.cmp.addEventListener(t, function(){ drag = false; v.cmp.classList.remove('dragging'); }); });
+    v.cmp.addEventListener('pointerdown', function(e){ e.stopPropagation(); if(e.pointerType === 'mouse' && e.button !== 0) return; drag = true; v.sweepId = (v.sweepId || 0) + 1; try { v.cmp.setPointerCapture(e.pointerId); } catch(_){} at(e); v.cmp.classList.add('dragging'); });
+    // it follows the pointer only while the button is held: a let-go it never heard (outside the window,
+    // or the picture hid mid-drag) ends the drag on the next move, so a hover never steers it
+    function stop(){ drag = false; v.cmp.classList.remove('dragging'); }
+    v.cmp.addEventListener('pointermove', function(e){ if(!drag) return; if(e.pointerType === 'mouse' && !(e.buttons & 1)){ stop(); return; } at(e); });
+    ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(function(t){ v.cmp.addEventListener(t, stop); });
+    v.stopCmpDrag = stop;
     v.cmp.addEventListener('click', function(e){ e.stopPropagation(); });
     window.addEventListener('resize', placeCompare);
     // the picture grows open (and swaps) with a transition: line the Before up again once it has settled

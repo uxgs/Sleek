@@ -84,7 +84,7 @@
 
   // every save and rename in this page also lands in the folder
   if(S && supported){
-    ['save', 'rename', 'create'].forEach(function(k){
+    ['save', 'rename', 'setThumb', 'create'].forEach(function(k){
       var f = S[k];
       S[k] = function(){ return f.apply(S, arguments).then(function(d){ if(d && d.id) queue(d.id); return d; }); };
     });
@@ -106,7 +106,7 @@
         return h.getFile().then(function(f){ return f.text().then(function(t){
           var o; try { o = S.parseFile(t); } catch(e){ return null; }
           return { name: h.name, id: o.id || null, title: o.title || h.name.replace(/\.sleek$/i, ''), modified: f.lastModified, text: t,
-                   slides: ((o.seed && o.seed.added) || []).length, theme: (o.seed && o.seed.theme) || {} };
+                   slides: ((o.seed && o.seed.added) || []).length, theme: (o.seed && o.seed.theme) || {}, thumb: o.thumb || null };
         }); }).catch(function(){ return null; });
       }));
     }).then(function(l){ return l.filter(Boolean); });
