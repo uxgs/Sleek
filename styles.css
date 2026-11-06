@@ -283,6 +283,8 @@ img { max-width: 100%; }
   body.editing .s-carousel .car-copy { display: none; }
   /* 1 to 5 pictures: one that's out is hidden; in Edit mode, Add picture follows the last one */
   .s-carousel .car-set > .media.car-gone { display: none !important; }
+  .s-carousel .carousel.car-fits .car-track { animation: none !important; }   /* all of it on screen: nothing to roll */
+  .s-carousel .carousel.car-fits .car-nav { display: none; }
   .car-add { display: none; }
   body.editing .s-carousel .car-set:not(.car-copy):not(.car-full) > .car-add { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
     flex: none; height: 334px; aspect-ratio: 16 / 9; border-radius: 16px; border: 1.5px dashed color-mix(in srgb, var(--fg) 26%, transparent);

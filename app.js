@@ -3149,7 +3149,12 @@
       var real = track.querySelector('.car-set:not(.car-copy)'); if(!real) return;
       Array.prototype.forEach.call(track.querySelectorAll('.car-copy'), function(c){ c.remove(); });
       var setW = real.offsetWidth || 2112, viewW = track.parentNode.clientWidth || 1280;
-      var copies = Math.max(1, Math.ceil(viewW / setW));
+      var add = real.querySelector(':scope > .car-add');            // Edit mode's Add picture isn't part of the set
+      if(add && add.offsetWidth) setW -= add.offsetWidth + 28;
+      // every picture already on screen (one, say): it sits still as it is, with no copies to repeat it
+      var pad = parseFloat(getComputedStyle(track).paddingLeft) || 0, fits = setW + pad <= viewW + 1;
+      track.parentNode.classList.toggle('car-fits', fits);
+      var copies = fits ? 0 : Math.max(1, Math.ceil(viewW / setW));
       for(var k = 0; k < copies; k++){
         var copy = real.cloneNode(true);
         copy.classList.add('car-copy'); copy.setAttribute('aria-hidden', 'true');
