@@ -2,11 +2,11 @@
    connection, and installs as an app. A page comes from the cache at once and is refreshed from
    the network behind it, so a new version shows on the next visit. Change VERSION (and the list)
    when files are added or removed. */
-var VERSION = 'sleek-1.0.39';   // 'sleek-' + the newest entry's v in data/changelog.js
+var VERSION = 'sleek-1.0.40';   // 'sleek-' + the newest entry's v in data/changelog.js
 var FILES = [
   './', 'index.html', 'deck.html', 'manifest.webmanifest',
   'styles.css', 'glow.css', 'app.js', 'glow-fx.js', 'theme-boot.js',
-  'core/store.js', 'core/boot.js', 'core/publish.js', 'core/folder.js', 'data/sample.js', 'data/changelog.js',
+  'core/store.js', 'core/analytics.js', 'core/boot.js', 'core/publish.js', 'core/folder.js', 'data/sample.js', 'data/changelog.js',
   'features/features.css', 'features/add-slide.css', 'features/add-slide.js', 'features/before-picker.css', 'features/before-picker.js', 'features/take-apart-editor.css', 'features/take-apart-editor.js', 'features/press-editor.css',
   'features/deck-file.css', 'features/deck-file.js', 'features/disassemble.js', 'features/press.js', 'features/tour.js', 'features/mobile.js',
   'features/setup.css', 'features/setup.js', 'features/library.css', 'features/library.js', 'features/changelog.js', 'features/settings.js',

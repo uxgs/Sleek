@@ -6,6 +6,11 @@
    'sleek-' + that version, so the offline cache and the version you see always match. Keep each
    line to a few words, and each day to four lines at most. */
 window.SLEEK_CHANGES = [
+  { v: '1.0.40', date: '2026-11-10',
+    items: [
+      'New start screen heading',
+      'Visit counts for the hosted site'
+    ] },
   { v: '1.0.39', date: '2026-11-06',
     items: [
       'Pictures and videos anywhere, even from a bullet',
