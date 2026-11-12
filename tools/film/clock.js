@@ -54,38 +54,83 @@
   function runRafs(){ var cur = rafs; rafs = {}; for(var id in cur){ try { cur[id](T); } catch(e){ console.error(e); } } }
 
   // ---- CSS animations and transitions (and element.animate) ----
-  // Each is paused, so it only moves when a step moves it, and a paused animation still shows where
-  // it is. Whether a CSS animation should be moving is read from its element's own
-  // animation-play-state (a carousel stops under the pointer, or before its slide is ready); a time
-  // the page sets itself (scrubbing a carousel) is kept.
+  // Every animation is kept playing at rate 0 and moved by hand, so it only moves when a step moves
+  // it, and the browser redraws it every frame.
+  //
+  // Nothing is ever paused. This browser draws an animation that CSS has paused at its start, not
+  // where it stopped, whatever time it holds (a carousel pausing under the pointer jumped back to
+  // the beginning). So the page's own "animation-play-state: paused" rules are rewritten as they
+  // load into a marker, --film-hold: 1, which the browser ignores and the clock reads: a held
+  // animation stays playing and is simply not moved.
+  var scanned = new WeakSet(), HOLD = '--film-hold';
+  try { CSS.registerProperty({ name: HOLD, syntax: '<integer>', inherits: false, initialValue: '0' }); } catch(e){}
+  function rewrite(rules){
+    for(var i = 0; i < rules.length; i++){
+      var r = rules[i];
+      try {
+        if(r.style){
+          var v = r.style.getPropertyValue('animation-play-state');
+          if(v){
+            var pri = r.style.getPropertyPriority('animation-play-state');
+            r.style.removeProperty('animation-play-state');
+            r.style.setProperty(HOLD, /paused/.test(v) ? '1' : '0', pri);
+          }
+        }
+        if(r.cssRules && r.cssRules.length) rewrite(r.cssRules);
+      } catch(e){}
+    }
+  }
+  function holds(){
+    var ss = document.styleSheets;
+    for(var i = 0; i < ss.length; i++){
+      if(scanned.has(ss[i])) continue;
+      try { var rules = ss[i].cssRules; if(ss[i].ownerNode && ss[i].ownerNode.tagName === 'LINK' && !rules.length) continue; scanned.add(ss[i]); rewrite(rules); } catch(e){ scanned.add(ss[i]); }
+    }
+  }
   var seen = new WeakSet();
+  // The clock keeps each animation's time itself (a.__t) and writes it back every step, so the
+  // picture never depends on a time the browser reports. A time the page sets itself (scrubbing a
+  // carousel) goes through the same door, so it is kept, and the page reads back what the clock holds.
+  var AP = W.Animation && W.Animation.prototype, CT = AP && Object.getOwnPropertyDescriptor(AP, 'currentTime');
+  if(CT && CT.get && CT.set){
+    Object.defineProperty(AP, 'currentTime', { configurable: true, enumerable: CT.enumerable,
+      get: function(){ return this.__t != null && this.playState !== 'finished' ? this.__t : CT.get.call(this); },
+      set: function(v){ CT.set.call(this, v); this.__t = v == null ? null : Number(v); } });
+  } else CT = null;
+  function realT(a){ var v = CT ? CT.get.call(a) : a.currentTime; return Number(v) || 0; }
+  function setT(a, t){ if(CT) CT.set.call(a, t); else a.currentTime = t; a.__t = t; }
   function endOf(a){ try { var e = a.effect && a.effect.getComputedTiming().endTime; return typeof e === 'number' ? e : Number(e); } catch(x){ return Infinity; } }
   function moving(a){
     try {
       if(typeof CSSAnimation === 'undefined' || !(a instanceof CSSAnimation)) return true;
       var el = a.effect && a.effect.target; if(!el) return true;
       var cs = getComputedStyle(el, a.effect.pseudoElement || null);
+      if(cs.getPropertyValue(HOLD).trim() === '1') return false;
       var names = cs.animationName.split(',').map(function(x){ return x.trim(); }), states = cs.animationPlayState.split(',').map(function(x){ return x.trim(); });
       var i = names.indexOf(a.animationName); if(i < 0) return true;
       return states[i % states.length] !== 'paused';
     } catch(e){ return true; }
   }
   function anims(dt){
+    holds();
     var list; try { list = document.getAnimations(); } catch(e){ return; }
     for(var i = 0; i < list.length; i++){
       var a = list[i];
       try {
+        if(a.playState === 'finished') continue;
         if(!seen.has(a)){
-          seen.add(a);
-          if(a.playState === 'finished') continue;
-          var go = moving(a);
-          a.pause(); if(go) a.currentTime = 0;        // its first frame is its first moment
+          seen.add(a); a.playbackRate = 0;
+          // its first frame is its first moment, unless the page has already put it somewhere
+          var t0 = a.__t != null ? a.__t : a.playState === 'paused' ? realT(a) : 0;
+          if(a.playState === 'paused') a.play();
+          setT(a, t0);
           continue;
         }
-        if(!dt || a.playState === 'finished' || !moving(a)) continue;
-        var nt = (Number(a.currentTime) || 0) + dt, end = endOf(a);
-        if(nt >= end) a.finish();
-        else a.currentTime = nt;
+        var go = moving(a);
+        if(a.playState === 'paused') a.play();
+        var nt = a.__t + (go ? dt : 0);
+        if(dt && go && nt >= endOf(a)){ a.playbackRate = 1; a.finish(); a.__t = null; }
+        else setT(a, nt);
       } catch(e){}
     }
   }

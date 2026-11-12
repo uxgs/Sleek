@@ -146,14 +146,19 @@
       </section>
       <section class="set-sec" aria-labelledby="set-how-h">
         <h3 id="set-how-h">How Sleek works</h3>
-        <ul class="set-how">
-          <li><b>It saves as you go.</b> Decks live in this browser, on this device. No account, nothing to install, and it works offline once it has opened.</li>
-          <li><b>Keep a copy, or move a deck.</b> Download its <b>.sleek</b> file from a deck’s ⋯ menu here, or Share in the deck. Open it on any device with <b>Open a file…</b>, or drop it on this page.</li>
-          <li id="lib-folder-note" hidden><b>Link a folder</b> (Chrome and Edge), and every deck keeps a .sleek copy there as you work.</li>
-          <li><b>Send it as a web page.</b> Publish a deck as one page anyone can open in a browser, with nothing to install.</li>
-          <li><b>Present.</b> Present opens a presenter window with your notes, the next slide and a timer, while this one shows the room the slide.</li>
-          <li><b>Install it.</b> Add Sleek from your browser’s menu (Install, or Add to Home Screen) and it opens like an app.</li>
-        </ul>
+        <!-- each of these is a short clip of the thing itself (features/settings.js plays them; tools/film/reels.js makes them) -->
+        <div class="how" id="how">
+          <div class="how-screen"><video class="how-video" playsinline preload="none" aria-hidden="true"></video>
+            <button type="button" class="how-sound" id="how-sound" aria-pressed="true" aria-label="Sound on these clips"></button></div>
+          <ol class="how-list">
+            <li><button type="button" class="how-item" data-clip="saves"><b>It saves as you go</b><span>Decks live in this browser, on this device. No account, nothing to install, and it works offline once it has opened.</span></button></li>
+            <li><button type="button" class="how-item" data-clip="keep"><b>Keep a copy, or move a deck</b><span>Download its .sleek file from a deck’s ⋯ menu here, or Share in the deck. Open it on any device with Open a file…, or drop it on this page.</span></button></li>
+            <li id="lib-folder-note" hidden><button type="button" class="how-item" data-clip="folder"><b>Link a folder</b><span>In Chrome and Edge, every deck keeps a .sleek copy there as you work.</span></button></li>
+            <li><button type="button" class="how-item" data-clip="publish"><b>Send it as a web page</b><span>Publish a deck as one page anyone can open in a browser, with nothing to install.</span></button></li>
+            <li><button type="button" class="how-item" data-clip="present"><b>Present</b><span>Present opens a presenter window with your notes, the next slide and a timer, while this one shows the room the slide.</span></button></li>
+            <li><button type="button" class="how-item" data-clip="install"><b>Install it</b><span>Add Sleek from your browser’s menu (Install, or Add to Home Screen) and it opens like an app.</span></button></li>
+          </ol>
+        </div>
       </section>
       <section class="set-sec" aria-labelledby="set-about-h">
         <h3 id="set-about-h">About</h3>

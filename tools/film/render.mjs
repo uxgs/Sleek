@@ -37,6 +37,7 @@ const probe = arg('probe', ''), probeEvery = +arg('probe-every', '6');
 const chrome = spawn('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', [
   '--headless=new', '--remote-debugging-port=' + port, '--user-data-dir=' + prof, '--no-first-run', '--hide-scrollbars', '--mute-audio',
   '--autoplay-policy=no-user-gesture-required', '--force-color-profile=srgb', '--disable-background-timer-throttling',
+  '--disable-threaded-animation',          // animations are drawn from the page's own state, the one the clock sets, not by a separate thread with its own idea of time
   '--disable-renderer-backgrounding', '--disable-backgrounding-occluded-windows', '--window-size=' + VW + ',' + VH, 'about:blank'
 ], { stdio: 'ignore' });
 const quit = () => { try { chrome.kill(); } catch (e) {} };
@@ -94,6 +95,12 @@ if (stills) fs.mkdirSync(stills, { recursive: true });
 
 // ---- frames ----
 const dt = 1000 / fps, f0 = Math.round(from * fps), f1 = Math.round(to * fps);
+// a lead-in (a cue sheet's `lead`, in seconds): the clock runs with the film held at its first moment, and nothing is kept
+const lead = +(await js('(FILM.timeline && FILM.timeline.lead) || 0'));
+if (lead) await send('Emulation.setFocusEmulationEnabled', { enabled: true });   // the page counts as focused from now, so a window given focus in the lead-in hears about it then, not at the first click
+for (let i = 0; i < Math.round(lead * fps); i++) {
+  await js('FILM.tick(0)'); await js(`__film.step(${dt})`, false); await js('new Promise(r => __film.settle(r))');
+}
 let ptr = null; const t0 = Date.now();
 const mouse = (type, x, y, extra = {}) => send('Input.dispatchMouseEvent', Object.assign({ type, x, y, button: 'none', buttons: 0 }, extra));
 let held = 0;
@@ -101,7 +108,7 @@ let held = 0;
 for (let f = 0; f < f1; f++) {
   const t = f / fps;
   const r = await js(`FILM.tick(${t})`);
-  if (r && r.ptr && (!ptr || ptr[0] !== r.ptr[0] || ptr[1] !== r.ptr[1])) {
+  if (r && r.ptr && (r.kick || !ptr || ptr[0] !== r.ptr[0] || ptr[1] !== r.ptr[1])) {
     ptr = r.ptr; await mouse('mouseMoved', ptr[0], ptr[1], held ? { button: 'left', buttons: 1 } : {});
   }
   for (const i of (r && r.inputs) || []) {

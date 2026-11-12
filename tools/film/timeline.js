@@ -43,10 +43,11 @@ window.FILM_TIMELINE = function(h){
 
   // ------------------------------------------------------------------ slides that move: three, a bar each
   caps.push({ t0: T.move + 0.05, t1: T.ba - 0.12, text: 'Slides that {move.}' });
-  shots.push({ id: 'strip', t0: T.move, t1: T.move + 2, wins: { B: { slot: ONE, view: push(T.move, T.move + 2, part(800, 450, 1600, 1000, 1160), part(800, 450, 1500, 940, 1180)) } } });
+  // the film strip is shown exactly as the app shows it: no assembly, no camera move, only the strip rolling
+  shots.push({ id: 'strip', t0: T.move, t1: T.move + 2, wins: { B: { slot: ONE, view: [[T.move, part(800, 450, 1600, 1000, 1160)]] } } });
   shots.push({ id: 'mood', t0: T.move + 2, t1: T.move + 4, wins: { C: { slot: ONE, view: push(T.move + 2, T.move + 4, part(800, 470, 1600, 1000), part(800, 480, 1500, 940, 860)) } } });
   shots.push({ id: 'sketch', t0: T.move + 4, t1: T.ba, wins: { A: { slot: ONE, view: push(T.move + 4, T.ba, part(800, 450, 1600, 1000, 620), part(800, 450, 1500, 940, 700)) } } });
-  assemble(T.move - 0.02, 'B'); assemble(T.move + 1.98, 'C'); assemble(T.move + 3.98, 'A');
+  assemble(T.move + 1.98, 'C'); assemble(T.move + 3.98, 'A');
   cues.push({ t: T.move + 0.05, f: 'A', key: 'Escape', sfx: 'none' }, { t: T.move + 0.3, f: 'A', key: 'Escape', sfx: 'none' });   // out of the picker, out of All slides
   cues.push({ t: T.move + 0.6, f: 'A', hash: '#carousel' }, { t: T.move + 0.8, f: 'A', js: roll });
   cues.push({ t: T.move + 2.05, f: 'B', hash: '#before-and-after' }, { t: T.move + 2.2, f: 'B', js: roll });

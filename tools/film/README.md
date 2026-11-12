@@ -11,7 +11,7 @@ render.mjs    steps the page and pipes frames to ffmpeg
 art/          the film decks' pictures: three made-up products, each screen as a finished design
               and as a pencil wireframe (art.html, art2.html; art.mjs renders them to art/*.webp)
 score.py      the score and sound effects, from the cue sheet: five tracks to choose from
-reels.js      the helper clips' cue sheets (film.html?reel=<name>): short silent loops for Settings
+reels.js      the helper clips' cue sheets (film.html?reel=<name>): six short clips for Settings
 proof.html    a short test of the clock on the app's hardest motion
 ```
 
@@ -42,6 +42,21 @@ ffmpeg -i out/tall.mp4 -i out/tracks/score-glass.wav -vf scale=1080:1920:flags=l
 The start screen plays a smaller encode of the wide cut, `assets/film/sleek.mp4`, with
 `assets/film/poster.jpg` as its still.
 
+## The helper clips
+
+Settings, How Sleek works, plays six short clips (`assets/help/`), one for each thing it explains.
+Each is a small cue sheet in `reels.js`, rendered the same way, with a quiet bed and clicks from `score.py`:
+
+```bash
+node tools/film/render.mjs --query reel=keep --out out/keep.mp4 --cues out/keep-cues.json     # saves, keep, folder, publish, present, install
+python3 tools/film/score.py out/keep-cues.json out/keep.wav
+ffmpeg -i out/keep.mp4 -i out/keep.wav -vf fps=30,scale=960:540:flags=lanczos -c:v libx264 -preset slow -crf 27 -pix_fmt yuv420p -c:a aac -b:a 96k -movflags +faststart -shortest assets/help/keep.mp4
+```
+
+A cue sheet can ask for a lead-in (`lead`, in seconds): the clock runs for that long with the film
+held at its first moment, and nothing is kept. The clips use it so the start screen has finished
+drawing its list before the pointer arrives.
+
 ## Check a part of it
 
 `render.mjs` always runs the film from its start, so the app is in the right state, but only
@@ -58,3 +73,11 @@ node tools/film/render.mjs --from 12 --to 14 --probe "FILM.frames.B.el.contentDo
 Timing, camera, pointer and captions are all in `timeline.js`. The music is 120 beats a minute, so
 a beat is half a second; keep cuts on a beat and the score stays in step. Sound effects
 follow the cue sheet by themselves.
+
+## Checking motion
+
+Check anything that rolls (a film strip, a carousel, a moodboard) on the rendered picture, not on
+what the page reports: measure how far it moves from one frame to the next. This Chrome draws an
+animation that CSS has paused at its start, wherever it stopped, and the page's own numbers don't
+show it. That is why `clock.js` never lets one pause: it turns the app's
+`animation-play-state: paused` rules into a marker it reads itself, and holds the animation still.

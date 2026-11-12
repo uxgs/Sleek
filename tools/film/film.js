@@ -208,6 +208,7 @@
       var op = 1, lift = 0, sc = 1;
       if(w.rise){ var u = EASE.out(seg(t, w.rise[0], w.rise[1])); op = clamp(seg(t, w.rise[0], w.rise[0] + (w.rise[1] - w.rise[0]) * 0.5)); lift = (1 - u) * 90; sc = 0.9 + 0.1 * u; }
       f.slot.style.visibility = 'visible'; f.slot.style.zIndex = w.z || 1;
+      f.el.style.pointerEvents = shot.cursor ? '' : 'none';         // no pointer in the shot: nothing in it can be hovered by accident (a hovered strip stops rolling)
       f.slot.style.width = r[2] + 'px'; f.slot.style.height = r[3] + 'px'; f.slot.style.borderRadius = shot.flat ? '0' : (TALL ? 26 : 22) + 'px'; f.slot.style.boxShadow = shot.flat ? 'none' : '';
       f.slot.style.opacity = op;
       f.slot.style.transform = 'translate(' + (r[0] + r[2] * (1 - sc) / 2) + 'px,' + (r[1] + r[3] * (1 - sc) / 2 + lift) + 'px) scale(' + sc + ')';
@@ -311,7 +312,7 @@
     if(!p || t < p.t){ propEl.style.display = 'none'; return; }
     var u = EASE.out(seg(t, p.t, p.t + 0.55)), k = 1 + 0.05 * Math.sin(Math.min(1, seg(t, p.t, p.t + 0.7)) * Math.PI);
     propEl.style.display = 'flex'; propEl.style.opacity = clamp(u * 1.5);
-    propEl.style.transform = 'translateY(calc(-50% + ' + (1 - u) * 70 + 'px)) scale(' + (0.86 + 0.14 * u) * k + ')';
+    propEl.style.transform = 'translateY(calc(-50% + ' + (1 - u) * 70 + 'px)) scale(' + (0.86 + 0.14 * u) * k * (TL.propScale || 1) + ')';
     Array.prototype.forEach.call(propEl.querySelectorAll('li'), function(li){
       var v = EASE.out(seg(t, li._t, li._t + 0.4)); li.style.opacity = v; li.style.transform = 'translateY(' + (1 - v) * 22 + 'px)';
       li.querySelector('i').style.transform = 'scale(' + EASE.out(seg(t, li._t + 0.25, li._t + 0.55)) + ')';
@@ -356,7 +357,7 @@
   // ---------------------------------------------------------------- cues
   var KEYS = { Space: { key: ' ', code: 'Space', vk: 32, text: ' ' }, Escape: { key: 'Escape', code: 'Escape', vk: 27 }, ArrowRight: { key: 'ArrowRight', code: 'ArrowRight', vk: 39 },
     g: { key: 'g', code: 'KeyG', vk: 71, text: 'g' }, e: { key: 'e', code: 'KeyE', vk: 69, text: 'e' }, a: { key: 'a', code: 'KeyA', vk: 65, text: 'a' } };
-  var done = -1, later = [];
+  var done = -1, later = [], lastShot = null;
   function runCues(t, inputs){
     for(var i = done + 1; i < TL.cues.length && TL.cues[i].t <= t; i++){
       var c = TL.cues[i]; done = i;
@@ -383,11 +384,14 @@
       pointerAt(t); ptrWhere(shot);
       runCues(t, inputs);
       drawBg(shot, t); drawTags(shot, t); drawCap(t); drawLines(shot, t); drawCard(shot, t); drawProp(shot, t); drawPointer(shot, t);
-      return { ptr: [Math.round(P[0] * 10) / 10, Math.round(P[1] * 10) / 10], inputs: inputs };
+      var kick = shot !== lastShot; lastShot = shot;                // a new shot: the browser is told where the pointer is again, so hover is never left over from the last one
+      return { ptr: [Math.round(P[0] * 10) / 10, Math.round(P[1] * 10) / 10], inputs: inputs, kick: kick };
     },
     // the sound's cue sheet
     cues: function(){
       var out = [];
+      TL.shots.forEach(function(s){ if(s.prop){ out.push({ t: s.prop.t, k: 'prop' }); (s.prop.items || []).forEach(function(it){ out.push({ t: it[0], k: 'tick' }); }); } });
+      TL.cues.forEach(function(c){ if(c.fake) out.push({ t: c.t, k: 'click' }); if(c.text) out.push({ t: c.t, k: 'key' }); });
       TL.shots.forEach(function(s){ if(!s.soft) out.push({ t: s.t0, k: 'cut', id: s.id }); (s.lines || []).forEach(function(l){ out.push({ t: l[0], k: 'line' }); }); });
       TL.caps.forEach(function(c){ out.push({ t: c.t0, k: 'cap' }); });
       TL.cues.forEach(function(c){ if(c.sfx === 'none') return; if(c.click || c.down) out.push({ t: c.t, k: c.sfx || 'click' }); else if(c.up) out.push({ t: c.t, k: 'release' }); else if(c.sfx) out.push({ t: c.t, k: c.sfx }); });

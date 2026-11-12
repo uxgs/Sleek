@@ -6,7 +6,10 @@ film's own cue sheet, so sound and picture can't drift apart.
 
     python3 tools/film/score.py cues.json outdir [style ...]     (cues.json: render.mjs --cues)
 
-writes outdir/score-<style>.wav for each style named, or for all of them.
+writes outdir/score-<style>.wav for each style named, or for all of them. Given a helper clip's cue
+sheet instead (render.mjs --query reel=<name> --cues), it writes that clip's quiet sound:
+
+    python3 tools/film/score.py reel-cues.json out.wav
 """
 import json, subprocess, sys
 import numpy as np
@@ -269,7 +272,8 @@ STYLES = {
                    arp='bell', arp_steps=(0, 2, 5, 8, 10, 13), arp_lvl=0.13, pad=0.16, swing=0.34, bell_notes=[79, 83, 86, 91, 95, 98])
 }
 T = CH_T
-RANGES = dict(
+REEL = 'hero' not in T                      # a helper clip's cue sheet (reels.js), not the film's
+RANGES = None if REEL else dict(
     kick=[(T['hero'], T['ba2'] + 0.0), (T['apart'], T['pres']), (T['pres'] + 4, T['share'])],
     hat=[(T['pick'], T['ba2']), (T['apart'], T['share'])],
     clap=[(T['move'], T['ba2']), (T['apart'], T['pres']), (T['pres'] + 4, T['share'])],
@@ -446,8 +450,55 @@ def render(style, out_path):
     print('%-7s %s  (levelled by %+.1f dB)' % (style, out_path, -14.0 - loud))
 
 
+def render_reel(out_path):
+    """A helper clip's sound: a low, slow bed in the film's key, a soft click on each click, quiet ticks as
+    words are typed, and a chime as a card arrives. Quiet on purpose: it plays in Settings."""
+    global rng
+    rng = np.random.default_rng(5)
+    bed, fx, verb = bus(), bus(), bus()
+    for m, g in ((38, 0.5), (50, 0.9), (57, 0.8), (62, 0.7), (66, 0.6), (69, 0.5), (76, 0.3)):       # D, open and wide
+        put(bed, pad_note(hz(m), DUR + 0.4, 0.75), -0.2, 0.16 * g)
+    for t0, m in ((0.5, 81), (DUR * 0.5, 86), (DUR - 1.6, 78)):                                          # a few far-off notes
+        b = bell(hz(m), 2.4); put(bed, b, t0, 0.035, 0.4 if m == 86 else -0.4); put(verb, b, t0, 0.07)
+    ticks = [86, 90, 93, 98]
+    k = 0
+    for c in cues:
+        t, kind = c['t'], c['k']
+        if kind in ('click', 'grab'):
+            put(fx, click(), t, 0.55, 0.05); put(verb, click(), t, 0.06)
+        elif kind == 'release':
+            put(fx, click(high=True), t, 0.3, -0.05)
+        elif kind == 'key':
+            put(fx, click(high=True), t, 0.16 + 0.03 * rng.uniform(-1, 1), rng.uniform(-0.2, 0.2))
+        elif kind == 'prop':
+            put(fx, whoosh(0.45, 400, 6000), t - 0.12, 0.10)
+            for j, m in enumerate((74, 81, 86)):
+                b = bell(hz(m), 2.2); put(fx, b, t + 0.1 + j * 0.07, 0.11, (j - 1) * 0.4); put(verb, b, t + 0.1 + j * 0.07, 0.14)
+        elif kind == 'tick':
+            b = bell(hz(ticks[k % len(ticks)]), 1.4); k += 1
+            put(fx, b, t + 0.25, 0.10, 0.2); put(verb, b, t + 0.25, 0.1)
+    ir_n = int(2.4 * SR); ti = np.arange(ir_n) / SR
+    ir = shape(rng.standard_normal((2, ir_n)), lo=250, hi=5200) * np.exp(-ti * 2.4) * np.minimum(1, ti / 0.012)
+    M = N + ir_n
+    wet = np.fft.irfft(np.fft.rfft(shape(verb + 0.3 * bed, lo=200), M, axis=-1) * np.fft.rfft(ir, M, axis=-1), M, axis=-1)[:, :N] * 0.011
+    mix = shape(bed, lo=70, hi=3800) + shape(fx, lo=60) + wet
+    n = int(DUR * SR); mix = mix[:, :n]
+    env = np.ones(n); a, z = int(0.5 * SR), int(0.7 * SR)                 # it loops, so it comes in and goes out gently
+    env[:a] = np.linspace(0, 1, a) ** 2; env[-z:] = np.linspace(1, 0, z) ** 2
+    mix = mix * env
+    mix = mix / max(np.abs(mix).max(), 1e-6) * 0.42                       # peaks near -7.5 dB: present, never loud
+    raw = out_path + '.f32'
+    mix.T.astype('<f4').tofile(raw)
+    subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-f', 'f32le', '-ar', str(SR), '-ac', '2', '-i', raw, '-c:a', 'pcm_s24le', out_path], check=True)
+    os.remove(raw)
+    print('clip sound', out_path)
+
+
 import os, re
-outdir = sys.argv[2] if len(sys.argv) > 2 else '.'
-os.makedirs(outdir, exist_ok=True)
-for st in (sys.argv[3:] or list(STYLES)):
-    render(st, os.path.join(outdir, 'score-%s.wav' % st))
+if REEL:
+    render_reel(sys.argv[2])
+else:
+    outdir = sys.argv[2] if len(sys.argv) > 2 else '.'
+    os.makedirs(outdir, exist_ok=True)
+    for st in (sys.argv[3:] or list(STYLES)):
+        render(st, os.path.join(outdir, 'score-%s.wav' % st))

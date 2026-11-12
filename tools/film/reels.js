@@ -1,4 +1,4 @@
-/* Helper clips: six short, silent loops for the start screen's Settings, "How Sleek works", each
+/* Helper clips: six short clips for the start screen's Settings, "How Sleek works", each
    one thing Sleek does, shown rather than described.  film.html?reel=saves|keep|folder|publish|present|install
    A reel is a small cue sheet in the same form as timeline.js, and replaces it when ?reel= is given.
 
@@ -12,7 +12,12 @@
     var on = function(f, sel, o){ return Object.assign({ f: f, sel: sel }, o || {}); };
     var FRAME = [0, 0, W, H], PARK = [W - 30, H - 24];
     // one window, edge to edge
-    function shot(f, view, extra){ var wins = {}; wins[f] = { slot: FRAME, view: view, follow: false }; shots.push(Object.assign({ id: reel, t0: 0, t1: 60, flat: true, cursor: true, wins: wins }, extra || {})); }
+    function shot(f, view, extra){
+      var wins = {}; wins[f] = { slot: FRAME, view: view, follow: false }; shots.push(Object.assign({ id: reel, t0: 0, t1: 60, flat: true, cursor: true, wins: wins }, extra || {}));
+      // The start screen draws its list again when its window gets focus, which the first click would
+      // give it mid-clip. So it has focus from the start, and the lead-in (below) lets that settle.
+      cues.push({ t: 0, f: f, js: function(w){ try { w.focus(); } catch(e){} } });
+    }
     function from(x, y){ ptr.push({ t: 0, to: [W * x, H * y], show: 1 }); }
     var MORE = on('S', function(){ return '.lib-card[data-id="' + h.id('A') + '"] .lib-more'; }), item = function(act){ return on('S', '.lib-menu [data-act="' + act + '"]'); };
     // a deck's menu on the start screen, then one of its items
@@ -59,6 +64,7 @@
       D = 5;
       shot('S', [[0, [800, 450, 1600]]], { cursor: false, prop: { t: 0.7, icon: 'app', title: 'Sleek', sub: 'Install it from your browser’s menu. It opens like an app.' } });
     }
-    return { T: { open: 0, out: D }, shots: shots, cues: cues, ptr: ptr, caps: [], duration: D, park: PARK, nofade: true };
+    // lead: two seconds run before the clip begins, so the list is drawn and still when the pointer arrives
+    return { T: { open: 0, out: D }, shots: shots, cues: cues, ptr: ptr, caps: [], duration: D, park: PARK, nofade: true, lead: 2, propScale: 1.5 };   // the clips play small, so the cards are large
   };
 })();

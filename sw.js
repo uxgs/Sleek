@@ -2,7 +2,7 @@
    connection, and installs as an app. A page comes from the cache at once and is refreshed from
    the network behind it, so a new version shows on the next visit. Change VERSION (and the list)
    when files are added or removed. */
-var VERSION = 'sleek-1.0.42';   // 'sleek-' + the newest entry's v in data/changelog.js
+var VERSION = 'sleek-1.0.43';   // 'sleek-' + the newest entry's v in data/changelog.js
 var FILES = [
   './', 'index.html', 'deck.html', 'manifest.webmanifest',
   'styles.css', 'glow.css', 'app.js', 'glow-fx.js', 'theme-boot.js',
@@ -15,7 +15,10 @@ var FILES = [
   'assets/sample/backdrop.svg', 'assets/sample/card-rings.svg', 'assets/sample/card.svg', 'assets/sample/plan-sketch.svg', 'assets/sample/plan.svg',
   'assets/sample/today-sketch.svg', 'assets/sample/today.svg', 'assets/sample/workout-sketch.svg', 'assets/sample/workout.svg', 'assets/sample/you.svg', 'assets/sample/swatch.svg', 'assets/sample/type.svg', 'assets/sample/phone.svg', 'assets/sample/icon.svg',
   'assets/sample/clip-a.mp4', 'assets/sample/clip-b.mp4', 'assets/sample/clip-c.mp4',
-  'assets/film/poster.jpg'          // the film's still; the film itself streams, so it isn't kept here
+  'assets/film/poster.jpg',         // the film's still; the film itself streams, so it isn't kept here
+  // the helper clips in Settings and their stills: small enough to keep, so they play offline too
+  'assets/help/saves.jpg', 'assets/help/keep.jpg', 'assets/help/folder.jpg', 'assets/help/publish.jpg', 'assets/help/present.jpg', 'assets/help/install.jpg',
+  'assets/help/saves.mp4', 'assets/help/keep.mp4', 'assets/help/folder.mp4', 'assets/help/publish.mp4', 'assets/help/present.mp4', 'assets/help/install.mp4'
 ];
 var FONTS = /^https:\/\/fonts\.(googleapis|gstatic)\.com\//;
 
