@@ -15,7 +15,7 @@
   Object.keys(FR).forEach(function(k){ var f = FR[k]; f.el = $('f-' + k); f.slot = $('slot-' + k); f.el.style.width = f.w + 'px'; f.el.style.height = f.h + 'px'; });
 
   var TL = null;
-  function makeTimeline(){ TL = window.FILM_TIMELINE({ tall: TALL, W: W, H: H, build: build, look: look });
+  function makeTimeline(){ TL = window.FILM_TIMELINE({ tall: TALL, W: W, H: H, build: build, look: look, id: function(k){ return ids[k]; } });
   TL.cues.sort(function(a, b){ return a.t - b.t; }); TL.ptr.sort(function(a, b){ return a.t - b.t; }); }
 
   // ---------------------------------------------------------------- the film's decks
@@ -114,8 +114,13 @@
     Array.prototype.forEach.call(s.children, function(c){
       if(c.tagName === 'TEMPLATE' || c.classList.contains('ann-layer') || !c.getBoundingClientRect().width) return;
       var kids = Array.prototype.filter.call(c.children, function(x){ return x.getBoundingClientRect().width > 0; });
-      var whole = /filmstrip|carousel|cl-board|fs-|car-/.test(c.className) || kids.length < 2 || kids.length > 8;
+      var whole = kids.length < 2 || kids.length > 8;
       if(whole) parts.push(c); else kids.forEach(function(x){ parts.push(x); });
+    });
+    // anything that scrolls by itself, is tilted or is already moving is left alone: it is simply there, scrolling
+    parts = parts.filter(function(el){
+      var cs = w.getComputedStyle(el);
+      return cs.transform === 'none' && cs.animationName === 'none' && !el.matches('.filmstrip, .carousel, .cl-board') && !el.querySelector('.fs-track, .car-track, .cl-track, .filmstrip');
     });
     parts.forEach(function(el, i){ el.style.setProperty('--fd', (i * (gap || 0.07)).toFixed(2) + 's'); el.classList.add('film-b'); });
     st.classList.add('film-fx0');
@@ -175,7 +180,7 @@
     if(!to) return null;
     if(Array.isArray(to)) return to;
     try {
-      var d = FR[to.f].el.contentDocument, el = d.querySelectorAll(to.sel)[to.n || 0]; if(!el) return null;
+      var d = FR[to.f].el.contentDocument, el = d.querySelectorAll(typeof to.sel === 'function' ? to.sel() : to.sel)[to.n || 0]; if(!el) return null;
       var r = el.getBoundingClientRect(); if(!r.width && !r.height) return null;
       // words that wrap onto two lines (a link in the notes): aim at the longer piece, not the gap between them
       var parts = el.getClientRects(); if(parts.length > 1) r = Array.prototype.reduce.call(parts, function(a, b){ return b.width > a.width ? b : a; });
@@ -203,10 +208,11 @@
       var op = 1, lift = 0, sc = 1;
       if(w.rise){ var u = EASE.out(seg(t, w.rise[0], w.rise[1])); op = clamp(seg(t, w.rise[0], w.rise[0] + (w.rise[1] - w.rise[0]) * 0.5)); lift = (1 - u) * 90; sc = 0.9 + 0.1 * u; }
       f.slot.style.visibility = 'visible'; f.slot.style.zIndex = w.z || 1;
-      f.slot.style.width = r[2] + 'px'; f.slot.style.height = r[3] + 'px'; f.slot.style.borderRadius = (TALL ? 26 : 22) + 'px';
+      f.slot.style.width = r[2] + 'px'; f.slot.style.height = r[3] + 'px'; f.slot.style.borderRadius = shot.flat ? '0' : (TALL ? 26 : 22) + 'px'; f.slot.style.boxShadow = shot.flat ? 'none' : '';
       f.slot.style.opacity = op;
       f.slot.style.transform = 'translate(' + (r[0] + r[2] * (1 - sc) / 2) + 'px,' + (r[1] + r[3] * (1 - sc) / 2 + lift) + 'px) scale(' + sc + ')';
-      f.slot.style.filter = (w.dim != null || w.blur) ? 'brightness(' + (w.dim == null ? 1 : w.dim) + ') blur(' + (w.blur || 0) + 'px)' : '';
+      var pu = shot.prop ? EASE.out(seg(t, shot.prop.t, shot.prop.t + 0.45)) : 0;                    // the window steps back as a prop comes forward
+      f.slot.style.filter = pu ? 'brightness(' + (1 - 0.6 * pu) + ') blur(' + 9 * pu + 'px)' : (w.dim != null || w.blur) ? 'brightness(' + (w.dim == null ? 1 : w.dim) + ') blur(' + (w.blur || 0) + 'px)' : '';
       f.el.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(' + s + ')';
     });
   }
@@ -284,10 +290,37 @@
     var out = open ? seg(t, shot.t1 - 0.22, shot.t1) : 0, breathe = 1 + (t - shot.t0) * (end ? 0.006 : 0.012);
     card.style.opacity = 1 - out; card.style.transform = 'scale(' + (breathe + out * 0.08) + ')';
   }
+  // a prop: what leaves the app (a file, a folder of copies, a web page, an installed app), drawn as a card
+  var propEl = $('prop'), propFor = null;
+  var PIC = {
+    file: '<svg viewBox="0 0 24 24"><path d="M6.5 3.5h7l4 4v13h-11z"/><path d="M13.5 3.5v4h4M9 13h6M9 16.5h4"/></svg>',
+    folder: '<svg viewBox="0 0 24 24"><path d="M3 7.5A1.5 1.5 0 0 1 4.5 6h4.4l2 2.2h8.6A1.5 1.5 0 0 1 21 9.7v8.8a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18.5Z"/></svg>',
+    page: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.6 2.4 3.8 5.2 3.8 8.5s-1.2 6.1-3.8 8.5c-2.6-2.4-3.8-5.2-3.8-8.5S9.400 5.900 12 3.500Z"/></svg>',
+    app: '<img alt="" src="../../icons/icon-512.png">'
+  };
+  function drawProp(shot, t){
+    var p = shot.prop;
+    if(p !== propFor){
+      propFor = p; propEl.innerHTML = '';
+      if(p){
+        propEl.innerHTML = '<div class="p-ic' + (p.icon === 'app' ? ' app' : '') + '">' + PIC[p.icon] + '</div><b></b><span class="p-sub"></span>' + (p.items ? '<ul>' + p.items.map(function(){ return '<li><em style="font-style:normal"></em><i></i></li>'; }).join('') + '</ul>' : '');
+        propEl.querySelector('b').textContent = p.title; propEl.querySelector('.p-sub').textContent = p.sub || '';
+        (p.items || []).forEach(function(it, k){ var li = propEl.querySelectorAll('li')[k]; li.querySelector('em').textContent = it[1]; li._t = it[0]; });
+      }
+    }
+    if(!p || t < p.t){ propEl.style.display = 'none'; return; }
+    var u = EASE.out(seg(t, p.t, p.t + 0.55)), k = 1 + 0.05 * Math.sin(Math.min(1, seg(t, p.t, p.t + 0.7)) * Math.PI);
+    propEl.style.display = 'flex'; propEl.style.opacity = clamp(u * 1.5);
+    propEl.style.transform = 'translateY(calc(-50% + ' + (1 - u) * 70 + 'px)) scale(' + (0.86 + 0.14 * u) * k + ')';
+    Array.prototype.forEach.call(propEl.querySelectorAll('li'), function(li){
+      var v = EASE.out(seg(t, li._t, li._t + 0.4)); li.style.opacity = v; li.style.transform = 'translateY(' + (1 - v) * 22 + 'px)';
+      li.querySelector('i').style.transform = 'scale(' + EASE.out(seg(t, li._t + 0.25, li._t + 0.55)) + ')';
+    });
+  }
   function drawBg(shot, t){
     var c = BG[shot.id] || EMBER, o = shot.id === 'open' || shot.id === 'end' ? 0.20 : 0.13;
     $('bg').style.background = 'radial-gradient(' + (TALL ? '120% 46%' : '62% 62%') + ' at 50% 44%, rgba(' + c.join(',') + ',' + o + '), transparent 72%)';
-    $('fade').style.opacity = Math.max(1 - seg(t, 0, 0.35), seg(t, TL.duration - 0.7, TL.duration - 0.05));
+    $('fade').style.opacity = TL.nofade ? 0 : Math.max(1 - seg(t, 0, 0.35), seg(t, TL.duration - 0.7, TL.duration - 0.05));
   }
 
   // ---------------------------------------------------------------- the pointer
@@ -333,6 +366,8 @@
         if(c.js) c.js(w, d);
         if(c.key){ w.focus(); inputs.push(Object.assign({ type: 'key' }, KEYS[c.key])); }
       } catch(e){ console.error('cue at ' + c.t + ': ' + e.message); }
+      if(c.text) inputs.push({ type: 'text', text: c.text });
+      if(c.fake){ lastClick = c.t; ring._x = P[0]; ring._y = P[1]; }                // a click the film shows but doesn't make
       if(c.click){ inputs.push({ type: 'down' }); later.push({ t: c.t + 0.09, type: 'up' }); lastClick = c.t; ring._x = P[0]; ring._y = P[1]; }
       if(c.down){ inputs.push({ type: 'down' }); pressed = true; lastClick = c.t; ring._x = P[0]; ring._y = P[1]; }
       if(c.up){ inputs.push({ type: 'up' }); pressed = false; }
@@ -347,7 +382,7 @@
       placeWins(shot, t);                      // the camera first: the pointer is aimed through it
       pointerAt(t); ptrWhere(shot);
       runCues(t, inputs);
-      drawBg(shot, t); drawTags(shot, t); drawCap(t); drawLines(shot, t); drawCard(shot, t); drawPointer(shot, t);
+      drawBg(shot, t); drawTags(shot, t); drawCap(t); drawLines(shot, t); drawCard(shot, t); drawProp(shot, t); drawPointer(shot, t);
       return { ptr: [Math.round(P[0] * 10) / 10, Math.round(P[1] * 10) / 10], inputs: inputs };
     },
     // the sound's cue sheet

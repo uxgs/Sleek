@@ -31,6 +31,7 @@ const at = arg('at', '') ? arg('at', '').split(',').map(Number) : null;   // sti
 const prof = arg('profile', path.join(os.tmpdir(), 'sleek-film-profile'));
 const query = arg('query', '');
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+const probe = arg('probe', ''), probeEvery = +arg('probe-every', '6');
 
 // ---- Chrome ----
 const chrome = spawn('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', [
@@ -108,6 +109,7 @@ for (let f = 0; f < f1; f++) {
     if (i.type === 'down') { held = 1; await mouse('mousePressed', x, y, { button: 'left', buttons: 1, clickCount: i.count || 1 }); }
     else if (i.type === 'up') { held = 0; await mouse('mouseReleased', x, y, { button: 'left', buttons: 0, clickCount: i.count || 1 }); }
     else if (i.type === 'wheel') await mouse('mouseWheel', x, y, { deltaX: i.dx || 0, deltaY: i.dy || 0 });
+    else if (i.type === 'text') await send('Input.insertText', { text: i.text });
     else if (i.type === 'key') {
       const k = { key: i.key, code: i.code || '', windowsVirtualKeyCode: i.vk || 0, nativeVirtualKeyCode: i.vk || 0, modifiers: i.mod || 0 };
       await send('Input.dispatchKeyEvent', Object.assign({ type: i.text ? 'keyDown' : 'rawKeyDown' }, k, i.text ? { text: i.text } : {}));
@@ -117,6 +119,7 @@ for (let f = 0; f < f1; f++) {
   await js(`__film.step(${dt})`, false);
   await js('new Promise(r => __film.settle(r))');
   await js(`FILM.after && FILM.after(${t})`, false);
+  if (probe && f >= f0 && f % probeEvery === 0) console.log('\n' + t.toFixed(2) + '  ' + await js(probe));        // --probe: what the page says about itself, frame by frame
   if (f >= f0) {
     const wantStill = stills && (atFrames ? atFrames.has(f) : (f - f0) % every === 0);
     if (ff || wantStill) {

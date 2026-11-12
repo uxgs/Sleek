@@ -54,23 +54,37 @@
   function runRafs(){ var cur = rafs; rafs = {}; for(var id in cur){ try { cur[id](T); } catch(e){ console.error(e); } } }
 
   // ---- CSS animations and transitions (and element.animate) ----
-  // Each is held at playback rate 0, so it only moves when a step moves it. One the page has paused
-  // itself (animation-play-state) stays where it is; a time the page sets itself is kept.
+  // Each is paused, so it only moves when a step moves it, and a paused animation still shows where
+  // it is. Whether a CSS animation should be moving is read from its element's own
+  // animation-play-state (a carousel stops under the pointer, or before its slide is ready); a time
+  // the page sets itself (scrubbing a carousel) is kept.
   var seen = new WeakSet();
   function endOf(a){ try { var e = a.effect && a.effect.getComputedTiming().endTime; return typeof e === 'number' ? e : Number(e); } catch(x){ return Infinity; } }
+  function moving(a){
+    try {
+      if(typeof CSSAnimation === 'undefined' || !(a instanceof CSSAnimation)) return true;
+      var el = a.effect && a.effect.target; if(!el) return true;
+      var cs = getComputedStyle(el, a.effect.pseudoElement || null);
+      var names = cs.animationName.split(',').map(function(x){ return x.trim(); }), states = cs.animationPlayState.split(',').map(function(x){ return x.trim(); });
+      var i = names.indexOf(a.animationName); if(i < 0) return true;
+      return states[i % states.length] !== 'paused';
+    } catch(e){ return true; }
+  }
   function anims(dt){
     var list; try { list = document.getAnimations(); } catch(e){ return; }
     for(var i = 0; i < list.length; i++){
       var a = list[i];
       try {
         if(!seen.has(a)){
-          seen.add(a); a.playbackRate = 0;
-          if(a.playState !== 'paused' && a.playState !== 'finished') a.currentTime = 0;
-          continue;                                   // its first frame is its first moment
+          seen.add(a);
+          if(a.playState === 'finished') continue;
+          var go = moving(a);
+          a.pause(); if(go) a.currentTime = 0;        // its first frame is its first moment
+          continue;
         }
-        if(!dt || a.playState !== 'running') continue;
+        if(!dt || a.playState === 'finished' || !moving(a)) continue;
         var nt = (Number(a.currentTime) || 0) + dt, end = endOf(a);
-        if(nt >= end){ a.playbackRate = 1; a.finish(); }
+        if(nt >= end) a.finish();
         else a.currentTime = nt;
       } catch(e){}
     }

@@ -25,6 +25,21 @@ body { font-family: "Inter", -apple-system, system-ui, sans-serif; color: #fff; 
 #lines { z-index: 23; position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }
 #lines div { font-weight: 800; letter-spacing: -.04em; line-height: 1.08; opacity: 0; }
 
+/* a prop: a glass card that stands in for what the app hands to the world outside it (a file, a folder, a page, an app icon) */
+#prop { z-index: 25; position: absolute; left: 50%; top: 50%; width: 760px; margin-left: -380px; padding: 54px 60px 50px; border-radius: 44px; display: none; flex-direction: column; align-items: center; text-align: center;
+  background: rgba(22,22,30,.72); border: 1.5px solid rgba(255,255,255,.16); -webkit-backdrop-filter: blur(30px) saturate(160%); backdrop-filter: blur(30px) saturate(160%);
+  box-shadow: 0 80px 160px -50px rgba(0,0,0,.95), 0 0 140px -30px rgba(150,120,255,.5), inset 0 1.5px 0 rgba(255,255,255,.14); pointer-events: none; }
+#prop .p-ic { width: 150px; height: 150px; border-radius: 36px; display: grid; place-items: center; background: linear-gradient(140deg, #7E9CFF, #B48CFF 55%, #FF8EE0); box-shadow: 0 30px 60px -20px rgba(150,120,255,.8), inset 0 2px 0 rgba(255,255,255,.4); }
+#prop .p-ic svg { width: 78px; height: 78px; fill: none; stroke: #fff; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+#prop .p-ic img { width: 100%; height: 100%; border-radius: inherit; display: block; }
+#prop .p-ic.app { background: none; box-shadow: 0 30px 60px -20px rgba(150,120,255,.8); }
+#prop b { display: block; margin-top: 30px; font-size: 62px; font-weight: 800; letter-spacing: -.04em; line-height: 1; }
+#prop span.p-sub { display: block; margin-top: 16px; font-size: 30px; line-height: 1.25; color: rgba(255,255,255,.72); font-weight: 500; letter-spacing: -.01em; }
+#prop ul { list-style: none; margin: 28px 0 0; padding: 0; width: 100%; display: flex; flex-direction: column; gap: 12px; }
+#prop li { display: flex; align-items: center; gap: 16px; padding: 18px 24px; border-radius: 20px; background: rgba(255,255,255,.07); border: 1.5px solid rgba(255,255,255,.1); font-size: 30px; font-weight: 600; text-align: left; }
+#prop li i { margin-left: auto; width: 38px; height: 38px; border-radius: 50%; background: #3DDC97; display: grid; place-items: center; }
+#prop li i::after { content: ""; width: 15px; height: 8px; border-left: 3.5px solid #fff; border-bottom: 3.5px solid #fff; transform: rotate(-45deg) translate(1px, -2px); }
+
 #card { z-index: 24; position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }
 #mark { overflow: visible; filter: drop-shadow(0 30px 70px rgba(150,120,255,.45)); }
 #word { font-weight: 800; letter-spacing: -.05em; line-height: 1; }

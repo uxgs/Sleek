@@ -11,6 +11,7 @@ render.mjs    steps the page and pipes frames to ffmpeg
 art/          the film decks' pictures: three made-up products, each screen as a finished design
               and as a pencil wireframe (art.html, art2.html; art.mjs renders them to art/*.webp)
 score.py      the score and sound effects, from the cue sheet: five tracks to choose from
+reels.js      the helper clips' cue sheets (film.html?reel=<name>): short silent loops for Settings
 proof.html    a short test of the clock on the app's hardest motion
 ```
 
@@ -49,6 +50,7 @@ captures what you ask for:
 ```bash
 node tools/film/render.mjs --stills out/stills --at 13.4,29.6,44.6      # full-size stills at these seconds
 node tools/film/render.mjs --stills out/stills --from 31 --to 41 --every 30 --scale 1
+node tools/film/render.mjs --from 12 --to 14 --probe "FILM.frames.B.el.contentDocument.body.className"   # ask the page, frame by frame
 ```
 
 ## Change it
