@@ -1,0 +1,43 @@
+/* The Sleek film as an interstitial (features/film.js): it fills the window, whatever the theme,
+   with nothing on it but Skip, Sound and a thin line of progress. */
+/* a first visit: nothing of the start screen is drawn until the film has gone (index.html's head sets this) */
+html.film-first, html.film-first body { background: #000 !important; }
+html.film-first body > * { visibility: hidden; }
+html.film-first body > .fm { visibility: visible; }
+html.film-on { overflow: hidden; }
+
+.fm { position: fixed; inset: 0; z-index: 95; background: #000; color: #F5F5F7; overflow: hidden;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  opacity: 0; transition: opacity .4s ease; }
+.fm.in { opacity: 1; }
+.fm.fm-first.in { transition: none; }                 /* nothing to fade from */
+.fm.out { opacity: 0; transition: opacity .5s ease; pointer-events: none; }
+.fm [hidden] { display: none !important; }
+.fm-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #000; cursor: pointer; }
+
+.fm-pill { position: absolute; bottom: max(26px, env(safe-area-inset-bottom, 0px)); z-index: 2; display: inline-flex; align-items: center; gap: 8px;
+  height: 46px; padding: 0 20px; border-radius: 23px; cursor: pointer; font: 600 15px/1 "Inter", system-ui, sans-serif; color: #fff;
+  border: 1px solid rgba(255,255,255,.28); background: rgba(18,18,24,.5); -webkit-backdrop-filter: blur(16px) saturate(160%); backdrop-filter: blur(16px) saturate(160%);
+  box-shadow: 0 14px 34px -14px rgba(0,0,0,.8), inset 0 1px 0 rgba(255,255,255,.16); transition: background .2s ease, border-color .2s ease, transform .2s ease, opacity .3s ease; }
+.fm-pill:hover, .fm-pill:focus-visible { background: rgba(44,44,56,.66); border-color: rgba(255,255,255,.6); outline: none; transform: translateY(-1px); }
+.fm-pill svg { width: 18px; height: 18px; fill: currentColor; flex: none; }
+.fm-pill svg .ln { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.fm-skip { right: max(26px, env(safe-area-inset-right, 0px)); padding-right: 14px; }
+.fm-sound { left: max(26px, env(safe-area-inset-left, 0px)); padding-left: 16px; }
+/* silent, the Sound button asks to be pressed; with sound, it keeps out of the way */
+.fm.fm-silent .fm-sound { border-color: rgba(180,140,255,.9); background: linear-gradient(100deg, rgba(126,156,255,.34), rgba(180,140,255,.34) 55%, rgba(255,142,224,.34)), rgba(18,18,24,.55); }
+.fm:not(.fm-silent) .fm-sound { opacity: .55; }
+.fm:not(.fm-silent) .fm-sound:hover, .fm:not(.fm-silent) .fm-sound:focus-visible { opacity: 1; }
+
+.fm-line { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: rgba(255,255,255,.12); z-index: 2; }
+.fm-line i { display: block; height: 100%; background: linear-gradient(90deg, #7E9CFF, #B48CFF 55%, #FF8EE0); transform-origin: 0 50%; transform: scaleX(0); }
+
+.fm-msg { position: absolute; inset: 0; z-index: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center; padding: 24px; background: rgba(0,0,0,.78); }
+.fm-msg b { font-size: clamp(20px, 3vw, 30px); font-weight: 650; letter-spacing: -.02em; }
+.fm-msg span { color: rgba(255,255,255,.62); font-size: 15px; }
+
+/* the button under the headline */
+.btn.film-btn svg { width: 16px; height: 16px; fill: currentColor; margin-left: -2px; }
+
+@media (max-width: 560px) { .fm-pill { height: 44px; padding: 0 16px; font-size: 14px; bottom: max(18px, env(safe-area-inset-bottom, 0px)); } .fm-skip { right: 16px; } .fm-sound { left: 16px; } }
+@media (prefers-reduced-motion: reduce) { .fm, .fm.out, .fm-pill { transition: none; } }

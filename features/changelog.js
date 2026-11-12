@@ -1,5 +1,5 @@
-/* The start screen's version tag and What's new (data/changelog.js): one entry per day, the
-   latest few shown, the rest a click away. */
+/* The start screen's version tag and What's new (data/changelog.js): a tile that stays closed until
+   you open it, then one entry per day, the latest few shown and the rest a click away. */
 (function(){
   var C = window.SLEEK_CHANGES; if(!C || !C.length) return;
   var SHOWN = 3, latest = C[0];
@@ -24,6 +24,12 @@
     li.appendChild(side); li.appendChild(body); list.appendChild(li);
   });
   sec.hidden = false;
+  // closed, the tile says what the latest change was; a click opens the notes
+  var head = document.getElementById('news-toggle'), boxEl = document.getElementById('news-box'), peek = document.getElementById('news-peek');
+  if(peek && latest.items && latest.items.length) peek.textContent = latest.items[0] + (latest.items.length > 1 ? ', and ' + (latest.items.length - 1) + ' more' : '');
+  function setOpen(on){ if(!head) return; head.setAttribute('aria-expanded', String(on)); boxEl.hidden = !on; sec.classList.toggle('open', on); }
+  if(head) head.addEventListener('click', function(){ setOpen(head.getAttribute('aria-expanded') !== 'true'); });
+  window.SleekNews = { open: function(){ setOpen(true); sec.scrollIntoView({ block: 'start', behavior: 'smooth' }); } };
 
   if(more && C.length > SHOWN){
     more.hidden = false;
@@ -37,5 +43,5 @@
     };
   }
   // the version tag takes you to the notes, opened up to the latest
-  if(tag) tag.addEventListener('click', function(e){ e.preventDefault(); sec.scrollIntoView({ block: 'start', behavior: 'smooth' }); });
+  if(tag) tag.addEventListener('click', function(e){ e.preventDefault(); window.SleekNews.open(); });
 })();

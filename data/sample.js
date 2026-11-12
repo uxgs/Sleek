@@ -55,9 +55,9 @@ window.SLEEK_SAMPLE = {
     },
     "theme": {
       "mode": "dark",
-      "accent": "#FF6A3D",
+      "accent": "#9A7CF0",
       "glow": "aurora",
-      "glowColor": "ember",
+      "glowColor": "dusk",
       "motion": "on",
       "fx": "grid"
     },

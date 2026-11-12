@@ -18,6 +18,9 @@
 <link rel="stylesheet" href="glow.css">
 <link rel="stylesheet" href="features/setup.css">
 <link rel="stylesheet" href="features/library.css">
+<link rel="stylesheet" href="features/film.css">
+<!-- a first visit opens on the film (features/film.js): mark it before anything is drawn, so the start screen never flashes first -->
+<script>try{var d=document.documentElement;if(!localStorage.getItem('sleek-sample-added')&&!localStorage.getItem('sleek-film')&&navigator.onLine!==false&&!matchMedia('(prefers-reduced-motion: reduce)').matches&&location.hash!=='#setup'){d.classList.add('film-first');setTimeout(function(){if(!window.SleekFilm)d.classList.remove('film-first')},4000)}}catch(e){}</script>
 <!-- the storage, the sample deck, publishing, and the page's look before paint -->
 <script src="core/store.js"></script>
 <script src="data/sample.js"></script>
@@ -90,6 +93,8 @@
     <button type="button" class="btn btn-ghost lib-folder-btn" id="lib-folder" hidden>
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7.5A1.5 1.5 0 0 1 4.5 6h4.4l2 2.2h8.6A1.5 1.5 0 0 1 21 9.7v8.8a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18.5Z"/></svg>
       <span>Link a folder</span></button>
+    <button type="button" class="btn btn-ghost film-btn" data-film>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.2v13.6L19 12z"/></svg>Watch the film</button>
   </div>
 
   <section class="lib" aria-labelledby="lib-h">
@@ -103,9 +108,15 @@
   </section>
 
   <section class="news" id="whats-new" aria-labelledby="news-h" hidden>
-    <div class="lib-head"><h2 id="news-h">What’s new</h2><span class="lib-count" id="news-ver"></span></div>
-    <ol class="news-list" id="news-list"></ol>
-    <button type="button" class="lib-link news-more" id="news-more" aria-expanded="false" aria-controls="news-list" hidden></button>
+    <h2 class="news-h2"><button type="button" class="news-head" id="news-toggle" aria-expanded="false" aria-controls="news-box">
+      <span class="news-name" id="news-h">What’s new</span><span class="lib-count" id="news-ver"></span>
+      <span class="news-peek" id="news-peek"></span>
+      <svg class="news-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+    </button></h2>
+    <div class="news-box" id="news-box" hidden>
+      <ol class="news-list" id="news-list"></ol>
+      <button type="button" class="lib-link news-more" id="news-more" aria-expanded="false" aria-controls="news-list" hidden></button>
+    </div>
   </section>
 
 </main>
@@ -151,6 +162,10 @@
           <a class="btn btn-ghost set-btn" href="#whats-new" data-close data-news>What’s new</a>
         </div>
         <div class="set-row">
+          <span class="set-text"><b>The Sleek film</b><span>Under a minute on what Sleek does.</span></span>
+          <button type="button" class="btn btn-ghost set-btn" data-close data-film>Watch the film</button>
+        </div>
+        <div class="set-row">
           <span class="set-text"><b>Made by</b><span>See more of the developer’s work.</span></span>
           <a class="btn btn-ghost set-btn" href="https://uxgenes.com" target="_blank" rel="noopener">Portfolio <span aria-hidden="true">↗</span></a>
         </div>
@@ -161,6 +176,7 @@
 <div class="lib-drop" id="lib-drop" aria-hidden="true"><div><b>Drop to open</b><span>A .sleek deck file</span></div></div>
 <script src="glow-fx.js"></script>
 <script src="features/setup.js"></script>
+<script src="features/film.js"></script>
 <script src="features/library.js"></script>
 <script src="data/changelog.js"></script>
 <script src="features/changelog.js"></script>

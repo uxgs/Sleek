@@ -1,0 +1,35 @@
+/* The film page's own look. Nothing here animates by itself: film.js sets every moving value from
+   the film's time, so a frame is always the same picture. */
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+body { font-family: "Inter", -apple-system, system-ui, sans-serif; color: #fff; -webkit-font-smoothing: antialiased; }
+#stage { position: absolute; left: 0; top: 0; overflow: hidden; background: #050506; }
+#bg { position: absolute; inset: 0; }
+#bg::after { content: ""; position: absolute; inset: 0; background: radial-gradient(120% 90% at 50% 45%, transparent 55%, rgba(0,0,0,.55) 100%); }
+
+/* a window onto the app: the slot clips it, the frame inside moves under it */
+.slot { position: absolute; left: 0; top: 0; overflow: hidden; visibility: hidden; background: #0B0B0D; transform-origin: 0 0;
+  box-shadow: 0 0 0 1px rgba(255,255,255,.09), 0 70px 150px -50px rgba(0,0,0,.95), 0 30px 60px -30px rgba(0,0,0,.8); }
+.slot iframe { position: absolute; left: 0; top: 0; border: 0; transform-origin: 0 0; background: #0B0B0D; }
+.slot::after { content: ""; position: absolute; inset: 0; border-radius: inherit; box-shadow: inset 0 1px 0 rgba(255,255,255,.10); pointer-events: none; }
+
+#tags { position: absolute; inset: 0; pointer-events: none; z-index: 20; }
+.tag { position: absolute; font-size: 15px; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; color: rgba(255,255,255,.55); white-space: nowrap; }
+.tag i { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 10px; vertical-align: 1px; background: var(--hot, #B48CFF); box-shadow: 0 0 12px var(--hot, #B48CFF); }
+
+#scrim { z-index: 21; position: absolute; left: 0; right: 0; bottom: 0; height: 30%; background: linear-gradient(180deg, transparent, rgba(0,0,0,.82)); opacity: 0; pointer-events: none; }
+#cap { z-index: 22; position: absolute; left: 0; right: 0; text-align: center; font-weight: 700; letter-spacing: -.028em; white-space: nowrap; pointer-events: none; }
+#cap span { display: inline-block; white-space: pre; }
+#cap .hot { background: linear-gradient(100deg, #7E9CFF, #B48CFF 55%, #FF8EE0); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+#lines { z-index: 23; position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }
+#lines div { font-weight: 800; letter-spacing: -.04em; line-height: 1.08; opacity: 0; }
+
+#card { z-index: 24; position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }
+#mark { overflow: visible; filter: drop-shadow(0 30px 70px rgba(150,120,255,.45)); }
+#word { font-weight: 800; letter-spacing: -.05em; line-height: 1; }
+#line { font-weight: 500; letter-spacing: -.02em; color: rgba(255,255,255,.72); }
+
+#cursor { z-index: 31; position: absolute; left: 0; top: 0; width: 34px; height: 34px; margin: -4px 0 0 -6px; pointer-events: none; filter: drop-shadow(0 6px 10px rgba(0,0,0,.55)); opacity: 0; }
+#ring { z-index: 30; position: absolute; left: 0; top: 0; width: 60px; height: 60px; margin: -30px 0 0 -30px; border-radius: 50%; border: 2.5px solid rgba(255,255,255,.9); pointer-events: none; opacity: 0; }
+#fade { z-index: 40; position: absolute; inset: 0; background: #000; opacity: 0; pointer-events: none; }

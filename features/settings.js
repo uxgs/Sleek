@@ -48,7 +48,7 @@
     var c = e.target.closest('[data-close]'); if(!c) return;
     if(c.hasAttribute('data-news')){
       e.preventDefault(); close();
-      var n = document.getElementById('whats-new'); if(n) setTimeout(function(){ n.scrollIntoView({ block: 'start', behavior: 'smooth' }); }, 120);
+      var n = document.getElementById('whats-new'); if(n) setTimeout(function(){ if(window.SleekNews) window.SleekNews.open(); else n.scrollIntoView({ block: 'start', behavior: 'smooth' }); }, 120);
     } else close();
   });
 })();

@@ -1,0 +1,36 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>The Sleek film</title>
+<!-- The film page: the real app in frames, a camera over them, and the type on top.
+     film.html?shape=wide|tall   Rendered a frame at a time by tools/film/render.mjs. -->
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Geist:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&family=Sora:wght@400;500;600;700&family=Instrument+Serif&display=swap">
+<link rel="stylesheet" href="film.css">
+<div id="stage">
+  <div id="bg"></div>
+  <div class="slot" id="slot-S"><iframe id="f-S" tabindex="-1"></iframe></div>
+  <div class="slot" id="slot-C"><iframe id="f-C" tabindex="-1"></iframe></div>
+  <div class="slot" id="slot-B"><iframe id="f-B" tabindex="-1"></iframe></div>
+  <div class="slot" id="slot-A"><iframe id="f-A" tabindex="-1"></iframe></div>
+  <div class="slot" id="slot-P"><iframe id="f-P" tabindex="-1"></iframe></div>
+  <div id="tags"></div>
+  <div id="scrim"></div>
+  <div id="cap"></div>
+  <div id="lines"></div>
+  <div id="card">
+    <svg id="mark" viewBox="116 130 280 252" aria-hidden="true">
+      <defs><linearGradient id="mk" x1="150" y1="130" x2="362" y2="382" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#7E9CFF"/><stop offset=".5" stop-color="#B48CFF"/><stop offset="1" stop-color="#FF8EE0"/></linearGradient></defs>
+      <path id="mk-a" d="M176 186a56 56 0 0 1 56-56h164v112H232a56 56 0 0 1-56-56Z" fill="url(#mk)"/>
+      <path id="mk-b" d="M336 326a56 56 0 0 1-56 56H116V270h164a56 56 0 0 1 56 56Z" fill="url(#mk)"/>
+    </svg>
+    <div id="word">Sleek</div>
+    <div id="line"></div>
+  </div>
+  <svg id="cursor" viewBox="0 0 28 28" aria-hidden="true"><path d="M5 3l15.5 11.2-6.6 1.1 4 7.6-3 1.6-4-7.7L6.2 21.6z" fill="#111" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg>
+  <div id="ring"></div>
+  <div id="fade"></div>
+</div>
+<script src="../../core/store.js"></script>
+<script src="../../data/sample.js"></script>
+<script src="timeline.js"></script>
+<script src="film.js"></script>

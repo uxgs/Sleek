@@ -1,0 +1,457 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Film art</title>
+<!-- The film deck's pictures: three screens of Pace, the made-up fitness app from the sample deck, in Sleek's own blue, violet and pink.
+     art.html?screen=today|workout|plan&mode=after|before
+     One layout, two skins: "after" is the finished product; "before" is the same screen as a pencil
+     wireframe, so a before/after slider reads as one design growing up. tools/film/art.mjs renders
+     them to pictures. -->
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Caveat:wght@500;700&display=swap">
+<style>
+  :root { --ember: #A88BFF; --amber: #FF8EE0; --sky: #6FD0FF; --mint: #5EE6B0; --rose: #FF5C8A;
+    --bg: #0A0A10; --card: #15141C; --card2: #1C1B25; --line: rgba(255,255,255,.07); --fg: #F4F3F8; --mut: #A09CB0; --dim: #68657A; }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 1600px; height: 900px; overflow: hidden; background: var(--bg); color: var(--fg);
+    font: 500 15px/1.35 "Inter", system-ui, sans-serif; -webkit-font-smoothing: antialiased; font-feature-settings: "tnum", "cv11"; }
+  .screen { display: none; position: absolute; inset: 0; }
+  body[data-screen="today"] #today, body[data-screen="workout"] #workout, body[data-screen="plan"] #plan { display: block; }
+  .wash { position: absolute; inset: 0; background:
+    radial-gradient(900px 520px at 78% -8%, rgba(155,123,255,.22), transparent 62%),
+    radial-gradient(700px 460px at 8% 108%, rgba(111,208,255,.10), transparent 60%),
+    radial-gradient(600px 400px at 52% 120%, rgba(255,142,224,.10), transparent 60%); }
+  .grain { position: absolute; inset: 0; opacity: .5; mix-blend-mode: overlay; pointer-events: none; filter: url(#grain); }
+
+  /* the rail */
+  .rail { position: absolute; left: 0; top: 0; bottom: 0; width: 84px; display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 26px 0;
+    background: linear-gradient(180deg, rgba(255,255,255,.035), rgba(255,255,255,.01)); border-right: 1px solid var(--line); }
+  .mark { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; margin-bottom: 22px;
+    background: linear-gradient(145deg, #7E9CFF, #B48CFF); box-shadow: 0 10px 24px -8px rgba(140,110,255,.7), inset 0 1px 0 rgba(255,255,255,.35); }
+  .mark svg { width: 20px; height: 20px; }
+  .nav { width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; color: var(--dim); }
+  .nav svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .nav.on { color: #fff; background: rgba(255,255,255,.08); box-shadow: inset 0 1px 0 rgba(255,255,255,.10), 0 8px 20px -12px rgba(0,0,0,.8); }
+  .nav.on::before { content: ""; position: absolute; left: 0; width: 3px; height: 22px; border-radius: 0 3px 3px 0; background: var(--ember); box-shadow: 0 0 12px var(--ember); }
+  .rail .sp { flex: 1; }
+  .ava { width: 40px; height: 40px; border-radius: 50%; background: conic-gradient(from 210deg, #FF8EE0, #A88BFF, #FF5C8A, #FF8EE0); padding: 2px; }
+  .ava i { display: block; width: 100%; height: 100%; border-radius: 50%; background: radial-gradient(circle at 50% 38%, #F2D3C2 0 26%, transparent 27%), radial-gradient(circle at 50% 108%, #F2D3C2 0 46%, transparent 47%), #2C2A3A; }
+
+  /* the page */
+  .page { position: absolute; left: 84px; right: 0; top: 0; bottom: 0; padding: 30px 40px 34px; display: flex; flex-direction: column; gap: 22px; }
+  .top { display: flex; align-items: center; gap: 18px; height: 56px; flex: none; }
+  .top h1 { font-size: 30px; font-weight: 700; letter-spacing: -.025em; }
+  .top .sub { color: var(--mut); font-size: 14.5px; margin-top: 3px; }
+  .top .sp { flex: 1; }
+  .search { width: 300px; height: 44px; border-radius: 22px; display: flex; align-items: center; gap: 10px; padding: 0 16px; color: var(--dim);
+    background: rgba(255,255,255,.05); border: 1px solid var(--line); font-size: 14px; }
+  .search svg, .ibtn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+  .search kbd { margin-left: auto; font: 600 11px "Inter"; padding: 3px 7px; border-radius: 6px; background: rgba(255,255,255,.07); color: var(--mut); }
+  .ibtn { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; color: var(--mut); background: rgba(255,255,255,.05); border: 1px solid var(--line); position: relative; }
+  .ibtn b { position: absolute; right: 11px; top: 10px; width: 8px; height: 8px; border-radius: 50%; background: var(--ember); box-shadow: 0 0 0 2px #15141C, 0 0 10px var(--ember); }
+
+  .card { position: relative; border-radius: 26px; background: linear-gradient(180deg, rgba(255,255,255,.055), rgba(255,255,255,.018)) , var(--card);
+    border: 1px solid var(--line); box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 30px 60px -34px rgba(0,0,0,.9); overflow: hidden; }
+  .k { font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--mut); }
+  .k.hot { color: var(--ember); }
+  .big { font-size: 46px; font-weight: 700; letter-spacing: -.035em; line-height: 1; }
+  .big small { font-size: 20px; font-weight: 600; color: var(--mut); letter-spacing: -.01em; margin-left: 3px; }
+  .note { color: var(--mut); font-size: 14px; }
+  .up { color: var(--mint); font-weight: 600; font-size: 13.5px; }
+  .chip { display: inline-flex; align-items: center; gap: 7px; height: 34px; padding: 0 14px; border-radius: 17px; font-size: 13.5px; font-weight: 600;
+    background: rgba(255,255,255,.10); border: 1px solid rgba(255,255,255,.10); backdrop-filter: blur(10px); }
+  .chip svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; opacity: .9; }
+  .cta { display: inline-flex; align-items: center; gap: 12px; height: 58px; padding: 0 30px 0 12px; border-radius: 29px; font-size: 17px; font-weight: 700; color: #fff;
+    background: linear-gradient(135deg, #7E9CFF, #B48CFF); box-shadow: 0 18px 36px -12px rgba(130,100,255,.75), inset 0 1px 0 rgba(255,255,255,.4); }
+  .cta i { width: 38px; height: 38px; border-radius: 50%; background: rgba(255,255,255,.22); display: grid; place-items: center; }
+  .cta svg { width: 14px; height: 14px; fill: #fff; }
+  .ghost { display: inline-flex; align-items: center; height: 58px; padding: 0 24px; border-radius: 29px; font-size: 16px; font-weight: 600; color: var(--fg); background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.12); }
+  svg text { font-family: "Inter", sans-serif; }
+
+  /* a "photograph": light, a subject and grain, drawn */
+  .photo { position: absolute; inset: 0; background:
+    radial-gradient(520px 360px at 82% 34%, rgba(160,140,255,.95), rgba(140,110,255,.55) 38%, transparent 70%),
+    radial-gradient(420px 300px at 96% 96%, rgba(255,92,138,.55), transparent 70%),
+    radial-gradient(500px 420px at 30% 110%, rgba(120,60,255,.28), transparent 70%),
+    linear-gradient(120deg, #12121C 0%, #1A1630 46%, #3A2470 100%); }
+  .photo .subj { position: absolute; right: 26px; bottom: -16px; width: 380px; height: 380px; filter: drop-shadow(-24px 30px 40px rgba(0,0,0,.55)); }
+  .photo .floor { position: absolute; left: 0; right: 0; bottom: 0; height: 34%; background: linear-gradient(180deg, transparent, rgba(0,0,0,.42)); }
+  .photo::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(10,10,16,.92) 0%, rgba(10,10,16,.62) 40%, transparent 72%); }
+
+  /* ---------- TODAY ---------- */
+  #today .grid { flex: 1; display: grid; grid-template-columns: 1.52fr 1fr; grid-template-rows: 1.22fr 1fr; gap: 22px; min-height: 0; }
+  .hero { padding: 34px 36px; display: flex; flex-direction: column; }
+  .hero > * { position: relative; z-index: 1; } .hero > .photo { position: absolute; z-index: 0; }
+  .hero h2 { font-size: 54px; font-weight: 800; letter-spacing: -.04em; line-height: 1; margin: 14px 0 16px; }
+  .hero .chips { display: flex; gap: 10px; }
+  .hero .moves { display: flex; gap: 10px; margin-top: auto; align-items: center; }
+  .mv { width: 58px; height: 58px; border-radius: 16px; background: rgba(255,255,255,.10); border: 1px solid rgba(255,255,255,.12); display: grid; place-items: center; backdrop-filter: blur(10px); }
+  .mv svg { width: 26px; height: 26px; fill: none; stroke: #fff; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; opacity: .92; }
+  .mv.done { background: linear-gradient(145deg, rgba(126,156,255,.9), rgba(180,140,255,.9)); border-color: transparent; box-shadow: 0 10px 22px -10px rgba(130,100,255,.9); }
+  .hero .row { display: flex; align-items: center; gap: 14px; margin-top: 22px; }
+  .hero .coach { position: absolute; right: 30px; top: 30px; z-index: 2; display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 16px; border-radius: 18px; font-size: 13.5px; font-weight: 600; color: rgba(255,255,255,.9); background: rgba(12,12,20,.45); border: 1px solid rgba(255,255,255,.14); backdrop-filter: blur(12px); }
+  .hero .coach i { width: 8px; height: 8px; border-radius: 50%; background: var(--mint); box-shadow: 0 0 10px var(--mint); }
+
+  .rings { padding: 28px 30px; display: flex; flex-direction: column; }
+  .rings .body { flex: 1; display: flex; align-items: center; gap: 26px; min-height: 0; }
+  .rings svg.r { width: 250px; height: 250px; flex: none; overflow: visible; }
+  .leg { display: flex; flex-direction: column; gap: 18px; flex: 1; }
+  .leg div { display: grid; grid-template-columns: 12px 1fr; column-gap: 12px; align-items: baseline; }
+  .leg i { width: 12px; height: 12px; border-radius: 50%; align-self: center; }
+  .leg b { font-size: 24px; font-weight: 700; letter-spacing: -.02em; } .leg b small { font-size: 14px; color: var(--mut); font-weight: 500; }
+  .leg span { grid-column: 2; font-size: 13px; color: var(--mut); }
+
+  .stats { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr 1fr 1.5fr; gap: 22px; min-height: 0; }
+  .stat { padding: 24px 26px; display: flex; flex-direction: column; gap: 10px; }
+  .stat .viz { margin-top: auto; }
+  .bars { display: flex; align-items: flex-end; gap: 9px; height: 104px; }
+  .bars i { flex: 1; border-radius: 7px; background: rgba(255,255,255,.12); }
+  .bars i.on { background: linear-gradient(180deg, #8FDCFF, #3EA8FF); box-shadow: 0 8px 18px -6px rgba(80,170,255,.8); }
+  .dots { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
+  .dots i { aspect-ratio: 1; border-radius: 50%; background: rgba(255,255,255,.10); }
+  .dots i.on { background: linear-gradient(145deg, #C4A8FF, #9B7BFF); box-shadow: 0 0 12px rgba(190,140,255,.55); }
+  .dots i.now { background: #fff; box-shadow: 0 0 0 3px rgba(255,255,255,.18), 0 0 16px rgba(255,255,255,.6); }
+  .week svg { width: 100%; height: 150px; display: block; overflow: visible; }
+
+  /* ---------- WORKOUT ---------- */
+  #workout .grid { flex: 1; display: grid; grid-template-columns: 430px 1fr 330px; grid-template-rows: 1fr 218px; gap: 22px; min-height: 0; }
+  .timer { padding: 26px; display: flex; flex-direction: column; align-items: center; }
+  .timer svg.r { width: 300px; height: 300px; margin: auto 0; overflow: visible; }
+  .timer .btns { display: flex; gap: 12px; }
+  .move { padding: 0; display: flex; flex-direction: column; }
+  .move .pic { position: relative; flex: 1; min-height: 0; }
+  .move .pic .tag { position: absolute; left: 30px; top: 28px; z-index: 2; }
+  .move .pic h2 { position: absolute; left: 30px; bottom: 26px; z-index: 2; font-size: 50px; font-weight: 800; letter-spacing: -.04em; line-height: 1; }
+  .move .pic .set { position: absolute; left: 30px; bottom: 86px; z-index: 2; color: rgba(255,255,255,.8); font-size: 15px; font-weight: 600; }
+  .nums { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--line); border-top: 1px solid var(--line); flex: none; }
+  .nums div { background: #17161F; padding: 20px 28px; }
+  .nums b { display: block; font-size: 38px; font-weight: 700; letter-spacing: -.03em; line-height: 1.05; } .nums b small { font-size: 17px; color: var(--mut); font-weight: 600; margin-left: 4px; }
+  .list { padding: 24px 22px; display: flex; flex-direction: column; gap: 6px; }
+  .list .it { display: flex; align-items: center; gap: 14px; padding: 11px 10px; border-radius: 16px; }
+  .list .it.now { background: rgba(255,255,255,.07); box-shadow: inset 0 1px 0 rgba(255,255,255,.08); }
+  .list .n { width: 40px; height: 40px; border-radius: 12px; flex: none; display: grid; place-items: center; background: rgba(255,255,255,.08); font-weight: 700; font-size: 14px; color: var(--mut); }
+  .list .done .n { background: rgba(94,230,176,.16); color: var(--mint); } .list .done .n svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+  .list .now .n { background: linear-gradient(145deg, #7E9CFF, #B48CFF); color: #fff; box-shadow: 0 10px 20px -8px rgba(130,100,255,.9); }
+  .list b { display: block; font-size: 15.5px; font-weight: 600; } .list span { font-size: 13px; color: var(--mut); }
+  .list .done b { color: var(--mut); }
+  .heart { grid-column: 1 / -1; padding: 22px 28px 0; display: flex; gap: 30px; }
+  .heart .l { width: 210px; flex: none; display: flex; flex-direction: column; gap: 6px; }
+  .heart svg.c { flex: 1; height: 100%; min-width: 0; overflow: visible; }
+  .heart { position: relative; } .heart .hr { position: absolute; right: 100px; top: 40px; width: 14px; height: 14px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 8px rgba(155,123,255,.32), 0 0 22px rgba(170,130,255,.9); z-index: 2; }
+  body.sketch .heart .hr { display: none; }
+  .zones { display: flex; gap: 6px; margin-top: 10px; } .zones i { height: 6px; flex: 1; border-radius: 3px; background: rgba(255,255,255,.10); }
+  .zones i:nth-child(1){ background: #6FD0FF; } .zones i:nth-child(2){ background: #5EE6B0; } .zones i:nth-child(3){ background: #FF8EE0; } .zones i:nth-child(4){ background: #A88BFF; box-shadow: 0 0 12px #A88BFF; }
+
+  /* ---------- PLAN ---------- */
+  #plan .grid { flex: 1; display: grid; grid-template-columns: 1fr 360px; grid-template-rows: 1fr 196px; gap: 22px; min-height: 0; }
+  .cal { padding: 24px 24px 22px; display: flex; flex-direction: column; gap: 16px; }
+  .cal .hd { display: flex; align-items: center; gap: 12px; } .cal .hd b { font-size: 21px; font-weight: 700; letter-spacing: -.02em; }
+  .seg { margin-left: auto; display: flex; padding: 4px; border-radius: 14px; background: rgba(255,255,255,.06); font-size: 13.5px; font-weight: 600; color: var(--mut); }
+  .seg span { padding: 7px 16px; border-radius: 10px; } .seg .on { background: rgba(255,255,255,.12); color: #fff; }
+  .days { flex: 1; display: grid; grid-template-columns: repeat(7, 1fr); gap: 12px; min-height: 0; }
+  .day { border-radius: 20px; padding: 14px 12px; display: flex; flex-direction: column; gap: 10px; background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.05); }
+  .day .d { display: flex; justify-content: space-between; align-items: baseline; font-size: 12.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--dim); }
+  .day .d b { font-size: 22px; letter-spacing: -.02em; color: var(--mut); font-weight: 700; }
+  .day.now { background: linear-gradient(180deg, rgba(155,123,255,.20), rgba(155,123,255,.05)); border-color: rgba(170,130,255,.45); box-shadow: 0 20px 40px -24px rgba(140,110,255,.8); }
+  .day.now .d, .day.now .d b { color: #fff; }
+  .ses { border-radius: 14px; padding: 12px 12px 13px; color: #fff; font-size: 13.5px; font-weight: 700; line-height: 1.2; position: relative; overflow: hidden; }
+  .ses span { display: block; font-weight: 500; font-size: 12px; opacity: .82; margin-top: 4px; }
+  .ses.s { background: linear-gradient(150deg, #7E9CFF, #8B5CF6); box-shadow: 0 12px 22px -12px rgba(130,100,255,.9); height: 176px; }
+  .ses.r { background: linear-gradient(150deg, #58C6FF, #2D7BFF); box-shadow: 0 12px 22px -12px rgba(60,140,255,.9); height: 136px; }
+  .ses.m { background: linear-gradient(150deg, #57E3B0, #18A07A); box-shadow: 0 12px 22px -12px rgba(40,200,150,.8); height: 96px; }
+  .ses.h { background: linear-gradient(150deg, #FF7AA5, #D9336E); box-shadow: 0 12px 22px -12px rgba(230,70,120,.8); height: 156px; }
+  .ses.x { background: none; border: 1.5px dashed rgba(255,255,255,.16); color: var(--dim); font-weight: 600; height: 84px; box-shadow: none; }
+  .ses.ok::after { content: ""; position: absolute; right: 10px; top: 10px; width: 18px; height: 18px; border-radius: 50%; background: rgba(255,255,255,.28) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 18'%3E%3Cpath d='M5 9.4l2.6 2.6L13 6.6' fill='none' stroke='%23fff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); }
+  .side { padding: 24px 26px; display: flex; flex-direction: column; gap: 14px; }
+  .side svg.d { width: 244px; height: 244px; margin: 18px auto 0; overflow: visible; }
+  .mix { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; margin-top: auto; font-size: 13.5px; color: var(--mut); }
+  .mix i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 8px; } .mix b { color: var(--fg); float: right; font-weight: 600; }
+  .goal { padding: 24px 28px; display: flex; flex-direction: column; gap: 12px; }
+  .prog { height: 14px; border-radius: 7px; background: rgba(255,255,255,.08); position: relative; margin-top: auto; }
+  .prog i { position: absolute; inset: 0 34% 0 0; border-radius: 7px; background: linear-gradient(90deg, #FF8EE0, #A88BFF, #FF8EE0); box-shadow: 0 0 18px rgba(160,120,255,.7); }
+  .prog b { position: absolute; left: 66%; top: 50%; width: 24px; height: 24px; margin: -12px 0 0 -12px; border-radius: 50%; background: #fff; box-shadow: 0 6px 14px rgba(0,0,0,.5), 0 0 0 5px rgba(255,255,255,.14); }
+  .marks { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--dim); font-weight: 600; }
+  .load { padding: 24px 26px; display: flex; flex-direction: column; gap: 10px; }
+  .load .bars { height: 86px; margin-top: auto; } .load .bars i.on { background: linear-gradient(180deg, #C4A8FF, #A88BFF); box-shadow: 0 8px 18px -6px rgba(160,120,255,.8); }
+
+  /* ================= the "before": the same screens as a pencil wireframe ================= */
+  body.sketch { background: #F4F1EA; color: #4A4744; }
+  body.sketch .wash, body.sketch .grain, body.sketch .photo, body.sketch .ava i, body.sketch .ibtn b, body.sketch .nav.on::before { display: none; }
+  body.sketch .screen { filter: url(#rough); background:
+    linear-gradient(#E4DFD4 1px, transparent 1px) 0 0 / 100% 40px, linear-gradient(90deg, #E4DFD4 1px, transparent 1px) 0 0 / 40px 100%, #F4F1EA; }
+  body.sketch .rail { background: none; border-right: 2.5px solid #8E8A84; }
+  body.sketch .card, body.sketch .day, body.sketch .mark, body.sketch .nav, body.sketch .mv, body.sketch .search, body.sketch .ibtn, body.sketch .ava,
+  body.sketch .chip, body.sketch .cta, body.sketch .ghost, body.sketch .ses, body.sketch .list .n, body.sketch .seg, body.sketch .seg .on, body.sketch .nums, body.sketch .nums div,
+  body.sketch .list .it.now, body.sketch .cta i {
+    background: none !important; box-shadow: none !important; backdrop-filter: none; border: 2.5px solid #8E8A84 !important; color: #4A4744 !important; }
+  body.sketch .card { border-radius: 10px; } body.sketch .day { border-radius: 8px; border-width: 2px !important; } body.sketch .day.now { border-style: dashed !important; }
+  body.sketch .nums { gap: 0; border: 0 !important; border-top: 2.5px solid #8E8A84 !important; } body.sketch .nums div { border-width: 0 2.5px 0 0 !important; } body.sketch .nums div:last-child { border: 0 !important; }
+  body.sketch .nav.on { border-style: solid !important; background: #DDD8CD !important; } body.sketch .nav { border-color: transparent !important; }
+  body.sketch .mark svg, body.sketch .cta svg { display: none; }
+  body.sketch svg * { fill: none !important; stroke: #8E8A84 !important; filter: none !important; stroke-dasharray: none !important; stroke-width: 2.6px !important; }
+  body.sketch .nav svg *, body.sketch .chip svg *, body.sketch .mv svg *, body.sketch .search svg *, body.sketch .ibtn svg * { stroke-width: 1.9px !important; }
+  body.sketch svg text { fill: #6B6762 !important; stroke: none !important; font-family: "Caveat", cursive !important; font-weight: 700; }
+  body.sketch svg .hide { display: none; }
+  body.sketch * { font-family: "Caveat", "Inter", cursive !important; letter-spacing: 0 !important; text-transform: none !important; }
+  body.sketch h1, body.sketch h2, body.sketch .big, body.sketch .leg b, body.sketch .nums b, body.sketch .cal .hd b { color: #4A4744 !important; font-weight: 700 !important; }
+  body.sketch .top h1 { font-size: 40px; } body.sketch .hero h2 { font-size: 64px; } body.sketch .move .pic h2 { font-size: 60px; }
+  body.sketch .k, body.sketch .cta, body.sketch .ghost, body.sketch .chip, body.sketch .seg span, body.sketch .day .d, body.sketch .ses { font-size: 19px !important; font-weight: 700 !important; color: #6B6762 !important; }
+  body.sketch .ses span { display: none; } body.sketch .ses.ok::after { display: none; } body.sketch .ses.x { border-style: dashed !important; }
+  /* words that aren't written yet are grey lines */
+  body.sketch .tx { color: transparent !important; position: relative; display: block; min-height: 12px; }
+  body.sketch .tx::before { content: ""; position: absolute; left: 0; top: 50%; height: 7px; margin-top: -3px; width: var(--w, 78%); border-radius: 4px; background: #C9C3B7; }
+  body.sketch .leg span.tx::before { width: 60%; } body.sketch .leg i { background: none !important; border: 2px solid #8E8A84; }
+  /* a picture that isn't taken yet is a box with a cross */
+  body.sketch .hero::after, body.sketch .move .pic::after { content: ""; position: absolute; z-index: 0; border: 2.5px solid #8E8A84; border-radius: 8px;
+    background: linear-gradient(to top right, transparent calc(50% - 1.3px), #A9A49B calc(50% - 1.3px), #A9A49B calc(50% + 1.3px), transparent calc(50% + 1.3px)),
+                linear-gradient(to bottom right, transparent calc(50% - 1.3px), #A9A49B calc(50% - 1.3px), #A9A49B calc(50% + 1.3px), transparent calc(50% + 1.3px)); }
+  body.sketch .hero::after { right: 30px; top: 30px; width: 330px; height: 250px; } body.sketch .move .pic::after { right: 30px; top: 28px; bottom: 28px; width: 46%; }
+  body.sketch .bars i, body.sketch .dots i, body.sketch .zones i, body.sketch .prog, body.sketch .prog i, body.sketch .prog b, body.sketch .mix i {
+    background: none !important; box-shadow: none !important; border: 2px solid #8E8A84; }
+  body.sketch .bars i.on, body.sketch .dots i.on, body.sketch .dots i.now, body.sketch .mv.done { background: #DDD8CD !important; }
+  body.sketch .hero .coach, body.sketch .up { display: none; }
+  /* red-pencil notes to self */
+  .pen { display: none; }
+  body.sketch .pen { display: block; position: absolute; z-index: 5; font: 700 27px/1.05 "Caveat", cursive !important; color: #D8553A !important; transform: rotate(var(--r, -4deg)); white-space: nowrap; }
+  body.sketch .pen svg { position: absolute; overflow: visible; } body.sketch .pen svg * { stroke: #D8553A !important; stroke-width: 2.6 !important; fill: none !important; stroke-linecap: round; stroke-linejoin: round; }
+</style>
+
+<svg width="0" height="0" style="position:absolute">
+  <filter id="rough" x="-2%" y="-2%" width="104%" height="104%"><feTurbulence type="fractalNoise" baseFrequency="0.018" numOctaves="2" seed="7" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="5.5" xChannelSelector="R" yChannelSelector="G"/></filter>
+  <filter id="grain"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="4"/><feColorMatrix values="0 0 0 0 .5  0 0 0 0 .5  0 0 0 0 .5  0 0 0 .22 0"/></filter>
+  <defs>
+    <linearGradient id="gE" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FF8EE0"/><stop offset="1" stop-color="#B48CFF"/></linearGradient>
+    <linearGradient id="gS" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9BE3FF"/><stop offset="1" stop-color="#2D8BFF"/></linearGradient>
+    <linearGradient id="gM" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8CF5C8"/><stop offset="1" stop-color="#18B487"/></linearGradient>
+    <linearGradient id="gA" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#A88BFF" stop-opacity=".55"/><stop offset="1" stop-color="#A88BFF" stop-opacity="0"/></linearGradient>
+    <linearGradient id="gB" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6FD0FF" stop-opacity=".45"/><stop offset="1" stop-color="#6FD0FF" stop-opacity="0"/></linearGradient>
+    <linearGradient id="gL" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#6FD0FF"/><stop offset=".45" stop-color="#FF8EE0"/><stop offset="1" stop-color="#B48CFF"/></linearGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="7"/></filter>
+    <radialGradient id="kb" cx=".34" cy=".28" r=".9"><stop offset="0" stop-color="#4E4B60"/><stop offset=".45" stop-color="#1E1C28"/><stop offset="1" stop-color="#0A0A10"/></radialGradient>
+    <linearGradient id="kh" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5E5A72"/><stop offset="1" stop-color="#12111A"/></linearGradient>
+    <!-- nav icons -->
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 11.5 12 4l8 7.5V20h-5.2v-5.4H9.2V20H4z"/></symbol>
+    <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 3 5 13.5h6L10 21l9-11h-6.2z"/></symbol>
+    <symbol id="i-cal" viewBox="0 0 24 24"><rect x="4" y="5.5" width="16" height="14.5" rx="3"/><path d="M4 10h16M8.5 3.5v4M15.5 3.5v4"/></symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24"><path d="M5 20V11M12 20V4M19 20v-6"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="3.6"/><path d="M5 20c.8-3.6 3.6-5.4 7-5.4s6.2 1.8 7 5.4"/></symbol>
+    <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v2.4M12 18.6V21M3 12h2.4M18.6 12H21M5.6 5.6l1.7 1.7M16.7 16.7l1.7 1.7M5.6 18.4l1.7-1.7M16.7 7.3l1.7-1.7"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol>
+    <symbol id="i-flame" viewBox="0 0 24 24"><path d="M12 3c1 3.5 5 5.4 5 10a5 5 0 0 1-10 0c0-2 1-3.2 2-4 .2 1.6 1 2.6 2 3 .2-3 0-6 1-9z"/></symbol>
+    <symbol id="i-stack" viewBox="0 0 24 24"><path d="m12 4 8 4.2-8 4.2-8-4.2zM4 12.4l8 4.2 8-4.2M4 16.4l8 4.2 8-4.2"/></symbol>
+    <symbol id="i-kb" viewBox="0 0 24 24"><path d="M8.5 9C7 5 9 3.5 12 3.5S17 5 15.5 9"/><circle cx="12" cy="14.5" r="6"/></symbol>
+    <symbol id="i-db" viewBox="0 0 24 24"><path d="M3.5 9.5v5M6.5 7v10M17.5 7v10M20.5 9.5v5M6.5 12h11"/></symbol>
+    <symbol id="i-run" viewBox="0 0 24 24"><circle cx="14.5" cy="5" r="1.8"/><path d="m7 12 3.5-3.5 3.5 1.2 2 3.3 3 .8M10.5 8.5 9 14l3.5 2.5-1 4.5M9 14l-2.5 3.5-3 .5"/></symbol>
+    <symbol id="i-push" viewBox="0 0 24 24"><circle cx="5.5" cy="9" r="1.8"/><path d="M7.5 11 19 14.5M9 12l-1 5M19 14.5V18M3 18h18"/></symbol>
+    <symbol id="i-plank" viewBox="0 0 24 24"><circle cx="5" cy="10.5" r="1.8"/><path d="M7 12h12.5M8 12v5M19.5 12 21 17M3 17.5h18"/></symbol>
+    <symbol id="i-lunge" viewBox="0 0 24 24"><circle cx="12" cy="4.5" r="1.8"/><path d="M12 7v6l-4 3v4.5M12 13l4.5 2.5 1 5M3 20.5h18"/></symbol>
+    <!-- the kettlebell that stands in for a photograph's subject -->
+    <symbol id="kettle" viewBox="-120 -150 240 270">
+      <path d="M-46-34C-74-128 74-128 46-34" fill="none" stroke="url(#kh)" stroke-width="30" stroke-linecap="round"/>
+      <path d="M-40-40C-62-112 62-112 40-40" fill="none" stroke="rgba(200,190,255,.35)" stroke-width="3" stroke-linecap="round"/>
+      <path d="M-96 34c0-58 42-92 96-92s96 34 96 92c0 46-34 74-70 74h-52c-36 0-70-28-70-74z" fill="url(#kb)"/>
+      <path d="M-84 20c4-40 36-64 78-66" fill="none" stroke="rgba(210,200,255,.5)" stroke-width="5" stroke-linecap="round"/>
+      <path d="M96 40c0 40-30 66-64 68" fill="none" stroke="rgba(160,120,255,.9)" stroke-width="5" stroke-linecap="round"/>
+      <circle cx="0" cy="36" r="36" fill="none" stroke="rgba(255,255,255,.10)" stroke-width="3"/>
+      <text x="0" y="48" text-anchor="middle" font-size="34" font-weight="800" fill="rgba(255,255,255,.34)">16</text>
+    </symbol>
+  </defs>
+</svg>
+
+<div class="wash"></div>
+
+<!-- ============================== TODAY ============================== -->
+<section class="screen" id="today">
+  <nav class="rail">
+    <div class="mark"><svg viewBox="0 0 20 20"><path d="M10 2.5 18 17H2z" fill="#fff"/></svg></div>
+    <div class="nav on"><svg><use href="#i-home"/></svg></div><div class="nav"><svg><use href="#i-bolt"/></svg></div><div class="nav"><svg><use href="#i-cal"/></svg></div><div class="nav"><svg><use href="#i-chart"/></svg></div>
+    <div class="sp"></div><div class="nav"><svg><use href="#i-gear"/></svg></div><div class="ava"><i></i></div>
+  </nav>
+  <div class="page">
+    <header class="top">
+      <div><h1>Good morning</h1><div class="sub tx" style="--w:210px">Tuesday · Week 6 of 12 · You slept well</div></div>
+      <div class="sp"></div>
+      <div class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg><span class="tx" style="--w:120px;flex:1">Search moves, plans</span><kbd>⌘K</kbd></div>
+      <div class="ibtn"><svg viewBox="0 0 24 24"><path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2h-15zM10 20.5h4"/></svg><b></b></div>
+    </header>
+    <div class="grid">
+      <article class="card hero">
+        <div class="photo"><svg class="subj"><use href="#kettle"/></svg><div class="floor"></div></div>
+        <div class="k hot">Today’s session</div>
+        <h2>Morning strength</h2>
+        <div class="chips">
+          <span class="chip"><svg><use href="#i-clock"/></svg>35 min</span><span class="chip"><svg><use href="#i-stack"/></svg>6 moves</span><span class="chip"><svg><use href="#i-flame"/></svg>Moderate</span>
+        </div>
+        <div class="moves">
+          <div class="mv done"><svg><use href="#i-kb"/></svg></div><div class="mv done"><svg><use href="#i-push"/></svg></div><div class="mv"><svg><use href="#i-lunge"/></svg></div>
+          <div class="mv"><svg><use href="#i-db"/></svg></div><div class="mv"><svg><use href="#i-plank"/></svg></div><div class="mv"><svg><use href="#i-run"/></svg></div>
+        </div>
+        <div class="row"><span class="cta"><i><svg viewBox="0 0 14 14"><path d="M3.5 1.8v10.4L12 7z"/></svg></i>Start</span><span class="ghost">Swap session</span>
+          </div>
+        <span class="coach"><i></i>Built from last night’s sleep</span>
+      </article>
+      <article class="card rings">
+        <div class="k">Activity</div>
+        <div class="body">
+          <svg class="r" viewBox="-125 -125 250 250">
+            <g fill="none" stroke-linecap="round" transform="rotate(-90)">
+              <circle r="104" stroke="rgba(155,123,255,.16)" stroke-width="22"/><circle r="76" stroke="rgba(255,142,224,.16)" stroke-width="22"/><circle r="48" stroke="rgba(111,208,255,.16)" stroke-width="22"/>
+              <circle class="hide" r="104" stroke="#9B7BFF" stroke-width="22" stroke-dasharray="458 653" filter="url(#glow)" opacity=".7"/>
+              <circle r="104" stroke="url(#gE)" stroke-width="22" stroke-dasharray="458 653"/>
+              <circle r="76" stroke="#FF9BE4" stroke-width="22" stroke-dasharray="382 478"/>
+              <circle r="48" stroke="url(#gS)" stroke-width="22" stroke-dasharray="247 302"/>
+            </g>
+            <text x="0" y="9" text-anchor="middle" font-size="25" font-weight="800" fill="#fff" letter-spacing="-1">70%</text>
+          </svg>
+          <div class="leg">
+            <div><i style="background:#A88BFF"></i><b>420<small> / 600 kcal</small></b><span class="tx">Move</span></div>
+            <div><i style="background:#FF9BE4"></i><b>28<small> / 35 min</small></b><span class="tx">Train</span></div>
+            <div><i style="background:#6FD0FF"></i><b>82<small> %</small></b><span class="tx">Recover</span></div>
+          </div>
+        </div>
+      </article>
+      <div class="stats">
+        <article class="card stat"><div class="k">Sleep</div><div class="big">7<small>h</small> 40<small>m</small></div><div class="note tx">Deep sleep 1 h 52 m</div>
+          <div class="viz bars"><i style="height:52%"></i><i style="height:64%"></i><i style="height:44%"></i><i style="height:70%"></i><i style="height:58%"></i><i style="height:76%"></i><i class="on" style="height:100%"></i></div></article>
+        <article class="card stat"><div class="k">Recovery</div><div class="big">82<small>%</small></div><div class="note"><span class="up">▲ 6</span> <span class="tx" style="display:inline-block;--w:110px;min-width:110px">Ready to push</span></div>
+          <svg class="viz" viewBox="0 0 220 74" style="width:100%;height:104px;overflow:visible"><path d="M12 70A98 98 0 0 1 208 70" fill="none" stroke="rgba(255,255,255,.10)" stroke-width="14" stroke-linecap="round"/><path d="M12 70A98 98 0 0 1 180 20" fill="none" stroke="url(#gM)" stroke-width="14" stroke-linecap="round"/><circle class="hide" cx="180" cy="20" r="9" fill="#fff"/></svg></article>
+        <article class="card stat"><div class="k">Streak</div><div class="big">12<small> days</small></div><div class="note tx">Longest yet</div>
+          <div class="viz dots"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="now"></i><i></i></div></article>
+        <article class="card stat week"><div style="display:flex;align-items:baseline;gap:12px"><div class="k">This week</div><span class="up" style="margin-left:auto">▲ 18% effort</span></div>
+          <svg class="viz" viewBox="0 0 420 118" preserveAspectRatio="none">
+            <path class="hide" d="M0 92C40 88 56 60 96 62s52 34 96 22 56-58 100-60 60 30 128 8V118H0z" fill="url(#gA)"/>
+            <path d="M0 92C40 88 56 60 96 62s52 34 96 22 56-58 100-60 60 30 128 8" fill="none" stroke="url(#gL)" stroke-width="3.5" stroke-linecap="round"/>
+            <path d="M0 104C50 100 70 86 110 88s60 14 100 6 70-30 110-30 60 14 100 6" fill="none" stroke="rgba(255,255,255,.22)" stroke-width="2" stroke-dasharray="2 7" stroke-linecap="round"/>
+            <g class="hide"><line x1="292" y1="24" x2="292" y2="118" stroke="rgba(255,255,255,.18)"/><circle cx="292" cy="24" r="11" fill="rgba(155,123,255,.3)"/><circle cx="292" cy="24" r="5.5" fill="#fff"/></g>
+          </svg></article>
+      </div>
+    </div>
+  </div>
+  <div class="pen" style="left:716px;top:236px;--r:-5deg">hero photo</div>
+  <div class="pen" style="left:1150px;top:612px;--r:3deg">too many numbers?</div>
+  <div class="pen" style="left:470px;top:462px;--r:-3deg">make Start bigger!<svg width="70" height="40" style="left:-66px;top:-14px"><path d="M62 30C40 34 20 26 8 8M8 8l-3 14M8 8l13 4"/></svg></div>
+</section>
+
+<!-- ============================== WORKOUT ============================== -->
+<section class="screen" id="workout">
+  <nav class="rail">
+    <div class="mark"><svg viewBox="0 0 20 20"><path d="M10 2.5 18 17H2z" fill="#fff"/></svg></div>
+    <div class="nav"><svg><use href="#i-home"/></svg></div><div class="nav on"><svg><use href="#i-bolt"/></svg></div><div class="nav"><svg><use href="#i-cal"/></svg></div><div class="nav"><svg><use href="#i-chart"/></svg></div>
+    <div class="sp"></div><div class="nav"><svg><use href="#i-gear"/></svg></div><div class="ava"><i></i></div>
+  </nav>
+  <div class="page">
+    <header class="top">
+      <div><h1>Morning strength</h1><div class="sub tx" style="--w:230px">Move 3 of 6 · 14 minutes in</div></div>
+      <div class="sp"></div>
+      <div class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg><span class="tx" style="--w:120px;flex:1">Search moves</span><kbd>⌘K</kbd></div>
+      <span class="ghost" style="height:44px;font-size:14.5px;padding:0 20px">End session</span>
+    </header>
+    <div class="grid">
+      <article class="card timer">
+        <div class="k" style="align-self:flex-start">Rest</div>
+        <svg class="r" viewBox="-150 -150 300 300">
+          <g fill="none" stroke-linecap="round" transform="rotate(-90)">
+            <circle r="126" stroke="rgba(255,255,255,.08)" stroke-width="16"/>
+            <circle class="hide" r="126" stroke="#9B7BFF" stroke-width="16" stroke-dasharray="540 792" filter="url(#glow)" opacity=".75"/>
+            <circle r="126" stroke="url(#gE)" stroke-width="16" stroke-dasharray="540 792"/>
+          </g>
+          <g class="hide" stroke="rgba(255,255,255,.22)" stroke-width="2" stroke-linecap="round"><path d="M0-106v8M106 0h-8M0 106v-8M-106 0h8"/></g>
+          <text x="0" y="14" text-anchor="middle" font-size="76" font-weight="800" fill="#fff" letter-spacing="-4">0:42</text>
+          <text class="hide" x="0" y="46" text-anchor="middle" font-size="13" font-weight="600" fill="#A09CB0" letter-spacing="2">UNTIL SET 3</text>
+        </svg>
+        <div class="btns"><span class="ghost">+15 s</span><span class="cta" style="padding-left:28px">Skip rest</span></div>
+      </article>
+      <article class="card move">
+        <div class="pic">
+          <div class="photo" style="background:radial-gradient(460px 340px at 74% 40%, rgba(160,140,255,.95), rgba(140,110,255,.5) 40%, transparent 72%), radial-gradient(380px 280px at 100% 100%, rgba(120,60,255,.35), transparent 70%), linear-gradient(120deg, #10101A, #1A1630 50%, #34206A)"><svg class="subj" style="right:34px;bottom:-34px;width:340px;height:340px"><use href="#kettle"/></svg><div class="floor"></div></div>
+          <span class="chip tag"><svg><use href="#i-kb"/></svg>Kettlebell</span>
+          <div class="set">Set 2 of 4</div><h2>Goblet squat</h2>
+        </div>
+        <div class="nums"><div><div class="k">Reps</div><b>12</b></div><div><div class="k">Weight</div><b>16<small>kg</small></b></div><div><div class="k">Rest</div><b>45<small>s</small></b></div></div>
+      </article>
+      <article class="card list">
+        <div class="k" style="padding:2px 10px 10px">Session</div>
+        <div class="it done"><div class="n"><svg viewBox="0 0 16 16"><path d="M3 8.5 6.5 12 13 4.5"/></svg></div><div><b>Warm up</b><span class="tx">4 min · done</span></div></div>
+        <div class="it done"><div class="n"><svg viewBox="0 0 16 16"><path d="M3 8.5 6.5 12 13 4.5"/></svg></div><div><b>Push-up</b><span class="tx">3 × 10 · done</span></div></div>
+        <div class="it now"><div class="n">3</div><div><b>Goblet squat</b><span class="tx">4 × 12 · 16 kg</span></div></div>
+        <div class="it"><div class="n">4</div><div><b>Split lunge</b><span class="tx">3 × 8 each side</span></div></div>
+        <div class="it"><div class="n">5</div><div><b>Plank</b><span class="tx">3 × 40 s</span></div></div>
+        <div class="it"><div class="n">6</div><div><b>Cool down</b><span class="tx">5 min</span></div></div>
+      </article>
+      <article class="card heart">
+        <div class="l"><div class="k">Heart rate</div><div class="big">142<small> bpm</small></div><div class="note tx">Zone 4 · working hard</div><div class="zones"><i></i><i></i><i></i><i></i></div></div>
+        <i class="hr"></i><svg class="c" viewBox="0 0 1000 190" preserveAspectRatio="none">
+          <g class="hide" stroke="rgba(255,255,255,.07)"><path d="M0 44h1000M0 96h1000M0 148h1000"/></g>
+          <g transform="translate(0 30) scale(1 .84)"><path class="hide" d="M0 150C40 148 60 120 100 118s50 20 90 6 46-50 96-56 60 44 110 40 54-70 104-78 60 52 104 46 60-60 110-70 70 30 110 18 60-50 106-56 40 20 70 14V190H0z" fill="url(#gA)"/>
+          <path d="M0 150C40 148 60 120 100 118s50 20 90 6 46-50 96-56 60 44 110 40 54-70 104-78 60 52 104 46 60-60 110-70 70 30 110 18 60-50 106-56 40 20 70 14" fill="none" stroke="url(#gL)" stroke-width="4" stroke-linecap="round" vector-effect="non-scaling-stroke"/></g>
+        </svg>
+      </article>
+    </div>
+  </div>
+  <div class="pen" style="left:900px;top:330px;--r:-4deg">photo / loop of the move</div>
+  <div class="pen" style="left:262px;top:128px;--r:3deg">make the timer HUGE</div>
+  <div class="pen" style="left:640px;top:690px;--r:-2deg">live chart? ask eng</div>
+</section>
+
+<!-- ============================== PLAN ============================== -->
+<section class="screen" id="plan">
+  <nav class="rail">
+    <div class="mark"><svg viewBox="0 0 20 20"><path d="M10 2.5 18 17H2z" fill="#fff"/></svg></div>
+    <div class="nav"><svg><use href="#i-home"/></svg></div><div class="nav"><svg><use href="#i-bolt"/></svg></div><div class="nav on"><svg><use href="#i-cal"/></svg></div><div class="nav"><svg><use href="#i-chart"/></svg></div>
+    <div class="sp"></div><div class="nav"><svg><use href="#i-gear"/></svg></div><div class="ava"><i></i></div>
+  </nav>
+  <div class="page">
+    <header class="top">
+      <div><h1>Your plan</h1><div class="sub tx" style="--w:250px">Week 6 of 12 · Built around your Thursdays</div></div>
+      <div class="sp"></div>
+      <div class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg><span class="tx" style="--w:120px;flex:1">Search sessions</span><kbd>⌘K</kbd></div>
+      <span class="cta" style="height:44px;font-size:14.5px;padding:0 22px">Rebuild week</span>
+    </header>
+    <div class="grid">
+      <article class="card cal">
+        <div class="hd"><b>This week</b><span class="note tx" style="--w:150px;min-width:150px">5 sessions · 3 h 10 m</span><div class="seg"><span>Day</span><span class="on">Week</span><span>Month</span></div></div>
+        <div class="days">
+          <div class="day"><div class="d">Mon<b>9</b></div><div class="ses s ok">Strength<span>35 min · done</span></div><div class="ses m ok">Mobility<span>10 min</span></div></div>
+          <div class="day now"><div class="d">Tue<b>10</b></div><div class="ses s">Morning strength<span>35 min · 6 moves</span></div></div>
+          <div class="day"><div class="d">Wed<b>11</b></div><div class="ses r">Easy run<span>5 km · zone 2</span></div><div class="ses m">Mobility<span>10 min</span></div></div>
+          <div class="day"><div class="d">Thu<b>12</b></div><div class="ses x">Rest day</div></div>
+          <div class="day"><div class="d">Fri<b>13</b></div><div class="ses h">Intervals<span>24 min · hard</span></div></div>
+          <div class="day"><div class="d">Sat<b>14</b></div><div class="ses s">Full body<span>45 min · 8 moves</span></div><div class="ses m">Stretch<span>8 min</span></div></div>
+          <div class="day"><div class="d">Sun<b>15</b></div><div class="ses r">Long run<span>10 km</span></div></div>
+        </div>
+      </article>
+      <article class="card side">
+        <div class="k">Focus</div>
+        <svg class="d" viewBox="-98 -98 196 196">
+          <g fill="none" stroke-width="24" transform="rotate(-90)">
+            <circle r="80" stroke="rgba(255,255,255,.07)"/>
+            <circle r="80" stroke="url(#gE)" stroke-dasharray="226 503"/>
+            <circle r="80" stroke="url(#gS)" stroke-dasharray="126 503" stroke-dashoffset="-232"/>
+            <circle r="80" stroke="url(#gM)" stroke-dasharray="76 503" stroke-dashoffset="-364"/>
+            <circle r="80" stroke="#FF5C8A" stroke-dasharray="50 503" stroke-dashoffset="-446"/>
+          </g>
+          <text x="0" y="6" text-anchor="middle" font-size="38" font-weight="800" fill="#fff" letter-spacing="-2">3:10</text>
+          <text class="hide" x="0" y="28" text-anchor="middle" font-size="11" font-weight="600" fill="#A09CB0" letter-spacing="1.6">THIS WEEK</text>
+        </svg>
+        <div class="mix"><div><i style="background:#A88BFF"></i>Strength<b>45%</b></div><div><i style="background:#3EA8FF"></i>Run<b>25%</b></div><div><i style="background:#2CC79A"></i>Mobility<b>15%</b></div><div><i style="background:#FF5C8A"></i>Intervals<b>10%</b></div></div>
+      </article>
+      <article class="card goal">
+        <div style="display:flex;align-items:baseline;gap:14px"><div class="k hot">Goal</div><b style="font-size:21px;letter-spacing:-.02em">First 10 km without stopping</b><span class="up" style="margin-left:auto">On track · 4 weeks ahead</span></div>
+        <div class="note tx" style="--w:420px">You can run 6.6 km today. Sunday’s long run takes you to 7.</div>
+        <div class="prog"><i></i><b></b></div>
+        <div class="marks"><span>Week 1</span><span>Week 4</span><span>Week 8</span><span>Week 12</span></div>
+      </article>
+      <article class="card load"><div class="k">Training load</div><div class="big" style="font-size:38px">Steady<small style="font-size:15px"> · safe to build</small></div>
+        <div class="bars"><i style="height:38%"></i><i style="height:52%"></i><i style="height:46%"></i><i style="height:64%"></i><i style="height:72%"></i><i class="on" style="height:92%"></i><i style="height:30%;opacity:.5"></i><i style="height:30%;opacity:.5"></i></div></article>
+    </div>
+  </div>
+  <div class="pen" style="left:520px;top:520px;--r:-3deg">colour = type of session</div>
+  <div class="pen" style="left:1352px;top:122px;--r:3deg">donut or bars??</div>
+  <div class="pen" style="left:820px;top:694px;--r:-2deg">show the goal, always</div>
+</section>
+
+<div class="grain"></div>
+<script>
+  var q = new URLSearchParams(location.search);
+  document.body.setAttribute('data-screen', q.get('screen') || 'today');
+  if(q.get('mode') === 'before') document.body.classList.add('sketch');
+</script>

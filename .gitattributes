@@ -1,0 +1,2 @@
+# the film's own workshop stays out of the downloadable copy (git archive)
+tools/film export-ignore

@@ -1,0 +1,61 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Clock proof</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+  iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+  #cur { position: absolute; left: 0; top: 0; width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 50%; background: rgba(255,255,255,.85); box-shadow: 0 0 0 2px rgba(0,0,0,.4); pointer-events: none; z-index: 9; }
+</style>
+<iframe id="app"></iframe><div id="cur"></div>
+<script src="../../core/store.js"></script>
+<script src="../../data/sample.js"></script>
+<script>
+// A short run over the hardest motion in the app, to prove the film clock: the rolling carousel
+// (endless CSS animation with paused states), the before/after sweep (a frame loop), take apart
+// (chained timers and transitions).
+(function(){
+  var app = document.getElementById('app'), cur = document.getElementById('cur');
+  try { localStorage.setItem('sleek-tour', 'done'); localStorage.setItem('sleek-tips', 'off'); } catch(e){}
+  var S = window.SleekStore;
+  S.open().then(function(){ return S.ensureSample(); }).then(function(){ return S.list(); }).then(function(l){
+    app.src = '../../deck.html?d=' + encodeURIComponent(l[0].id) + '#before-and-after';
+    app.addEventListener('load', function(){ setTimeout(function(){ FILM.ready = true; }, 1500); });
+  });
+  var doc = function(){ return app.contentDocument; }, win = function(){ return app.contentWindow; };
+  function at(sel){ var el = doc().querySelector(sel), r = el.getBoundingClientRect(), o = app.getBoundingClientRect(); return [Math.round(o.left + r.left + r.width / 2), Math.round(o.top + r.top + r.height / 2)]; }
+  var ease = function(u){ return u < 0 ? 0 : u > 1 ? 1 : u * u * (3 - 2 * u); };
+  var TILE = '.slide.active .car-set:not(.car-copy) > .media:not(.car-gone)', APART = '.slide.active .media[data-dis]';
+  var cues = [
+    { t: 3.6, input: { type: 'down' } }, { t: 3.65, input: { type: 'up' } },
+    { t: 6.0, input: { type: 'key', key: ' ', code: 'Space', vk: 32, text: ' ' } },
+    { t: 10.2, input: { type: 'key', key: 'Escape', code: 'Escape', vk: 27 } },
+    { t: 11.0, run: function(){ win().location.hash = '#take-apart'; } },
+    { t: 12.6, input: { type: 'down' } }, { t: 12.65, input: { type: 'up' } }
+  ];
+  var moves = [ { t0: 2.6, t1: 3.5, to: TILE }, { t0: 11.6, t1: 12.5, to: APART } ];
+  var p = [960, 900], done = -1;
+  window.FILM = {
+    ready: false, fps: 60, duration: 16,
+    tick: function(t){
+      var inputs = [];
+      cues.forEach(function(c, i){ if(i > done && c.t <= t){ done = i; if(c.run) c.run(); if(c.input) inputs.push(c.input); } });
+      moves.forEach(function(m){
+        if(t >= m.t0 && t <= m.t1 + 0.02){ if(!m.from) m.from = p.slice(); var g = at(m.to), u = ease((t - m.t0) / (m.t1 - m.t0)); p = [Math.round(m.from[0] + (g[0] - m.from[0]) * u), Math.round(m.from[1] + (g[1] - m.from[1]) * u)]; }
+      });
+      cur.style.transform = 'translate(' + p[0] + 'px,' + p[1] + 'px)';
+      return { ptr: p, inputs: inputs };
+    },
+    // what the app's own motion is doing right now, for the proof's log
+    probe: function(){
+      var d = doc(), tr = d.querySelector('.slide.active .car-track'), cmp = d.querySelector('.iv-cmp'), dis = d.querySelector('.dis-inline');
+      return {
+        car: tr ? Math.round(new DOMMatrix(getComputedStyle(tr).transform).m41) : null,
+        p: cmp && !cmp.hidden ? getComputedStyle(cmp).getPropertyValue('--p').trim() : null,
+        apart: dis ? dis.classList.contains('apart') : null,
+        anims: d.getAnimations().length
+      };
+    },
+    cues: function(){ return cues.map(function(c){ return { t: c.t }; }); }
+  };
+})();
+</script>
