@@ -66,10 +66,28 @@
           '<div><button type="button" class="btn btn-ghost" data-sample>Add the sample deck</button></div></div>';
       }
       l.forEach(function(d, i){ grid.appendChild(card(d, i)); });
+      paintViews();
       var hasSample = window.SLEEK_SAMPLE && l.some(function(d){ return d.title === window.SLEEK_SAMPLE.title; });
       sampleBtn.disabled = !!hasSample; sampleBtn.textContent = hasSample ? 'In your decks' : 'Add the sample deck';   // (in Settings)
     });
   }
+
+  // Viewers (core/online.js): a deck published with "See who's viewing" says how many are viewing it now,
+  // or how many views it has had. One request for all of them, when the list is drawn and when you come back to it.
+  var viewsAt = 0;
+  function paintViews(){
+    var O = window.SleekOnline, mine = decks.filter(function(d){ return d.viewers; });
+    if(!O || !O.on || !mine.length) return;
+    viewsAt = Date.now();
+    O.counts(mine.map(function(d){ return d.viewers; })).then(function(counts){
+      mine.forEach(function(d){
+        var c = counts[d.viewers.room], sub = grid.querySelector('.lib-card[data-id="' + d.id + '"] .lib-sub'); if(!c || !sub) return;
+        var old = sub.querySelector('.lib-vw'); if(old) old.remove();
+        sub.insertAdjacentHTML('beforeend', '<span class="lib-vw' + (c.live ? ' live' : '') + '"> · ' + (c.live ? '<i aria-hidden="true"></i>' + c.live + ' viewing' : !c.views ? 'No views yet' : c.views + (c.views === 1 ? ' view' : ' views')) + '</span>');
+      });
+    });
+  }
+  document.addEventListener('visibilitychange', function(){ if(document.visibilityState === 'visible' && Date.now() - viewsAt > 30000) paintViews(); });
 
   // ---------- the card menu ----------
   var menu = null;
@@ -155,7 +173,12 @@
     cf.querySelector('.lib-c-no').focus();
     cf.addEventListener('click', function(e){
       if(e.target.closest('.lib-c-no')){ cf.classList.remove('in'); setTimeout(function(){ cf.remove(); }, 250); }
-      else if(e.target.closest('.lib-c-del')){ c.classList.add('gone'); S.remove(d.id).then(function(){ setTimeout(render, 280); toast('Deleted ' + d.title + '.'); }); }
+      else if(e.target.closest('.lib-c-del')){
+        c.classList.add('gone');
+        // a deleted deck's published copies stop being counted (core/online.js)
+        var gone = window.SleekOnline ? S.get(d.id).then(function(r){ return r && r.viewers && r.viewers.room ? SleekOnline.stop(null, r.viewers) : null; }).catch(function(){}) : Promise.resolve();
+        gone.then(function(){ return S.remove(d.id); }).then(function(){ setTimeout(render, 280); toast('Deleted ' + d.title + '.'); });
+      }
     });
     cf.addEventListener('keydown', function(e){ if(e.key === 'Escape'){ e.stopPropagation(); cf.remove(); } });
   }

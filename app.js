@@ -611,6 +611,7 @@
       gridTiles.appendChild(add);
     }
     document.getElementById('grid-count').textContent = slides.length;
+    if(window.Deck && Deck.onGrid) Deck.onGrid.forEach(function(fn){ try { fn(gridTiles); } catch(e){ console.error(e); } });
   }
   function openGrid(){
     if(gridOpen || POPOUT || MIRROR || featureOpen()) return;
@@ -4254,6 +4255,10 @@
     onReset: [],                                    // fn(slideEl): close what's open, animated (the notes' "Slide" link)
     isEditing: function(){ return editing || annotating; },    // features stay shut while editing or annotating
     current: function(){ return slides[i]; },
+    index: function(){ return i; },                 // where the deck is, and a way to go somewhere (features/viewers.js)
+    go: function(k){ if(gridOpen) closeGrid(k); else show(k); },
+    labels: function(){ return slides.map(function(s, k){ return s.getAttribute('data-label') || ('Slide ' + (k + 1)); }); },
+    onGrid: [],                                     // fn(tilesEl) each time All slides is drawn
     tileSrc: function(m){ return tileSrc(m); },     // the image a tile shows (device edit or seed)
     templates: function(){ return TEMPLATES.map(function(t){ return { key: t.key, name: t.name, desc: t.desc }; }); },
     templatePreview: function(key, extra){ return templatePreview(key, extra); },

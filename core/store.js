@@ -133,7 +133,8 @@
   }
   function list(){
     return tx('decks', 'readonly', function(st){ return st.getAll(); }).then(function(all){
-      return (all || []).map(function(d){ var s = summary(d.seed); return { id: d.id, title: d.title, created: d.created, updated: d.updated, slides: s.slides, theme: s.theme, cover: d.cover || null, thumb: d.thumb || null }; })
+      return (all || []).map(function(d){ var s = summary(d.seed); return { id: d.id, title: d.title, created: d.created, updated: d.updated, slides: s.slides, theme: s.theme, cover: d.cover || null, thumb: d.thumb || null,
+                                              viewers: d.viewers && d.viewers.on ? { room: d.viewers.room, key: d.viewers.key } : null }; })
         .sort(function(a, b){ return b.updated - a.updated; });
     });
   }
@@ -173,6 +174,12 @@
   function okThumb(u){ return typeof u === 'string' && /^data:image\/(jpeg|png|webp);base64,/.test(u) && u.length < 3e6; }
   function setThumb(id, url){
     return get(id).then(function(d){ if(!d) return null; if(okThumb(url)) d.thumb = url; else delete d.thumb; return put(d); });
+  }
+  // Viewers (core/online.js): the deck's two codes and whether it is on. It lives on the record, beside
+  // the deck and never in it, so it stays out of .sleek files, copies and published pages; it isn't an
+  // edit either, so the deck keeps its place in the list. null forgets it.
+  function setViewers(id, v){
+    return get(id).then(function(d){ if(!d) return null; if(v) d.viewers = v; else delete d.viewers; return put(d); });
   }
   function rename(id, title){ return get(id).then(function(d){ if(!d) return null; d.title = title; d.updated = now(); return put(d); }); }
   function duplicate(id){
@@ -282,7 +289,7 @@
 
   window.SleekStore = {
     open: open, ns: ns, uid: uid,
-    list: list, get: get, create: create, save: save, rename: rename, setThumb: setThumb, duplicate: duplicate, remove: remove,
+    list: list, get: get, create: create, save: save, rename: rename, setThumb: setThumb, setViewers: setViewers, duplicate: duplicate, remove: remove,
     hydrate: hydrate, dehydrate: dehydrate, inline: inline,
     undo: function(id, o){ return step(id, -1, o); }, redo: function(id, o){ return step(id, 1, o); }, canStep: canStep,
     exportDeck: exportDeck, importDeck: importDeck, parseFile: parseFile, hasNotes: hasNotes,

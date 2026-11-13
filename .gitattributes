@@ -1,2 +1,4 @@
 # the film's own workshop stays out of the downloadable copy (git archive)
 tools/film export-ignore
+# the viewers service is deployed by itself; it isn't part of the app you download
+service export-ignore

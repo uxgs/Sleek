@@ -24,9 +24,12 @@
     var S = window.SleekStore;
     return S.get(id).then(function(deck){
       if(!deck) throw new Error('No such deck.');
+      // Viewers (core/online.js): only a deck published with it switched on carries the few lines that
+      // report in, and the deck's public code. Any other published page makes no request at all.
+      var O = window.SleekOnline, vw = deck.viewers && deck.viewers.on && deck.viewers.room && O && O.url ? { url: O.url, room: deck.viewers.room } : null;
       return Promise.all([
         S.inline(deck.seed, true), text('deck.html'),
-        Promise.all(CSS.map(text)), Promise.all(JS.map(text)), Promise.all(HEAD_JS.map(text))
+        Promise.all(CSS.map(text)), Promise.all((vw ? JS.concat(['features/viewers-beacon.js']) : JS).map(text)), Promise.all(HEAD_JS.map(text))
       ]).then(function(r){
         var seed = r[0], html = r[1], css = r[2], js = r[3], headJs = r[4];
         var doc = new DOMParser().parseFromString(html, 'text/html');
@@ -45,7 +48,7 @@
         });
         var pubId = 'p' + deck.id;
         var boot = doc.createElement('script');
-        boot.textContent = safe('window.SEED = ' + JSON.stringify(seed) + ';\nwindow.SLEEK_DECK = ' + JSON.stringify({ id: pubId, title: deck.title, published: true }) +
+        boot.textContent = safe('window.SEED = ' + JSON.stringify(seed) + ';\nwindow.SLEEK_DECK = ' + JSON.stringify(vw ? { id: pubId, title: deck.title, published: true, viewers: vw } : { id: pubId, title: deck.title, published: true }) +
           ';\nwindow.SLEEK_NS = ' + JSON.stringify('pub:' + pubId + ':') + ';\ndocument.documentElement.classList.add("published");');
         doc.head.appendChild(boot);
         headJs.forEach(function(src){ var s = doc.createElement('script'); s.textContent = safe(src); doc.head.appendChild(s); });

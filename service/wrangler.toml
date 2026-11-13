@@ -1,0 +1,28 @@
+# The service behind Viewers (see README.md here). It holds no secrets.
+name = "sleek-viewers"
+main = "src/worker.js"
+compatibility_date = "2026-10-01"
+
+# one small object per published deck, with its own storage
+[[durable_objects.bindings]]
+name = "ROOMS"
+class_name = "Room"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Room"]
+
+# how often one address may register decks, and open viewer connections, a minute
+[[ratelimits]]
+name = "REGISTER"
+namespace_id = "1001"
+  [ratelimits.simple]
+  limit = 20
+  period = 60
+
+[[ratelimits]]
+name = "CONNECT"
+namespace_id = "1002"
+  [ratelimits.simple]
+  limit = 120
+  period = 60

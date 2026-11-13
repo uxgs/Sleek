@@ -1,7 +1,7 @@
 /* The deck's Share menu (the bar's share icon): rename the deck, duplicate it, download it as a
    .sleek file to keep or send, or publish it as one web page anyone can open, with nothing to install. */
 (function(){
-  var D = window.Deck, S = window.SleekStore, P = window.SleekPublish, info = window.SLEEK_DECK;
+  var D = window.Deck, S = window.SleekStore, P = window.SleekPublish, info = window.SLEEK_DECK, O = window.SleekOnline;
   if(!D || !S || !P || !info || info.published || D.popout) return;
   var full = document.getElementById('full');
   if(!full) return;
@@ -37,6 +37,9 @@
       '<span><b>Download .sleek file</b><i>Keep it, send it, open it in any browser</i></span></button>' +
     '<button type="button" class="df-item" data-act="pub" role="menuitem">' + ico('globe', 'df-ico') +
       '<span><b>Publish as a web page</b><i>One file that plays anywhere, nothing to install</i></span></button>' +
+    // Viewers (core/online.js): off unless you switch it on; a page published without it sends nothing
+    (O && O.on ? '<div class="df-opt"><span><b id="df-vw-l">See who\u2019s viewing</b><i>The page tells Sleek when it is open and which slide is showing. Viewers stay anonymous.</i></span>' +
+      '<button type="button" class="df-sw" id="df-vw" role="switch" aria-checked="false" aria-labelledby="df-vw-l"></button></div>' : '') +
     '<button type="button" class="df-item df-folder" data-act="folder" role="menuitem" hidden>' + ico('folder', 'df-ico') +
       '<span><b></b><i></i></span></button>' +
     '<div class="df-foot" id="df-foot" aria-live="polite"></div>';
@@ -59,10 +62,16 @@
     if(s < 86400) return Math.round(s / 3600) + ' h ago';
     return new Date(t).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
   }
+  var vwSw = pop.querySelector('#df-vw');
+  if(vwSw) vwSw.addEventListener('click', function(e){ e.stopPropagation(); vwSw.setAttribute('aria-checked', vwSw.getAttribute('aria-checked') === 'true' ? 'false' : 'true'); });
   function open(){
     pop.hidden = false; btn.setAttribute('aria-expanded', 'true'); foot.textContent = '';
     name.value = info.title || '';
-    S.get(info.id).then(function(d){ if(d) sub.textContent = 'Saved in this browser · edited ' + ago(d.updated); });
+    S.get(info.id).then(function(d){
+      if(!d) return;
+      sub.textContent = 'Saved in this browser · edited ' + ago(d.updated);
+      if(vwSw) vwSw.setAttribute('aria-checked', d.viewers && d.viewers.on ? 'true' : 'false');
+    });
     requestAnimationFrame(function(){ pop.classList.add('in'); });
     setTimeout(function(){ pop.classList.add('in'); }, 30);
   }
@@ -107,11 +116,18 @@
       if(st.ok){ var done4 = busy(item, 'Saving…'); flushed.then(function(){ return F.write(info.id); }).then(function(){ done4('Saved to ' + st.name + '.'); }); return; }
       (st.linked ? F.reconnect() : F.link()).then(function(s2){ if(s2.ok) foot.textContent = 'Saving to ' + s2.name + '.'; }, function(e){ if(e && e.name !== 'AbortError') foot.textContent = 'Couldn’t link that folder.'; });
     } else if(act === 'pub'){
-      var done3 = busy(item, 'Building the page…');
-      flushed.then(function(){ return P.publish(info.id); }).then(function(r){
+      var done3 = busy(item, 'Building the page…'), want = !!vwSw && vwSw.getAttribute('aria-checked') === 'true', reached = true;
+      flushed.then(function(){
+        if(!vwSw) return null;
+        // the switch is the deck's setting: on registers it with the viewer service before the page is built
+        return O.set(info.id, want, D.labels ? D.labels() : null).catch(function(err){ reached = false; throw err; });
+      }).then(function(){ return P.publish(info.id); }).then(function(r){
         var mb = r.html.length / 1048576;
-        done3('Downloaded ' + r.name + (mb >= 0.1 ? ' (' + mb.toFixed(1) + ' MB)' : '') + '. Send it, or put it on any web host.');
-      }, function(err){ console.error(err); done3('Couldn’t build the page.'); });
+        done3('Downloaded ' + r.name + (mb >= 0.1 ? ' (' + mb.toFixed(1) + ' MB)' : '') + '. Send it, or put it on any web host.' + (want ? ' Viewers show in the bar.' : ''));
+      }, function(err){
+        console.error(err);
+        done3(reached ? 'Couldn’t build the page.' : 'Couldn’t reach the viewer service, so nothing was published. Try again when you’re online, or switch viewers off.');
+      });
     }
   });
 })();
