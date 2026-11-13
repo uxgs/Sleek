@@ -20,7 +20,7 @@
     cover: '<rect x="3" y="4" width="18" height="9" rx="2"/><path d="M5 17h14M5 20h9"/>', call: '<rect x="3" y="5" width="18" height="14" rx="3"/><path d="M7 10h10M7 14h6"/>',
     cols: '<rect x="3" y="5" width="8" height="14" rx="2"/><rect x="13" y="5" width="8" height="14" rx="2"/>', web: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/>',
     eye: '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
-    chart: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>', nums: '<path d="M4 17V7l-2 2M9 17h5l-4-5a2.5 2.5 0 1 1 4-2M18 7h3l-2 4a3 3 0 1 1-2 5"/>',
+    deck: '<rect x="3" y="5" width="18" height="12" rx="2"/><path d="M12 17v4M8 21h8"/>', chart: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>', nums: '<path d="M4 17V7l-2 2M9 17h5l-4-5a2.5 2.5 0 1 1 4-2M18 7h3l-2 4a3 3 0 1 1-2 5"/>',
     cmp: '<rect x="3" y="5" width="18" height="14" rx="3"/><path d="M12 3v18M8 10l-2 2 2 2M16 10l2 2-2 2"/>', word: '<path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4M9.5 12l1.2 5 1.3-4 1.3 4 1.2-5"/>'
   };
   function ico(n, cls){ return '<svg class="ico' + (cls ? ' ' + cls : '') + '" viewBox="0 0 24 24" aria-hidden="true">' + (ICON[n] || '') + '</svg>'; }
@@ -239,6 +239,7 @@
         closePop(); var m = A.meta();
         A.flush().then(function(){ return D.exportDoc(m.id); }).then(function(text){ if(text) saveFile(fileName(m.title) + '.sleek', new Blob([text], { type: 'application/json' })); });
       });
+      item(p, 'deck', 'Make a deck', 'Turn this page into slides, in Sleek Slides', function(){ closePop(); if(K.makeDeck) K.makeDeck(); });
       item(p, 'copy', 'Duplicate', 'A second copy of this page, beside it', function(){
         closePop(); var m = A.meta();
         A.flush().then(function(){ return D.duplicate(m.id); }).then(function(d){ if(d) return A.open(d.id).then(function(){ A.toast('This is the copy'); }); });

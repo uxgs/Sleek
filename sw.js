@@ -3,7 +3,7 @@
    the network behind it, so a new version shows on the next visit. Change VERSION (and the list)
    when files are added or removed. */
 // 'sleek-' + Slides' version (data/changelog.js) + '-d' + Docs' version (data/doc-changelog.js): a new version of either app renews the cache
-var VERSION = 'sleek-1.0.48-d1.0.3';
+var VERSION = 'sleek-1.0.48-d1.0.4';
 var FILES = [
   './', 'index.html', 'slides.html', 'deck.html', 'manifest.webmanifest', 'docs.html', 'doc.html', 'docs.webmanifest', 'core/short.js',
   'styles.css', 'glow.css', 'app.js', 'glow-fx.js', 'theme-boot.js',
@@ -15,7 +15,7 @@ var FILES = [
   // Sleek Docs: the editor engine and the readers and writer of Markdown and Word files (vendor/), the store, and the app
   'vendor/prosemirror.js', 'vendor/prosemirror.css', 'vendor/markdown-it.js', 'vendor/mammoth.js', 'vendor/docx.js', 'core/doc-store.js', 'core/doc-boot.js', 'data/doc-changelog.js',
   'doc/schema.js', 'doc/editor.js', 'doc/toolbar.js', 'doc/sidebar.js', 'doc/paste.js', 'doc/blocks-figure.js', 'doc/export.js', 'doc/import.js', 'doc/library.js', 'doc/publish.js', 'doc/reader.js', 'doc/viewers.js',
-  'doc/data.js', 'doc/blocks-data.js', 'doc/compare.js', 'doc/blocks-compare.js', 'doc/tables.js', 'doc/word.js',
+  'doc/data.js', 'doc/blocks-data.js', 'doc/compare.js', 'doc/blocks-compare.js', 'doc/tables.js', 'doc/word.js', 'doc/to-deck.js',
   'doc/doc.css', 'doc/doc-ui.css', 'doc/library.css', 'doc/reader.css',
   'icons/icon.svg', 'icons/favicon.svg', 'icons/logo.svg', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/maskable-512.png', 'icons/apple-touch-icon.png', 'icons/favicon-32.png',
   'assets/sample/backdrop.svg', 'assets/sample/card-rings.svg', 'assets/sample/card.svg', 'assets/sample/plan-sketch.svg', 'assets/sample/plan.svg',

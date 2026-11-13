@@ -151,6 +151,20 @@ button { font: inherit; color: inherit; }
 .de-check input { accent-color: var(--d-accent); }
 .de-note { font-size: 12.5px; color: var(--d-faint); }
 .de .fb.w { margin-left: 0; } .de .fb.w:disabled { opacity: .4; cursor: default; }
+/* Make a deck: the list of slides the page will become */
+.td { position: absolute; inset: 0; z-index: 45; display: grid; place-items: center; padding: 16px; background: color-mix(in srgb, var(--d-bg) 55%, transparent); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); animation: pop .2s ease; }
+.td-panel { width: min(520px, 100%); max-height: 100%; display: flex; flex-direction: column; gap: 10px; padding: 20px; border-radius: 18px; background: var(--d-raise); border: 1px solid var(--d-line2); box-shadow: var(--d-shadow); }
+.td-panel h2 { margin: 0; font-size: 19px; letter-spacing: -0.02em; font-weight: 650; }
+.td-panel p { margin: 0; color: var(--d-muted); font-size: 13.5px; }
+.td-list { list-style: none; margin: 4px -6px; padding: 0 6px; overflow-y: auto; min-height: 0; display: flex; flex-direction: column; gap: 2px; }
+.td-list li { display: flex; align-items: baseline; gap: 10px; padding: 7px 8px; border-radius: 9px; background: var(--d-hover); }
+.td-n { flex: none; width: 22px; text-align: right; font-size: 12.5px; color: var(--d-faint); font-variant-numeric: tabular-nums; }
+.td-k { flex: none; width: 118px; font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--d-accent); }
+.td-t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.td-t em { font-style: normal; color: var(--d-faint); font-size: 12.5px; margin-left: 8px; }
+.td-foot { display: flex; justify-content: flex-end; gap: 8px; padding-top: 4px; }
+.td-foot .btn { height: 34px; } .td-foot .fb.w { height: 34px; margin: 0; }
+@media (max-width: 560px) { .td-k { width: 76px; font-size: 10.5px; } }
 /* the controls above the table the cursor is in */
 .tb-bar { position: absolute; z-index: 6; display: flex; gap: 2px; padding: 3px; border-radius: 10px; background: var(--d-raise); border: 1px solid var(--d-line2); box-shadow: 0 8px 24px -10px rgba(0,0,0,0.4); max-width: calc(100% - 8px); overflow-x: auto; scrollbar-width: none; }
 .tb-bar::-webkit-scrollbar { display: none; }
@@ -185,4 +199,4 @@ button { font: inherit; color: inherit; }
   .vw-rail { right: 3px; }
 }
 @media (prefers-reduced-motion: reduce) { .pop, .toast, .vw-pulse { animation: none; } .vw-rail b, .vw-rail i { transition: none; } }
-@media print { .side, .top, .fmt, .pop, .toast, .dk-fig-tools, .locked, .vw-rail, .de, .tb-bar, .cmp-slot { display: none !important; } .app, .main, .scroll { display: block; height: auto; overflow: visible; } .pagebox { padding: 0; min-height: 0; } .dk-empty::before, .dk-fig.nocap figcaption, .dk-cover .dk-empty { display: none; } }
+@media print { .side, .top, .fmt, .pop, .toast, .dk-fig-tools, .locked, .vw-rail, .de, .tb-bar, .cmp-slot, .td { display: none !important; } .app, .main, .scroll { display: block; height: auto; overflow: visible; } .pagebox { padding: 0; min-height: 0; } .dk-empty::before, .dk-fig.nocap figcaption, .dk-cover .dk-empty { display: none; } }

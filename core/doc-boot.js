@@ -8,7 +8,7 @@
   var de = document.documentElement;
   de.classList.add('booting');
   var SCRIPTS = ['vendor/prosemirror.js', '@body', 'doc/schema.js', 'doc/paste.js', 'features/data-layout.js', 'doc/data.js', 'doc/compare.js', 'doc/editor.js', 'doc/blocks-figure.js', 'doc/blocks-data.js', 'doc/blocks-compare.js',
-                 'doc/toolbar.js', 'doc/sidebar.js', 'doc/tables.js', 'doc/export.js', 'doc/word.js', 'doc/publish.js', 'doc/viewers.js'];
+                 'doc/toolbar.js', 'doc/sidebar.js', 'doc/tables.js', 'doc/export.js', 'doc/word.js', 'doc/publish.js', 'doc/to-deck.js', 'doc/viewers.js'];
   var params = new URLSearchParams(location.search), id = params.get('d');
 
   function load(list, done){

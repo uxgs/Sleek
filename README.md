@@ -108,6 +108,11 @@ paper pages, and it saves as you write.
   Also: Save as PDF (through your browser's print), Save as Word (a .docx: charts become pictures,
   columns and big numbers become tables), Save as Markdown (a .zip when the page has pictures), and
   Download a copy: a .sleek file that opens in Sleek Docs in any browser.
+- **Make a deck.** Share turns the page into a Sleek Slides deck: the cover or title becomes the title
+  slide, big headings become section dividers, a heading and its list become Bullets slides (four
+  points a slide), and pictures, before and afters, big numbers and charts become their own slides.
+  Long paragraphs, tables and captions go into the speaker notes. You see the list of slides before
+  anything is made, and the page is not changed.
 - **Open a file.** The Docs start screen opens .sleek pages and Word (.docx), Markdown or text files.
 
 Pages live in the browser you wrote them in, in their own storage beside your decks. A linked folder
@@ -226,8 +231,8 @@ doc/                  the editor: schema.js (what a page can hold), editor.js, t
                       (the start screen), publish.js (the one-file web page), reader.js and reader.css
                       (what that page's reader gets), viewers.js (who is reading), data.js and
                       blocks-data.js (charts and big numbers), compare.js and blocks-compare.js
-                      (before and after), tables.js, word.js (saving Word files), doc.css (how a
-                      page looks) and doc-ui.css (the app around it)
+                      (before and after), tables.js, word.js (saving Word files), to-deck.js (a deck
+                      from a page), doc.css (how a page looks) and doc-ui.css (the app around it)
 vendor/               outside code, under free licences (vendor/LICENSES.md): ProseMirror, the text
                       editing engine under Sleek Docs; markdown-it, which reads Markdown files;
                       mammoth, which reads Word files; and docx, which writes them
