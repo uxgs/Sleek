@@ -1,7 +1,7 @@
 /* Sleek Tasks, the app: what is showing, the column of Today and projects, the bar above the view,
    and the pieces every view uses (how a task is drawn, the small menus, the messages).
 
-   The address says what is showing: #today, or #/<project id>/board or /list; the view you last
+   The address says what is showing: #today, or #/<project id>/board, /grid, /list or /cal; the view you last
    used in a project is remembered in this browser. Everything is drawn from core/task-store.js,
    which is in memory, and drawn again whenever it says something changed: here, or in another tab.
    When it is, each task glides from where it was to where it now is.
@@ -30,7 +30,7 @@
     if(n === 0) return 'Today'; if(n === 1) return 'Tomorrow'; if(n === -1) return 'Yesterday';
     return from(t.due).toLocaleDateString(undefined, n > -7 && n < 7 ? { weekday: 'short', day: 'numeric' } : { day: 'numeric', month: 'short' });
   }
-  A.dayKey = dayKey; A.away = away; A.late = late;
+  A.dayKey = dayKey; A.away = away; A.late = late; A.key = key; A.from = from;
 
   // ---------- how a task is drawn ----------
   var TAGC = ['#7C5CFF', '#0A84FF', '#F0A52D', '#E0457B', '#12A36A', '#5B6470', '#C2A21E', '#F0642D'];
@@ -43,7 +43,7 @@
   function row(t, withProject){
     var p = T.project(t.project), done = T.isDone(t);
     return '<div class="li" data-task="' + t.id + '" data-flip="l-' + t.id + '" tabindex="0">' + ck(t) + '<span class="tt' + (done ? ' done-t' : '') + '">' + esc(t.title) + '</span>' +
-      (withProject && p ? '<span class="pill" style="--c:' + p.color + '">' + esc(p.name) + '</span>' : '<span class="tagrow">' + tags(t) + '</span>') + subsH(t) + dueH(t) + av(t.who) + '</div>';
+      (withProject && p ? '<span class="pill" style="--c:' + p.color + '">' + esc(p.name) + '</span>' : '<span class="tagrow">' + tags(t) + '</span>') + subsH(t) + (A.repH ? A.repH(t) : '') + dueH(t) + av(t.who) + '</div>';
   }
   A.ck = ck; A.av = av; A.tags = tags; A.dueH = dueH; A.subsH = subsH; A.row = row; A.tagColor = tagColor;
 
@@ -69,7 +69,8 @@
   A.toast = toast; A.menu = menu; A.item = item; A.danger = danger; A.closePop = closePop; A.popOpen = function(){ return !!pop; };
 
   // ---------- what is showing ----------
-  function lastView(pid){ try { return localStorage.getItem('sleek-tasks-view:' + pid) === 'list' ? 'list' : 'board'; } catch(e){ return 'board'; } }
+  var VIEWS = [['board', 'Board'], ['grid', 'Grid'], ['list', 'List'], ['cal', 'Calendar']];
+  function lastView(pid){ try { var v = localStorage.getItem('sleek-tasks-view:' + pid); return VIEWS.some(function(x){ return x[0] === v; }) ? v : 'board'; } catch(e){ return 'board'; } }
   function go(view, pid){
     if(view !== 'today'){ try { localStorage.setItem('sleek-tasks-view:' + pid, view); } catch(e){} }
     var h = view === 'today' ? '#today' : '#/' + pid + '/' + view;
@@ -77,7 +78,7 @@
     route();
   }
   function route(){
-    var m = /^#\/([^/]+)\/(board|list)$/.exec(location.hash), p = m && T.project(m[1]);
+    var m = /^#\/([^/]+)\/(board|grid|list|cal)$/.exec(location.hash), p = m && T.project(m[1]);
     if(p){ state.view = m[2]; state.proj = p.id; } else { state.view = 'today'; if(!T.project(state.proj)) state.proj = (T.projects()[0] || {}).id || null; }
     if(A.closeTask && !state.keepSheet) A.closeTask(true);
     closePop(); paint();
@@ -102,7 +103,7 @@
     if(!naming) side.innerHTML = h;
     var p = T.project(state.proj);
     top.innerHTML = '<h1>' + (isToday ? 'Today' : esc(p ? p.name : '')) + '</h1>' +
-      (isToday || !p ? '' : '<div class="tabs2" role="tablist" aria-label="View">' + [['board', 'Board'], ['list', 'List']].map(function(v){ return '<button type="button" role="tab" aria-selected="' + (state.view === v[0]) + '" class="' + (state.view === v[0] ? 'on' : '') + '" data-view="' + v[0] + '">' + v[1] + '</button>'; }).join('') + '</div>') +
+      (isToday || !p ? '' : '<div class="tabs2" role="tablist" aria-label="View">' + VIEWS.map(function(v){ return '<button type="button" role="tab" aria-selected="' + (state.view === v[0]) + '" class="' + (state.view === v[0] ? 'on' : '') + '" data-view="' + v[0] + '">' + v[1] + '</button>'; }).join('') + '</div>') +
       (state.view === 'board' && p ? '<button type="button" class="gbtn" data-do="custom" aria-haspopup="true">Customize</button>' : '');
     document.title = (isToday ? 'Today' : p ? p.name : 'Tasks') + ' · Sleek Tasks';
   }
@@ -111,12 +112,14 @@
   var queued = false, moveNext = false;
   function paint(move){
     var was = {}; if(move && !still) $$('[data-flip]', body).forEach(function(e){ was[e.getAttribute('data-flip')] = e.getBoundingClientRect(); });
-    var act = document.activeElement, keep = act && body.contains(act) && act.getAttribute('data-add') != null ? act.getAttribute('data-add') : null, typed = keep != null ? act.value : '';
+    // the box you are in (an add box, or a cell of the grid) is found again after the redraw, with what you had typed
+    var act = document.activeElement, keep = null, typed = null;
+    if(act && body.contains(act)){ keep = act.getAttribute('data-add') != null ? '[data-add="' + act.getAttribute('data-add') + '"]' : act.getAttribute('data-k') ? '[data-k="' + act.getAttribute('data-k') + '"]' : null; if(keep && act.tagName === 'INPUT' && act.type !== 'date') typed = act.value; }
     shell();
     var p = T.project(state.proj), y = body.scrollTop, x = body.scrollLeft, v = A.views[state.view];
     body.innerHTML = v ? v(p) : '';
     body.scrollTop = y; body.scrollLeft = x;
-    if(keep != null){ var again = body.querySelector('[data-add="' + keep + '"]'); if(again){ again.value = typed; again.focus(); } }
+    if(keep){ var again = body.querySelector(keep); if(again){ if(typed != null && again.tagName === 'INPUT' && again.type !== 'date') again.value = typed; again.focus({ preventScroll: true }); } }
     if(move && !still) $$('[data-flip]', body).forEach(function(e){
       var a = was[e.getAttribute('data-flip')], r = e.getBoundingClientRect(); if(!a || (Math.abs(a.left - r.left) < 1 && Math.abs(a.top - r.top) < 1)) return;
       e.style.transition = 'none'; e.style.transform = 'translate(' + (a.left - r.left) + 'px,' + (a.top - r.top) + 'px)';
@@ -128,7 +131,12 @@
   // many changes in one go (a drop writes a status and an order) are drawn once
   function soon(move){ moveNext = moveNext || move; if(queued) return; queued = true; Promise.resolve().then(function(){ queued = false; var m = moveNext; moveNext = false; if(!(A.dragging && A.dragging())) paint(m); }); }
   A.paint = paint;
-  T.on(function(what){ if(what.kind === 'project' && what.removed && state.proj === what.id) return route(); soon(true); });
+  T.on(function(what){
+    if(what.kind === 'project' && what.removed && state.proj === what.id) return route();
+    // a repeating task was ticked here: say when it is back
+    if(what.repeated && !what.remote) toast('Done. It’s back ' + (what.repeated === dayKey(1) ? 'tomorrow' : 'on ' + from(what.repeated).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })) + '.');
+    soon(true);
+  });
 
   // ---------- pressing things in the column and the bar ----------
   function nameProject(el, p){      // type a project's name in place: a new one (p null) or an existing one

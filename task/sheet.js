@@ -1,6 +1,7 @@
 /* A task's details: the sheet that slides in over the right of the view when you press a task.
 
-   Its name, whether it is done, its status, due date, person and tags, its subtasks, and its notes.
+   Its name, whether it is done, its status, due date, how it repeats, person, tags and picture, its
+   values for the project's own fields (task/fields.js), its subtasks, and its notes.
    Every change is saved as you make it (core/task-store.js), and the board behind follows.
 
    Notes are a Sleek Docs document, written with the same editor (vendor/prosemirror.js and Docs'
@@ -77,8 +78,11 @@
     var p = T.project(t.project), done = T.isDone(t);
     return '<label for="sh-s">Status</label><select id="sh-s" data-f="status">' + p.statuses.map(function(s){ return '<option value="' + s.id + '"' + (t.status === s.id ? ' selected' : '') + '>' + esc(s.name) + '</option>'; }).join('') + '</select>' +
       '<label for="sh-d">Due</label><div class="rowf"><input type="date" id="sh-d" data-f="due" value="' + esc(t.due) + '">' + [['0', 'Today'], ['1', 'Tomorrow'], ['7', 'Next week']].map(function(q){ return '<button type="button" class="qd" data-due="' + q[0] + '">' + q[1] + '</button>'; }).join('') + (t.due ? '<button type="button" class="qd" data-due="">None</button>' : '') + '</div>' +
+      '<label for="sh-r">Repeats</label><select id="sh-r" data-f="rep"><option value="">Never</option>' + T.REPEATS.map(function(r){ return '<option value="' + r + '"' + (t.rep === r ? ' selected' : '') + '>' + A.REP[r] + '</option>'; }).join('') + '</select>' +
       '<label for="sh-w">Person</label><select id="sh-w" data-f="who"><option value="">Nobody</option>' + T.people().map(function(x){ return '<option' + (t.who === x.name ? ' selected' : '') + '>' + esc(x.name) + '</option>'; }).join('') + '<option value="+">Add a person…</option></select>' +
-      '<label for="sh-t">Tags</label><div class="rowf" id="sh-tags">' + (t.tags || []).map(function(g, i){ return '<span class="pill" style="--c:' + A.tagColor(g) + '">' + esc(g) + '<button type="button" data-untag="' + i + '" aria-label="Remove the tag ' + esc(g) + '">×</button></span>'; }).join('') + '<input class="tagin" id="sh-t" placeholder="Add a tag" list="sh-taglist" maxlength="30"></div>';
+      '<label for="sh-t">Tags</label><div class="rowf" id="sh-tags">' + (t.tags || []).map(function(g, i){ return '<span class="pill" style="--c:' + A.tagColor(g) + '">' + esc(g) + '<button type="button" data-untag="' + i + '" aria-label="Remove the tag ' + esc(g) + '">×</button></span>'; }).join('') + '<input class="tagin" id="sh-t" placeholder="Add a tag" list="sh-taglist" maxlength="30"></div>' +
+      '<label>Picture</label><div class="rowf own">' + A.cell(t, '@cover') + '</div>' +
+      T.fields(p.id).map(function(f){ return '<label>' + esc(f.name) + '</label><div class="rowf own">' + A.cell(t, f.id) + '</div>'; }).join('');
   }
   function subs(t){
     return (t.subs || []).map(function(s){ return '<div data-sub="' + s.id + '"><button type="button" class="ck' + (s.done ? ' on' : '') + '" data-subtick role="checkbox" aria-checked="' + !!s.done + '" aria-label="Done: ' + esc(s.t) + '"></button><input value="' + esc(s.t) + '" class="' + (s.done ? 'done-t' : '') + '" data-subname aria-label="Subtask" maxlength="200"><button type="button" class="rm" data-subrm aria-label="Remove this subtask">×</button></div>'; }).join('') +
@@ -91,7 +95,7 @@
       '<div class="fields" id="sh-fields">' + fields(t) + '</div><datalist id="sh-taglist">' + Object.keys(tagsKnown).map(function(g){ return '<option value="' + esc(g) + '">'; }).join('') + '</datalist>' +
       '<div><h5>Subtasks</h5><div class="sub-l" id="sh-subs">' + subs(t) + '</div></div>' +
       '<div><h5>Notes</h5><div class="notebar" role="toolbar" aria-label="Notes formatting"><button type="button" data-n="strong" title="Bold (⌘B)"><b>B</b></button><button type="button" data-n="em" title="Italic (⌘I)"><i>I</i></button><button type="button" data-n="h" title="Heading">H</button><button type="button" data-n="ul" title="Bullets">• List</button><button type="button" data-n="tasks" title="Checklist">☐ List</button></div><div class="note" id="sh-note"></div></div></div>';
-    grow(el.querySelector('textarea'));
+    grow(el.querySelector('textarea')); A.media.fill(el);
   }
   // the store changed: bring the sheet's own fields up to date, leaving whatever you are typing in alone
   function sync(){
@@ -101,6 +105,7 @@
     var ta = el.querySelector('textarea'); if(act !== ta && ta.value !== t.title){ ta.value = t.title; grow(ta); }
     if(!el.querySelector('#sh-fields').contains(act)) el.querySelector('#sh-fields').innerHTML = fields(t);
     if(!el.querySelector('#sh-subs').contains(act)) el.querySelector('#sh-subs').innerHTML = subs(t);
+    A.media.fill(el);
   }
   function close(quiet){
     if(!el) return; saveNotes(); if(view){ view.destroy(); view = null; } noteFor = null;
@@ -110,9 +115,9 @@
   function open(tid){
     var t = T.task(tid); if(!t) return;
     if(el) close(true);
-    id = tid; el = document.createElement('div'); el.className = 'sheet'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', 'Task'); main.appendChild(el);
+    id = tid; el = document.createElement('div'); el.className = 'sheet'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', 'Task'); el.setAttribute('data-sheet', tid); main.appendChild(el);
     build(t); mountNotes(el.querySelector('#sh-note'), t);
-    wire();
+    wire(); A.wireFields(el, sync);
   }
   function set(change){ T.setTask(id, change); }
   function wire(){
@@ -142,6 +147,7 @@
       var t = e.target, f = t.getAttribute('data-f'), task = T.task(id); if(!task) return;
       if(f === 'status') set({ status: t.value, was: '' });
       else if(f === 'due') set({ due: t.value });
+      else if(f === 'rep') set({ rep: t.value });
       else if(f === 'who'){
         if(t.value !== '+'){ set({ who: t.value }); return; }
         // type a new person's name in place of the menu
@@ -164,14 +170,14 @@
     });
     el.addEventListener('focusout', function(e){ if(e.target.id === 'sh-t' && e.target.value.trim()){ var task = T.task(id), g = e.target.value.trim(); e.target.value = ''; if(task && task.tags.indexOf(g) < 0) set({ tags: task.tags.concat([g]).slice(0, 12) }); } });
   }
-  document.addEventListener('keydown', function(e){ if(e.key === 'Escape' && el && !A.popOpen() && !(A.dragging && A.dragging())){ if(view && view.hasFocus()){ view.dom.blur(); return; } close(); } });
+  document.addEventListener('keydown', function(e){ if(e.key === 'Escape' && el && !A.popOpen() && !A.media.open() && !(A.dragging && A.dragging())){ if(view && view.hasFocus()){ view.dom.blur(); return; } close(); } });
   window.addEventListener('pagehide', saveNotes);
   document.addEventListener('visibilitychange', function(){ if(document.visibilityState === 'hidden') saveNotes(); });
   // adding a tag or a subtask redraws its part of the sheet, which must not lose the box you were typing in
   T.on(function(what){
     if(!el) return;
     if(what.kind === 'task' && what.id === id && what.removed){ close(true); return; }
-    var act = document.activeElement, key = act && el.contains(act) ? (act.id === 'sh-t' ? '#sh-t' : act.hasAttribute('data-subadd') ? '[data-subadd]' : null) : null;
+    var act = document.activeElement, key = act && el.contains(act) ? (act.id === 'sh-t' ? '#sh-t' : act.hasAttribute('data-subadd') ? '[data-subadd]' : act.getAttribute('data-k') ? '[data-k="' + act.getAttribute('data-k') + '"]' : null) : null;
     if(key) act.blur();
     sync();
     if(key){ var again = el.querySelector(key); if(again) again.focus(); }

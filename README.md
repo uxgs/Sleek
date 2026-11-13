@@ -140,15 +140,26 @@ next seven days, across every project, with a box to add a task.
   with a mouse or a finger (hold a moment, then drag). Add a column, press a column's name to rename
   it, and use its ⋯ menu for its colour, to delete it, or to say that ticked tasks go there.
   **Customize** chooses what a card shows, roomy or compact cards, and columns by status or by person.
+  A task's picture shows on its card.
+- **Grid.** The tasks as rows you type straight into: name, status, due date, person, tags and
+  picture. **＋ Field** adds a column of your own: text, number, checkbox, dropdown (make its choices
+  as you go), date, link, person, or a picture or clip (drop one on the cell; clips up to 40 MB).
+  Press a column's heading to sort by it, and, for one of your own, to rename it, edit a dropdown's
+  choices or delete it. Enter moves down a row.
 - **List.** A project's open tasks, soonest first, with the done ones under them.
-- **A task.** Press one to open its details: its name, status, due date, person, tags, subtasks and
-  notes. Notes are written with the Sleek Docs editor, so they take headings, lists, checklists,
-  links and pictures. People are names you type; there are no accounts.
+- **Calendar.** The tasks on the days they are due, a month at a time. Drag one to another day to
+  change its date, or to **No date** under the month to take it away; a day's ＋ adds a task due then.
+- **A task.** Press one to open its details: its name, status, due date, person, tags, picture, your
+  own fields, subtasks and notes. Notes are written with the Sleek Docs editor, so they take
+  headings, lists, checklists, links and pictures. People are names you type; there are no accounts.
+- **Repeating tasks.** Set **Repeats** in a task's details: every day, weekday, week, month or year.
+  Ticking it moves it on to the next time instead of finishing it (its subtasks are unticked), and
+  the calendar shows, faintly, when it comes round again. Dragging it to a done column finishes it.
 
 Tasks live in the browser you made them in, in their own storage. Every open tab of Tasks follows the
 others at once, and so does any Sleek Docs page that shows a task, a list or a board
-([Tasks in a page](#sleek-docs)). A grid with your own fields, a calendar, repeating tasks, and
-boards on slides come next.
+([Tasks in a page](#sleek-docs)). Pictures and clips go in the picture store every Sleek app shares.
+Boards on slides come next.
 
 ## The sample deck
 
@@ -270,12 +281,14 @@ vendor/               outside code, under free licences (vendor/LICENSES.md): Pr
 tools/vendor-editor/  builds the files in vendor/ from pinned versions; run by hand, output committed
 docs.webmanifest      install Sleek Docs as an app
 
-tasks.html            Sleek Tasks: Today, projects, the board and the list
-core/task-store.js    projects, tasks and people in this browser (IndexedDB "sleek-tasks"), held in
+tasks.html            Sleek Tasks: Today, projects, and a project's board, grid, list and calendar
+core/task-store.js    projects, tasks, fields and people in this browser (IndexedDB "sleek-tasks"), held in
                       memory, with a notice to every open tab whenever something changes
-task/                 the app: app.js (what is showing, the side list, how a task is drawn), views.js
-                      (Today, the list, the board and dragging), sheet.js (a task's details and its
-                      notes editor), tasks.css
+task/                 the app: app.js (what is showing, the side list, how a task is drawn), fields.js
+                      (each kind of field and how it is edited; pictures and clips), views.js (Today,
+                      the list, the board and dragging), grid.js (the grid and your own fields),
+                      cal.js (the calendar), sheet.js (a task's details and its notes editor),
+                      tasks.css
 tasks.webmanifest     install Sleek Tasks as an app
 ```
 

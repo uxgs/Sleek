@@ -2,12 +2,17 @@
 
    Database "sleek-tasks" (its own, beside the decks' "sleek-app" and the pages' "sleek-docs"):
      projects  { id, name, color, statuses: [{ id, name, color, done }], board: { show, dense, group, shut },
-                 created, updated }               a status marked done is where ticked tasks go
+                 fields: [{ id, name, type, options }], grid: { sort }, created, updated }
+                                                  a status marked done is where ticked tasks go; fields
+                                                  are the project's own (see "your own fields" below)
      tasks     { id, project, title, status, due, who, tags: [], subs: [{ id, t, done }], notes, order,
-                 was, created, updated, doneAt }  due is "YYYY-MM-DD" or ""; who is a person's name or "";
+                 was, rep, cover, vals, created, updated, doneAt }
+                                                  due is "YYYY-MM-DD" or ""; who is a person's name or "";
                                                   notes is a Sleek Docs document (JSON) or null; order
                                                   places it in its column; was is the status to go back
-                                                  to when it is unticked
+                                                  to when it is unticked; rep says how it repeats; cover
+                                                  is its picture or clip { ref, video, name }; vals holds
+                                                  its values for the project's own fields
      meta      { id: 'people', list: [{ name, color }] }
 
    Everything is read into memory once (ready()), so the app draws straight from it; a change is made
@@ -109,27 +114,100 @@
     var p = project(o.project); if(!p) return null;
     var title = String(o.title || '').trim(); if(!title) return null;
     var t = { id: uid(), project: p.id, title: title.slice(0, 300), status: o.status && p.statuses.some(function(s){ return s.id === o.status; }) ? o.status : firstOpen(p), due: o.due || '', who: o.who || '',
-              tags: (o.tags || []).slice(0, 12), subs: [], notes: null, order: last(p.id) + 1, was: '', created: now(), updated: now(), doneAt: 0 };
+              tags: (o.tags || []).slice(0, 12), subs: [], notes: null, order: last(p.id) + 1, was: '', created: now(), updated: now(), doneAt: 0,
+              rep: REPEATS.indexOf(o.rep) >= 0 ? o.rep : '', cover: o.cover || null, vals: {} };
     if(isDone(t)) t.doneAt = now();
     cache.tasks.push(t); put('tasks', t); changed({ kind: 'task', id: t.id, project: p.id, added: true }); return t;
   }
-  function setTask(id, change){
+  function setTask(id, change, note){
     var t = task(id); if(!t) return null;
     var wasDone = isDone(t);
     Object.keys(change).forEach(function(k){ t[k] = change[k]; }); t.updated = now();
     var done = isDone(t); if(done && !wasDone) t.doneAt = now(); if(!done) t.doneAt = 0;
-    put('tasks', t); changed({ kind: 'task', id: id, project: t.project }); return t;
+    put('tasks', t); changed(Object.assign({ kind: 'task', id: id, project: t.project }, note || {})); return t;
+  }
+  // ---------- tasks that repeat ----------
+  // t.rep is '' or one of REPEATS. Ticking a repeating task does not finish it: its due date moves on
+  // to the next time, its subtasks are unticked, and it stays where it is. (Dragging it to a done
+  // column, or choosing that status, does finish it.)
+  var REPEATS = ['daily', 'weekdays', 'weekly', 'monthly', 'yearly'];
+  function dayKey(d){ return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+  function fromKey(k){ var p = String(k).split('-'); return new Date(+p[0], +p[1] - 1, +p[2]); }
+  // the days a repeating task falls on after `due`, one at a time: nth(1) is the next, nth(2) the one after
+  function nth(due, rep, n){
+    var b = fromKey(due), y = b.getFullYear(), m = b.getMonth(), day = b.getDate();
+    if(rep === 'daily') return new Date(y, m, day + n);
+    if(rep === 'weekly') return new Date(y, m, day + 7 * n);
+    if(rep === 'weekdays'){ var d = new Date(y, m, day); while(n > 0){ d.setDate(d.getDate() + 1); if(d.getDay() !== 0 && d.getDay() !== 6) n--; } return d; }
+    // a month or a year on, on the same day of the month, or the month's last day when it is shorter
+    var mm = rep === 'yearly' ? m : m + n, yy = rep === 'yearly' ? y + n : y, last = new Date(yy, mm + 1, 0).getDate();
+    return new Date(yy, mm, Math.min(day, last));
+  }
+  // the next day it is due: the first of those days that is after today
+  function nextDue(due, rep){
+    var t0 = new Date(); t0.setHours(0, 0, 0, 0); if(!due) due = dayKey(t0);
+    for(var n = 1; n < 4000; n++){ var d = nth(due, rep, n); if(d > t0) return dayKey(d); }
+    return due;
+  }
+  // the days it will fall on after its due date, up to and including `until` (a day key): for the calendar
+  function repeatsUntil(t, until){
+    var out = []; if(!t.rep || !t.due || REPEATS.indexOf(t.rep) < 0) return out;
+    for(var n = 1; n < 400; n++){ var k = dayKey(nth(t.due, t.rep, n)); if(k > until) break; out.push(k); }
+    return out;
   }
   // tick or untick: done goes to the project's done column; undone goes back where it came from
   function tick(id, on){
     var t = task(id), p = t && project(t.project); if(!t || !p) return null;
     if(on == null) on = !isDone(t);
     if(on === isDone(t)) return t;
+    if(on && t.rep && REPEATS.indexOf(t.rep) >= 0){
+      var next = nextDue(t.due, t.rep);
+      return setTask(id, { due: next, lastDone: now(), subs: (t.subs || []).map(function(s){ return { id: s.id, t: s.t, done: false }; }) }, { repeated: next });
+    }
     return on ? setTask(id, { was: t.status, status: firstDone(p) }) : setTask(id, { status: t.was && p.statuses.some(function(s){ return s.id === t.was && !s.done; }) ? t.was : firstOpen(p), was: '' });
   }
   function removeTask(id){
     var t = task(id); if(!t) return;
     cache.tasks = cache.tasks.filter(function(x){ return x.id !== id; }); del('tasks', id); changed({ kind: 'task', id: id, project: t.project, removed: true });
+  }
+
+  // ---------- your own fields ----------
+  // A project's own fields (project.fields) are the extra columns of its grid; a task keeps its values
+  // for them in task.vals, by field id:
+  //   text 'words'   number 12.5   check true   select <option id>   date '2026-11-20'
+  //   link 'https://…'   person 'Name'   file { ref: 'sleek-media:<key>', video: bool, name }
+  // A dropdown's choices are field.options: [{ id, name, color }].
+  var FIELD_TYPES = ['text', 'number', 'check', 'select', 'date', 'link', 'person', 'file'];
+  function fields(pid){ var p = project(pid); return p && p.fields ? p.fields : []; }
+  function field(pid, fid){ return fields(pid).filter(function(f){ return f.id === fid; })[0] || null; }
+  function addField(pid, o){
+    var p = project(pid); if(!p || fields(pid).length >= 30) return null;
+    var type = FIELD_TYPES.indexOf(o && o.type) >= 0 ? o.type : 'text', f = { id: uid(), name: String((o && o.name) || '').replace(/\s+/g, ' ').trim().slice(0, 40) || 'Field', type: type };
+    if(type === 'select') f.options = ((o && o.options) || []).map(function(name, i){ return { id: uid(), name: String(name).slice(0, 40), color: COLORS[i % COLORS.length] }; });
+    setProject(pid, { fields: fields(pid).concat([f]) }); return f;
+  }
+  function setField(pid, fid, change){
+    if(!field(pid, fid)) return null;
+    setProject(pid, { fields: fields(pid).map(function(f){ return f.id === fid ? Object.assign({}, f, change) : f; }) }); return field(pid, fid);
+  }
+  // a new choice for a dropdown; returns it
+  function addOption(pid, fid, name){
+    var f = field(pid, fid); name = String(name || '').replace(/\s+/g, ' ').trim().slice(0, 40); if(!f || f.type !== 'select' || !name) return null;
+    var have = (f.options || []).filter(function(o){ return o.name === name; })[0]; if(have) return have;
+    var o = { id: uid(), name: name, color: COLORS[((f.options || []).length + 1) % COLORS.length] };
+    setField(pid, fid, { options: (f.options || []).concat([o]) }); return o;
+  }
+  // deleting a field deletes what every task held for it
+  function removeField(pid, fid){
+    if(!field(pid, fid)) return;
+    cache.tasks.forEach(function(t){ if(t.project === pid && t.vals && fid in t.vals){ delete t.vals[fid]; t.updated = now(); put('tasks', t); } });
+    setProject(pid, { fields: fields(pid).filter(function(f){ return f.id !== fid; }) });
+  }
+  // set (or, with nothing, clear) a task's value for one of its project's fields
+  function setVal(tid, fid, v){
+    var t = task(tid); if(!t) return null;
+    var vals = Object.assign({}, t.vals || {}); if(v == null || v === '' || v === false) delete vals[fid]; else vals[fid] = v;
+    return setTask(tid, { vals: vals });
   }
 
   // ---------- people: names you type, each with a colour ----------
@@ -146,6 +224,8 @@
     open: open, ready: ready, on: on, uid: uid, COLORS: COLORS, STATUSES: STATUSES,
     projects: projects, project: project, addProject: addProject, setProject: setProject, removeProject: removeProject, removeStatus: removeStatus, firstOpen: firstOpen, firstDone: firstDone,
     tasks: tasks, task: task, isDone: isDone, addTask: addTask, setTask: setTask, tick: tick, removeTask: removeTask,
+    REPEATS: REPEATS, nextDue: nextDue, repeatsUntil: repeatsUntil,
+    FIELD_TYPES: FIELD_TYPES, fields: fields, field: field, addField: addField, setField: setField, addOption: addOption, removeField: removeField, setVal: setVal,
     people: people, person: person, addPerson: addPerson
   };
 })();

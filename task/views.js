@@ -1,4 +1,4 @@
-/* Sleek Tasks' views: Today, a project's list, and its board.
+/* Sleek Tasks' views: Today, a project's list, and its board. (The grid is task/grid.js, the calendar task/cal.js.)
 
    Today gathers, across every project, what is overdue, due today, and due in the next seven days.
    The list is a project's open tasks, soonest first, with the done ones under them.
@@ -35,7 +35,7 @@
   };
 
   // ---------- board ----------
-  function opts(p){ var b = p.board || {}; return { show: b.show || { tags: true, subs: true, due: true, who: true }, dense: !!b.dense, group: b.group === 'who' ? 'who' : 'status', shut: b.shut || {} }; }
+  function opts(p){ var b = p.board || {}; return { show: Object.assign({ pic: true, tags: true, subs: true, due: true, who: true }, b.show), dense: !!b.dense, group: b.group === 'who' ? 'who' : 'status', shut: b.shut || {} }; }
   function groups(p){
     var all = T.tasks(p.id).slice().sort(function(a, b){ return (a.order || 0) - (b.order || 0); });
     if(opts(p).group === 'who') return T.people().map(function(x){ return { id: 'w:' + x.name, name: x.name, c: x.color }; }).concat([{ id: 'w:', name: 'Nobody yet', c: '#8E8E93' }]).map(function(g){ g.tasks = all.filter(function(t){ return (t.who || '') === g.id.slice(2); }); return g; });
@@ -43,10 +43,11 @@
   }
   function card(t, o){
     var c = (t.tags || [])[0], colour = c ? A.tagColor(c) : '', done = T.isDone(t);
-    var meta = (o.show.tags ? A.tags(t) : '') + (o.show.subs ? A.subsH(t) : '') + (t.notes ? '<span class="noteflag" title="Has notes">≡</span>' : '');
+    var meta = (o.show.tags ? A.tags(t) : '') + (o.show.subs ? A.subsH(t) : '') + (t.notes ? '<span class="noteflag" title="Has notes">≡</span>' : '') + A.repH(t);
+    var pic = o.show.pic && t.cover ? A.media.thumb(t.cover, 'cardpic') : '';
     var right = (o.show.due ? A.dueH(t) : '') + (o.show.who ? A.av(t.who) : '');
     return '<div class="tcard' + (state.landed === t.id ? ' landed' : '') + '" tabindex="0" role="button" data-task="' + t.id + '" data-flip="c-' + t.id + '" style="' + (colour ? '--c:' + colour : '') + '" aria-label="' + esc(t.title) + '">' +
-      '<div class="tt' + (done ? ' done-t' : '') + '">' + esc(t.title) + '</div><div class="row2">' + (meta || right ? meta + '<span class="sp"></span>' + right : '') + '</div></div>';
+      pic + '<div class="tt' + (done ? ' done-t' : '') + '">' + esc(t.title) + '</div><div class="row2">' + (meta || right ? meta + '<span class="sp"></span>' + right : '') + '</div></div>';
   }
   A.views.board = function(p){
     if(!p) return '';
@@ -63,7 +64,7 @@
   A.customize = function(btn){
     var p = T.project(state.proj), o = opts(p);
     A.menu(btn, function(m){
-      m.innerHTML = '<h4>A card shows</h4>' + [['tags', 'Tags'], ['subs', 'Subtasks done'], ['due', 'Due date'], ['who', 'Person']].map(function(x){ return '<label><input type="checkbox" data-show="' + x[0] + '"' + (o.show[x[0]] ? ' checked' : '') + '>' + x[1] + '</label>'; }).join('') +
+      m.innerHTML = '<h4>A card shows</h4>' + [['pic', 'Picture'], ['tags', 'Tags'], ['subs', 'Subtasks done'], ['due', 'Due date'], ['who', 'Person']].map(function(x){ return '<label><input type="checkbox" data-show="' + x[0] + '"' + (o.show[x[0]] ? ' checked' : '') + '>' + x[1] + '</label>'; }).join('') +
         '<h4>Cards are</h4><label><input type="radio" name="dn" data-dense="0"' + (o.dense ? '' : ' checked') + '>Roomy</label><label><input type="radio" name="dn" data-dense="1"' + (o.dense ? ' checked' : '') + '>Compact</label>' +
         '<h4>Columns are</h4><label><input type="radio" name="gp" data-group="status"' + (o.group === 'status' ? ' checked' : '') + '>Statuses</label><label><input type="radio" name="gp" data-group="who"' + (o.group === 'who' ? ' checked' : '') + '>People</label>';
       m.addEventListener('change', function(e){ var t = e.target; board(function(b){ if(t.hasAttribute('data-show')) b.show[t.getAttribute('data-show')] = t.checked; if(t.hasAttribute('data-dense')) b.dense = t.getAttribute('data-dense') === '1'; if(t.hasAttribute('data-group')) b.group = t.getAttribute('data-group'); }); });
@@ -102,7 +103,8 @@
     var o = { project: state.proj, title: title };
     if(where === 'today'){ var sel = document.getElementById('today-proj'); o.project = sel ? sel.value : state.proj; state.proj = o.project; o.due = A.dayKey(0); }
     else if(where.indexOf('w:') === 0) o.who = where.slice(2);
-    else if(where !== 'list') o.status = where;
+    else if(where.indexOf('day:') === 0) o.due = where.slice(4);
+    else if(where !== 'list' && where !== 'grid') o.status = where;
     var t = T.addTask(o); if(t){ state.landed = t.id; input.value = ''; }
   }
   var justDragged = 0;
@@ -115,13 +117,14 @@
     if((x = t.closest('[data-shut]'))){ e.stopPropagation(); var g = x.getAttribute('data-shut'); board(function(b){ b.shut = Object.assign({}, b.shut); b.shut[g] = !b.shut[g]; }); return; }
     if((x = t.closest('.col.shut'))){ var gid = x.getAttribute('data-col'); board(function(b){ b.shut = Object.assign({}, b.shut); b.shut[gid] = false; }); return; }
     if((x = t.closest('[data-do="newcol"]'))){ nameColumn(x, null); return; }
-    if(t.closest('input, select, a, button')) return;
+    if((x = t.closest('[data-open]')) && A.openTask){ A.openTask(x.getAttribute('data-open')); return; }
+    if(t.closest('input, select, a, button, table.grid')) return;      // in the grid a task opens from its own button
     if((x = t.closest('[data-task]')) && A.openTask) A.openTask(x.getAttribute('data-task'));
   });
   body.addEventListener('keydown', function(e){
     var t = e.target;
     if(e.key === 'Enter' && t.hasAttribute('data-add')){ e.preventDefault(); addFrom(t); return; }
-    if((e.key === 'Enter' || e.key === ' ') && t.matches('.tcard, .li') && A.openTask){ e.preventDefault(); A.openTask(t.getAttribute('data-task')); }
+    if((e.key === 'Enter' || e.key === ' ') && t.matches('.tcard, .li, .chip') && A.openTask){ e.preventDefault(); A.openTask(t.getAttribute('data-task')); }
   });
 
   // ---------- dragging a card ----------
