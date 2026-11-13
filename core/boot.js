@@ -35,7 +35,7 @@
   }
   function fail(msg){
     de.classList.remove('booting');
-    document.body.innerHTML = '<div class="boot-fail"><h1>That deck isn’t here.</h1><p>' + msg + '</p><a href="index.html">Go to your decks</a></div>';
+    document.body.innerHTML = '<div class="boot-fail"><h1>That deck isn’t here.</h1><p>' + msg + '</p><a href="slides.html">Go to your decks</a></div>';
   }
 
   // the offline cache (sw.js): the app opens with no connection and installs as an app
@@ -50,7 +50,7 @@
     .then(function(){ return S.ensureSample(); })
     .then(function(){ return id ? S.get(id) : S.list().then(function(l){ return l[0] ? S.get(l[0].id) : null; }); })
     .then(function(deck){
-      if(!deck){ if(id) fail('It may have been deleted, or made in another browser. Decks live in the browser they were made in.'); else location.replace('index.html'); return; }
+      if(!deck){ if(id) fail('It may have been deleted, or made in another browser. Decks live in the browser they were made in.'); else location.replace('slides.html'); return; }
       if(!id){ try { history.replaceState(null, '', location.pathname + '?d=' + deck.id + location.hash); } catch(e){} }
       return S.hydrate(deck.seed).then(function(seed){ start(deck, seed); });
     })

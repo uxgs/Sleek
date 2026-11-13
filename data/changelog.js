@@ -1,14 +1,15 @@
-/* What's new in Sleek: one short entry per day, newest first. The start screen shows Sleek's
-   version (the first entry's v) and these notes.
+/* What's new in Sleek Slides: one short entry per day, newest first. The Slides start screen shows
+   Slides' version (the first entry's v) and these notes. Sleek Docs has its own number and notes
+   (data/doc-changelog.js).
 
-   Versions are major.minor.patch, and every push raises the patch by one (1.0.0, 1.0.1, …): set
-   the top entry's v (or, on a new day, add an entry at the top) and set sw.js's VERSION to
-   'sleek-' + that version, so the offline cache and the version you see always match. Keep each
-   line to a few words, and each day to four lines at most. */
+   Versions are major.minor.patch, and the patch rises by one each time Slides changes (1.0.0,
+   1.0.1, …): set the top entry's v (or, on a new day, add an entry at the top) and set the
+   Slides half of sw.js's VERSION to match, so the offline cache and the version you see always
+   match. Keep each line to a few words, and each day to four lines at most. */
 window.SLEEK_CHANGES = [
-  { v: '1.0.47', date: '2026-11-13',
+  { v: '1.0.48', date: '2026-11-13',
     items: [
-      'New: Sleek Docs, for writing pages. Decks are now Sleek Slides',
+      'Decks are now Sleek Slides, at /slides; the front page picks Slides or Docs',
       'See who\'s viewing a deck you published: a switch in Share',
       'The Sleek film shows charts and numbers that count up',
       'The clip on saving shows the new Edit bar'

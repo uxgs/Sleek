@@ -2,9 +2,10 @@
    connection, and installs as an app. A page comes from the cache at once and is refreshed from
    the network behind it, so a new version shows on the next visit. Change VERSION (and the list)
    when files are added or removed. */
-var VERSION = 'sleek-1.0.47';   // 'sleek-' + the newest entry's v in data/changelog.js
+// 'sleek-' + Slides' version (data/changelog.js) + '-d' + Docs' version (data/doc-changelog.js): a new version of either app renews the cache
+var VERSION = 'sleek-1.0.48-d1.0.1';
 var FILES = [
-  './', 'index.html', 'deck.html', 'manifest.webmanifest', 'docs.html', 'doc.html', 'docs.webmanifest',
+  './', 'index.html', 'slides.html', 'deck.html', 'manifest.webmanifest', 'docs.html', 'doc.html', 'docs.webmanifest', 'core/short.js',
   'styles.css', 'glow.css', 'app.js', 'glow-fx.js', 'theme-boot.js',
   'core/store.js', 'core/online.js', 'core/analytics.js', 'core/boot.js', 'core/publish.js', 'core/folder.js', 'data/sample.js', 'data/changelog.js',
   'features/features.css', 'features/add-slide.css', 'features/add-slide.js', 'features/before-picker.css', 'features/before-picker.js', 'features/take-apart-editor.css', 'features/take-apart-editor.js', 'features/press-editor.css',
@@ -12,7 +13,7 @@ var FILES = [
   'features/setup.css', 'features/setup.js', 'features/library.css', 'features/library.js', 'features/changelog.js', 'features/settings.js', 'features/film.css', 'features/film.js',
   'features/collage-layout.js', 'features/fit.js', 'features/fit.css', 'features/collage.js', 'features/collage.css', 'features/floats.js', 'features/floats.css', 'features/data-layout.js', 'features/data-slides.js', 'features/data.css', 'features/viewers.js', 'features/viewers.css', 'features/viewers-beacon.js',
   // Sleek Docs: the editor engine and the Markdown reader (vendor/), the store, and the app
-  'vendor/prosemirror.js', 'vendor/prosemirror.css', 'vendor/markdown-it.js', 'core/doc-store.js', 'core/doc-boot.js',
+  'vendor/prosemirror.js', 'vendor/prosemirror.css', 'vendor/markdown-it.js', 'core/doc-store.js', 'core/doc-boot.js', 'data/doc-changelog.js',
   'doc/schema.js', 'doc/editor.js', 'doc/toolbar.js', 'doc/sidebar.js', 'doc/paste.js', 'doc/blocks-figure.js', 'doc/export.js', 'doc/import.js', 'doc/library.js',
   'doc/doc.css', 'doc/doc-ui.css', 'doc/library.css',
   'icons/icon.svg', 'icons/favicon.svg', 'icons/logo.svg', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/maskable-512.png', 'icons/apple-touch-icon.png', 'icons/favicon-32.png',
@@ -59,6 +60,9 @@ self.addEventListener('fetch', function(e){
   e.respondWith(caches.open(VERSION).then(function(c){
     // deck.html?d=… is deck.html, and doc.html?d=… is doc.html
     return c.match(req, { ignoreSearch: same }).then(function(hit){
+      // /slides is slides.html and /docs is docs.html (the hosted site serves both; core/short.js)
+      return hit || !same || !/\/[a-z]+$/.test(url.pathname) ? hit : c.match(url.origin + url.pathname + '.html');
+    }).then(function(hit){
       var net = (same ? fetch(url.href, { cache: 'no-cache', credentials: 'same-origin' }) : fetch(req)).then(function(res){   // checked with the server, not the browser's cache
         if(res && (res.ok || res.type === 'opaque')) c.put(same ? url.origin + url.pathname : req, res.clone());
         return res;

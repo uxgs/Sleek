@@ -3,190 +3,104 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Sleek Slides</title>
+<title>Sleek</title>
+<meta name="description" content="Sleek Slides and Sleek Docs: two apps that run in your browser, with no account and nothing to install, and that work offline.">
 <script src="core/analytics.js"></script>
-<link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/favicon.svg" type="image/svg+xml">
 <link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="theme-color" content="#0B0B0D">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Sleek Slides">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
-<link rel="stylesheet" href="glow.css">
-<link rel="stylesheet" href="features/setup.css">
-<link rel="stylesheet" href="features/library.css">
-<link rel="stylesheet" href="features/film.css">
-<!-- a first visit opens on the film (features/film.js): mark it before anything is drawn, so the start screen never flashes first -->
-<script>try{var d=document.documentElement;if(!localStorage.getItem('sleek-sample-added')&&!localStorage.getItem('sleek-film')&&navigator.onLine!==false&&!matchMedia('(prefers-reduced-motion: reduce)').matches&&location.hash!=='#setup'){d.classList.add('film-first');setTimeout(function(){if(!window.SleekFilm)d.classList.remove('film-first')},4000)}}catch(e){}</script>
-<!-- the storage, the sample deck, publishing, and the page's look before paint -->
-<script src="core/store.js"></script>
-<script src="core/online.js"></script>
-<script src="data/sample.js"></script>
-<script src="core/publish.js"></script>
-<script src="core/folder.js"></script>
-<script src="theme-boot.js"></script>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
 <style>
-  :root {
-    --bg: #FDFDFF; --surface: #FFFFFF; --surface-2: #F1F1F5;
-    --fg: #1D1D1F; --muted: #6E6E73; --faint: #86868B;
-    --line: rgba(0,0,0,0.10); --line-strong: rgba(0,0,0,0.18);
-    --accent: #0A84FF; --on-accent: #FFFFFF;
-    --shadow: 0 40px 90px -46px rgba(0,0,0,0.3);
-    --ff: "Inter", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-    color-scheme: light;
-  }
-  :root[data-theme="dark"] {
-    --bg: #0B0B0D; --surface: #161719; --surface-2: #1E1F22;
-    --fg: #F5F5F7; --muted: #A1A1A6; --faint: #6E6E73;
-    --line: rgba(255,255,255,0.09); --line-strong: rgba(255,255,255,0.16);
-    --shadow: 0 40px 100px -40px rgba(0,0,0,0.8);
-    color-scheme: dark;
-  }
+  /* Sleek's front door: the name, one line, and two tiles. You pick an app; nothing else is here.
+     Each app has its own start screen (slides.html, docs.html), which on the hosted site also
+     answers to a short address: /slides and /docs. One dark look, like the start screens. */
+  :root { --bg: #0B0B0D; --surface: #141417; --surface-2: #1C1C21; --fg: #F5F5F7; --muted: #A1A1A6; --faint: #7C7C84;
+          --line: rgba(255,255,255,0.10); --slides: #0A84FF; --docs: #7C5CFF;
+          --ff: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; color-scheme: dark; }
   *, *::before, *::after { box-sizing: border-box; }
   html, body { margin: 0; }
-  body { min-height: 100vh; background: var(--bg); color: var(--fg); font: 15px/1.5 var(--ff); -webkit-font-smoothing: antialiased; }
-  .start-glow { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
-  main { position: relative; z-index: 1; max-width: 980px; margin: 0 auto;
-         padding: 72px max(16px, env(safe-area-inset-right, 0px)) 64px max(16px, env(safe-area-inset-left, 0px)); }
-  .brand { display: flex; align-items: center; gap: 11px; margin-bottom: 26px; }
+  body { min-height: 100vh; background: var(--bg); color: var(--fg); font: 15px/1.5 var(--ff); -webkit-font-smoothing: antialiased; position: relative; isolation: isolate; overflow-x: hidden; }
+  body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none; background:
+      radial-gradient(50% 60% at 18% 100%, rgba(10,132,255,0.30), transparent 70%),
+      radial-gradient(50% 60% at 82% 100%, rgba(124,92,255,0.34), transparent 70%),
+      radial-gradient(40% 40% at 50% 110%, rgba(255,122,182,0.20), transparent 70%); }
+  main { max-width: 980px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px;
+         padding: calc(64px + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) calc(64px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+  .brand { display: flex; align-items: center; gap: 11px; }
   .brand img { display: block; width: 34px; height: auto; }
   .brand span { font-size: 25px; font-weight: 700; letter-spacing: -0.045em; line-height: 1; }
-  h1 { font-size: clamp(40px, 7vw, 64px); line-height: 1.02; letter-spacing: -0.035em; margin: 10px 0 12px; font-weight: 650; text-wrap: balance; }
-  .lede { font-size: 18px; color: var(--muted); max-width: 56ch; margin: 0 0 40px; }
-  .actions { display: flex; flex-wrap: wrap; gap: 12px; margin: -16px 0 44px; }
-  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 999px;
-         background: var(--accent); color: var(--on-accent); font-weight: 600; }
-  .btn-ghost { border: 1px solid var(--line); background: transparent; color: var(--fg); cursor: pointer; font: 600 15px/1 var(--ff); transition: border-color .2s ease, background .2s ease; }
-  .btn-ghost:hover { border-color: var(--line-strong); background: var(--surface); }
-  .btn-new { border: 1px solid var(--line-strong); background: var(--surface); color: var(--fg); cursor: pointer; font: 600 15px/1 var(--ff);
-             transition: transform .2s ease, border-color .2s ease; }
-  .btn-new:hover { transform: translateY(-1px); border-color: var(--accent); }
-  /* the New deck button pulses like an annotation pin: a ring off the + dot, and a softer one off the pill */
-  .btn-new { position: relative; }
-  .btn-new .plus { position: relative; }
-  .btn-new .plus::after, .btn-new::after { content: ""; position: absolute; inset: -2px; border-radius: 999px; border: 2px solid var(--accent); opacity: 0; pointer-events: none; }
-  .btn-new .plus::after { animation: pin-ring 3s cubic-bezier(0.2, 0.7, 0.3, 1) infinite; animation-delay: .6s; }
-  .btn-new::after { animation: pill-ring 3s cubic-bezier(0.2, 0.7, 0.3, 1) infinite; animation-delay: .6s; }
-  .btn-new:hover::after, .btn-new:hover .plus::after { animation-play-state: paused; opacity: 0; }
-  @keyframes pin-ring { 0% { scale: 1; opacity: 0; } 4% { opacity: 0.8; } 40% { scale: 2.3; opacity: 0; } 100% { scale: 2.3; opacity: 0; } }
-  @keyframes pill-ring { 0% { scale: 1; opacity: 0; } 4% { opacity: 0.55; } 40% { scale: 1.12 1.55; opacity: 0; } 100% { scale: 1.12 1.55; opacity: 0; } }
-  @media (prefers-reduced-motion: reduce) { .btn-new::after, .btn-new .plus::after { animation: none; } }
-  .btn-new .plus { width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: var(--on-accent); font-size: 14px; line-height: 1; }
+  h1 { margin: 16px 0 0; font-size: clamp(38px, 7vw, 64px); line-height: 1.02; letter-spacing: -0.035em; font-weight: 650; text-wrap: balance; }
+  .lede { margin: 0 0 22px; font-size: 18px; color: var(--muted); max-width: 52ch; }
+  .tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+  .tile { --a: var(--slides); position: relative; display: flex; flex-direction: column; gap: 18px; padding: 18px 18px 20px; border-radius: 24px; background: var(--surface);
+          border: 1px solid var(--line); color: inherit; text-decoration: none; min-width: 0;
+          transition: transform .3s cubic-bezier(.16,1,.3,1), border-color .25s ease, box-shadow .3s ease; }
+  .tile.docs { --a: var(--docs); }
+  .tile:hover, .tile:focus-visible { transform: translateY(-5px); border-color: color-mix(in srgb, var(--a) 70%, transparent); outline: none;
+          box-shadow: 0 30px 70px -34px color-mix(in srgb, var(--a) 80%, transparent), 0 0 0 1px color-mix(in srgb, var(--a) 40%, transparent); }
+  .tile:focus-visible { box-shadow: 0 0 0 3px color-mix(in srgb, var(--a) 60%, transparent); }
+  .art { position: relative; aspect-ratio: 16 / 10; border-radius: 16px; overflow: hidden; background: var(--surface-2); display: grid; place-items: center; isolation: isolate; }
+  .art::before { content: ""; position: absolute; inset: 0; z-index: -1; opacity: .55; transition: opacity .3s ease; background:
+      radial-gradient(70% 90% at 20% 0%, color-mix(in srgb, var(--a) 55%, transparent), transparent 70%),
+      radial-gradient(60% 80% at 100% 100%, color-mix(in srgb, var(--a) 30%, #FF7AB6), transparent 70%); }
+  .tile:hover .art::before, .tile:focus-visible .art::before { opacity: .85; }
+  /* a small slide, and a small page */
+  .mini-slide { width: 66%; aspect-ratio: 16 / 9; border-radius: 10px; background: #0B0B0D; border: 1px solid rgba(255,255,255,.14); padding: 9%; display: flex; flex-direction: column; justify-content: center; gap: 7%; box-shadow: 0 20px 40px -18px rgba(0,0,0,.8); transition: transform .4s cubic-bezier(.16,1,.3,1); position: relative; }
+  .mini-slide i { display: block; border-radius: 3px; background: #fff; }
+  .mini-slide i:nth-child(1) { width: 26%; height: 4%; background: var(--a); }
+  .mini-slide i:nth-child(2) { width: 82%; height: 13%; } .mini-slide i:nth-child(3) { width: 58%; height: 13%; } .mini-slide i:nth-child(4) { width: 44%; height: 5%; opacity: .45; }
+  .mini-slide::after { content: ""; position: absolute; left: 50%; bottom: -13%; width: 34%; height: 9%; transform: translateX(-50%); border-radius: 999px; background: rgba(255,255,255,.16); }
+  .tile:hover .mini-slide, .tile:focus-visible .mini-slide { transform: scale(1.05); }
+  .mini-page { width: 44%; aspect-ratio: 4 / 5; border-radius: 9px; background: #fff; padding: 9% 8%; display: flex; flex-direction: column; gap: 6%; box-shadow: 0 20px 40px -18px rgba(0,0,0,.8); transition: transform .4s cubic-bezier(.16,1,.3,1); transform: rotate(-2deg); }
+  .mini-page i { display: block; height: 4%; border-radius: 3px; background: #D5D5DC; }
+  .mini-page i:nth-child(1) { height: 9%; width: 78%; background: #1D1D1F; } .mini-page i:nth-child(2) { width: 96%; } .mini-page i:nth-child(3) { width: 88%; }
+  .mini-page i:nth-child(4) { width: 46%; background: #FFE78F; } .mini-page i:nth-child(5) { width: 92%; } .mini-page i:nth-child(6) { height: 22%; background: color-mix(in srgb, var(--a) 60%, #fff); border-radius: 6px; } .mini-page i:nth-child(7) { width: 70%; }
+  .tile:hover .mini-page, .tile:focus-visible .mini-page { transform: rotate(0deg) scale(1.06); }
+  .name { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .name h2 { margin: 0; font-size: 26px; font-weight: 650; letter-spacing: -0.03em; line-height: 1.1; }
+  .new { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; padding: 4px 9px; border-radius: 999px; background: var(--a); color: #fff; }
+  .tile p { margin: -8px 0 0; color: var(--muted); font-size: 16px; line-height: 1.45; max-width: 36ch; }
+  .go { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: auto; }
+  .go span { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 18px; border-radius: 999px; background: var(--a); color: #fff; font-weight: 600; white-space: nowrap; }
+  .go code { font: 500 13.5px ui-monospace, "SF Mono", Menlo, monospace; color: var(--faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .foot { margin: 22px 0 0; color: var(--faint); font-size: 14px; }
+  @media (max-width: 720px) { .tiles { grid-template-columns: 1fr; } main { padding-top: calc(36px + env(safe-area-inset-top, 0px)); } .name h2 { font-size: 23px; } }
+  @media (prefers-reduced-motion: reduce) { .tile, .mini-slide, .mini-page { transition: none; } }
 </style>
 </head>
 <body>
-<div class="start-glow glow" data-fx aria-hidden="true"></div>
 <main>
-  <div class="brand"><img src="icons/logo.svg" alt="" width="34" height="31"><span>Sleek</span>
-    <nav class="swap" aria-label="Sleek apps"><a href="index.html" aria-current="page">Slides</a><a href="docs.html">Docs</a></nav><a class="ver" id="ver" href="#whats-new" hidden></a>
-    <button type="button" class="set-open" id="set-open" aria-haspopup="dialog" aria-controls="set" title="Settings" aria-label="Settings">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>
-    </button></div>
-  <h1>Let’s Build Something.</h1>
-  <p class="lede">Auto-save is on. No account, nothing to install, and it works offline.</p>
-
-  <div class="actions">
-    <button type="button" class="btn btn-new" data-open-setup><span class="plus" aria-hidden="true">+</span>New deck</button>
-    <button type="button" class="btn btn-ghost" id="lib-open">Open a file…</button>
-    <input type="file" id="lib-file" accept=".sleek,application/json" hidden>
-    <button type="button" class="btn btn-ghost lib-folder-btn" id="lib-folder" hidden>
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7.5A1.5 1.5 0 0 1 4.5 6h4.4l2 2.2h8.6A1.5 1.5 0 0 1 21 9.7v8.8a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18.5Z"/></svg>
-      <span>Link a folder</span></button>
-    <button type="button" class="btn btn-ghost film-btn" data-film>
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.2v13.6L19 12z"/></svg>Watch the film</button>
+  <div class="brand"><img src="icons/logo.svg" alt="" width="34" height="31"><span>Sleek</span></div>
+  <h1>What are you making?</h1>
+  <p class="lede">Two apps that run in your browser. No account, nothing to install, and they work offline.</p>
+  <div class="tiles">
+    <a class="tile" href="slides.html" data-slug="slides">
+      <div class="art" aria-hidden="true"><div class="mini-slide"><i></i><i></i><i></i><i></i></div></div>
+      <div class="name"><h2>Sleek Slides</h2></div>
+      <p>Decks that look designed. Build one, present it with your notes, and share it as one web page.</p>
+      <div class="go"><span>Open Slides →</span><code>/slides</code></div>
+    </a>
+    <a class="tile docs" href="docs.html" data-slug="docs">
+      <div class="art" aria-hidden="true"><div class="mini-page"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+      <div class="name"><h2>Sleek Docs</h2><span class="new">New</span></div>
+      <p>Pages worth reading. Write with pictures and tables, keep them in folders, and save as PDF.</p>
+      <div class="go"><span>Open Docs →</span><code>/docs</code></div>
+    </a>
   </div>
-
-  <section class="lib" aria-labelledby="lib-h">
-    <div class="lib-head"><h2 id="lib-h">Your decks</h2><span class="lib-count" id="lib-count"></span></div>
-    <div class="lib-grid" id="lib-grid" aria-live="polite"></div>
-  </section>
-
-  <section class="lib lib-infolder" id="lib-infolder" aria-labelledby="lib-if-h" hidden>
-    <div class="lib-head"><h2 id="lib-if-h">In your folder</h2><span class="lib-count">Not in this browser yet</span></div>
-    <div class="lib-grid" id="lib-if-grid"></div>
-  </section>
-
-  <section class="news" id="whats-new" aria-labelledby="news-h" hidden>
-    <h2 class="news-h2"><button type="button" class="news-head" id="news-toggle" aria-expanded="false" aria-controls="news-box">
-      <span class="news-name" id="news-h">What’s new</span><span class="lib-count" id="news-ver"></span>
-      <span class="news-peek" id="news-peek"></span>
-      <svg class="news-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
-    </button></h2>
-    <div class="news-box" id="news-box" hidden>
-      <ol class="news-list" id="news-list"></ol>
-      <button type="button" class="lib-link news-more" id="news-more" aria-expanded="false" aria-controls="news-list" hidden></button>
-    </div>
-  </section>
-
+  <p class="foot">Your work stays in this browser.</p>
 </main>
-<!-- Settings (features/settings.js): tips, the sample deck, how Sleek Slides works, about -->
-<div class="set-backdrop" id="set" hidden>
-  <div class="set-panel" role="dialog" aria-modal="true" aria-labelledby="set-h">
-    <div class="set-head"><h2 id="set-h">Settings</h2>
-      <button type="button" class="set-close" data-close aria-label="Close">×</button></div>
-    <div class="set-body">
-      <section class="set-sec" aria-labelledby="set-tips-h">
-        <h3 id="set-tips-h">Tips</h3>
-        <label class="set-row set-toggle">
-          <span class="set-text"><b>Show tips in decks</b><span>The cards that point out Edit and Present the first times you open a deck.</span></span>
-          <input type="checkbox" id="set-tips" role="switch"><span class="set-switch" aria-hidden="true"></span>
-        </label>
-        <div class="set-row">
-          <span class="set-text"><b>See the tour again</b><span>The tips start over the next time you open a deck.</span></span>
-          <button type="button" class="btn btn-ghost set-btn" id="set-tour">Show the tour</button>
-        </div>
-      </section>
-      <section class="set-sec" aria-labelledby="set-sample-h">
-        <h3 id="set-sample-h">Sample deck</h3>
-        <div class="set-row">
-          <span class="set-text"><b>Pace</b><span>A made-up fitness app, one slide for every layout. A good way to look around.</span></span>
-          <button type="button" class="btn btn-ghost set-btn" id="lib-sample">Add the sample deck</button>
-        </div>
-      </section>
-      <section class="set-sec" aria-labelledby="set-how-h">
-        <h3 id="set-how-h">How Sleek Slides works</h3>
-        <!-- each of these is a short clip of the thing itself (features/settings.js plays them; tools/film/reels.js makes them) -->
-        <div class="how" id="how">
-          <div class="how-screen"><video class="how-video" playsinline preload="none" aria-hidden="true"></video>
-            <button type="button" class="how-sound" id="how-sound" aria-pressed="true" aria-label="Sound on these clips"></button></div>
-          <ol class="how-list">
-            <li><button type="button" class="how-item" data-clip="saves"><b>It saves as you go</b><span>Decks live in this browser, on this device. No account, nothing to install, and it works offline once it has opened.</span></button></li>
-            <li><button type="button" class="how-item" data-clip="keep"><b>Keep a copy, or move a deck</b><span>Download its .sleek file from a deck’s ⋯ menu here, or Share in the deck. Open it on any device with Open a file…, or drop it on this page.</span></button></li>
-            <li id="lib-folder-note" hidden><button type="button" class="how-item" data-clip="folder"><b>Link a folder</b><span>In Chrome and Edge, every deck keeps a .sleek copy there as you work.</span></button></li>
-            <li><button type="button" class="how-item" data-clip="publish"><b>Send it as a web page</b><span>Publish a deck as one page anyone can open in a browser, with nothing to install.</span></button></li>
-            <li><button type="button" class="how-item" data-clip="present"><b>Present</b><span>Present opens a presenter window with your notes, the next slide and a timer, while this one shows the room the slide.</span></button></li>
-            <li><button type="button" class="how-item" data-clip="install"><b>Install it</b><span>Add Sleek Slides from your browser’s menu (Install, or Add to Home Screen) and it opens like an app.</span></button></li>
-          </ol>
-        </div>
-      </section>
-      <section class="set-sec" aria-labelledby="set-about-h">
-        <h3 id="set-about-h">About</h3>
-        <div class="set-row">
-          <span class="set-text"><b id="set-ver">Sleek</b><span>See what changed in each version.</span></span>
-          <a class="btn btn-ghost set-btn" href="#whats-new" data-close data-news>What’s new</a>
-        </div>
-        <div class="set-row">
-          <span class="set-text"><b>The Sleek film</b><span>Under a minute on what Sleek does.</span></span>
-          <button type="button" class="btn btn-ghost set-btn" data-close data-film>Watch the film</button>
-        </div>
-        <div class="set-row">
-          <span class="set-text"><b>Made by</b><span>See more of the developer’s work.</span></span>
-          <a class="btn btn-ghost set-btn" href="https://uxgenes.com" target="_blank" rel="noopener">Portfolio <span aria-hidden="true">↗</span></a>
-        </div>
-      </section>
-    </div>
-  </div>
-</div>
-<div class="lib-drop" id="lib-drop" aria-hidden="true"><div><b>Drop to open</b><span>A .sleek deck file</span></div></div>
-<script src="glow-fx.js"></script>
-<script src="features/setup.js"></script>
-<script src="features/film.js"></script>
-<script src="features/library.js"></script>
-<script src="data/changelog.js"></script>
-<script src="features/changelog.js"></script>
-<script src="features/settings.js"></script>
+<script>
+  // the offline cache (sw.js), as on the start screens
+  (function(){
+    if(!('serviceWorker' in navigator) || !/^https?:$/.test(location.protocol)) return;
+    var local = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname), on = !local;
+    try { if(localStorage.getItem('sleek-sw') === '1') on = true; } catch(e){}
+    if(on) window.addEventListener('load', function(){ navigator.serviceWorker.register('sw.js').catch(function(){}); });
+  })();
+</script>
+<script src="core/short.js"></script>
 </body>
 </html>

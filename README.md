@@ -10,7 +10,9 @@ Two apps that run in your browser, with no account and nothing to install, and t
 Your work stays in your browser; the one thing Sleek can send anywhere is
 [who is viewing a deck](#see-whos-viewing), and only for a deck you switch that on for.
 
-The start screen has a **Slides | Docs** switch. Most of this page is about Sleek Slides.
+The front page asks which one you want. Each app also has a short address on the hosted site, `/slides`
+and `/docs`, and each start screen has a **Slides | Docs** switch. Each app has its own version number
+and What's new. Most of this page is about Sleek Slides.
 
 **Open it** from the link in this repo's About box (it's hosted on GitHub Pages), or run your own copy
 (below).
@@ -76,7 +78,7 @@ in `core/online.js` and Viewers doesn't appear in it; to use a service of your o
 
 ## Sleek Docs
 
-Open **Docs** from the switch on the start screen. A page is one continuous sheet, not a stack of
+Open **Docs** from the front page, or the switch on either start screen. A page is one continuous sheet, not a stack of
 paper pages, and it saves as you write.
 
 - **Write.** Headings, bullets, numbers, checklists, quotes, code, dividers, tables, and bold, italic,
@@ -171,12 +173,16 @@ Pages (Settings › Pages › Deploy from a branch › main, root). Any static h
 
 The offline cache (`sw.js`) stays off on localhost, so your edits to the code show on reload. To try it
 there, run `localStorage.setItem('sleek-sw', '1')` in the console. When you add or remove a file the
-app needs, add it to the list in `sw.js` and bump `VERSION`.
+app needs, add it to the list in `sw.js` and bump `VERSION` (it carries both apps' version numbers:
+Slides' from `data/changelog.js` and Docs' from `data/doc-changelog.js`).
 
 ## Files
 
 ```
-index.html            start screen: your decks, New deck, Open a file, Link a folder
+index.html            the front page: pick Sleek Slides or Sleek Docs
+slides.html           Slides' start screen: your decks, New deck, Open a file, Link a folder
+core/short.js         the short addresses, /slides and /docs, where the host serves them
+404.html              the hosted site's not-found page; it also puts /slides/ and /docs/ right
 deck.html             the deck: slides, editor, presenter; the layouts are its <template id="layouts">
 app.js                the engine: navigation, editing, presenter, grid, autosave, undo
 core/store.js         decks, media and undo history in this browser (IndexedDB); .sleek files

@@ -1,6 +1,6 @@
 /* The Sleek film as an interstitial (features/film.js): it fills the window, whatever the theme,
    with nothing on it but Skip, Sound and a thin line of progress. */
-/* a first visit: nothing of the start screen is drawn until the film has gone (index.html's head sets this) */
+/* a first visit: nothing of the start screen is drawn until the film has gone (slides.html's head sets this) */
 html.film-first, html.film-first body { background: #000 !important; }
 html.film-first body > * { visibility: hidden; }
 html.film-first body > .fm { visibility: visible; }

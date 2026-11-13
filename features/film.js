@@ -10,7 +10,7 @@
   var SRC = 'assets/film/sleek.mp4', POSTER = 'assets/film/poster.jpg', KEY = 'sleek-film', root = document.documentElement;
   function get(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }
   function put(k, v){ try { localStorage.setItem(k, v); } catch(e){} }
-  // a first visit (index.html's head marks it before the page is drawn, so the start screen never flashes first)
+  // a first visit (slides.html's head marks it before the page is drawn, so the start screen never flashes first)
   var fresh = root.classList.contains('film-first') || (!get('sleek-sample-added') && !get(KEY));
   var calm = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
   var box = null, video = null, prevFocus = null, raf = 0, counted = {};

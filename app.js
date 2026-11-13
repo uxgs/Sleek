@@ -1120,7 +1120,7 @@
   Object.keys(TT).forEach(function(id){ var b = document.getElementById(id); if(b){ b.setAttribute('data-tt', TT[id]); b.removeAttribute('title'); } });
   document.getElementById('presentbtn').onclick = openPresenter;
   // back to your decks (the start screen), once this deck is saved
-  document.getElementById('homebtn').onclick = function(){ flushSave().then(function(){ location.href = 'index.html'; }); };
+  document.getElementById('homebtn').onclick = function(){ flushSave().then(function(){ location.href = 'slides.html'; }); };
   // the pointer in the window's top-left corner fades in a Back button to your decks
   if(!POPOUT && !MIRROR && !(window.SLEEK_DECK && SLEEK_DECK.published)){
     var deckBack = document.createElement('button');
@@ -1211,7 +1211,7 @@
     else if(e.key==='p'||e.key==='P'){ if(!POPOUT) openPresenter(); }
     else if(e.key==='e'||e.key==='E'){ if(!POPOUT) toggleEdit(); }
     else if(e.key==='t'||e.key==='T'){ toggleTheme(); }
-    else if(e.key==='h'||e.key==='H'){ if(!POPOUT && !PUBLISHED) flushSave().then(function(){ location.href = 'index.html'; }); }
+    else if(e.key==='h'||e.key==='H'){ if(!POPOUT && !PUBLISHED) flushSave().then(function(){ location.href = 'slides.html'; }); }
     else if(e.key==='f'||e.key==='F'){ toggleFull(); }
     else if(e.key==='g'||e.key==='G'){ if(!e.metaKey && !e.ctrlKey) openGrid(); }
   });

@@ -5,7 +5,7 @@
    with a live title slide beside it. Finishing makes a new deck in this browser (core/store.js)
    with that look, the names on its title slide and a slide of bullets, and opens it.
 
-   Opens from the start screen's "New deck" button, the N key, or index.html#setup. */
+   Opens from the start screen's "New deck" button, the N key, or slides.html#setup. */
 (function(){
   var DT = window.DeckTheme; if(!DT) return;
   var root = document.documentElement;

@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Not here · Sleek</title>
+<meta name="robots" content="noindex">
+<script>
+  /* The hosted site shows this page for an address it doesn't have. Two near misses are put right
+     first: /slides/ and /docs/ (with a slash on the end) go to /slides and /docs. */
+  (function(){
+    var m = /^(.*\/)(slides|docs)\/+$/.exec(location.pathname);
+    if(m) location.replace(m[1] + m[2] + location.search + location.hash);
+  })();
+</script>
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #0B0B0D; color: #F5F5F7; font: 16px/1.5 "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  main { max-width: 520px; padding: 24px max(16px, env(safe-area-inset-right, 0px)) 24px max(16px, env(safe-area-inset-left, 0px)); }
+  h1 { margin: 0 0 8px; font-size: 34px; letter-spacing: -0.03em; line-height: 1.1; }
+  p { margin: 0 0 22px; color: #A1A1A6; }
+  nav { display: flex; flex-wrap: wrap; gap: 10px; }
+  a { display: inline-flex; align-items: center; height: 40px; padding: 0 18px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.2); color: #F5F5F7; text-decoration: none; font-weight: 600; }
+  a:hover, a:focus-visible { border-color: #7C5CFF; outline: none; }
+</style>
+</head>
+<body>
+<main>
+  <h1>That page isn’t here.</h1>
+  <p>The address may be mistyped, or the page may have moved.</p>
+  <nav id="go"><a href="./">Sleek</a><a href="slides">Sleek Slides</a><a href="docs">Sleek Docs</a></nav>
+</main>
+<script>
+  // this page can be shown for an address any number of folders deep: point its links at the site's own folder
+  (function(){
+    var parts = location.pathname.split('/'), base = location.hostname.slice(-10) === '.github.io' && parts.length > 2 ? '/' + parts[1] + '/' : '/';
+    Array.prototype.forEach.call(document.querySelectorAll('#go a'), function(a){ a.setAttribute('href', base + a.getAttribute('href').replace(/^\.\//, '')); });
+  })();
+</script>
+</body>
+</html>

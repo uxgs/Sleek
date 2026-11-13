@@ -15,7 +15,7 @@
     tour.textContent = 'Starts in your next deck'; tour.disabled = true;
   });
   var C = window.SLEEK_CHANGES, ver = document.getElementById('set-ver');
-  if(C && C.length && ver) ver.textContent = 'Sleek ' + C[0].v;
+  if(C && C.length && ver) ver.textContent = 'Sleek Slides ' + C[0].v;
 
   // How Sleek works: one screen and six things to show on it. The item you pick plays; when it ends the
   // next one does. The clips stream (assets/help), so they are fetched when Settings opens and let go when it closes.

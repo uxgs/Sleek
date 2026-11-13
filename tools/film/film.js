@@ -154,7 +154,7 @@
     return load('A', q('A') + '#title').then(function(){ return load('B', q('B') + '#statement'); }).then(function(){ return load('C', q('C') + '#moodboard'); })
       .then(function(){ return new Promise(function(r){ until(function(){ return booted('A') && booted('B') && booted('C'); }, r); }); })
       .then(function(){ dress('A'); dress('B'); dress('C'); return load('P', q('A') + '#presenter'); })
-      .then(function(){ return load('S', '../../index.html'); })
+      .then(function(){ return load('S', '../../slides.html'); })
       .then(function(){ return document.fonts.ready; })
       .then(function(){ setTimeout(function(){ FILM.ready = true; }, 3500); });      // a few seconds for pictures, the presenter's preview and the glow to settle
   });

@@ -24,7 +24,7 @@
 <script src="theme-boot.js"></script>
 <script>document.documentElement.style.setProperty('--accent', '#7C5CFF');</script>
 <style>
-  /* the same start screen as Sleek Slides (index.html), for pages */
+  /* the same start screen as Sleek Slides (slides.html), for pages */
   :root {
     --bg: #FDFDFF; --surface: #FFFFFF; --surface-2: #F1F1F5;
     --fg: #1D1D1F; --muted: #6E6E73; --faint: #86868B;
@@ -65,8 +65,8 @@
 <body>
 <div class="start-glow glow" data-fx aria-hidden="true"></div>
 <main>
-  <div class="brand"><img src="icons/logo.svg" alt="" width="34" height="31"><span>Sleek</span>
-    <nav class="swap" aria-label="Sleek apps"><a href="index.html">Slides</a><a href="docs.html" aria-current="page">Docs</a></nav></div>
+  <div class="brand"><a class="brand-home" href="index.html" title="Sleek: pick an app"><img src="icons/logo.svg" alt="" width="34" height="31"><span>Sleek</span></a>
+    <nav class="swap" aria-label="Sleek apps"><a href="slides.html" data-slug="slides">Slides</a><a href="docs.html" data-slug="docs" aria-current="page">Docs</a></nav><a class="ver" id="ver" href="#whats-new" hidden></a></div>
   <h1>Write Something Worth Reading.</h1>
   <p class="lede">Pages save as you write. No account, nothing to install, and it works offline.</p>
 
@@ -80,10 +80,27 @@
     <div class="lib-head"><h2 id="dl-h">Your pages</h2><span class="lib-count" id="dl-count"></span></div>
     <div class="lib-grid dl-grid" id="dl-grid" aria-live="polite"></div>
   </section>
+
+  <section class="news" id="whats-new" aria-labelledby="news-h" hidden>
+    <h2 class="news-h2"><button type="button" class="news-head" id="news-toggle" aria-expanded="false" aria-controls="news-box">
+      <span class="news-name" id="news-h">What’s new in Docs</span><span class="lib-count" id="news-ver"></span>
+      <span class="news-peek" id="news-peek"></span>
+      <svg class="news-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+    </button></h2>
+    <div class="news-box" id="news-box" hidden>
+      <ol class="news-list" id="news-list"></ol>
+      <button type="button" class="lib-link news-more" id="news-more" aria-expanded="false" aria-controls="news-list" hidden></button>
+    </div>
+  </section>
 </main>
 <div class="lib-drop" id="dl-drop" aria-hidden="true"><div><b>Drop to open</b><span>A .sleek page, or a Markdown or text file</span></div></div>
 <script src="glow-fx.js"></script>
 <script src="doc/import.js"></script>
 <script src="doc/library.js"></script>
+<!-- Docs has its own version and notes; the start screen's What's new (features/changelog.js) reads them as its list -->
+<script src="data/doc-changelog.js"></script>
+<script>window.SLEEK_CHANGES = window.SLEEK_DOC_CHANGES;</script>
+<script src="features/changelog.js"></script>
+<script src="core/short.js"></script>
 </body>
 </html>
