@@ -90,7 +90,7 @@
   var naming = false;
   function shell(){
     var due = T.tasks().filter(function(t){ return !T.isDone(t) && t.due && away(t) <= 0; }).length, isToday = state.view === 'today';
-    var h = '<a class="brand" href="index.html" title="Sleek: pick an app"><img src="icons/logo.svg" alt="" width="22" height="20">Sleek <span>Tasks</span></a>' +
+    var h = '<a class="brand" href="index.html" title="Sleek: pick an app"><img src="icons/tasks.svg" alt="" width="22" height="20">Sleek <span>Tasks</span></a>' +
       '<button type="button" class="nav' + (isToday ? ' on' : '') + '" data-go="today"' + (isToday ? ' aria-current="page"' : '') + '><i class="dot"></i><span>Today</span><em>' + (due || '') + '</em></button><h4>Projects</h4>';
     T.projects().forEach(function(p){
       var on = !isToday && p.id === state.proj, n = T.tasks(p.id).filter(function(t){ return !T.isDone(t); }).length;

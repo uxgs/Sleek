@@ -260,7 +260,8 @@ assets/film/          the Sleek film, as the start screen plays it (features/fil
 assets/help/          six short clips for Settings, How Sleek works (features/settings.js)
 service/              the Viewers service (a Cloudflare Worker); not part of the app you download
 tools/film/           how the film is made: the real app, rendered a frame at a time, and its score
-icons/                the logo and app icons
+icons/                Sleek's logo and app icons, and each app's own (slides, docs, tasks), drawn by
+                      tools/make-icons.py
 sw.js                 the offline cache
 manifest.webmanifest  install Sleek Slides as an app
 

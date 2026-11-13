@@ -67,7 +67,7 @@
   .mini-board i.a { background: var(--a); }
   .tile:hover .mini-board, .tile:focus-visible .mini-board { transform: scale(1.05); }
   .tile:hover .mini-board i.a, .tile:focus-visible .mini-board i.a { transform: translateX(128%) translateY(-118%); }
-  .name { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .name { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; } .name img { display: block; width: 30px; height: auto; flex: none; }
   .name h2 { margin: 0; font-size: 26px; font-weight: 650; letter-spacing: -0.03em; line-height: 1.1; }
   .new { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; padding: 4px 9px; border-radius: 999px; background: var(--a); color: #fff; }
   .tile p { margin: -8px 0 0; color: var(--muted); font-size: 16px; line-height: 1.45; max-width: 36ch; }
@@ -88,19 +88,19 @@
   <div class="tiles">
     <a class="tile" href="slides.html" data-slug="slides">
       <div class="art" aria-hidden="true"><div class="mini-slide"><i></i><i></i><i></i><i></i></div></div>
-      <div class="name"><h2>Sleek Slides</h2></div>
+      <div class="name"><img src="icons/slides.svg" alt="" width="30" height="27"><h2>Sleek Slides</h2></div>
       <p>Decks that look designed. Build one, present it with your notes, and share it as one web page.</p>
       <div class="go"><span>Open Slides →</span><code>/slides</code></div>
     </a>
     <a class="tile docs" href="docs.html" data-slug="docs">
       <div class="art" aria-hidden="true"><div class="mini-page"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
-      <div class="name"><h2>Sleek Docs</h2><span class="new">New</span></div>
+      <div class="name"><img src="icons/docs.svg" alt="" width="30" height="27"><h2>Sleek Docs</h2><span class="new">New</span></div>
       <p>Pages worth reading. Write with pictures and tables, keep them in folders, and save as PDF.</p>
       <div class="go"><span>Open Docs →</span><code>/docs</code></div>
     </a>
     <a class="tile tasks" href="tasks.html" data-slug="tasks">
       <div class="art" aria-hidden="true"><div class="mini-board"><div><i></i><i class="a"></i><i></i></div><div><i></i></div><div><i></i><i></i></div></div></div>
-      <div class="name"><h2>Sleek Tasks</h2><span class="new">New</span></div>
+      <div class="name"><img src="icons/tasks.svg" alt="" width="30" height="27"><h2>Sleek Tasks</h2><span class="new">New</span></div>
       <p>Plan it and tick it off. Projects, a board you drag, and everything due today in one place.</p>
       <div class="go"><span>Open Tasks →</span><code>/tasks</code></div>
     </a>
