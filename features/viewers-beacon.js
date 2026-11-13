@@ -6,7 +6,7 @@
    Nothing else: no name, nothing about the device, nothing from the deck. It never gets in the way:
    with no connection, or if the service says no, the deck plays exactly the same. */
 (function(){
-  var D = window.Deck, info = window.SLEEK_DECK, v = info && info.viewers;
+  var D = window.Deck || window.SleekReader, info = window.SLEEK_DECK, v = info && info.viewers;      // SleekReader: a published Sleek Docs page (doc/reader.js), which counts blocks as a deck counts slides
   if(!D || !v || !v.url || !v.room || !info.published || !window.WebSocket) return;
   if(D.popout || D.mirror || D.presenter) return;      // the presenter's own windows aren't viewers
 

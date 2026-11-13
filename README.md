@@ -81,24 +81,29 @@ in `core/online.js` and Viewers doesn't appear in it; to use a service of your o
 Open **Docs** from the front page, or the switch on either start screen. A page is one continuous sheet, not a stack of
 paper pages, and it saves as you write.
 
-- **Write.** Headings, bullets, numbers, checklists, quotes, code, dividers, tables, and bold, italic,
-  underline, strike, highlight and links. The bar across the top has them all; so does typing `/` on
+- **Write.** Headings (plain or collapsible), bullets, numbers, checklists, quotes, code, dividers,
+  tables, and bold, italic, underline, strike, highlight and links. The bar across the top has them all; so does typing `/` on
   an empty line. Shortcuts as you type: `# ` `## ` `### ` for headings, `- ` bullets, `1. ` numbers,
   `[] ` a checklist, `> ` a quote, three backticks for code, `---` a divider.
 - **Pictures.** Choose one from Insert, drop it on the page, or paste it. Each has a caption and can
-  be as wide as the text or wider.
+  be as wide as the text, wide, or full width.
+- **Designed sections.** A cover across the top of the page, callout boxes, and two or three columns,
+  all from Insert. ⌘Enter steps out of whatever you are in.
 - **Paste from Word or Google Docs.** Headings, lists, tables, links, bold, italic, underline, strike
   and highlight come across; fonts, sizes and colours are left behind, so the page keeps its look.
 - **Folders and search.** The list on the left holds your pages in folders, and folders in folders.
   Drag to move things. Search looks through titles and every page's words. ⌘\ hides the list.
 - **Look.** Light or dark, a colour, and clean or editorial type, saved with each page.
-- **Share.** Save as PDF (through your browser's print), Save as Markdown (a .zip when the page has
-  pictures), or Download a copy: a .sleek file that opens in Sleek Docs in any browser.
+- **Share.** Publish as a web page: one .html file with the page, its pictures and its look inside,
+  an outline at the side and a light or dark switch, and no editor. Switch on **See who's reading**
+  as you publish and Docs shows who is reading now and how far people got, the same way decks do
+  ([what is sent and kept](#see-whos-viewing); for a page, "which slide" is how far down the page).
+  Also: Save as PDF (through your browser's print), Save as Markdown (a .zip when the page has
+  pictures), and Download a copy: a .sleek file that opens in Sleek Docs in any browser.
 - **Open a file.** The Docs start screen opens .sleek pages and Markdown or text files.
 
 Pages live in the browser you wrote them in, in their own storage beside your decks. A linked folder
-(above) mirrors decks only, for now. Publishing a page as a web page, and seeing who is reading it,
-come next.
+(above) mirrors decks only, for now.
 
 A page's .sleek file is `{ "format": "sleek", "version": 2, "kind": "doc", "id", "title", "seed" }`,
 and the seed is `{ "kind": "doc", "v": 1, "theme", "doc" }`, where `doc` is the document.
@@ -210,7 +215,9 @@ core/doc-boot.js      finds the page to open and loads the editor
 doc/                  the editor: schema.js (what a page can hold), editor.js, toolbar.js (format bar,
                       menus, Look, Share), sidebar.js (pages and folders), blocks-figure.js (pictures),
                       paste.js (Word and Google Docs), export.js and import.js (Markdown), library.js
-                      (the start screen), doc.css (how a page looks) and doc-ui.css (the app around it)
+                      (the start screen), publish.js (the one-file web page), reader.js and reader.css
+                      (what that page's reader gets), viewers.js (who is reading), doc.css (how a
+                      page looks) and doc-ui.css (the app around it)
 vendor/               outside code, under free licences (vendor/LICENSES.md): ProseMirror, the text
                       editing engine under Sleek Docs, and markdown-it, which reads Markdown files
 tools/vendor-editor/  builds the files in vendor/ from pinned versions; run by hand, output committed

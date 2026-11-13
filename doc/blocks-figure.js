@@ -1,7 +1,7 @@
 /* Pictures in a page: choosing, dropping or pasting one, and the picture block itself.
 
    A picture is a `figure` block (doc/schema.js): attrs.src is the picture, attrs.size is 'text' (as
-   wide as the words) or 'wide', and the block's own text is the caption. The file goes into the
+   wide as the words), 'wide' or 'full', and the block's own text is the caption. The file goes into the
    picture store (core/store.js addMedia), so the page keeps a short reference, not the picture.
    Big photos are scaled to 2400 px on the long edge first. A picture pasted by address (from a web
    page) is fetched and kept too when its site allows that; otherwise it stays a link to that site. */
@@ -57,7 +57,7 @@
     Object.keys(todo).forEach(function(src){
       fetch(src).then(function(r){ if(!r.ok) throw 0; return r.blob(); }).then(function(b){ if(!/^image\//.test(b.type)) throw 0; return keep(b); }).then(function(url){
         if(!url) return; var tr = view.state.tr;
-        view.state.doc.descendants(function(n, pos){ if(n.type === N.figure && n.attrs.src === src) tr.setNodeMarkup(pos, null, { src: url, size: n.attrs.size }); });
+        view.state.doc.descendants(function(n, pos){ if(n.type === N.figure && n.attrs.src === src) tr.setNodeMarkup(pos, null, Object.assign({}, n.attrs, { src: url })); });
         if(tr.docChanged) view.dispatch(tr.setMeta('addToHistory', false));
       }).catch(function(){});      // its site won't hand it over: it stays a link to that site
     });
@@ -70,14 +70,14 @@
     var size = document.createElement('button'), del = document.createElement('button'); size.type = del.type = 'button'; del.textContent = 'Remove';
     tools.appendChild(size); tools.appendChild(del); fig.appendChild(img); fig.appendChild(tools); fig.appendChild(cap);
     function paint(n){
-      node = n; fig.className = 'dk-fig' + (n.attrs.size === 'wide' ? ' dk-wide' : '') + (n.content.size ? '' : ' nocap');
+      node = n; fig.className = 'dk-fig' + (n.attrs.size === 'wide' ? ' dk-wide' : n.attrs.size === 'full' ? ' dk-full' : '') + (n.content.size ? '' : ' nocap');
       if(img.getAttribute('src') !== n.attrs.src) img.setAttribute('src', n.attrs.src);
-      size.textContent = n.attrs.size === 'wide' ? 'Text width' : 'Wide';
+      size.textContent = n.attrs.size === 'wide' ? 'Full width' : n.attrs.size === 'full' ? 'Text width' : 'Wide';
     }
     paint(node);
     img.addEventListener('mousedown', function(e){ e.preventDefault(); view.dispatch(view.state.tr.setSelection(PM.state.NodeSelection.create(view.state.doc, getPos()))); view.focus(); });
     tools.addEventListener('mousedown', function(e){ e.preventDefault(); });
-    size.addEventListener('click', function(){ view.dispatch(view.state.tr.setNodeMarkup(getPos(), null, { src: node.attrs.src, size: node.attrs.size === 'wide' ? 'text' : 'wide' })); });
+    size.addEventListener('click', function(){ view.dispatch(view.state.tr.setNodeMarkup(getPos(), null, Object.assign({}, node.attrs, { size: node.attrs.size === 'wide' ? 'full' : node.attrs.size === 'full' ? 'text' : 'wide' }))); });
     del.addEventListener('click', function(){ var p = getPos(); view.dispatch(view.state.tr.delete(p, p + node.nodeSize)); view.focus(); });
     return { dom: fig, contentDOM: cap,
       update: function(n){ if(n.type !== N.figure) return false; paint(n); return true; },

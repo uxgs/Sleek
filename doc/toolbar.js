@@ -16,7 +16,10 @@
     table: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M3 15h18M9 5v14M15 5v14"/>', rule: '<path d="M3 12h18"/>', code: '<path d="M8 7l-5 5 5 5M16 7l5 5-5 5"/>',
     pdf: '<path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4"/>', copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>',
     down: '<path d="M12 4v12M7 11l5 5 5-5M5 20h14"/>', plus: '<path d="M12 5v14M5 12h14"/>', minus: '<path d="M5 12h14"/>', trash: '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>', more: '<circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/>',
-    edit: '<path d="M4 20h4l10-10-4-4L4 16zM13 7l4 4"/>'
+    edit: '<path d="M4 20h4l10-10-4-4L4 16zM13 7l4 4"/>', fold: '<path d="M5 6h3M11 6h8M11 12h8M11 18h8"/><path d="M5 11l2 2-2 2"/>',
+    cover: '<rect x="3" y="4" width="18" height="9" rx="2"/><path d="M5 17h14M5 20h9"/>', call: '<rect x="3" y="5" width="18" height="14" rx="3"/><path d="M7 10h10M7 14h6"/>',
+    cols: '<rect x="3" y="5" width="8" height="14" rx="2"/><rect x="13" y="5" width="8" height="14" rx="2"/>', web: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/>',
+    eye: '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>'
   };
   function ico(n, cls){ return '<svg class="ico' + (cls ? ' ' + cls : '') + '" viewBox="0 0 24 24" aria-hidden="true">' + (ICON[n] || '') + '</svg>'; }
   function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
@@ -57,22 +60,60 @@
   }
   A.menu = menu; A.pop = pop; A.closePop = closePop; A.item = item; A.danger = danger; A.ico = ico; A.esc = esc;
 
+  // change the kind of block the cursor is in; the block keeps its id
+  function setType(type, attrs){ return function(st, d){ return cmd.setBlockType(type, Object.assign({ id: st.selection.$from.parent.attrs.id || null }, attrs))(st, d); }; }
+  // ---------- designed sections ----------
+  function addCover(){
+    var st = view().state, first = st.doc.firstChild;
+    if(first.type === N.cover){ A.toast('This page already has a cover'); return; }
+    // the page's own title, if it starts with one, becomes the cover's
+    var title = first.type === N.heading && first.attrs.level === 1 ? first.content : null;
+    var cover = N.cover.create(null, [N.paragraph.create(), N.heading.create({ level: 1 }, title), N.paragraph.create()]), tr = st.tr.insert(0, cover);
+    if(title){ var from = cover.nodeSize, to = from + first.nodeSize; if(st.doc.childCount > 1) tr.delete(from, to); else tr.replaceWith(from, to, N.paragraph.create()); }
+    tr.setSelection(PM.state.TextSelection.create(tr.doc, 4 + (title ? title.size : 0)));
+    view().dispatch(tr.scrollIntoView()); view().focus();
+  }
+  function removeCover(){ var st = view().state, c = st.doc.firstChild; if(c.type !== N.cover) return; view().dispatch(st.tr.replaceWith(0, c.nodeSize, N.heading.create({ level: 1 }, c.child(1).content))); view().focus(); }
+  function addColumns(n){ var cols = []; for(var i = 0; i < n; i++) cols.push(N.column.create(null, [N.paragraph.create()])); A.insertBlock(N.columns.create(null, cols)); }
+  // the section the cursor is in, if any: { node, pos, depth }
+  function inside(type){ var $f = view().state.selection.$from; for(var d = $f.depth; d > 0; d--) if($f.node(d).type === type) return { node: $f.node(d), pos: $f.before(d), depth: d }; return null; }
+  function removeColumns(){
+    var c = inside(N.columns); if(!c) return; var blocks = [];
+    c.node.forEach(function(col){ col.forEach(function(b){ if(b.content.size || !b.isTextblock) blocks.push(b); }); });
+    if(!blocks.length) blocks.push(N.paragraph.create());
+    view().dispatch(view().state.tr.replaceWith(c.pos, c.pos + c.node.nodeSize, blocks)); view().focus();
+  }
+  function removeCallout(){ var c = inside(N.callout); if(!c) return; var blocks = []; c.node.forEach(function(b){ blocks.push(b); }); view().dispatch(view().state.tr.replaceWith(c.pos, c.pos + c.node.nodeSize, blocks)); view().focus(); }
+
   // ---------- the blocks you can add ----------
   function table(){ var row = function(type){ return N.table_row.create(null, [0, 1, 2].map(function(){ return type.create(null, [N.paragraph.create()]); })); };
     return N.table.create(null, [row(N.table_header), row(N.table_cell), row(N.table_cell)]); }
   var BLOCKS = [
-    { g: 'Text', n: 'Heading 1', h: 'A big section heading', i: 'h', f: function(){ A.run(cmd.setBlockType(N.heading, { level: 1 })); } },
-    { g: 'Text', n: 'Heading 2', h: 'A section heading', i: 'h', f: function(){ A.run(cmd.setBlockType(N.heading, { level: 2 })); } },
-    { g: 'Text', n: 'Heading 3', h: 'A small heading', i: 'h', f: function(){ A.run(cmd.setBlockType(N.heading, { level: 3 })); } },
+    { g: 'Text', n: 'Heading 1', h: 'A big section heading', i: 'h', f: function(){ A.run(setType(N.heading, { level: 1 })); } },
+    { g: 'Text', n: 'Heading 2', h: 'A section heading', i: 'h', f: function(){ A.run(setType(N.heading, { level: 2 })); } },
+    { g: 'Text', n: 'Heading 3', h: 'A small heading', i: 'h', f: function(){ A.run(setType(N.heading, { level: 3 })); } },
+    { g: 'Text', n: 'Collapsible heading', h: 'Opens and closes what is under it', i: 'fold', f: function(){ A.run(setType(N.heading, { level: 2, toggle: true })); } },
     { g: 'Text', n: 'Bullets', h: 'A simple list', i: 'list', f: function(){ A.list(N.bullet_list); } },
     { g: 'Text', n: 'Numbers', h: 'A numbered list', i: 'num', f: function(){ A.list(N.ordered_list); } },
     { g: 'Text', n: 'Checklist', h: 'Things to tick off', i: 'check', f: function(){ A.list(N.task_list); } },
     { g: 'Text', n: 'Quote', h: 'Words worth setting apart', i: 'quote', f: function(){ A.run(cmd.wrapIn(N.blockquote)); } },
-    { g: 'Text', n: 'Code', h: 'Fixed-width text', i: 'code', f: function(){ A.run(cmd.setBlockType(N.code_block)); } },
+    { g: 'Text', n: 'Code', h: 'Fixed-width text', i: 'code', f: function(){ A.run(setType(N.code_block)); } },
     { g: 'Text', n: 'Divider', h: 'A line between sections', i: 'rule', f: function(){ A.insertBlock(N.horizontal_rule.create()); } },
     { g: 'More', n: 'Picture', h: 'Choose one, or drop it on the page', i: 'image', f: function(){ var i = $('#pick-pic'); i.value = ''; i.click(); } },
-    { g: 'More', n: 'Table', h: 'Rows and columns', i: 'table', f: function(){ A.insertBlock(table()); } }
+    { g: 'More', n: 'Table', h: 'Rows and columns', i: 'table', f: function(){ A.insertBlock(table()); } },
+    { g: 'Designed sections', n: 'Cover', h: 'A title band across the top of the page', i: 'cover', f: addCover },
+    { g: 'Designed sections', n: 'Callout', h: 'A tinted box that stands out', i: 'call', f: function(){ if(!A.run(cmd.wrapIn(N.callout))) A.insertBlock(N.callout.create(null, [N.paragraph.create()])); } },
+    { g: 'Designed sections', n: 'Two columns', h: 'Side by side', i: 'cols', f: function(){ addColumns(2); } },
+    { g: 'Designed sections', n: 'Three columns', h: 'Three side by side', i: 'cols', f: function(){ addColumns(3); } }
   ];
+  // what you can do to the section the cursor is in
+  function sectionActions(){
+    var out = [];
+    if(inside(N.cover)) out.push({ n: 'Remove the cover', h: 'Its title stays, as the page’s first heading', i: 'trash', f: removeCover });
+    if(inside(N.columns)) out.push({ n: 'Remove the columns', h: 'What is in them stays, one after the other', i: 'trash', f: removeColumns });
+    if(inside(N.callout)) out.push({ n: 'Remove the callout box', h: 'What is in it stays', i: 'trash', f: removeCallout });
+    return out;
+  }
   var TABLE = [
     { n: 'Add a row below', i: 'plus', c: T.addRowAfter }, { n: 'Add a column to the right', i: 'plus', c: T.addColumnAfter },
     { n: 'Delete this row', i: 'minus', c: T.deleteRow }, { n: 'Delete this column', i: 'minus', c: T.deleteColumn }, { n: 'Delete the table', i: 'trash', c: T.deleteTable }
@@ -84,6 +125,8 @@
       p.appendChild(el('h4', '', 'This table'));
       TABLE.forEach(function(t){ item(p, t.i, t.n, null, function(){ pick({ f: function(){ A.run(t.c); } }); }); });
     }
+    var here = q ? [] : sectionActions();
+    if(here.length){ p.appendChild(el('h4', '', 'This section')); here.forEach(function(t){ item(p, t.i, t.n, t.h, function(){ pick(t); }); }); }
     BLOCKS.forEach(function(b){
       if(q && b.n.toLowerCase().indexOf(q) < 0) return;
       if(b.g !== lastG){ p.appendChild(el('h4', '', b.g)); lastG = b.g; }
@@ -120,7 +163,7 @@
     $$('[data-m]', main).forEach(function(b){ var on = markOn(M[b.getAttribute('data-m')]); b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); });
     var $f = view().state.selection.$from, p = $f.parent, v = 'p', inside = {};
     for(var d = $f.depth; d > 0; d--) inside[$f.node(d).type.name] = 1;
-    if(p.type === N.heading) v = 'h' + p.attrs.level; else if(p.type === N.code_block) v = 'code'; else if(inside.blockquote) v = 'quote';
+    if(p.type === N.heading) v = (p.attrs.toggle ? 't' : 'h') + p.attrs.level; else if(p.type === N.code_block) v = 'code'; else if(inside.blockquote) v = 'quote';
     $('#f-style').value = v; $('#f-link').classList.toggle('on', markOn(M.link));
     $$('[data-l]', main).forEach(function(b){ b.classList.toggle('on', !!inside[b.getAttribute('data-l')]); });
   }
@@ -130,9 +173,10 @@
   press($('#f-undo'), function(){ A.run(PM.history.undo); }); press($('#f-redo'), function(){ A.run(PM.history.redo); });
   $('#f-style').addEventListener('change', function(){
     var v = this.value;
-    if(v === 'quote') A.run(cmd.wrapIn(N.blockquote)); else if(v === 'code') A.run(cmd.setBlockType(N.code_block));
-    else if(v === 'p') A.run(function(st, d){ return cmd.setBlockType(N.paragraph)(st, d) || cmd.lift(st, d); });
-    else A.run(cmd.setBlockType(N.heading, { level: +v.slice(1) }));
+    if(v === 'quote') A.run(cmd.wrapIn(N.blockquote)); else if(v === 'code') A.run(setType(N.code_block));
+    else if(v === 'p') A.run(function(st, d){ return setType(N.paragraph)(st, d) || cmd.lift(st, d); });
+    else A.run(setType(N.heading, { level: +v.slice(1), toggle: v.charAt(0) === 't' }));
+    bar();
   });
 
   // ---------- links ----------
@@ -181,6 +225,7 @@
   $('#b-share').addEventListener('click', function(){
     menu(this, function(p){
       p.appendChild(el('h4', '', 'Share'));
+      if(A.shareFirst) A.shareFirst(p);        // Publish as a web page (doc/publish.js)
       item(p, 'pdf', 'Save as PDF', 'A clean copy on paper-white, through your browser’s print', function(){ closePop(); A.flush().then(function(){ window.print(); }); });
       item(p, 'code', 'Save as Markdown', 'Plain text that other writing apps open', function(){ closePop(); if(K.saveMarkdown) K.saveMarkdown(); });
       p.appendChild(el('div', 'line'));

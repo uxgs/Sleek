@@ -1,5 +1,6 @@
 /* What a Sleek Docs page can hold: its blocks (paragraphs, headings, lists, checklists, quotes, code,
-   dividers, pictures with captions, tables) and the marks on its words (bold, italic, underline,
+   dividers, pictures with captions, tables, and the designed sections: a cover, callouts and
+   columns) and the marks on its words (bold, italic, underline,
    strike, highlight, code, links). The editor (vendor/prosemirror.js) keeps every page to these
    rules, which is also what cleans a paste: anything not listed here doesn't get in.
 
@@ -7,17 +8,25 @@
    is safe for old pages; a page that uses one this copy doesn't know is shown as "made with a newer
    Sleek Docs" and never saved over (doc/editor.js).
 
+   Every block that can sit at the top level of a page has an `id`, given by the editor
+   (doc/editor.js) and never shown: it is how a published page's readers are matched to the page as
+   it is now (doc/viewers.js). A heading can be collapsible (`toggle`), and then open or `closed`.
+
    window.SleekDocKit = { schema, N (its node types), M (its mark types) }; other files add to it. */
 (function(){
   var PM = window.SleekPM; if(!PM) return;
   var tn = PM.tables.tableNodes({ tableGroup: 'block', cellContent: 'block+', cellAttributes: {} });
   function has(el, re){ return re.test(el.getAttribute('style') || ''); }
+  // only addresses a page should carry: a web or mail link, a picture's own data
+  function safeHref(h){ h = String(h || ''); return /^(https?:|mailto:|tel:|#)/i.test(h) ? h : ''; }
+  function safeSrc(u){ u = String(u || ''); return /^(https?:|blob:|data:image\/|sleek-media:)/i.test(u) ? u : ''; }
+  function head(level){ return { tag: 'h' + level, getAttrs: function(d){ return { level: Math.min(level, 3), toggle: d.classList.contains('dk-toggle'), closed: d.classList.contains('closed') }; } }; }
   var nodes = {
-    doc: { content: 'block+' },
+    doc: { content: 'cover? block+' },
     paragraph: { group: 'block', content: 'inline*', parseDOM: [{ tag: 'p' }], toDOM: function(){ return ['p', 0]; } },
-    heading: { group: 'block', content: 'inline*', attrs: { level: { default: 2 } }, defining: true,
-      parseDOM: [{ tag: 'h1', attrs: { level: 1 } }, { tag: 'h2', attrs: { level: 2 } }, { tag: 'h3', attrs: { level: 3 } }, { tag: 'h4', attrs: { level: 3 } }, { tag: 'h5', attrs: { level: 3 } }, { tag: 'h6', attrs: { level: 3 } }],
-      toDOM: function(n){ return ['h' + n.attrs.level, 0]; } },
+    heading: { group: 'block', content: 'inline*', attrs: { level: { default: 2 }, toggle: { default: false }, closed: { default: false } }, defining: true,
+      parseDOM: [head(1), head(2), head(3), head(4), head(5), head(6)],
+      toDOM: function(n){ return n.attrs.toggle ? ['h' + n.attrs.level, { class: 'dk-toggle' + (n.attrs.closed ? ' closed' : '') }, 0] : ['h' + n.attrs.level, 0]; } },
     blockquote: { group: 'block', content: 'block+', defining: true, parseDOM: [{ tag: 'blockquote' }], toDOM: function(){ return ['blockquote', 0]; } },
     code_block: { group: 'block', content: 'text*', marks: '', code: true, defining: true, parseDOM: [{ tag: 'pre', preserveWhitespace: 'full' }], toDOM: function(){ return ['pre', ['code', 0]]; } },
     horizontal_rule: { group: 'block', parseDOM: [{ tag: 'hr' }], toDOM: function(){ return ['hr']; } },
@@ -29,14 +38,24 @@
     task_item: { content: 'paragraph', attrs: { done: { default: false } }, defining: true,
       parseDOM: [{ tag: 'li.dk-task', priority: 60, getAttrs: function(d){ return { done: d.classList.contains('done') }; } }],
       toDOM: function(n){ return ['li', { class: 'dk-task' + (n.attrs.done ? ' done' : '') }, ['span', { class: 'dk-check' }], ['div', 0]]; } },
-    // a picture: its caption is the block's own text. size is 'text' (as wide as the words) or 'wide'
+    // a picture: its caption is the block's own text. size is 'text' (as wide as the words), 'wide' or 'full'
     figure: { group: 'block', content: 'inline*', attrs: { src: { default: '' }, size: { default: 'text' } }, draggable: true, isolating: true,
       parseDOM: [
-        { tag: 'figure', getAttrs: function(d){ var i = d.querySelector('img[src]'); return i ? { src: i.getAttribute('src'), size: d.classList.contains('dk-wide') ? 'wide' : 'text' } : false; },
+        { tag: 'figure', getAttrs: function(d){ var i = d.querySelector('img[src]'); return i ? { src: i.getAttribute('src'), size: d.classList.contains('dk-full') ? 'full' : d.classList.contains('dk-wide') ? 'wide' : 'text' } : false; },
           contentElement: function(d){ return d.querySelector('figcaption') || document.createElement('span'); } },
         { tag: 'img[src]', getAttrs: function(d){ var s = d.getAttribute('src') || ''; return /^(https?:|data:image\/|blob:)/i.test(s) && d.getAttribute('width') !== '1' ? { src: s } : false; } }
       ],
-      toDOM: function(n){ return ['figure', { class: 'dk-fig' + (n.attrs.size === 'wide' ? ' dk-wide' : '') }, ['img', { src: n.attrs.src, alt: n.textContent }], ['figcaption', 0]]; } },
+      toDOM: function(n){ return ['figure', { class: 'dk-fig' + (n.attrs.size === 'wide' ? ' dk-wide' : n.attrs.size === 'full' ? ' dk-full' : '') }, ['img', { src: safeSrc(n.attrs.src), alt: n.textContent }], ['figcaption', 0]]; } },
+    // ---------- designed sections ----------
+    // a cover: a band across the top of the page, holding a short line above, the title, and a line below.
+    // Only ever first (the page is "cover? block+"), so it is not one of the ordinary blocks.
+    cover: { content: 'paragraph heading paragraph', defining: true, isolating: true,
+      parseDOM: [{ tag: 'header.dk-cover' }], toDOM: function(){ return ['header', { class: 'dk-cover' }, 0]; } },
+    // a callout: a tinted box around a few blocks
+    callout: { group: 'block', content: 'block+', defining: true, parseDOM: [{ tag: 'aside.dk-callout' }], toDOM: function(){ return ['aside', { class: 'dk-callout' }, 0]; } },
+    // columns: two or three side by side, each holding its own blocks
+    columns: { group: 'block', content: 'column{2,3}', isolating: true, parseDOM: [{ tag: 'div.dk-cols' }], toDOM: function(n){ return ['div', { class: 'dk-cols dk-cols-' + n.childCount }, 0]; } },
+    column: { content: 'block+', isolating: true, parseDOM: [{ tag: 'div.dk-col' }], toDOM: function(){ return ['div', { class: 'dk-col' }, 0]; } },
     table: tn.table, table_row: tn.table_row, table_cell: tn.table_cell, table_header: tn.table_header,
     text: { group: 'inline' },
     hard_break: { inline: true, group: 'inline', selectable: false, parseDOM: [{ tag: 'br' }], toDOM: function(){ return ['br']; } }
@@ -44,7 +63,7 @@
   var marks = {
     link: { attrs: { href: {} }, inclusive: false,
       parseDOM: [{ tag: 'a[href]', getAttrs: function(d){ var h = d.getAttribute('href') || ''; return /^(https?:|mailto:|tel:|#)/i.test(h) ? { href: h } : false; } }],
-      toDOM: function(m){ return ['a', { href: m.attrs.href, target: '_blank', rel: 'noopener' }, 0]; } },
+      toDOM: function(m){ return ['a', { href: safeHref(m.attrs.href), target: '_blank', rel: 'noopener' }, 0]; } },
     // Google Docs wraps a whole paste in <b style="font-weight:normal">, which is not bold
     strong: { parseDOM: [{ tag: 'strong' }, { tag: 'b', getAttrs: function(d){ return d.style.fontWeight !== 'normal' && d.style.fontWeight !== '400' && null; } },
                          { style: 'font-weight', getAttrs: function(v){ return /^(bold(er)?|[5-9]\d{2,})$/.test(v) && null; } }], toDOM: function(){ return ['strong', 0]; } },
@@ -55,6 +74,10 @@
     highlight: { parseDOM: [{ tag: 'mark' }, { style: 'background-color', getAttrs: function(v){ return !/^(transparent|inherit|initial|unset|none|white|#fff(fff)?|rgba?\(\s*255,\s*255,\s*255|rgba\([^)]*,\s*0\s*\))/i.test(String(v).trim()) && null; } }], toDOM: function(){ return ['mark', 0]; } },
     code: { parseDOM: [{ tag: 'code' }], toDOM: function(){ return ['code', 0]; } }
   };
+  // every block that can sit at the top level of a page carries an id (see the note at the top)
+  ['paragraph', 'heading', 'blockquote', 'code_block', 'horizontal_rule', 'bullet_list', 'ordered_list', 'task_list', 'figure', 'cover', 'callout', 'columns', 'table'].forEach(function(name){
+    var spec = nodes[name] = Object.assign({}, nodes[name]); spec.attrs = Object.assign({}, spec.attrs, { id: { default: null } });
+  });
   var schema = new PM.model.Schema({ nodes: nodes, marks: marks });
-  window.SleekDocKit = { schema: schema, N: schema.nodes, M: schema.marks, has: has };
+  window.SleekDocKit = { schema: schema, N: schema.nodes, M: schema.marks, has: has, safeHref: safeHref, safeSrc: safeSrc };
 })();

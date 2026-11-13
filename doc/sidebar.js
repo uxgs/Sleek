@@ -29,7 +29,8 @@
   function openPage(id){ if(A.meta() && A.meta().id === id){ if(narrow()) hide(true); return; } A.open(id).then(function(){ if(narrow()) hide(true); }); }
   function removePage(d){
     var wasCur = A.meta() && A.meta().id === d.id;
-    (wasCur ? A.flush() : Promise.resolve()).then(function(){ return D.remove(d.id); }).then(load).then(function(){
+    var O = window.SleekOnline;
+    (wasCur ? A.flush() : Promise.resolve()).then(function(){ return d.viewers && O ? O.stop(null, d.viewers).catch(function(){}) : null; }).then(function(){ return D.remove(d.id); }).then(load).then(function(){
       A.toast('Deleted “' + d.title + '”');
       if(!wasCur){ paint(); return; }
       return docs.length ? A.open(docs[0].id) : A.newPage(null);

@@ -5,7 +5,7 @@
    .sleek pages and Markdown or text files (doc/import.js). Pages and folders come from
    core/doc-store.js; the card shows how the page starts (its record's `peek`). */
 (function(){
-  var D = window.SleekDocs, I = window.SleekDocImport, S = window.SleekStore;
+  var D = window.SleekDocs, I = window.SleekDocImport, S = window.SleekStore, O = window.SleekOnline;
   var grid = document.getElementById('dl-grid'), count = document.getElementById('dl-count');
   if(!grid) return;
   function el(tag, cls, text){ var e = document.createElement(tag); if(cls) e.className = cls; if(text != null) e.textContent = text; return e; }
@@ -34,7 +34,9 @@
     sheet.appendChild(el('b', '', d.title)); sheet.appendChild(el('p', '', d.peek || ''));
     var f = folders.filter(function(x){ return x.id === d.folder; })[0];
     var meta = el('div', 'dl-meta'), txt = el('div'), name = el('a', 'dl-name', d.title); name.href = href; name.tabIndex = -1;
-    txt.appendChild(name); txt.appendChild(el('span', '', (f ? f.name + ' · ' : '') + 'Edited ' + ago(d.updated)));
+    var when = el('span', '', (f ? f.name + ' · ' : '') + 'Edited ' + ago(d.updated));
+    if(d.viewers && d.viewers.on && d.viewers.room){ when.dataset.room = d.viewers.room; when.dataset.rest = when.textContent; }
+    txt.appendChild(name); txt.appendChild(when);
     var more = el('button', 'lib-more'); more.type = 'button'; more.setAttribute('aria-label', 'More for ' + d.title); more.setAttribute('aria-haspopup', 'true'); more.setAttribute('aria-expanded', 'false');
     more.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>';
     more.addEventListener('click', function(){
@@ -47,7 +49,11 @@
       item('Download a copy', function(){ closeMenu(); D.exportDoc(d.id).then(function(t){ if(t) save(fileName(d.title) + '.sleek', t); }); });
       m.appendChild(document.createElement('hr'));
       var armed = 0, del = item('Delete', function(){
-        if(Date.now() - armed < 5000){ closeMenu(); c.classList.add('gone'); D.remove(d.id).then(function(){ setTimeout(render, 250); toast('Deleted “' + d.title + '”'); }); return; }
+        if(Date.now() - armed < 5000){
+          closeMenu(); c.classList.add('gone');
+          (d.viewers && O ? O.stop(null, d.viewers).catch(function(){}) : Promise.resolve()).then(function(){ return D.remove(d.id); }).then(function(){ setTimeout(render, 250); toast('Deleted “' + d.title + '”'); });
+          return;
+        }
         armed = Date.now(); del.textContent = 'Press again to delete'; setTimeout(function(){ if(del.isConnected) del.textContent = 'Delete'; }, 5000);
       }, 'danger');
       meta.appendChild(m); c.classList.add('menu-open'); more.setAttribute('aria-expanded', 'true'); openMenu = { menu: m, btn: more, card: c };
@@ -64,6 +70,19 @@
         var w = el('div'), a = el('a', 'btn btn-new'); a.href = 'doc.html?new=1'; a.innerHTML = '<span class="plus" aria-hidden="true">+</span>New page'; w.appendChild(a); e.appendChild(w); grid.appendChild(e); return;
       }
       docs.forEach(function(d){ grid.appendChild(card(d, r[1], d.id === freshId)); });
+      views(docs);
+    });
+  }
+
+  // a page published with "See who's reading" shows its count on its card: "2 reading", or "14 views"
+  function views(docs){
+    var list = docs.filter(function(d){ return d.viewers && d.viewers.on && d.viewers.room && d.viewers.key; }).map(function(d){ return d.viewers; });
+    if(!O || !O.on || !list.length) return;
+    O.counts(list).then(function(got){
+      Array.prototype.forEach.call(grid.querySelectorAll('[data-room]'), function(s){
+        var c = got[s.dataset.room]; if(!c) return;
+        s.textContent = (c.live ? c.live + ' reading' : c.views ? c.views + (c.views === 1 ? ' view' : ' views') : 'No views yet') + ' · ' + s.dataset.rest;
+      });
     });
   }
 

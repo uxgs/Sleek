@@ -1,0 +1,33 @@
+/* A published Sleek Docs page: what is around the page for its reader (doc/publish.js puts this and
+   doc/doc.css into the file; doc/reader.js runs it). A thin bar on top with the title, the reading
+   time, light or dark, and how far down you are; an outline at the side where there is room. */
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 64px; }
+body { margin: 0; background: var(--d-bg); color: var(--d-fg); font: 15px/1.5 var(--d-ff); -webkit-font-smoothing: antialiased; }
+[hidden] { display: none !important; }
+.rd-top { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 12px; height: calc(46px + env(safe-area-inset-top, 0px)); padding: env(safe-area-inset-top, 0px) max(16px, env(safe-area-inset-right, 0px)) 0 max(16px, env(safe-area-inset-left, 0px));
+  background: color-mix(in srgb, var(--d-bg) 86%, transparent); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); border-bottom: 1px solid var(--d-line); font-size: 13.5px; color: var(--d-muted); }
+.rd-title { flex: 1; min-width: 0; color: var(--d-fg); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rd-time { white-space: nowrap; }
+.rd-mode { width: 34px; height: 34px; flex: none; display: grid; place-items: center; border: 0; border-radius: 9px; background: none; color: var(--d-muted); cursor: pointer; }
+.rd-mode:hover { background: var(--d-hover); color: var(--d-fg); }
+.rd-mode svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.rd-bar { position: absolute; left: 0; bottom: -1px; height: 2px; width: 0; background: var(--d-accent); }
+:is(button, a):focus-visible { outline: 2px solid var(--d-accent); outline-offset: 2px; }
+.rd-in { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 12px; width: min(1080px, 100%); margin: 0 auto; padding: 30px max(24px, env(safe-area-inset-right, 0px)) 80px max(24px, env(safe-area-inset-left, 0px)); }
+.rd-in.no-outline { grid-template-columns: minmax(0, 1fr); width: min(900px, 100%); }
+.rd-in.no-outline .rd-outline { display: none; }
+.rd-outline { position: sticky; top: 76px; align-self: start; display: flex; flex-direction: column; gap: 2px; font-size: 13.5px; max-height: calc(100vh - 100px); overflow-y: auto; }
+.rd-outline a { padding: 5px 10px; border-radius: 8px; color: var(--d-muted); text-decoration: none; border-left: 2px solid transparent; }
+.rd-outline a.sub { padding-left: 22px; font-size: 13px; }
+.rd-outline a:hover { color: var(--d-fg); }
+.rd-outline a.on { color: var(--d-fg); border-left-color: var(--d-accent); font-weight: 500; }
+.rd-main { container-type: inline-size; min-width: 0; }
+.rd-foot { text-align: center; font-size: 12.5px; color: var(--d-faint); padding: 44px 0 0; }
+.dk-task > .dk-check { cursor: default; }
+@media (max-width: 860px) {
+  .rd-in { grid-template-columns: minmax(0, 1fr); padding: 18px max(16px, env(safe-area-inset-right, 0px)) 60px max(16px, env(safe-area-inset-left, 0px)); }
+  .rd-outline { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+@media print { .rd-top, .rd-outline, .rd-foot { display: none !important; } .rd-in { display: block; width: auto; padding: 0; } }

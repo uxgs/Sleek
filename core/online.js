@@ -48,21 +48,25 @@
   // Switch Viewers on or off for a deck (the Share menu does this as it publishes). On: the deck gets
   // its two codes the first time, and the service is told about it every time, so a deck whose record
   // there has lapsed starts again. Rejects when the service can't be reached.
-  function set(id, on, slides){
-    return S().get(id).then(function(d){
+  // opts.store: where the record lives (the decks' store unless given: Sleek Docs passes its own);
+  // opts.extra: more to keep with the codes (Docs keeps which blocks its stops were)
+  function set(id, on, slides, opts){
+    var store = (opts && opts.store) || S(), extra = opts && opts.extra;
+    return store.get(id).then(function(d){
       if(!d) return null;
       var v = d.viewers || null;
       if(!on){
         if(!v || !v.on) return v;
         v.on = false;
-        return S().setViewers(id, v).then(function(){ changed(id); return v; });
+        return store.setViewers(id, v).then(function(){ changed(id); return v; });
       }
       if(!able) return Promise.reject(new Error('Viewers is not available here.'));
       v = v && v.room && v.key ? v : { room: code(), key: code(), since: Date.now() };
       return sha(v.key).then(function(h){ return post('/v1/rooms', { room: v.room, hash: h }); }).then(function(r){
         if(!r.ok) throw new Error('The viewer service said ' + r.status + '.');
         v.on = true; if(slides && slides.length) v.slides = slides.slice(0, 500);
-        return S().setViewers(id, v).then(function(){ changed(id); return v; });
+        if(extra) Object.keys(extra).forEach(function(k){ v[k] = extra[k]; });
+        return store.setViewers(id, v).then(function(){ changed(id); return v; });
       });
     });
   }
@@ -79,9 +83,10 @@
   }
   function clear(v){ return post('/v1/rooms/' + v.room + '/clear', { key: v.key }); }
   // stop counting for good: the service forgets the deck, and so does this browser
-  function stop(id, v){
+  function stop(id, v, opts){
+    var store = (opts && opts.store) || S();
     var told = v && v.room && able ? post('/v1/rooms/' + v.room + '/stop', { key: v.key }).catch(function(){ return null; }) : Promise.resolve(null);
-    return told.then(function(){ return id ? S().setViewers(id, null) : null; }).then(function(){ if(id) changed(id); });
+    return told.then(function(){ return id ? store.setViewers(id, null) : null; }).then(function(){ if(id) changed(id); });
   }
 
   // The owner's live line to a deck. on.state(state) each time something changes; on.status(text)

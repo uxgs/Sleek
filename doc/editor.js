@@ -26,7 +26,13 @@
   }
   function status(s){ var e = $('#saved'); if(e) e.textContent = s; }
   function count(){ var m = view.state.doc.textBetween(0, view.state.doc.content.size, ' ', ' ').match(/\S+/g); return m ? m.length : 0; }
-  function title(){ var t = ''; view.state.doc.descendants(function(n){ if(t) return false; if(n.isTextblock){ t = n.textContent; return false; } }); return t.trim() || 'Untitled'; }
+  // the page's name: its cover's title if it has a cover, else its first line
+  function title(){
+    var d = view.state.doc, t = '';
+    if(d.firstChild.type === N.cover) d.firstChild.forEach(function(n){ if(n.type === N.heading) t = n.textContent; });
+    if(!t.trim()){ t = ''; d.descendants(function(n){ if(t) return false; if(n.type === N.cover) return false; if(n.isTextblock){ t = n.textContent; return false; } }); }
+    return t.trim() || 'Untitled';
+  }
 
   // ---------- the page's look ----------
   var LOOK = { mode: 'light', accent: '#7C5CFF', font: 'inter' };
@@ -82,10 +88,32 @@
       decorations: function(st){
         var $f = st.selection.$from, out = [], first = st.doc.firstChild;
         if(first.type === N.heading && !first.content.size) out.push(PM.view.Decoration.node(0, first.nodeSize, { class: 'dk-empty', 'data-ph': 'Title' }));
+        // a cover's three lines each say what they are for while empty
+        if(first.type === N.cover) first.forEach(function(n, off, i){ if(!n.content.size) out.push(PM.view.Decoration.node(1 + off, 1 + off + n.nodeSize, { class: 'dk-empty', 'data-ph': ['A short line above (or leave it empty)', 'Title', 'One line about it (or leave it empty)'][i] })); });
         if(st.selection.empty && $f.depth === 1 && $f.parent.isTextblock && !$f.parent.content.size && $f.parent !== first)
           out.push(PM.view.Decoration.node($f.before(), $f.after(), { class: 'dk-empty', 'data-ph': $f.parent.type === N.heading ? 'Heading' : $f.parent.type === N.paragraph ? 'Write, or press / for blocks' : '' }));
         return PM.view.DecorationSet.create(st.doc, out);
       } } }),
+    // ids: every block at the top level of the page has one, and no two share one (a split or a paste copies it)
+    new St.Plugin({ appendTransaction: function(trs, old, st){
+      if(!trs.some(function(t){ return t.docChanged || t.getMeta('ids'); })) return null;     // 'ids': asked for outright, before publishing
+      var seen = {}, tr = null;
+      st.doc.forEach(function(n, pos){
+        var id = n.attrs.id;
+        if(!id || seen[id]){ id = D.uid(); tr = tr || st.tr; tr.setNodeMarkup(pos, null, Object.assign({}, n.attrs, { id: id })); }
+        seen[id] = 1;
+      });
+      return tr ? tr.setMeta('addToHistory', false) : null;
+    } }),
+    // collapsible headings: a closed one hides what is under it, up to the next heading of its size or bigger.
+    // The cursor never stays inside something hidden: its heading opens instead.
+    new St.Plugin({
+      props: { decorations: function(st){ var out = []; folds(st.doc).forEach(function(f){ f.hide.forEach(function(h){ out.push(PM.view.Decoration.node(h.pos, h.pos + h.size, { class: 'dk-folded' })); }); }); return PM.view.DecorationSet.create(st.doc, out); } },
+      appendTransaction: function(trs, old, st){
+        var s = st.selection, tr = null;
+        folds(st.doc).forEach(function(f){ if(f.hide.some(function(h){ return s.from < h.pos + h.size && s.to > h.pos; })){ tr = tr || st.tr; tr.setNodeMarkup(f.pos, null, Object.assign({}, f.node.attrs, { closed: false })); } });
+        return tr ? tr.setMeta('addToHistory', false) : null;
+      } }),
     ir.inputRules({ rules: ir.smartQuotes.concat([ ir.emDash, ir.ellipsis,
       ir.textblockTypeInputRule(/^(#{1,3})\s$/, N.heading, function(m){ return { level: m[1].length }; }),
       ir.wrappingInputRule(/^\s*([-+*])\s$/, N.bullet_list), ir.wrappingInputRule(/^(\d+)\.\s$/, N.ordered_list), ir.wrappingInputRule(/^\s*\[\s?\]\s$/, N.task_list),
@@ -95,6 +123,8 @@
       'Mod-b': cmd.toggleMark(M.strong), 'Mod-i': cmd.toggleMark(M.em), 'Mod-u': cmd.toggleMark(M.underline), 'Mod-Shift-x': cmd.toggleMark(M.strike),
       'Mod-Shift-h': cmd.toggleMark(M.highlight), 'Mod-e': cmd.toggleMark(M.code),
       'Mod-k': function(){ if(api.link) api.link(); return true; },
+      // ⌘Enter: out of whatever you are in (a table, columns, a callout, the cover), onto a new line after it
+      'Mod-Enter': function(st, d){ var $f = st.selection.$from; if(!$f.depth) return false; var pos = $f.after(1); if(d){ var tr = st.tr.insert(pos, N.paragraph.create()); d(tr.setSelection(St.TextSelection.create(tr.doc, pos + 1)).scrollIntoView()); } return true; },
       'Enter': cmd.chainCommands(sl.splitListItem(N.list_item), sl.splitListItem(N.task_item, { done: false })),
       'Tab': cmd.chainCommands(PM.tables.goToNextCell(1), sl.sinkListItem(N.list_item),
                function(st, d){ if(st.selection.$from.parent.type !== N.code_block) return false; if(d) d(st.tr.insertText('  ')); return true; }, function(){ return true; }),
@@ -102,7 +132,33 @@
       'Shift-Enter': cmd.chainCommands(cmd.exitCode, function(st, d){ if(d) d(st.tr.replaceSelectionWith(N.hard_break.create()).scrollIntoView()); return true; }) }),
     PM.keymap.keymap(cmd.baseKeymap), PM.history.history(), PM.dropcursor.dropCursor({ color: 'var(--d-accent)', width: 2 }), PM.gapcursor.gapCursor(), PM.tables.tableEditing()
   ];
+  // each closed collapsible heading at the top level, with the blocks it hides
+  function folds(doc){
+    var out = [], open = [];      // open: closed headings whose hidden run is still going
+    doc.forEach(function(n, pos){
+      if(n.type === N.heading) open = open.filter(function(f){ return n.attrs.level > f.node.attrs.level; });
+      open.forEach(function(f){ f.hide.push({ pos: pos, size: n.nodeSize }); });
+      if(n.type === N.heading && n.attrs.toggle && n.attrs.closed){ var f = { pos: pos, node: n, hide: [] }; out.push(f); open.push(f); }
+    });
+    return out.filter(function(f){ return f.hide.length; });
+  }
   var nodeViews = {
+    // a heading; a collapsible one gets its arrow, which opens and closes it
+    heading: function(node, v, getPos){
+      var h = document.createElement('h' + node.attrs.level), btn = null, text = h;
+      if(node.attrs.toggle){
+        btn = document.createElement('button'); btn.type = 'button'; btn.className = 'dk-fold'; btn.contentEditable = 'false'; text = document.createElement('span');
+        btn.addEventListener('mousedown', function(e){ e.preventDefault(); });
+        btn.addEventListener('click', function(){ var n = v.state.doc.nodeAt(getPos()); if(n) v.dispatch(v.state.tr.setNodeMarkup(getPos(), null, Object.assign({}, n.attrs, { closed: !n.attrs.closed })).setMeta('addToHistory', false)); });
+        h.appendChild(btn); h.appendChild(text);
+      }
+      function paint(n){ if(!btn) return; h.className = 'dk-toggle' + (n.attrs.closed ? ' closed' : ''); btn.setAttribute('aria-expanded', String(!n.attrs.closed)); btn.setAttribute('aria-label', n.attrs.closed ? 'Show what is under this heading' : 'Hide what is under this heading'); }
+      paint(node);
+      return { dom: h, contentDOM: text,
+        update: function(n){ if(n.type !== N.heading || n.attrs.level !== node.attrs.level || !!n.attrs.toggle !== !!node.attrs.toggle) return false; node = n; paint(n); return true; },
+        stopEvent: function(e){ return !!btn && btn.contains(e.target); },
+        ignoreMutation: function(m){ return !!btn && (m.target === btn || (m.target === h && m.type === 'attributes')); } };
+    },
     // a checklist item: the tick is a real button, the words beside it are the item's text
     task_item: function(node, v, getPos){
       var li = document.createElement('li'), c = document.createElement('button'), d = document.createElement('div');
@@ -175,7 +231,7 @@
   function newPage(folder){ return D.create({ folder: folder || null }).then(function(d){ return open(d.id); }).then(function(d){ view.focus(); return d; }); }
 
   api.open = open; api.flush = flush; api.newPage = newPage; api.toast = toast; api.insertBlock = insertBlock; api.run = run; api.list = list;
-  api.look = look; api.setLook = setLook; api.title = title; api.touch = touch;
+  api.look = look; api.setLook = setLook; api.title = title; api.touch = touch; api.seedNow = seedNow;
   api.meta = function(){ return cur; }; api.locked = function(){ return locked; };
 
   open(window.SLEEK_DOC.id, { replace: true }).then(function(d){

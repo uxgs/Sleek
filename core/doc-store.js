@@ -1,7 +1,7 @@
 /* Sleek Docs' storage: every page lives in this browser (IndexedDB), and saves as you go.
 
    Database "sleek-docs" (its own, beside the decks' "sleek-app", which is never changed by Docs):
-     docs     { id, title, created, updated, folder, text, peek }   what the lists of pages need, and no more:
+     docs     { id, title, created, updated, folder, text, peek, viewers? }   what the lists of pages need, and no more:
                                                               folder is a folder's id or null; text is the
                                                               page's words in lower case, for search; peek
                                                               is how it starts, for its card on the start screen
@@ -56,7 +56,9 @@
     return out.join('').replace(/\n+/g, '\n').trim();
   }
   function titleOf(seed){
-    var t = '';
+    var t = '', top = seed && seed.doc && seed.doc.content && seed.doc.content[0];
+    // a page with a cover is named by the cover's title, not the short line above it
+    if(top && top.type === 'cover'){ var h = (top.content || []).filter(function(c){ return c.type === 'heading'; })[0]; t = h ? words(h) : ''; if(t.trim()) return t.trim().slice(0, 120); t = ''; }
     (function walk(n){ if(t || !n) return; if(n.content && n.content.some(function(c){ return typeof c.text === 'string'; })){ t = words(n).split('\n')[0]; return; } (n.content || []).forEach(walk); })(seed && seed.doc);
     return t.trim().slice(0, 120) || 'Untitled';
   }
@@ -97,6 +99,9 @@
   function remove(id){
     return tx(['docs', 'bodies', 'history'], 'readwrite', function(t){ t.objectStore('docs').delete(id); t.objectStore('bodies').delete(id); t.objectStore('history').delete(id); });
   }
+  // Viewers (core/online.js): the page's two codes and whether it is on, as for decks. It lives on the
+  // record, beside the page and never in it, so it stays out of .sleek files, copies and published pages.
+  function setViewers(id, v){ return meta(id).then(function(m){ if(!m) return null; if(v) m.viewers = v; else delete m.viewers; return write(m); }); }
   // put a page in a folder (null: in no folder). Not an edit, so it keeps its place in the list.
   function move(id, folder){ return meta(id).then(function(m){ if(!m) return null; m.folder = folder || null; return write(m); }); }
   // every word of q must be in the title or the page; pages whose title matches come first
@@ -175,7 +180,7 @@
 
   window.SleekDocs = {
     open: open, uid: uid, blank: blank, titleOf: titleOf, words: words,
-    list: list, get: get, create: create, save: save, duplicate: duplicate, remove: remove, move: move, search: search,
+    list: list, get: get, create: create, save: save, duplicate: duplicate, remove: remove, move: move, search: search, setViewers: setViewers,
     folders: folders, addFolder: addFolder, setFolder: setFolder, removeFolder: removeFolder,
     snapshot: snapshot, exportDoc: exportDoc, importDoc: importDoc, parseFile: parseFile
   };

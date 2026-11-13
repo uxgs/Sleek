@@ -24,7 +24,7 @@
 
 /* the page: a column of words about 70 characters wide; wide blocks reach past it where there is room */
 .dk-doc { max-width: 680px; margin: 0 auto; font: 16.5px/1.65 var(--d-ff); color: var(--d-fg); outline: none; letter-spacing: -0.003em;
-          --bleed: min(72px, max(0px, (100cqw - 728px) / 2)); }
+          --bleed: min(72px, max(0px, (100cqw - 728px) / 2)); --bleed-full: min(240px, max(0px, (100cqw - 728px) / 2)); }
 .dk-doc > * { margin: 0 0 14px; }
 .dk-doc h1, .dk-doc h2, .dk-doc h3 { font-family: var(--d-display); line-height: 1.15; letter-spacing: -0.02em; text-wrap: balance; font-weight: 600; margin: 0; }
 :root[data-font="editorial"] .dk-doc :is(h1, h2, h3) { font-weight: 400; letter-spacing: -0.01em; }
@@ -60,7 +60,39 @@
 .dk-fig img { display: block; max-width: 100%; height: auto; margin: 0 auto; border-radius: 14px; }
 .dk-fig.dk-wide img { width: 100%; }
 .dk-fig figcaption { margin-top: 8px; font-size: 13.5px; color: var(--d-muted); text-align: center; min-height: 1.4em; }
-.dk-wide, .dk-doc > .tableWrapper, .dk-doc > table { margin-inline: calc(-1 * var(--bleed)); }
+.dk-wide, .dk-doc > .tableWrapper, .dk-doc > table, .dk-doc > .dk-cols { margin-inline: calc(-1 * var(--bleed)); }
+.dk-full, .dk-doc > .dk-cover { margin-inline: calc(-1 * var(--bleed-full)); }
+.dk-fig.dk-full img { width: 100%; border-radius: 18px; }
+
+/* ---------- designed sections ---------- */
+/* the cover: a dark band across the top, lit in the page's colour, whatever the page's mode */
+.dk-cover { position: relative; overflow: hidden; isolation: isolate; border-radius: 22px; padding: 48px max(28px, var(--bleed-full)) 40px; margin-bottom: 30px; background: #0B0B0D; color: #F5F5F7; }
+.dk-cover::before { content: ""; position: absolute; inset: 0; z-index: -1; opacity: .8; pointer-events: none; background:
+    radial-gradient(60% 90% at 12% 0%, color-mix(in srgb, var(--d-accent) 75%, transparent), transparent 70%),
+    radial-gradient(50% 80% at 95% 100%, color-mix(in srgb, var(--d-accent) 45%, #FF7AB6), transparent 70%); }
+.dk-doc .dk-cover > p:first-child { margin: 0 0 14px; font-size: 12.5px; letter-spacing: .16em; text-transform: uppercase; font-weight: 600; opacity: .82; min-height: 1em; }
+.dk-doc .dk-cover h1 { margin: 0 0 12px; font-size: clamp(32px, 6cqw, 54px); line-height: 1.04; color: #fff; }
+.dk-doc .dk-cover > p:last-child { margin: 0; font-size: 19px; line-height: 1.45; opacity: .86; max-width: 34em; }
+.dk-cover ::selection { background: rgba(255,255,255,0.3); }
+/* a callout: a tinted box */
+.dk-callout { display: block; margin: 18px 0; padding: 14px 16px; border-radius: 14px; background: var(--d-soft); border: 1px solid color-mix(in srgb, var(--d-accent) 28%, transparent); }
+.dk-callout > :last-child { margin-bottom: 0; }
+/* columns: two or three side by side, one above the other on a phone */
+.dk-cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-block: 18px; }
+.dk-cols.dk-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.dk-col { padding: 16px; border-radius: 14px; border: 1px solid var(--d-line); background: var(--d-hover); min-width: 0; }
+.dk-col > :last-child { margin-bottom: 0; }
+.dk-col h1, .dk-col h2, .dk-col h3, .dk-callout h1, .dk-callout h2, .dk-callout h3 { margin: 0 0 8px; font-size: 19px; }
+
+/* ---------- collapsible headings ---------- */
+.dk-doc .dk-toggle { position: relative; padding-left: 30px; }
+.dk-fold { position: absolute; left: 0; top: 0.08em; width: 24px; height: 1.15em; min-height: 22px; padding: 0; border: 0; border-radius: 6px; background: none; cursor: pointer; color: var(--d-muted); display: grid; place-items: center; }
+.dk-fold::before { content: ""; width: 0; height: 0; border-left: 7px solid currentColor; border-top: 5px solid transparent; border-bottom: 5px solid transparent; transform: rotate(90deg); transition: transform .18s ease; }
+.dk-toggle.closed > .dk-fold::before { transform: none; }
+.dk-fold:hover { background: var(--d-hover); color: var(--d-fg); }
+.dk-doc .dk-folded { display: none !important; }
+/* where there is room beside the words, the arrow sits in the margin and the heading lines up with the rest */
+@container (min-width: 790px) { .dk-doc > .dk-toggle { padding-left: 0; } .dk-doc > .dk-toggle > .dk-fold { left: -30px; } }
 
 /* tables */
 .dk-doc table { border-collapse: collapse; width: calc(100% + 2 * var(--bleed)); table-layout: fixed; font-size: 15px; margin-bottom: 18px; }
@@ -68,6 +100,8 @@
 .dk-doc th { background: var(--d-hover); font-weight: 600; }
 
 @media (max-width: 760px) {
+  .dk-cols, .dk-cols.dk-cols-3 { grid-template-columns: 1fr; }
+  .dk-cover { padding: 30px 20px 26px; border-radius: 18px; }
   .dk-doc { font-size: 16px; }
   .dk-doc > h1 { font-size: 30px; } .dk-doc > h2 { font-size: 22px; }
   .dk-doc table { font-size: 13.5px; } .dk-doc th, .dk-doc td { padding: 6px 8px; }
@@ -78,7 +112,12 @@
   :root, :root[data-mode="dark"] { --d-bg: #FFFFFF; --d-fg: #1D1D1F; --d-muted: #55555A; --d-faint: #77777C; --d-line: rgba(0,0,0,0.12); --d-line2: rgba(0,0,0,0.25); --d-hover: rgba(0,0,0,0.04); --d-code: #F1F1F5; --d-hl: #FFE78F; color-scheme: light; }
   @page { margin: 18mm; }
   html, body { background: #fff !important; height: auto !important; overflow: visible !important; }
-  .dk-doc { max-width: none; font-size: 11.5pt; --bleed: 0px; }
+  .dk-doc { max-width: none; font-size: 11.5pt; --bleed: 0px; --bleed-full: 0px; }
+  /* on paper the cover is ink on white, everything collapsed is opened, and the arrows go */
+  .dk-cover { background: none; color: inherit; padding: 0 0 14pt; border-radius: 0; border-bottom: 1.5pt solid currentColor; overflow: visible; }
+  .dk-cover::before { display: none; } .dk-doc .dk-cover h1 { color: inherit; font-size: 30pt; }
+  .dk-doc .dk-folded { display: revert !important; } .dk-fold { display: none; } .dk-doc .dk-toggle { padding-left: 0; }
+  .dk-callout, .dk-col { break-inside: avoid; }
   .dk-doc h1, .dk-doc h2, .dk-doc h3 { break-after: avoid; }
   .dk-fig, .dk-doc pre, .dk-doc blockquote, .dk-doc tr, .dk-task { break-inside: avoid; }
   .dk-doc thead, .dk-doc tr:first-child { display: table-row-group; }

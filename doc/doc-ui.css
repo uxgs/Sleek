@@ -57,7 +57,10 @@ button { font: inherit; color: inherit; }
 .btn { height: 32px; padding: 0 14px; border-radius: 999px; border: 0; background: var(--d-accent); color: var(--d-on-accent); font-weight: 600; font-size: 13px; cursor: pointer; white-space: nowrap; }
 .fmt { display: flex; align-items: center; gap: 2px; padding: 6px 10px; border-bottom: 1px solid var(--d-line); overflow-x: auto; flex: none; scrollbar-width: none; }
 .fmt::-webkit-scrollbar { display: none; }
-.fmt select { height: 32px; border-radius: 9px; border: 1px solid var(--d-line2); background: var(--d-bg); color: var(--d-fg); font: inherit; padding: 0 8px; margin-right: 4px; flex: none; }
+.fmt select { height: 32px; border-radius: 9px; border: 1px solid var(--d-line2); color: var(--d-fg); font: inherit; padding: 0 32px 0 12px; margin-right: 4px; flex: none; cursor: pointer;
+  -webkit-appearance: none; appearance: none; transition: background-color .15s ease, border-color .15s ease;
+  background: var(--d-bg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='%238E8E93' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.5 4.5 6 8l3.5-3.5'/%3E%3C/svg%3E") no-repeat right 11px center / 12px 12px; }
+.fmt select:hover { background-color: var(--d-hover); border-color: var(--d-muted); }
 .fb { min-width: 32px; height: 32px; padding: 0 8px; flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 0; border-radius: 8px; background: none; cursor: pointer; font-size: 14px; }
 .fb:hover { background: var(--d-hover); }
 .fb.on { background: var(--d-soft); color: var(--d-accent); }
@@ -89,8 +92,36 @@ button { font: inherit; color: inherit; }
 .seg button.on { background: var(--d-fg); color: var(--d-bg); border-color: var(--d-fg); }
 .toast { position: fixed; left: 50%; bottom: calc(22px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 60; max-width: calc(100% - 32px); padding: 10px 16px; border-radius: 12px; background: #1C1C21; color: #F2F2F5; font-size: 13.5px; box-shadow: 0 16px 40px -12px rgba(0,0,0,.6); animation: pop .2s ease; }
 
+/* the switch under Publish, and the readers chip in the bar */
+.opt { display: flex; gap: 10px; align-items: center; padding: 6px 10px 8px 38px; }
+.opt span { flex: 1; display: flex; flex-direction: column; min-width: 0; } .opt b { font-weight: 500; } .opt i { font-style: normal; font-size: 12.5px; color: var(--d-muted); }
+.sw { flex: none; width: 40px; height: 24px; border-radius: 999px; border: 0; padding: 0; background: var(--d-line2); position: relative; cursor: pointer; transition: background .2s ease; }
+.sw::after { content: ""; position: absolute; left: 3px; top: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: transform .2s ease; }
+.sw[aria-checked="true"] { background: var(--d-accent); } .sw[aria-checked="true"]::after { transform: translateX(16px); }
+.chip { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 12px 0 10px; border-radius: 999px; border: 1px solid var(--d-line2); background: none; cursor: pointer; font-weight: 500; font-size: 13px; white-space: nowrap; flex: none; }
+.chip:hover, .chip[aria-expanded="true"] { background: var(--d-hover); }
+.chip.live { border-color: color-mix(in srgb, var(--d-live) 55%, transparent); }
+.chip .ico { width: 16px; height: 16px; color: var(--d-muted); }
+.vw-pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--d-live); animation: vw-pulse 2s ease-out infinite; flex: none; }
+@keyframes vw-pulse { from { box-shadow: 0 0 0 0 color-mix(in srgb, var(--d-live) 60%, transparent); } to { box-shadow: 0 0 0 8px transparent; } }
+.vw-who { display: flex; flex-direction: column; }
+.vw-who .mi i.c { width: 10px; height: 10px; border-radius: 50%; background: var(--c); flex: none; }
+.vw-who .mi em { margin-left: auto; font-style: normal; font-size: 12.5px; color: var(--d-faint); white-space: nowrap; padding-left: 8px; }
+.vw-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 4px 6px 6px; }
+.vw-stats div { padding: 9px 10px; border-radius: 10px; background: var(--d-hover); display: flex; flex-direction: column; min-width: 0; }
+.vw-stats b { font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .vw-stats span { font-size: 12px; color: var(--d-muted); }
+.vw-foot { display: flex; flex-wrap: wrap; gap: 4px 14px; padding: 6px 10px 8px; border-top: 1px solid var(--d-line); margin-top: 4px; }
+.vw-foot button { border: 0; background: none; padding: 4px 0; font-size: 13px; color: var(--d-muted); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.vw-foot button:hover { color: var(--d-fg); } .vw-foot button.warn { color: var(--d-warn); }
+/* how far readers got: a bar down the right edge of the page, stronger where more people read, with a dot for each reader here now */
+.vw-rail { position: absolute; top: 0; right: 10px; width: 8px; pointer-events: none; }
+.vw-rail i { position: absolute; left: 2px; width: 4px; border-radius: 3px; background: var(--d-accent); min-height: 3px; transition: opacity .4s ease; }
+.vw-rail b { position: absolute; left: -1px; width: 10px; height: 10px; border-radius: 50%; background: var(--c); border: 2px solid var(--d-bg); transition: top .6s cubic-bezier(.2,.8,.2,1); }
+
 /* ---------- the editor's own touches on the page ---------- */
 .dk-empty::before { content: attr(data-ph); color: var(--d-faint); float: left; height: 0; pointer-events: none; }
+.dk-cover .dk-empty::before { color: rgba(255,255,255,0.45); }
+.dk-toggle.dk-empty::before { float: none; height: auto; position: absolute; }
 .ProseMirror-selectednode { outline: 2px solid var(--d-accent); outline-offset: 3px; border-radius: 10px; }
 .dk-doc .selectedCell { background: var(--d-soft); }
 .dk-fig-tools { position: absolute; top: 8px; right: 8px; display: flex; gap: 4px; opacity: 0; transition: opacity .15s ease; }
@@ -108,6 +139,7 @@ button { font: inherit; color: inherit; }
   .crumb em { display: none; }
   .pagebox { padding: 20px max(16px, env(safe-area-inset-right, 0px)) 40vh max(16px, env(safe-area-inset-left, 0px)); }
   .row-more { opacity: 1; }
+  .vw-rail { right: 3px; }
 }
-@media (prefers-reduced-motion: reduce) { .pop, .toast { animation: none; } }
-@media print { .side, .top, .fmt, .pop, .toast, .dk-fig-tools, .locked { display: none !important; } .app, .main, .scroll { display: block; height: auto; overflow: visible; } .pagebox { padding: 0; min-height: 0; } .dk-empty::before, .dk-fig.nocap figcaption { display: none; } }
+@media (prefers-reduced-motion: reduce) { .pop, .toast, .vw-pulse { animation: none; } .vw-rail b, .vw-rail i { transition: none; } }
+@media print { .side, .top, .fmt, .pop, .toast, .dk-fig-tools, .locked, .vw-rail { display: none !important; } .app, .main, .scroll { display: block; height: auto; overflow: visible; } .pagebox { padding: 0; min-height: 0; } .dk-empty::before, .dk-fig.nocap figcaption, .dk-cover .dk-empty { display: none; } }

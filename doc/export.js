@@ -36,9 +36,10 @@
     }
     function block(n){
       switch(n.type){
-        case N.paragraph: return inline(n);
+        case N.paragraph: return inline(n) || null;
         case N.heading: return new Array(n.attrs.level + 1).join('#') + ' ' + inline(n);
-        case N.blockquote: return blocks(n).split('\n').map(function(l){ return l ? '> ' + l : '>'; }).join('\n');
+        case N.blockquote: case N.callout: return blocks(n).split('\n').map(function(l){ return l ? '> ' + l : '>'; }).join('\n');
+        case N.cover: case N.columns: case N.column: return blocks(n) || null;      // their blocks, one after the other
         case N.code_block: return '```\n' + n.textContent + '\n```';
         case N.horizontal_rule: return '---';
         case N.bullet_list: return items(n, function(){ return '- '; });
