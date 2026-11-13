@@ -141,6 +141,18 @@ window.SLEEK_SAMPLE = {
         "fill": "sample"
       },
       {
+        "id": "results",
+        "t": "results",
+        "name": "Results",
+        "fill": "sample"
+      },
+      {
+        "id": "chart",
+        "t": "chart",
+        "name": "Chart",
+        "fill": "sample"
+      },
+      {
         "id": "lessons",
         "t": "lessons",
         "name": "Lessons",

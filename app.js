@@ -58,6 +58,7 @@
     el.classList.remove('active');
     el.setAttribute('data-label', a.name); el.setAttribute('data-note', 'add-' + a.id); el.setAttribute('data-added', a.id);
     if(window.SleekCollage) SleekCollage.build(el, a);          // a moodboard: a tile for each of its pictures (features/collage-layout.js)
+    if(window.SleekData) SleekData.build(el, a);                // Results and Chart: drawn from the slide's numbers (features/data-layout.js)
     if(a.fill === 'sample') return el;                         // the layout's own words, pictures and notes
     el.removeAttribute('data-before');
     var notes = el.querySelector('template.slide-notes'); if(notes) notes.remove();
@@ -596,6 +597,8 @@
       if(DECK_ID) b.querySelector('.gt-shot').insertAdjacentHTML('beforeend', '<span class="gt-acts">' +
         '<span class="gt-act" data-act="dup" role="button" title="Duplicate slide" aria-label="Duplicate slide"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="7" y="7" width="9.5" height="9.5" rx="2"/><path d="M13 7V5a1.5 1.5 0 0 0-1.5-1.5h-6A1.5 1.5 0 0 0 4 5v6.5A1.5 1.5 0 0 0 5.5 13H7"/></svg></span>' +
         (slides.length > 1 ? '<span class="gt-act del" data-act="del" role="button" title="Delete slide" aria-label="Delete slide"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 6h12M8 6V4.5h4V6M6 6l.7 10h6.6L14 6"/></svg></span>' : '') + '</span>');
+      // a + after each slide but the last (whose neighbour is the Add a slide tile): the new slide goes right there
+      if(DECK_ID && window.Deck && Deck.openAddSlide && k < slides.length - 1) b.insertAdjacentHTML('beforeend', '<span class="gt-ins" data-at="' + (k + 1) + '" role="button" title="Add a slide here" aria-label="Add a slide after ' + (k + 1) + '"><i></i></span>');
       gridTiles.appendChild(b);
     });
     // the last tile adds a slide (features/add-slide.js shows the template picker)
@@ -643,6 +646,7 @@
   gridTiles.addEventListener('click', function(e){
     if(Date.now() - gridDragEnd < 400) return;                 // the end of a drag, not a pick
     var act = e.target.closest('.gt-act'); if(act){ slideAction(act.getAttribute('data-act'), +act.closest('.gt').getAttribute('data-k')); return; }
+    var ins = e.target.closest('.gt-ins'); if(ins){ Deck.openAddSlide(ins, +ins.getAttribute('data-at')); return; }
     var add = e.target.closest('.gt-add'); if(add){ Deck.openAddSlide(add); return; }
     var b = e.target.closest('.gt'); if(b) closeGrid(+b.getAttribute('data-k'));
   });
@@ -684,7 +688,7 @@
     gdrag.raf = requestAnimationFrame(gridAutoScroll);
   }
   gridTiles.addEventListener('pointerdown', function(e){
-    var b = e.target.closest('.gt:not(.gt-add)'); if(!b || e.button !== 0 || !gridOpen || e.target.closest('.gt-act')) return;
+    var b = e.target.closest('.gt:not(.gt-add)'); if(!b || e.button !== 0 || !gridOpen || e.target.closest('.gt-act, .gt-ins')) return;
     // phones: slides move only after Edit at the top of All slides (features/mobile.js)
     if(document.body.classList.contains('compact') && !document.body.classList.contains('grid-editing')) return;
     gdrag = { b: b, id: e.pointerId, sx: e.clientX, sy: e.clientY, x: e.clientX, y: e.clientY, on: false };
@@ -1051,10 +1055,11 @@
   // a still copy of a slide for previews (presenter's up next, the grid): no ids, nothing live
   function cloneSlide(idx){ return stillCopy(slides[idx].cloneNode(true)); }
   // a template as it looks in the deck, for the picker: its pictures painted, its films as stills
-  function templatePreview(key){
+  function templatePreview(key, extra){
     var t = templateBy(key); if(!t) return null;
     var d = document.createElement('div'); d.innerHTML = t.html;
     var c = d.firstElementChild, n = c.querySelector('template.slide-notes'); if(n) n.remove();
+    if(window.SleekData) SleekData.build(c, extra || null);          // a chart, in the version asked for
     var board = window.SleekCollage && SleekCollage.build(c, null);   // a moodboard, laid out as it would be on the slide
     if(board) SleekCollage.place(board, SleekCollage.NOMINAL.W, SleekCollage.NOMINAL.H, 'fit');
     Array.prototype.forEach.call(c.querySelectorAll('.media[data-default-src]'), function(m){
@@ -1110,7 +1115,7 @@
   }
   // the bar's icons show their name in a tooltip (data-tt) instead of the browser's slow title
   // (just the name: shortcut keys stay out of it)
-  var TT = { homebtn: 'Your decks', presentbtn: 'Present', notesbtn: 'Notes', annotbtn: 'Annotate', editbtn: 'Edit', 'accent-dot': 'Theme', full: 'Fullscreen', gridbtn: 'All slides' };
+  var TT = { homebtn: 'Your decks', presentbtn: 'Present', notesbtn: 'Notes', editbtn: 'Edit', 'accent-dot': 'Theme', full: 'Fullscreen', gridbtn: 'All slides' };
   Object.keys(TT).forEach(function(id){ var b = document.getElementById(id); if(b){ b.setAttribute('data-tt', TT[id]); b.removeAttribute('title'); } });
   document.getElementById('presentbtn').onclick = openPresenter;
   // back to your decks (the start screen), once this deck is saved
@@ -1188,7 +1193,7 @@
 
   document.addEventListener('keydown', function(e){
     if(/^(INPUT|TEXTAREA|SELECT)$/.test(e.target && e.target.tagName)) return;
-    if(e.target && e.target.isContentEditable){ if(e.key==='Escape'){ e.target.blur(); } return; }
+    if(e.target && e.target.isContentEditable){ if(e.key==='Escape'){ e.target.blur(); if(editing && e.target.closest('#stage [data-eid]')) leaveText(); } return; }
     if(gridOpen){                                              // the grid takes Esc / G; tiles are buttons (Tab, Enter)
       if(e.key==='Escape' || e.key==='g' || e.key==='G'){ e.preventDefault(); closeGrid(); }
       return;
@@ -1199,6 +1204,8 @@
     else if(e.key==='Home'){ show(0); }
     else if(e.key==='End'){ show(slides.length-1); }
     else if(e.key==='n'||e.key==='N'){ if(!POPOUT) toggleNotes(); }
+    else if(editing && !e.metaKey && !e.ctrlKey && (e.key==='p'||e.key==='P')){ setTool(addingNote ? null : 'pin'); }
+    else if(editing && !e.metaKey && !e.ctrlKey && (e.key==='a'||e.key==='A')){ setTool(drawTool === 'arrow' ? null : 'arrow'); }
     else if(e.key==='a'||e.key==='A'){ toggleAnnot(); }
     else if(e.key==='p'||e.key==='P'){ if(!POPOUT) openPresenter(); }
     else if(e.key==='e'||e.key==='E'){ if(!POPOUT) toggleEdit(); }
@@ -1211,8 +1218,33 @@
   // the slide fits above the bottom bar, which sits on its own solid strip (windows without the bar,
   // like the presenter's preview, use the whole height)
   var barEl = document.getElementById('bar'), viewportEl = document.getElementById('viewport');
+  // The edit bar takes the bottom bar's row when it fits beside the slide's name (the bar's other
+  // buttons step aside while editing); when it doesn't, it sits just above, and the slide moves up
+  // so nothing covers it. Returns the room it needs above the bottom bar.
+  function placeEditbar(){
+    var eb = document.getElementById('editbar'), b = document.body; if(!eb) return 0;
+    if(eb.hidden || !barEl || getComputedStyle(barEl).display === 'none'){ b.classList.remove('eb-docked'); return 0; }
+    b.classList.remove('eb-docked'); eb.style.right = eb.style.bottom = '';             // measured as it floats
+    var compact = b.classList.contains('compact') || b.classList.contains('notes-open');
+    var lab = document.getElementById('seclabel'), notes = document.getElementById('notesbtn');
+    var left = lab && lab.offsetParent ? lab.getBoundingClientRect().right : 0, right = notes && notes.offsetParent ? notes.getBoundingClientRect().left : window.innerWidth - 22;
+    var w = eb.offsetWidth, h = eb.offsetHeight;
+    if(!compact && w <= right - left - 44 && h < 60){
+      b.classList.add('eb-docked');
+      eb.style.right = Math.round(window.innerWidth - right + 12) + 'px'; eb.style.bottom = Math.max(4, Math.round((barEl.offsetHeight - h) / 2)) + 'px';
+      return 0;
+    }
+    return h + 12;
+  }
+  // the bar's groups come and go with the slide and what is selected: it finds its place again each time its size changes
+  if(window.ResizeObserver){ var ebRO = document.getElementById('editbar'); if(ebRO) new ResizeObserver(function(){ if(!ebRO.hidden) fit(); }).observe(ebRO); }
+  var fitBusy = false;
   function fit(){
+    if(fitBusy) return; fitBusy = true;
     var bh = barEl && getComputedStyle(barEl).display !== 'none' ? barEl.offsetHeight : 0;
+    try { bh += placeEditbar(); } catch(e){}
+    fitBusy = false;
+    bh += (window.Deck && Deck.inset) || 0;                    // a panel open under the slide (features/data-slides.js)
     viewportEl.style.bottom = bh + 'px';
     var s = Math.min(window.innerWidth/1280, (window.innerHeight - bh)/720);
     stage.style.transform = 'translate(-50%,-50%) scale('+s+')';
@@ -1450,9 +1482,10 @@
     });
   }
   function paintBarColors(){
+    var dot = document.querySelector('#eb-color .eb-dot'); if(dot) dot.style.background = nextColor || '';
     swatchRow(document.getElementById('eb-colors'), nextColor, function(c){
       nextColor = c; try { localStorage.setItem(NS + 'deck-ann-color', c); } catch(e){}
-      paintBarColors();
+      paintBarColors(); setAddMenu(false);
       if(!peEl.hidden && annById(peEl._aid)) setAnnColor(peEl._aid, c);     // and the one you're editing
     });
   }
@@ -1466,17 +1499,18 @@
   // one tool at a time: 'pin' (click to drop), 'arrow' (drag to draw; boxes still show), or none
   function setTool(t){
     addingNote = (t === 'pin'); drawTool = (t === 'box' || t === 'arrow') ? t : null;
-    var add = document.getElementById('eb-add');
-    add.setAttribute('aria-pressed', String(!!t));
-    add.dataset.tool = t || '';
-    add.title = t === 'pin' ? 'Click the slide to drop a pin' : t === 'arrow' ? 'Drag on the slide to draw an arrow' : 'Add Annotation';
+    Array.prototype.forEach.call(document.querySelectorAll('#eb-annot [data-tool]'), function(b){ b.setAttribute('aria-pressed', String(b.dataset.tool === t)); });
     document.body.classList.toggle('drawing', !!drawTool);
     document.body.classList.toggle('ann-tool', !!t);
+    if(t && activeBlock) leaveText();
+    if(t) setAddMenu(false);
+    paintContext();
   }
-  var ebMenu = document.getElementById('eb-menu');
-  function setAddMenu(open){ ebMenu.hidden = !open; document.getElementById('eb-add').setAttribute('aria-expanded', String(open)); }
-  document.getElementById('eb-add').onclick = function(){ if(addingNote || drawTool){ setTool(null); setAddMenu(false); } else setAddMenu(ebMenu.hidden); };
-  Array.prototype.forEach.call(ebMenu.querySelectorAll('[data-tool]'), function(b){ b.onclick = function(){ setAddMenu(false); setTool(b.dataset.tool); }; });
+  // the colours open from the bar's one colour dot
+  var ebMenu = document.getElementById('eb-colors'), ebColor = document.getElementById('eb-color');
+  function setAddMenu(open){ ebMenu.hidden = !open; ebColor.setAttribute('aria-expanded', String(open)); }
+  ebColor.onclick = function(){ setAddMenu(ebMenu.hidden); };
+  Array.prototype.forEach.call(document.querySelectorAll('#eb-annot [data-tool]'), function(b){ b.onclick = function(){ setAddMenu(false); setTool(b.getAttribute('aria-pressed') === 'true' ? null : b.dataset.tool); }; });
   document.addEventListener('mousedown', function(e){ if(!ebMenu.hidden && !e.target.closest('.eb-addwrap')) setAddMenu(false); });
   document.addEventListener('keydown', function(e){
     if(e.key !== 'Escape' || !annotating) return;
@@ -1645,7 +1679,7 @@
     b.addEventListener('click', function(ev){
       ev.stopPropagation(); ev.preventDefault();
       co.hidden = true;
-      if(!annotating) toggleAnnotate();
+      if(!editing) toggleEdit();
       openPinEditor(aid);
     });
     co.appendChild(b);
@@ -2213,7 +2247,7 @@
   function addAnnotationAt(sc, ev, media){
     var rect = media.getBoundingClientRect();
     var x = ((ev.clientX - rect.left)/rect.width)*100, y = ((ev.clientY - rect.top)/rect.height)*100;
-    var a = { id:nid(), x:Math.max(2,Math.min(98,x)), y:Math.max(3,Math.min(97,y)), title:'Note', note:'' };
+    var a = { id:nid(), x:Math.max(2,Math.min(98,x)), y:Math.max(3,Math.min(97,y)), title:'', note:'' };   // unnamed until you name it (it reads "Note" meanwhile)
     if(nextColor) a.color = nextColor;
     sc = claimSet(sc, media); sc.ann.push(a); setTool(null);
     saveAnns(); renderScreens(); rebuildSlides(); openPinEditor(a.id);
@@ -2229,6 +2263,7 @@
     ed.querySelector('.pe-spot').hidden = !isBox;
     ed.querySelector('.pe-spot input').checked = !!ref.a.spot;
     renderEditorThumbs(); paintEditorColors();
+    var more = ed.querySelector('.pe-more'); if(more) more.open = !!((ref.a.images && ref.a.images.length) || ref.a.spot);
     var r = pin.getBoundingClientRect();
     ed.style.left = Math.max(12, Math.min(r.left, window.innerWidth - 312)) + 'px';
     ed.hidden = false;
@@ -2244,8 +2279,8 @@
     placeHandle(); updateSizeBar();
   }
 
-  // Edit (text, tiles, names, notes) and Annotate (pins and arrows) are separate modes sharing the
-  // bottom bar; turning one on turns the other off
+  // One Edit mode: text, tiles, names, notes, and the slide's pins and arrows (their tools sit in the
+  // same bar). The bar shows what applies to what is selected: paintContext().
   function paintModes(){
     document.body.classList.toggle('editing', editing);
     document.body.classList.toggle('annotating', annotating);
@@ -2253,17 +2288,34 @@
     document.getElementById('eb-text').hidden = !editing;
     document.getElementById('eb-annot').hidden = !annotating;
     document.getElementById('editbtn').setAttribute('aria-pressed', String(editing));
-    document.getElementById('annotbtn').setAttribute('aria-pressed', String(annotating));
-    document.getElementById('eb-done').title = editing ? 'Done editing' : 'Done annotating';
     paintCarBar();
     syncFilmstrips();   // a strip measures its pictures again without Edit mode's Add picture
+    paintContext(); fit();
   }
-  // Edit on a slide that has annotations edits them too (Annotate mode alongside, its tools in the bar);
-  // moving to another slide in Edit mode follows that slide. Annotate on its own is still Annotate alone.
+  // what the bar is about: the text you are in, a pin or arrow being placed or edited, or the slide
+  var TEXT_NAMES = [['.display', 'Headline'], ['.overline, .section-no, .lbl, .lh', 'Label'], ['.taglist li, .lcol li', 'Bullet'], ['.cap', 'Caption'], ['.meta', 'Detail'], ['.card-item span', 'Card']];
+  function paintContext(){
+    var eb = document.getElementById('editbar'), what = document.getElementById('eb-what'), pe = document.getElementById('pin-ed'); if(!eb || !what) return;
+    var block = editing && activeBlock && activeBlock.closest('#stage .slide.active') ? activeBlock : null, ref = pe && !pe.hidden ? annById(pe._aid) : null;
+    var ctx = (addingNote || drawTool) ? 'tool' : ref ? 'ann' : block ? 'text' : 'slide', name = 'Slide';
+    if(ctx === 'tool') name = addingNote ? 'Click the slide to place the pin' : 'Drag on the slide to draw the arrow';
+    else if(ctx === 'text'){ name = 'Text'; TEXT_NAMES.some(function(r){ if(block.matches(r[0])){ name = r[1]; return true; } return false; }); }
+    else if(ctx === 'ann') name = ref.a.type === 'arrow' ? 'Arrow' : ref.a.type === 'box' ? 'Box' : 'Pin';
+    if(eb.getAttribute('data-ctx') !== ctx) eb.setAttribute('data-ctx', ctx);
+    if(what.firstChild.textContent !== name) what.firstChild.textContent = name;
+    what.disabled = ctx === 'slide' || ctx === 'tool';
+    what.title = ctx === 'text' ? 'Back to the slide (Esc)' : ctx === 'ann' ? 'Close the note (Esc)' : '';
+    if(!eb.hidden) fit();                                   // the bar's width changed with what it shows
+  }
+  // out of the text you were in: the bar goes back to the slide
+  function leaveText(){
+    var a = document.activeElement; if(a && a.closest && a.closest('#stage [data-eid]')) a.blur();
+    activeBlock = null; placeHandle(); updateSizeBar();
+  }
+  // Edit edits the slide's pins and arrows too: Annotate rides alongside, on every slide
   var annotByEdit = false;
-  function slideHasAnns(){ var s = slides[i]; return !!(s && s.querySelector('.pin, .abox, .aarrow')); }
   function editAnns(){
-    var want = editing && slideHasAnns();
+    var want = editing;
     if(want === annotating || (annotating && !annotByEdit)) return;
     annotByEdit = want; setAnnotating(want);
   }
@@ -2326,9 +2378,10 @@
       try { sel.modify('move', 'backward', 'word'); sel.modify('extend', 'forward', 'word'); } catch(_){}
     }
   }
-  document.getElementById('annotbtn').onclick = toggleAnnotate;
   document.getElementById('eb-done').onclick = closeModes;
+  document.getElementById('eb-what').onclick = function(){ var pe = document.getElementById('pin-ed'); if(pe && !pe.hidden) pe.hidden = true; else leaveText(); };
   var peEl = document.getElementById('pin-ed');
+  new MutationObserver(function(){ paintContext(); }).observe(peEl, { attributes: true, attributeFilter: ['hidden'] });
   peEl.querySelector('.pe-title').oninput = function(){
     var r = annById(peEl._aid); if(!r) return; r.a.title = this.value;
     var label = this.value || (r.a.type === 'box' ? 'Area' : 'Note');
@@ -2849,6 +2902,7 @@
     var on = !!(editing && activeBlock);
     ['eb-fs-down', 'eb-fs-up', 'eb-size-reset'].forEach(function(id){ document.getElementById(id).disabled = !on; });
     document.getElementById('eb-fs').textContent = on ? String(Math.round(parseFloat(getComputedStyle(activeBlock).fontSize))) : '\u2013';
+    paintContext();
   }
   function bumpFont(dir){
     if(!activeBlock) return;
@@ -4195,22 +4249,31 @@
     featureChanged: function(){ announceFeature(); },          // features that don't take the screen (in-place take-apart)
     echoAct: function(a){ if(AUDIENCE) sendInput({ kind: 'echo', act: a }); },
     mirror: MIRROR,
+    inset: 0, refit: function(){ fit(); },          // room kept clear under the slide, in window pixels
     onShow: [],                                     // fn(slideEl, index) after every slide change
     onReset: [],                                    // fn(slideEl): close what's open, animated (the notes' "Slide" link)
     isEditing: function(){ return editing || annotating; },    // features stay shut while editing or annotating
     current: function(){ return slides[i]; },
     tileSrc: function(m){ return tileSrc(m); },     // the image a tile shows (device edit or seed)
     templates: function(){ return TEMPLATES.map(function(t){ return { key: t.key, name: t.name, desc: t.desc }; }); },
-    templatePreview: function(key){ return templatePreview(key); },
+    templatePreview: function(key, extra){ return templatePreview(key, extra); },
     sampleTint: function(src, cb){ return sampleTint(src, cb); },   // a layout's sample picture in the deck's accent
     sampleRecolor: function(text){ return sampleRecolor(text); },
-    // add a slide from a template; the page rebuilds itself and opens on it
-    addSlide: function(key){
+    // add a slide from a template; the page rebuilds itself and opens on it. at: where it goes in the
+    // deck (none: the end); extra: what it starts with (its name, a chart's kind)
+    addSlide: function(key, at, extra){
       var t = templateBy(key); if(!t) return null;
       var names = slides.map(function(s){ return s.getAttribute('data-label'); }).concat(ADDED.map(function(a){ return a.name; }));
-      var name = t.name, n = 2; while(names.indexOf(name) > -1) name = t.name + ' ' + (n++);
+      var base = (extra && extra.name) || t.name, name = base, n = 2; while(names.indexOf(name) > -1) name = base + ' ' + (n++);
       var a = { id: Math.random().toString(36).slice(2, 8), t: key, name: name };
-      ADDED.push(a); saveAdded(); flushSave();
+      Object.keys(extra || {}).forEach(function(k){ if(k !== 'name' && k !== 'id' && k !== 't') a[k] = extra[k]; });
+      ADDED.push(a); saveAdded();
+      var end = typeof at !== 'number' || at >= slides.length;
+      if(!end || orderOverride || SEED.order){                   // the order says where it goes (the slide joins it when the page loads again); a deck still in its own order takes it last
+        var keys = orderKeys(); keys.splice(end ? keys.length : Math.max(0, at), 0, name);
+        orderOverride = keys; try { localStorage.setItem(NS + 'deck-order', JSON.stringify(keys)); } catch(e){}
+      }
+      flushSave();
       try { sessionStorage.setItem('sleek-arrive', '1'); } catch(e){}
       pingReload();
       return '#' + slugify(name);
@@ -4299,7 +4362,7 @@
   uiAnim(document.getElementById('editbar'), 'rise');
   uiAnim(document.getElementById('eb-text'), 'fade', true);
   uiAnim(document.getElementById('eb-annot'), 'fade', true);
-  uiAnim(document.getElementById('eb-menu'), 'pop');
+  uiAnim(document.getElementById('eb-colors'), 'pop');
   uiAnim(document.getElementById('swatches'), 'pop');
   uiAnim(document.getElementById('link-pop'), 'pop');
   uiAnim(document.getElementById('pin-ed'), 'pop');

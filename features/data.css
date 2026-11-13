@@ -1,0 +1,66 @@
+/* Results and Chart slides. features/data-layout.js draws inside .ds-host, in slide pixels, from the
+   theme's own colours; this file lays the two slides out and styles the Edit data panel. */
+.ds-host { flex: 1 1 auto; min-width: 0; min-height: 0; position: relative; font-family: var(--ff-body); user-select: none; -webkit-user-select: none;
+  --ds-rest: color-mix(in srgb, var(--fg) 13%, transparent); }
+body.editing .slide.active .ds-host { cursor: pointer; border-radius: 12px; outline: 1px dashed rgba(130,130,140,0.55); outline-offset: 10px; }
+body.editing .slide.active .ds-host:hover, body.ds-open .slide.active .ds-host { outline: 2px solid var(--accent); }
+
+/* Results: each number under its own rule; four sit two by two */
+.s-results h2.display { font-size: 44px; max-width: 22ch; margin-top: 18px; }
+.s-results .ds-host { display: flex; flex-direction: column; justify-content: center; padding-top: 26px; }
+.ds-stats { display: grid; gap: 28px 40px; }
+.ds-stat { position: relative; min-width: 0; padding-top: 22px; }
+.ds-stat::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 1px; background: var(--line-strong); transform-origin: 0 50%; transform: scaleX(var(--k, 1)); }
+.ds-num { font-family: var(--ff-display); font-weight: 600; letter-spacing: -0.04em; line-height: 1; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--fg); }
+:root[data-font="editorial"] .ds-num { font-weight: 400; letter-spacing: -0.02em; }
+.ds-what { margin-top: 14px; font-size: 20px; font-weight: 500; letter-spacing: -0.01em; color: var(--fg); }
+.ds-chg { margin-top: 8px; font-size: 16px; color: var(--muted); display: flex; align-items: center; gap: 7px; min-height: 24px; }
+.ds-chg svg { flex: none; }
+.ds-chg.ds-good { color: var(--good); } .ds-chg.ds-watch { color: var(--warn); }
+
+/* Chart: what it shows on the left, the chart on the right */
+.slide.s-chart { display: grid; grid-template-columns: 372px minmax(0, 1fr); column-gap: 60px; align-items: center; }
+.s-chart .ds-copy { display: flex; flex-direction: column; min-width: 0; }
+.s-chart h2.display { font-size: 40px; max-width: 13ch; margin-top: 18px; }
+.s-chart .lead { font-size: 20px; max-width: 30ch; margin-top: 18px; }
+.s-chart .ds-host svg { display: block; width: 100%; height: auto; overflow: visible; }
+.ds-host text { font-family: var(--ff-body); font-variant-numeric: tabular-nums; }
+
+/* ---------- Edit data: the panel under the slide ---------- */
+.ds-ed { position: fixed; left: 50%; transform: translateX(-50%); z-index: 46; width: min(780px, calc(100vw - 24px)); max-height: min(40vh, 400px); display: flex; flex-direction: column; gap: 10px;
+  background: var(--surface); color: var(--fg); border: 1px solid var(--line-strong); border-radius: 14px; padding: 14px; box-shadow: var(--shadow);
+  font: 14px/1.4 var(--ff-body, system-ui); }
+.ds-ed[hidden] { display: none; }
+.ds-ed-top, .ds-ed-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.ds-ed-h { font-size: 15px; font-weight: 600; }
+.ds-ed-grow { flex: 1 1 auto; }
+.ds-ed-p { margin: 0; color: var(--muted); font-size: 13px; }
+.ds-ed-scroll { overflow: auto; min-height: 0; margin: 0 -4px; padding: 0 4px; }
+.ds-ed table { border-collapse: separate; border-spacing: 0 5px; width: 100%; min-width: 500px; }
+.ds-ed th { text-align: left; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--faint); font-weight: 600; padding: 0 6px 1px; white-space: nowrap; position: sticky; top: 0; background: var(--surface); z-index: 1; }
+.ds-ed td { padding: 0 6px 0 0; vertical-align: middle; }
+.ds-ed td.c { text-align: center; width: 1%; padding: 0 8px; }
+.ds-ed :is(td input[type="text"], select, .ds-ed-unit input) { width: 100%; min-width: 0; font: 14px/1.2 var(--ff-body, system-ui); color: var(--fg); background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+.ds-ed input.n { font-variant-numeric: tabular-nums; }
+.ds-ed :is(input, select, button):focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.ds-ed input[type="radio"], .ds-ed input[type="checkbox"] { width: 17px; height: 17px; accent-color: var(--accent); margin: 0; }
+.ds-ed button { font: 500 13px/1 var(--ff-body, system-ui); color: var(--fg); background: transparent; border: 1px solid var(--line-strong); border-radius: 8px; height: 32px; padding: 0 12px; cursor: pointer; }
+.ds-ed button:hover:not(:disabled) { border-color: var(--accent); }
+.ds-ed button:disabled { opacity: 0.4; cursor: default; }
+.ds-ed .ds-ed-done { background: var(--accent); color: var(--on-accent); border-color: var(--accent); font-weight: 600; }
+.ds-ed .ds-x { width: 30px; height: 30px; padding: 0; border-color: transparent; color: var(--muted); font-size: 19px; }
+.ds-ed-types { display: inline-flex; padding: 3px; border-radius: 10px; background: var(--surface-2); border: 1px solid var(--line); gap: 2px; }
+.ds-ed-types[hidden] { display: none; }
+.ds-ed .ds-ed-types button { border-color: transparent; height: 28px; color: var(--muted); }
+.ds-ed .ds-ed-types button[aria-pressed="true"] { background: var(--surface); color: var(--fg); border-color: var(--line-strong); font-weight: 600; }
+.ds-ed-check { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
+.ds-ed-unit { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; }
+.ds-ed-unit[hidden], .ds-ed-theme[hidden] { display: none; }
+.ds-ed .ds-ed-foot .ds-ed-unit input[type="text"] { width: 70px; flex: none; }
+.ds-ed-unit label, .ds-ed-unit span { white-space: nowrap; }
+.ds-col { position: relative; display: inline-flex; width: 28px; height: 28px; border-radius: 50%; cursor: pointer; vertical-align: middle; }
+.ds-col .ds-dot { width: 100%; height: 100%; border-radius: 50%; border: 3px solid var(--surface); box-shadow: 0 0 0 1px var(--line-strong); }
+.ds-col.own .ds-dot { box-shadow: 0 0 0 2px var(--fg); }
+.ds-col input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; padding: 0; border: 0; }
+.ds-col:focus-within .ds-dot { outline: 2px solid var(--accent); outline-offset: 3px; }
+@media (max-width: 640px) { .ds-ed { max-height: 52vh; padding: 12px; } .ds-ed-check { flex-basis: 100%; order: 3; } }

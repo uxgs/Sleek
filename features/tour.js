@@ -37,6 +37,7 @@
       items: [
         ['text', '<b>Double-click any slide</b> to start, then click any text to retype it. Select words to bold, link or resize them.'],
         ['image', '<b>Click a picture or video</b> to replace it with your own.'],
+        ['pointer', '<b>Pin and Arrow</b> in the edit bar point at anything on the slide, each with its own note.'],
         ['lines', '<b>Notes and slide names</b> edit the same way, in the notes panel.'],
         ['check', '<b>Every change saves</b> as you make it. Undo and Redo are in the edit bar.']
       ],

@@ -13,8 +13,8 @@ window and icon. In Safari, choose File › Add to Dock.
 ## On a phone
 
 Sleek works on phones and tablets. Swipe the slide, or tap its left or right edge, to change slides.
-The bar keeps previous, next and All slides. Everything else (your decks, Present, Notes, Annotate,
-Edit, Theme, Share) is in the **⋯** tray. In portrait, speaker notes open under the slide. Add Sleek to
+The bar keeps previous, next and All slides. Everything else (your decks, Present, Notes, Edit, Theme,
+Share) is in the **⋯** tray. In portrait, speaker notes open under the slide. Add Sleek to
 your home screen (Share › Add to Home Screen) and it opens like an app.
 
 ## How it saves
@@ -56,6 +56,8 @@ notes explain that layout:
 | Before and after | A carousel paired with an earlier one: each tile opens as a before / after |
 | Take apart | A tile that comes apart into labelled layers in place |
 | Full video | The whole slide is a film, with the title over it |
+| Results | One to four big numbers that count up as the slide appears |
+| Chart | Bars, a line, a pie or a donut, drawn from a small table you edit, in the deck's colours or your own |
 | Lessons | Two columns: what landed and what to watch, with a press clipping on one bullet |
 | Wrap up | A recap in cards, then questions |
 | Annotated screen | A full-screen capture with pins, boxes and arrows, each with its own note |
@@ -67,11 +69,12 @@ You can remove the sample deck. **Add the sample deck** on the start screen brin
 | Key | Does |
 |---|---|
 | → / ← , Space | Next / previous slide |
-| E, or double-click a slide | Edit: click text to retype it, click a tile to swap its picture or video |
+| E, or double-click a slide | Edit: click text to retype it, click a tile to swap its picture or video. The bar shows what applies to what you have selected |
+| P / A while editing | Pin / Arrow: point at anything on the slide, each with its own note |
 | ⌘Z / ⇧⌘Z | Undo / redo |
 | N | Speaker notes |
 | P | Presenter window: notes, timer, next slide and a live preview you can click |
-| G | All slides (drag to reorder; hover a slide to duplicate or delete it) |
+| G | All slides (drag to reorder; hover a slide to duplicate or delete it, or press the + after it to add one there) |
 | A | Show / hide annotations |
 | F | Fullscreen |
 | H | Back to your decks |

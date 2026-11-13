@@ -26,6 +26,7 @@
 <link rel="stylesheet" href="features/fit.css">
 <link rel="stylesheet" href="features/collage.css">
 <link rel="stylesheet" href="features/floats.css">
+<link rel="stylesheet" href="features/data.css">
 <!-- the storage, the sample deck, then the loader: it opens the deck and starts the engine on it -->
 <script src="core/store.js"></script>
 <script src="data/sample.js"></script>
@@ -143,11 +144,13 @@
 </section>
 
 <div class="editbar" id="editbar" hidden>
-  <button id="eb-done" class="eb-close" title="Done editing" aria-label="Done editing">
-    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5.5 5.5 9 9M14.5 5.5l-9 9"/></svg></button>
+  <button id="eb-done" class="eb-ico eb-done" type="button" title="Done editing (E)">
+    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4.5 10.5 3.5 3.5 7.5-8"/></svg><span class="lbl">Done</span></button>
+  <span class="sep"></span>
+  <button class="eb-what" id="eb-what" type="button" disabled><span>Slide</span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m6 6 8 8M14 6l-8 8"/></svg></button>
   <span class="eb-group" id="eb-insert" hidden>
     <button id="eb-image" class="eb-ico" type="button" title="Put a picture or video anywhere on this slide">
-      <svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="4" width="15" height="12" rx="2"/><circle cx="7.2" cy="8.3" r="1.5"/><path d="m2.8 14 4.4-3.8 3 2.6 2.6-2 4.4 3.6"/></svg><span class="lbl">Image</span></button>
+      <svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="4" width="15" height="12" rx="2"/><circle cx="7.2" cy="8.3" r="1.5"/><path d="m2.8 14 4.4-3.8 3 2.6 2.6-2 4.4 3.6"/></svg><span class="lbl">Add media</span></button>
     <span class="sep"></span>
   </span>
   <span class="eb-group" id="eb-collage" hidden>
@@ -175,7 +178,12 @@
     <button id="cl-mix" class="eb-icon" type="button" data-tt="Remix the arrangement" aria-label="Remix the arrangement">
       <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M15.5 8.5A6 6 0 0 0 4.7 6.6"/><path d="M4.5 3.5v3.3h3.3"/><path d="M4.5 11.5a6 6 0 0 0 10.8 1.9"/><path d="M15.5 16.5v-3.3h-3.3"/></svg></button>
     <button id="cl-add" class="eb-ico" type="button" title="Add pictures or videos, from the deck or your computer">
-      <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4.5v11M4.5 10h11"/></svg><span class="lbl">Add media</span></button>
+      <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4.5v11M4.5 10h11"/></svg><span class="lbl">Add to the board</span></button>
+    <span class="sep"></span>
+  </span>
+  <span class="eb-group" id="eb-data" hidden>
+    <button id="ds-edit" class="eb-ico" type="button" title="The numbers this slide shows: its rows, colours and motion">
+      <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 16V9M8.5 16V4.5M13 16v-5.5M17 16H3"/></svg><span class="lbl">Edit data</span></button>
     <span class="sep"></span>
   </span>
   <span class="eb-group" id="eb-carousel" hidden>
@@ -187,31 +195,30 @@
     <button id="eb-fs-down" title="Smaller text" disabled>A−</button>
     <span class="eb-fs" id="eb-fs" title="Text size (slide px)">–</span>
     <button id="eb-fs-up" title="Larger text" disabled>A+</button>
-    <button id="eb-size-reset" title="Back to the layout's width and size" disabled>Reset size</button>
     <button id="eb-link" class="eb-ico" title="Link: select some text, then add a link" disabled>
       <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M8.6 11.4a3.2 3.2 0 0 0 4.5 0l2.6-2.6a3.2 3.2 0 0 0-4.5-4.5l-1 1"/><path d="M11.4 8.6a3.2 3.2 0 0 0-4.5 0L4.3 11.2a3.2 3.2 0 0 0 4.5 4.5l1-1"/></svg><span class="lbl">Link</span>
     </button>
-    <button id="eb-theme" class="eb-icon" type="button" aria-pressed="true" data-tt="Theme on this slide" aria-label="Theme on this slide">
-      <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 16.5c2.2-2.4 4.7-3.6 7-3.6s4.8 1.2 7 3.6"/><path d="M5.5 16.5c1.4-1.3 2.9-1.9 4.5-1.9s3.1.6 4.5 1.9"/><path d="M10 3.2l.9 2.3 2.3.9-2.3.9-.9 2.3-.9-2.3-2.3-.9 2.3-.9Z"/><path d="M15.2 6.6l.45 1.1 1.1.45-1.1.45-.45 1.1-.45-1.1-1.1-.45 1.1-.45Z"/></svg></button>
+    <button id="eb-size-reset" title="Back to the layout's width and size" disabled>Reset size</button>
     <span class="sep"></span>
   </span>
   <span class="eb-group" id="eb-annot" hidden>
+    <button id="eb-pin" class="eb-ico" type="button" data-tool="pin" aria-pressed="false" title="Pin (P): then click the slide where it goes">
+      <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 17.6s-5.2-4.7-5.2-8.8a5.2 5.2 0 0 1 10.4 0c0 4.1-5.2 8.8-5.2 8.8Z"/><circle cx="10" cy="8.8" r="1.9"/></svg><span class="lbl">Pin</span></button>
+    <button id="eb-arrow" class="eb-ico" type="button" data-tool="arrow" aria-pressed="false" title="Arrow (A): then drag on the slide from its start to what it points at">
+      <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4.5 15.5 15 5"/><path d="M8.2 5H15v6.8"/></svg><span class="lbl">Arrow</span></button>
     <span class="eb-addwrap">
-      <button id="eb-add" class="eb-plus" type="button" aria-pressed="false" aria-haspopup="menu" aria-expanded="false" title="Add Annotation" aria-label="Add Annotation">
-        <svg class="i-plus" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4.5v11M4.5 10h11"/></svg>
-        <svg class="i-pin" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 17.6s-5.2-4.7-5.2-8.8a5.2 5.2 0 0 1 10.4 0c0 4.1-5.2 8.8-5.2 8.8Z"/><circle cx="10" cy="8.8" r="1.9"/></svg>
-        <svg class="i-arrow" viewBox="0 0 20 20" aria-hidden="true"><path d="M4.5 15.5 15 5"/><path d="M8.2 5H15v6.8"/></svg>
-      </button>
-      <span class="eb-menu" id="eb-menu" role="menu" hidden>
-        <button type="button" role="menuitem" data-tool="pin">
-          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 17.6s-5.2-4.7-5.2-8.8a5.2 5.2 0 0 1 10.4 0c0 4.1-5.2 8.8-5.2 8.8Z"/><circle cx="10" cy="8.8" r="1.9"/></svg>Add Pin</button>
-        <button type="button" role="menuitem" data-tool="arrow">
-          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4.5 15.5 15 5"/><path d="M8.2 5H15v6.8"/></svg>Add Arrow</button>
-      </span>
+      <button id="eb-color" class="eb-ico" type="button" aria-haspopup="true" aria-expanded="false" title="The colour of new pins and arrows, and of the one you are editing. It follows the deck's theme until you choose another.">
+        <i class="eb-dot" aria-hidden="true"></i><span class="lbl">Colour</span></button>
+      <span class="eb-menu eb-colors" id="eb-colors" role="radiogroup" aria-label="Annotation colour" hidden></span>
     </span>
-    <span class="eb-colors" id="eb-colors" role="radiogroup" aria-label="Annotation color"></span>
     <span class="sep"></span>
   </span>
+  <span class="eb-group" id="eb-slide">
+    <button id="eb-theme" class="eb-ico" type="button" aria-pressed="true" title="The deck's glow behind this slide">
+      <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 16.5c2.2-2.4 4.7-3.6 7-3.6s4.8 1.2 7 3.6"/><path d="M5.5 16.5c1.4-1.3 2.9-1.9 4.5-1.9s3.1.6 4.5 1.9"/><path d="M10 3.2l.9 2.3 2.3.9-2.3.9-.9 2.3-.9-2.3-2.3-.9 2.3-.9Z"/><path d="M15.2 6.6l.45 1.1 1.1.45-1.1.45-.45 1.1-.45-1.1-1.1-.45 1.1-.45Z"/></svg><span class="lbl">Slide theme</span></button>
+    <span class="sep"></span>
+  </span>
+  <span class="eb-grow"></span>
   <button id="eb-undo" class="eb-icon" type="button" disabled data-tt="Undo" aria-label="Undo">
     <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.5 5.5 4 9l3.5 3.5"/><path d="M4.5 9h7.2a4.3 4.3 0 0 1 0 8.6H9"/></svg></button>
   <button id="eb-redo" class="eb-icon" type="button" disabled data-tt="Redo" aria-label="Redo">
@@ -240,7 +247,10 @@
 <input type="file" accept="image/*,video/*" id="cl-file" multiple hidden>
 
 <div class="pin-ed" id="pin-ed" hidden>
-  <input class="pe-title" placeholder="Label (e.g. Start button)">
+  <input class="pe-title" placeholder="Name it (for example, Start button)">
+  <div class="pe-note" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Note" data-placeholder="What to say about it…"></div>
+  <details class="pe-more"><summary>More</summary>
+  <div class="pe-more-in">
   <div class="pe-fmt" role="toolbar" aria-label="Note formatting">
     <button type="button" data-cmd="bold" title="Bold" aria-label="Bold"><b>B</b></button>
     <button type="button" data-cmd="italic" title="Italic" aria-label="Italic"><i>I</i></button>
@@ -249,7 +259,6 @@
       <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="4" cy="5.5" r="1.8"/><circle cx="4" cy="14.5" r="1.8"/><path d="M8.5 5.5h9M8.5 14.5h9"/></svg>
     </button>
   </div>
-  <div class="pe-note" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Note" data-placeholder="What to say about it…"></div>
   <div class="pe-imgs">
     <div class="pe-thumbs"></div>
     <label class="pe-attach" title="Attach images (or paste one into the note)">
@@ -259,6 +268,7 @@
   </div>
   <div class="pe-colors" role="radiogroup" aria-label="Color"></div>
   <label class="pe-spot" hidden><input type="checkbox"> Spotlight: dim the rest of the screen when opened</label>
+  </div></details>
   <div class="row"><button class="del" id="pe-del">Delete</button><button id="pe-done">Done</button></div>
 </div>
 
@@ -289,18 +299,15 @@
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9.5 6 6 6-6"/></svg></button>
   <div class="spacer"></div>
   <div class="grp">
-    <button id="presentbtn" class="ibtn icon-only" title="Present" aria-label="Present">
-      <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="7.5" r="3.6"/><path d="M2.5 20.5v-.8A5.7 5.7 0 0 1 8.2 14h1.6a5.7 5.7 0 0 1 5.7 5.7v.8"/><path d="M16.8 5.2a4.4 4.4 0 0 1 0 5.6"/><path d="M19.6 2.8a8 8 0 0 1 0 10.4"/></svg>
+    <button id="presentbtn" class="ibtn icon-only has-lbl" title="Present (P)">
+      <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="7.5" r="3.6"/><path d="M2.5 20.5v-.8A5.7 5.7 0 0 1 8.2 14h1.6a5.7 5.7 0 0 1 5.7 5.7v.8"/><path d="M16.8 5.2a4.4 4.4 0 0 1 0 5.6"/><path d="M19.6 2.8a8 8 0 0 1 0 10.4"/></svg><span class="ibtn-l">Present</span>
     </button>
     <button id="notesbtn" class="ibtn icon-only" aria-pressed="false" aria-controls="notes" title="Speaker notes" aria-label="Speaker notes">
       <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2.5h8.5L19 7v14.5H6Z"/><path d="M14 2.5V7.5h5"/><path d="M9 12h7"/><path d="M9 16h7"/></svg>
     </button>
     <span class="bar-sep" aria-hidden="true"></span>
-    <button id="annotbtn" class="ibtn icon-only" aria-pressed="false" title="Annotate" aria-label="Annotate">
-      <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-6.2-5.6-6.2-10.5a6.2 6.2 0 0 1 12.4 0C18.2 15.4 12 21 12 21Z"/><circle cx="12" cy="10.4" r="2.2"/></svg>
-    </button>
-    <button id="editbtn" class="ibtn icon-only" aria-pressed="false" title="Edit" aria-label="Edit">
-      <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12.5 20.5h8"/><path d="M16.4 3.6a2.1 2.1 0 0 1 3 3L7.6 18.4l-4.1 1.1 1.1-4.1Z"/></svg>
+    <button id="editbtn" class="ibtn icon-only has-lbl" aria-pressed="false" title="Edit (E)">
+      <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12.5 20.5h8"/><path d="M16.4 3.6a2.1 2.1 0 0 1 3 3L7.6 18.4l-4.1 1.1 1.1-4.1Z"/></svg><span class="ibtn-l">Edit</span>
     </button>
     <span class="bar-sep" aria-hidden="true"></span>
     <div class="accent-pick">
@@ -530,6 +537,27 @@
       <div class="headrow"><h2 class="display">The feel of it.</h2><span class="meta">Moodboard</span></div>
       <div class="cl-board" data-style="mosaic" data-motion="static"
            data-samples="assets/sample/today.svg|1.7778 assets/sample/phone.svg|0.5625 assets/sample/swatch.svg|1 assets/sample/workout.svg|1.7778 assets/sample/type.svg|0.8 assets/sample/plan.svg|1.7778 assets/sample/icon.svg|1 assets/sample/you.svg|1.7778 assets/sample/card.svg|1.7778 assets/sample/backdrop.svg|1.7778"></div>
+    </section>
+
+    <!-- Results: one to four big numbers that count up (features/data-layout.js draws them from the slide's data) -->
+    <section class="slide s-results" data-label="Results" data-note="results">
+      <template class="slide-notes"><p>One to four big numbers that count up as the slide appears.</p>
+<ul><li>In Edit mode, Edit data changes the numbers, what each one is and how it moved; a change that starts with + or − gets an arrow.</li><li>Four numbers sit two by two; one number fills the slide.</li></ul></template>
+      <div class="overline"><span class="tick">Part 03 ·</span> Results</div>
+      <h2 class="display">The first year, in four numbers.</h2>
+      <div class="ds-host" data-ds="results"></div>
+    </section>
+
+    <!-- Chart: bars, a line, a pie or a donut, with the headline that says what it shows -->
+    <section class="slide s-chart" data-label="Chart" data-note="chart">
+      <template class="slide-notes"><p>A chart with the headline that says what it shows: bars, a line, a pie or a donut.</p>
+<ul><li>In Edit mode, Edit data sets the kind of chart, its rows and which one the headline is about.</li><li>Colours follow the deck's theme until you choose your own.</li></ul></template>
+      <div class="ds-copy">
+        <div class="overline"><span class="tick">Sessions ·</span> By month</div>
+        <h2 class="display">Short sessions won the year.</h2>
+        <p class="lead">Sessions finished each month, in thousands.</p>
+      </div>
+      <div class="ds-host" data-ds="chart"></div>
     </section>
 
     <!-- Lessons: what landed and what to watch -->

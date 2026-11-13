@@ -1,6 +1,6 @@
 /* Phones and small windows: the bar keeps what you reach for while presenting (previous, the
-   count, next, All slides) and a ⋯ button; everything else (your decks, Present, Notes, Annotate,
-   Edit, Theme, Share, Fullscreen) moves into a tray that slides up from the bottom, as big
+   count, next, All slides) and a ⋯ button; everything else (your decks, Present, Notes, Edit, Theme,
+   Share, Fullscreen) moves into a tray that slides up from the bottom, as big
    labelled buttons. Theme and Share open from it as sheets of their own. Swipe the slide left or
    right to change slides. On a wider window the buttons go back into the bar. */
 (function(){
