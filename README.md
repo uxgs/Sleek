@@ -98,6 +98,12 @@ paper pages, and it saves as you write.
   are always next to each other.
 - **Tables.** Controls above the table add and delete rows and columns and switch the header row;
   drag the line between two columns to resize them.
+- **Tasks.** Insert a task, a task list or a board from Sleek Tasks. They are the tasks themselves,
+  not copies: tick one in the page and its card moves on the board, move the card in Tasks and the
+  page follows, in every open tab. Press a task for its menu, type under a list to add one, drag a
+  card between columns. With the cursor in a plain checklist, Insert offers **Make these tasks**,
+  which turns each line into a real task. A published page, a PDF, Word and Markdown show the tasks
+  as they stood at that moment.
 - **Paste from Word or Google Docs.** Headings, lists, tables, links, bold, italic, underline, strike
   and highlight come across; fonts, sizes and colours are left behind, so the page keeps its look.
 - **Folders and search.** The list on the left holds your pages in folders, and folders in folders.
@@ -140,8 +146,9 @@ next seven days, across every project, with a box to add a task.
   links and pictures. People are names you type; there are no accounts.
 
 Tasks live in the browser you made them in, in their own storage. Every open tab of Tasks follows the
-others at once. A grid with your own fields, a calendar, repeating tasks, and tasks shown live inside
-Docs pages and on slides come next.
+others at once, and so does any Sleek Docs page that shows a task, a list or a board
+([Tasks in a page](#sleek-docs)). A grid with your own fields, a calendar, repeating tasks, and
+boards on slides come next.
 
 ## The sample deck
 
@@ -254,7 +261,8 @@ doc/                  the editor: schema.js (what a page can hold), editor.js, t
                       (the start screen), publish.js (the one-file web page), reader.js and reader.css
                       (what that page's reader gets), viewers.js (who is reading), data.js and
                       blocks-data.js (charts and big numbers), compare.js and blocks-compare.js
-                      (before and after), tables.js, word.js (saving Word files), to-deck.js (a deck
+                      (before and after), blocks-tasks.js (tasks from Sleek Tasks, live), tables.js,
+                      word.js (saving Word files), to-deck.js (a deck
                       from a page), doc.css (how a page looks) and doc-ui.css (the app around it)
 vendor/               outside code, under free licences (vendor/LICENSES.md): ProseMirror, the text
                       editing engine under Sleek Docs; markdown-it, which reads Markdown files;

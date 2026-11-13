@@ -12,9 +12,9 @@
 
    Everything is read into memory once (ready()), so the app draws straight from it; a change is made
    there first and written behind it. Each change is also announced: to this page's own listeners
-   (on()), and to every other open tab of any Sleek app (a BroadcastChannel), which reads the
-   database again and tells its listeners. That announcement is what will keep a task shown in a
-   Docs page or on a slide in step with its board. */
+   (on()), and, once it is written, to every other open tab of any Sleek app (a BroadcastChannel),
+   which reads the database again and tells its listeners. That announcement is what keeps a task
+   shown in a Docs page (doc/blocks-tasks.js) in step with its board. */
 (function(){
   var DB_NAME = 'sleek-tasks', VERSION = 1;
   var db = null, opening = null, loaded = null, cache = { projects: [], tasks: [], people: [] }, subs = [], chan = null;
@@ -46,8 +46,11 @@
   function uid(){ return Date.now().toString(36).slice(-5) + Math.random().toString(36).slice(2, 7); }
   function now(){ return Date.now(); }
   function copy(o){ return JSON.parse(JSON.stringify(o)); }
-  function put(store, rec){ tx(store, 'readwrite', function(t){ t.objectStore(store).put(copy(rec)); }).catch(function(e){ console.error('Sleek Tasks could not save', e); }); }
-  function del(store, id){ tx(store, 'readwrite', function(t){ t.objectStore(store).delete(id); }).catch(function(e){ console.error(e); }); }
+  // every write in flight; other tabs are told of a change only once the writes before it are in, so they never read too early
+  var pending = Promise.resolve();
+  function wrote(p){ pending = Promise.all([pending, p.catch(function(){})]); return p; }
+  function put(store, rec){ wrote(tx(store, 'readwrite', function(t){ t.objectStore(store).put(copy(rec)); })).catch(function(e){ console.error('Sleek Tasks could not save', e); }); }
+  function del(store, id){ wrote(tx(store, 'readwrite', function(t){ t.objectStore(store).delete(id); })).catch(function(e){ console.error(e); }); }
 
   // ---------- reading it all in, and saying when something changed ----------
   function read(){
@@ -59,7 +62,7 @@
   function ready(){ if(!loaded) loaded = read(); return loaded; }
   function tell(what, here){
     subs.slice().forEach(function(fn){ try { fn(what); } catch(e){ console.error(e); } });
-    if(here && chan) try { chan.postMessage(what); } catch(e){}
+    if(here && chan) pending.then(function(){ try { chan.postMessage(what); } catch(e){} });
   }
   function changed(what){ tell(what, true); }
   try { chan = new BroadcastChannel('sleek-tasks'); chan.onmessage = function(e){ var what = e.data || {}; read().then(function(){ tell(Object.assign({ remote: true }, what), false); }); }; } catch(e){ chan = null; }
@@ -83,7 +86,7 @@
   function removeProject(id){
     var gone = cache.tasks.filter(function(t){ return t.project === id; });
     cache.tasks = cache.tasks.filter(function(t){ return t.project !== id; }); cache.projects = cache.projects.filter(function(p){ return p.id !== id; });
-    tx(['projects', 'tasks'], 'readwrite', function(t){ t.objectStore('projects').delete(id); gone.forEach(function(g){ t.objectStore('tasks').delete(g.id); }); }).catch(function(e){ console.error(e); });
+    wrote(tx(['projects', 'tasks'], 'readwrite', function(t){ t.objectStore('projects').delete(id); gone.forEach(function(g){ t.objectStore('tasks').delete(g.id); }); })).catch(function(e){ console.error(e); });
     changed({ kind: 'project', id: id, removed: true });
   }
   function firstOpen(p){ return (p.statuses.filter(function(s){ return !s.done; })[0] || p.statuses[0]).id; }

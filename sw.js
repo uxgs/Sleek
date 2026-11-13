@@ -3,7 +3,7 @@
    the network behind it, so a new version shows on the next visit. Change VERSION (and the list)
    when files are added or removed. */
 // 'sleek-' + Slides' version (data/changelog.js) + '-d' + Docs' (data/doc-changelog.js) + '-t' + Tasks' (data/task-changelog.js): a new version of any app renews the cache
-var VERSION = 'sleek-1.0.49-d1.0.5-t1.0.0';
+var VERSION = 'sleek-1.0.49-d1.0.6-t1.0.1';
 var FILES = [
   './', 'index.html', 'slides.html', 'deck.html', 'manifest.webmanifest', 'docs.html', 'doc.html', 'docs.webmanifest', 'core/short.js',
   'styles.css', 'glow.css', 'app.js', 'glow-fx.js', 'theme-boot.js',
@@ -15,7 +15,7 @@ var FILES = [
   // Sleek Docs: the editor engine and the readers and writer of Markdown and Word files (vendor/), the store, and the app
   'vendor/prosemirror.js', 'vendor/prosemirror.css', 'vendor/markdown-it.js', 'vendor/mammoth.js', 'vendor/docx.js', 'core/doc-store.js', 'core/doc-boot.js', 'data/doc-changelog.js',
   'doc/schema.js', 'doc/editor.js', 'doc/toolbar.js', 'doc/sidebar.js', 'doc/paste.js', 'doc/blocks-figure.js', 'doc/export.js', 'doc/import.js', 'doc/library.js', 'doc/publish.js', 'doc/reader.js', 'doc/viewers.js',
-  'doc/data.js', 'doc/blocks-data.js', 'doc/compare.js', 'doc/blocks-compare.js', 'doc/tables.js', 'doc/word.js', 'doc/to-deck.js',
+  'doc/data.js', 'doc/blocks-data.js', 'doc/compare.js', 'doc/blocks-compare.js', 'doc/blocks-tasks.js', 'doc/tables.js', 'doc/word.js', 'doc/to-deck.js',
   'doc/doc.css', 'doc/doc-ui.css', 'doc/library.css', 'doc/reader.css',
   // Sleek Tasks
   'tasks.html', 'tasks.webmanifest', 'core/task-store.js', 'data/task-changelog.js', 'task/app.js', 'task/views.js', 'task/sheet.js', 'task/tasks.css',

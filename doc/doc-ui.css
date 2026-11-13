@@ -198,5 +198,25 @@ button { font: inherit; color: inherit; }
   .row-more { opacity: 1; }
   .vw-rail { right: 3px; }
 }
+/* ---------- tasks in a page, while editing (doc/blocks-tasks.js) ---------- */
+.dk-tchip { cursor: pointer; user-select: none; -webkit-user-select: none; transition: border-color .15s, background .15s; }
+.dk-tchip:hover, .dk-tchip[aria-expanded="true"] { border-color: var(--d-accent); }
+.dk-tchip.gone, .dk-tasks.gone { opacity: .6; } .dk-tchip.gone { border-style: dashed; }
+.dk-tasks { user-select: none; -webkit-user-select: none; }
+.tk-tools { margin-left: auto; display: flex; gap: 2px; opacity: 0; transition: opacity .15s; }
+.dk-tasks:hover .tk-tools, .dk-tasks:focus-within .tk-tools, .dk-tasks.ProseMirror-selectednode .tk-tools { opacity: 1; }
+.tk-tools button { height: 26px; padding: 0 9px; border: 0; border-radius: 8px; background: none; color: var(--d-muted); font: 500 12.5px var(--d-ff); cursor: pointer; white-space: nowrap; }
+.tk-tools button:hover, .tk-tools button:focus-visible { background: var(--d-hover); color: var(--d-fg); outline: none; }
+.tk-add { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--d-line); }
+.dk-tasks[data-view="board"] .tk-add { border-top: 0; }
+.tk-add input { width: 100%; height: 32px; padding: 0 6px; border: 0; border-radius: 8px; background: none; color: var(--d-fg); font: 15px var(--d-ff); outline: none; }
+.tk-add input::placeholder { color: var(--d-faint); } .tk-add input:focus { background: var(--d-hover); }
+.tk-card { cursor: grab; transition: border-color .15s, box-shadow .15s; }
+.tk-card:hover, .tk-card:focus-visible, .tk-card[aria-expanded="true"] { border-color: var(--d-accent); outline: none; }
+.tk-col { transition: background .15s, box-shadow .15s; } .tk-col.over { background: var(--d-soft); box-shadow: inset 0 0 0 1.5px var(--d-accent); }
+.tk-pick { width: 320px; } .tk-pick input { width: 100%; height: 36px; padding: 0 10px; margin-bottom: 4px; border: 1px solid var(--d-line2); border-radius: 9px; background: var(--d-bg); color: var(--d-fg); font: 15px var(--d-ff); outline: none; }
+.tk-pick input:focus { border-color: var(--d-accent); } .tk-struck { text-decoration: line-through; color: var(--d-faint); }
+.tk-found .mi b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 640px) { .tk-h { flex-wrap: wrap; } .tk-tools { opacity: 1; width: 100%; margin-left: -8px; } }
 @media (prefers-reduced-motion: reduce) { .pop, .toast, .vw-pulse { animation: none; } .vw-rail b, .vw-rail i { transition: none; } }
-@media print { .side, .top, .fmt, .pop, .toast, .dk-fig-tools, .locked, .vw-rail, .de, .tb-bar, .cmp-slot, .td { display: none !important; } .app, .main, .scroll { display: block; height: auto; overflow: visible; } .pagebox { padding: 0; min-height: 0; } .dk-empty::before, .dk-fig.nocap figcaption, .dk-cover .dk-empty { display: none; } }
+@media print { .side, .top, .fmt, .pop, .toast, .tk-tools, .tk-add, .dk-fig-tools, .locked, .vw-rail, .de, .tb-bar, .cmp-slot, .td { display: none !important; } .app, .main, .scroll { display: block; height: auto; overflow: visible; } .pagebox { padding: 0; min-height: 0; } .dk-empty::before, .dk-fig.nocap figcaption, .dk-cover .dk-empty { display: none; } }

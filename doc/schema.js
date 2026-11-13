@@ -1,6 +1,6 @@
 /* What a Sleek Docs page can hold: its blocks (paragraphs, headings, lists, checklists, quotes, code,
-   dividers, pictures with captions, tables, charts and big numbers, before-and-after pictures, and
-   the designed sections: a cover, callouts and columns) and the marks on its words (bold, italic, underline,
+   dividers, pictures with captions, tables, charts and big numbers, before-and-after pictures, tasks
+   from Sleek Tasks, and the designed sections: a cover, callouts and columns) and the marks on its words (bold, italic, underline,
    strike, highlight, code, links). The editor (vendor/prosemirror.js) keeps every page to these
    rules, which is also what cleans a paste: anything not listed here doesn't get in.
 
@@ -20,6 +20,10 @@
   // only addresses a page should carry: a web or mail link, a picture's own data
   function safeHref(h){ h = String(h || ''); return /^(https?:|mailto:|tel:|#)/i.test(h) ? h : ''; }
   function safeSrc(u){ u = String(u || ''); return /^(https?:|blob:|data:image\/|sleek-media:)/i.test(u) ? u : ''; }
+  function json(s){ try { return JSON.parse(s || 'null'); } catch(e){ return null; } }
+  function colour(c){ return /^#[0-9a-f]{6}$/i.test(c || '') ? c : '#8E8E93'; }
+  // a date as words that stay true whenever they are read: "14 Nov"
+  function dateWords(k){ var p = String(k).split('-'); if(p.length !== 3) return ''; var d = new Date(+p[0], +p[1] - 1, +p[2]); return isNaN(d) ? '' : d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }); }
   function head(level){ return { tag: 'h' + level, getAttrs: function(d){ return { level: Math.min(level, 3), toggle: d.classList.contains('dk-toggle'), closed: d.classList.contains('closed') }; } }; }
   var nodes = {
     doc: { content: 'cover? block+' },
@@ -68,6 +72,34 @@
       toDOM: function(n){ return ['div', { class: 'dk-compare', 'data-mode': n.attrs.mode },
         ['figure', { class: 'cmp-b' }, ['img', { src: safeSrc(n.attrs.before), alt: 'Before' }], ['figcaption', 'Before']],
         ['figure', { class: 'cmp-a' }, ['img', { src: safeSrc(n.attrs.after), alt: 'After' }], ['figcaption', 'After']]]; } },
+    // ---------- tasks, from Sleek Tasks ----------
+    // A task shown in a sentence (task_ref), or a project's tasks as a list or a board (tasks). In the
+    // editor these are live (doc/blocks-tasks.js draws them from core/task-store.js). What is stored
+    // with them, `snap`, is how they last looked, which is what a published page shows, and what a
+    // browser without those tasks falls back to:
+    //   task_ref   snap { t: name, done, s: status name, c: its colour, due }
+    //   tasks      snap { n: project name, c: its colour, at: when, cols: [{ n, c, done, tasks: [{ t, done, due, who }] }] }
+    // tasks.ids, when set, is a hand-picked list of task ids (a checklist turned into tasks) instead of the whole project.
+    task_ref: { group: 'inline', inline: true, atom: true, draggable: true, attrs: { task: { default: '' }, snap: { default: null } },
+      leafText: function(n){ return n.attrs.snap ? String(n.attrs.snap.t || '') : ''; },
+      parseDOM: [{ tag: 'span.dk-tchip', getAttrs: function(d){ return { task: d.getAttribute('data-task') || '', snap: json(d.getAttribute('data-snap')) }; } }],
+      toDOM: function(n){
+        var s = n.attrs.snap || { t: 'A task' }, kids = [['span', { class: 'tk-ck' + (s.done ? ' on' : '') }], ['span', { class: 'tc-t' }, String(s.t || '')]];
+        if(s.s) kids.push(['span', { class: 'tc-s', style: '--c:' + colour(s.c) }, String(s.s)]);
+        if(s.due) kids.push(['span', { class: 'tc-d' }, dateWords(s.due)]);
+        return ['span', { class: 'dk-tchip' + (s.done ? ' done' : ''), 'data-task': n.attrs.task, 'data-snap': JSON.stringify(n.attrs.snap || null) }].concat(kids);
+      } },
+    tasks: { group: 'block', atom: true, draggable: true, attrs: { project: { default: '' }, view: { default: 'list' }, show: { default: 'open' }, ids: { default: null }, snap: { default: null } },
+      parseDOM: [{ tag: 'div.dk-tasks', getAttrs: function(d){ return { project: d.getAttribute('data-project') || '', view: d.getAttribute('data-view') === 'board' ? 'board' : 'list', show: d.getAttribute('data-show') === 'all' ? 'all' : 'open', ids: json(d.getAttribute('data-ids')), snap: json(d.getAttribute('data-snap')) }; } }],
+      toDOM: function(n){
+        var a = n.attrs, s = a.snap || { n: 'Tasks', cols: [] }, cols = s.cols || [], body;
+        if(a.view === 'board') body = ['div', { class: 'tk-board' }].concat(cols.map(function(c){
+          return ['div', { class: 'tk-col' }, ['div', { class: 'tk-colh' }, ['i', { style: '--c:' + colour(c.c) }], ['b', String(c.n || '')], ['span', String((c.tasks || []).length)]]].concat((c.tasks || []).map(function(t){ return ['div', { class: 'tk-card' + (t.done ? ' done' : '') }, String(t.t || '')]; })); }));
+        else { var rows = []; cols.forEach(function(c){ (c.tasks || []).forEach(function(t){ if(a.show === 'all' || !t.done) rows.push(t); }); });
+          body = ['div', { class: 'tk-list' }].concat(rows.map(function(t){ var r = [['span', { class: 'tk-ck' + (t.done ? ' on' : '') }], ['span', { class: 'tk-t' }, String(t.t || '')]]; if(t.due) r.push(['span', { class: 'tc-d' }, dateWords(t.due)]); return ['div', { class: 'tk-row' + (t.done ? ' done' : '') }].concat(r); })); }
+        return ['div', { class: 'dk-tasks', 'data-project': a.project, 'data-view': a.view, 'data-show': a.show, 'data-ids': JSON.stringify(a.ids || null), 'data-snap': JSON.stringify(a.snap || null) },
+          ['div', { class: 'tk-h' }, ['i', { style: '--c:' + colour(s.c) }], ['b', String(s.n || 'Tasks')], ['span', (a.view === 'board' ? 'Board' : 'Tasks') + (s.at ? ', as on ' + new Date(s.at).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' }) : '')]], body];
+      } },
     table: tn.table, table_row: tn.table_row, table_cell: tn.table_cell, table_header: tn.table_header,
     text: { group: 'inline' },
     hard_break: { inline: true, group: 'inline', selectable: false, parseDOM: [{ tag: 'br' }], toDOM: function(){ return ['br']; } }
@@ -87,9 +119,22 @@
     code: { parseDOM: [{ tag: 'code' }], toDOM: function(){ return ['code', 0]; } }
   };
   // every block that can sit at the top level of a page carries an id (see the note at the top)
-  ['paragraph', 'heading', 'blockquote', 'code_block', 'horizontal_rule', 'bullet_list', 'ordered_list', 'task_list', 'figure', 'cover', 'callout', 'columns', 'table', 'data', 'compare'].forEach(function(name){
+  ['paragraph', 'heading', 'blockquote', 'code_block', 'horizontal_rule', 'bullet_list', 'ordered_list', 'task_list', 'figure', 'cover', 'callout', 'columns', 'table', 'data', 'compare', 'tasks'].forEach(function(name){
     var spec = nodes[name] = Object.assign({}, nodes[name]); spec.attrs = Object.assign({}, spec.attrs, { id: { default: null } });
   });
   var schema = new PM.model.Schema({ nodes: nodes, marks: marks });
-  window.SleekDocKit = { schema: schema, N: schema.nodes, M: schema.marks, has: has, safeHref: safeHref, safeSrc: safeSrc };
+  var kit = window.SleekDocKit = { schema: schema, N: schema.nodes, M: schema.marks, has: has, safeHref: safeHref, safeSrc: safeSrc };
+  // Tasks as plain words, for Markdown, Word and Make a deck: as they are now where this browser has
+  // them (doc/blocks-tasks.js adds taskSnap), otherwise as they last looked.
+  //   taskPlain(task_ref) -> { t, done }     tasksPlain(tasks) -> { name, board, groups: [{ name, rows: [{ t, done, due }] }] }
+  kit.taskPlain = function(n){ var s = (kit.taskSnap ? kit.taskSnap(n) : n.attrs.snap) || {}; return { t: String(s.t || 'A task'), done: !!s.done }; };
+  kit.tasksPlain = function(n){
+    var s = (kit.taskSnap ? kit.taskSnap(n) : n.attrs.snap) || {}, board = n.attrs.view === 'board', all = [], groups = [];
+    (s.cols || []).forEach(function(c){
+      var rows = (c.tasks || []).filter(function(t){ return board || n.attrs.show === 'all' || !t.done; }).map(function(t){ return { t: String(t.t || ''), done: !!t.done, due: t.due ? dateWords(t.due) : '' }; });
+      if(board){ if(rows.length) groups.push({ name: String(c.n || ''), rows: rows }); } else all = all.concat(rows);
+    });
+    if(!board) groups.push({ name: '', rows: all });
+    return { name: String(s.n || 'Tasks'), board: board, groups: groups };
+  };
 })();

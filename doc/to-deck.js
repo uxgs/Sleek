@@ -48,7 +48,7 @@
   function inline(node){      // a line's words as the HTML a slide's text holds: bold, italic and underline kept
     var out = '';
     node.forEach(function(c){
-      if(!c.isText){ if(c.type === N.hard_break) out += ' '; return; }
+      if(!c.isText){ if(c.type === N.hard_break) out += ' '; else if(c.type === N.task_ref) out += esc(K.taskPlain(c).t); return; }
       var t = esc(c.text), names = c.marks.map(function(m){ return m.type.name; });
       if(names.indexOf('strong') >= 0) t = '<b>' + t + '</b>'; if(names.indexOf('em') >= 0) t = '<i>' + t + '</i>'; if(names.indexOf('underline') >= 0) t = '<u>' + t + '</u>';
       out += t;
@@ -101,6 +101,11 @@
           case N.figure:
             if(!n.attrs.src) break;
             push({ t: 'fullscreen-image', name: short(n.textContent, 40) || 'Picture', src: n.attrs.src, notes: n.content.size ? '<div>' + inline(n) + '</div>' : '' }); break;
+          case N.tasks:      // a slide of points: the tasks, under the project's name
+            var tp = K.tasksPlain(n), any = false;
+            tp.groups.forEach(function(g){ g.rows.forEach(function(t){ if(!any){ topic(esc(tp.name)); any = true; } point(esc(t.t) + (t.done ? ' ✓' : '')); }); });
+            if(any && cur) cur.listed = true;
+            break;
           case N.compare:
             if(!n.attrs.before || !n.attrs.after) break;
             push({ t: 'before-after', name: 'Before and after', head: lastHead || 'Before and after', src: n.attrs.after, before: n.attrs.before }); break;

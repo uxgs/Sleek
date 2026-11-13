@@ -8,7 +8,7 @@
   var de = document.documentElement;
   de.classList.add('booting');
   var SCRIPTS = ['vendor/prosemirror.js', '@body', 'doc/schema.js', 'doc/paste.js', 'features/data-layout.js', 'doc/data.js', 'doc/compare.js', 'doc/editor.js', 'doc/blocks-figure.js', 'doc/blocks-data.js', 'doc/blocks-compare.js',
-                 'doc/toolbar.js', 'doc/sidebar.js', 'doc/tables.js', 'doc/export.js', 'doc/word.js', 'doc/publish.js', 'doc/to-deck.js', 'doc/viewers.js'];
+                 'doc/toolbar.js', 'doc/blocks-tasks.js', 'doc/sidebar.js', 'doc/tables.js', 'doc/export.js', 'doc/word.js', 'doc/publish.js', 'doc/to-deck.js', 'doc/viewers.js'];
   var params = new URLSearchParams(location.search), id = params.get('d');
 
   function load(list, done){
@@ -68,7 +68,9 @@
       return D.create(first ? { seed: welcome() } : {}).then(function(d){ return d.id; });
     });
   }
-  Promise.all([S.open(), D.open()]).then(pick).then(function(found){
+  // tasks shown in pages come from Sleek Tasks' own storage; a page still opens if that can't be read
+  var tasks = window.SleekTasks ? window.SleekTasks.ready().catch(function(e){ console.error(e); window.SleekTasks = null; }) : Promise.resolve();
+  Promise.all([S.open(), D.open(), tasks]).then(pick).then(function(found){
     if(!found){ fail('That page isn’t here.', 'It may have been deleted, or made in another browser. Pages live in the browser they were made in.'); return; }
     try { history.replaceState(null, '', location.pathname + '?d=' + found); } catch(e){}
     window.SLEEK_DOC = { id: found };

@@ -46,7 +46,7 @@
   function setLook(k, v){ theme[k] = v; paint(); try { localStorage.setItem('sleek-docs-look', JSON.stringify(theme)); } catch(e){} touch(); }
 
   // ---------- saving ----------
-  function seedNow(){ return { kind: 'doc', v: 1, theme: { mode: look('mode'), accent: look('accent'), font: look('font') }, doc: view.state.doc.toJSON() }; }
+  function seedNow(){ return { kind: 'doc', v: 1, theme: { mode: look('mode'), accent: look('accent'), font: look('font') }, doc: K.freshenTasks ? K.freshenTasks(view.state.doc.toJSON()) : view.state.doc.toJSON() }; }
   function save(){
     clearTimeout(saveT);
     if(locked || !dirty || !cur) return saving;
@@ -182,6 +182,7 @@
   function make(state){
     // the blocks that draw themselves (doc/blocks-*.js, loaded after this file and before start())
     if(K.figureView) nodeViews.figure = K.figureView; if(K.dataView) nodeViews.data = K.dataView; if(K.compareView) nodeViews.compare = K.compareView;
+    if(K.taskRefView){ nodeViews.task_ref = K.taskRefView; nodeViews.tasks = K.tasksView; }
     view = api.view = new PM.view.EditorView($('#ed'), { state: state, nodeViews: nodeViews,
       attributes: { class: 'dk-doc', spellcheck: 'true' },
       editable: function(){ return !locked; },

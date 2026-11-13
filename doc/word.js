@@ -59,6 +59,7 @@
       var out = [];
       node.forEach(function(c){
         if(c.type === N.hard_break){ out.push(new X.TextRun({ break: 1 })); return; }
+        if(c.type === N.task_ref){ var k = K.taskPlain(c); out.push(new X.TextRun(Object.assign({ text: (k.done ? '☑ ' : '☐ ') + k.t }, extra || {}))); return; }
         if(!c.isText) return;
         var o = Object.assign({ text: c.text }, extra || {}), link = null;
         c.marks.forEach(function(m){
@@ -102,6 +103,14 @@
               out.push(grid(ds.rows.map(function(r){ return cell([new X.Paragraph({ children: [new X.TextRun({ text: r.v, bold: true, size: 56 })], spacing: { after: 40 } }), new X.Paragraph({ children: [new X.TextRun({ text: r.l })], spacing: { after: 20 } })].concat(r.c ? [new X.Paragraph({ children: [new X.TextRun({ text: r.c, size: 18, color: '666666' })] })] : [])); }), true)); out.push(new X.Paragraph(''));
             } else { var at = out.length; out.push(null); jobs.push(chartPicture(n.attrs.id).then(function(p){ out[at] = image(p, { spacing: { after: 200 } }); })); }
             break;
+          case N.tasks:      // the tasks as ticked and unticked lines, under the project's name
+            var tp = K.tasksPlain(n);
+            out.push(new X.Paragraph({ children: [new X.TextRun({ text: tp.name, bold: true })], spacing: { before: 120, after: 80 }, keepNext: true }));
+            tp.groups.forEach(function(g){
+              if(g.name) out.push(new X.Paragraph({ children: [new X.TextRun({ text: g.name, size: 18, color: '666666', allCaps: true })], spacing: { before: 80, after: 40 }, keepNext: true }));
+              g.rows.forEach(function(t){ out.push(new X.Paragraph({ children: [new X.TextRun({ text: (t.done ? '☑ ' : '☐ ') + t.t })].concat(t.due ? [new X.TextRun({ text: '   ' + t.due, color: '666666', size: 18 })] : []), spacing: { after: 60 } })); });
+            });
+            out.push(new X.Paragraph('')); break;
           case N.compare:
             var two = [null, null], labels = ['Before', 'After'], g = out.length; out.push(null); out.push(new X.Paragraph(''));
             jobs.push(Promise.all([picture(n.attrs.before, 280), picture(n.attrs.after, 280)]).then(function(ps){

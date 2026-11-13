@@ -14,6 +14,7 @@
     var out = '';
     node.forEach(function(c){
       if(c.type === N.hard_break){ out += '  \n'; return; }
+      if(c.type === N.task_ref){ var k = K.taskPlain(c); out += (k.done ? '☑ ' : '☐ ') + esc(k.t); return; }
       if(!c.isText) return;
       var names = c.marks.map(function(m){ return m.type.name; }), t = names.indexOf('code') >= 0 ? '`' + c.text.replace(/`/g, 'ˋ') + '`' : esc(c.text);
       var lead = /^\s*/.exec(t)[0], tail = /\s*$/.exec(t)[0]; t = t.trim(); if(!t){ out += lead || tail; return; }
@@ -53,6 +54,9 @@
           var ds = window.SleekData ? window.SleekData.norm(n.attrs.kind, n.attrs.ds) : n.attrs.ds;
           if(n.attrs.kind === 'results') return ds.rows.map(function(r){ return '- **' + esc(r.v) + '** ' + esc(r.l) + (r.c ? ' (' + esc(r.c) + ')' : ''); }).join('\n');
           return '| | |\n| --- | --- |\n' + ds.rows.map(function(r){ return '| ' + esc(String(r[0])) + ' | ' + ds.pre + r[1] + ds.post + ' |'; }).join('\n');
+        case N.tasks:      // the tasks as a checklist, under the project's name
+          var tp = K.tasksPlain(n);
+          return '**' + esc(tp.name) + '**\n\n' + (tp.groups.map(function(g){ return (g.name ? '*' + esc(g.name) + '*\n\n' : '') + g.rows.map(function(t){ return (t.done ? '- [x] ' : '- [ ] ') + esc(t.t) + (t.due ? ' (' + t.due + ')' : ''); }).join('\n'); }).filter(Boolean).join('\n\n') || '*No tasks*');
         case N.compare:
           return ['before', 'after'].map(function(k){ var src = n.attrs[k]; if(!src) return ''; var name = src; if(!/^https?:/i.test(src)){ name = 'images/picture-' + (pics.length + 1); pics.push({ name: name, src: src }); } return '![' + (k === 'before' ? 'Before' : 'After') + '](' + name + ')'; }).filter(Boolean).join('\n\n') || null;
         case N.table:

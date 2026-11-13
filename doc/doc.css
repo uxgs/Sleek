@@ -152,6 +152,40 @@
   .dk-doc table { font-size: 13.5px; } .dk-doc th, .dk-doc td { padding: 6px 8px; }
 }
 
+/* ---------- tasks from Sleek Tasks: one in a sentence, a list, a board ---------- */
+.tk-ck { flex: none; display: inline-grid; place-items: center; width: 17px; height: 17px; padding: 0; border-radius: 50%; border: 1.6px solid var(--d-line2); background: none; vertical-align: -3px; transition: background .18s, border-color .18s; }
+.tk-ck::after { content: ""; width: 8px; height: 4.5px; border-left: 2px solid var(--d-on-accent); border-bottom: 2px solid var(--d-on-accent); transform: rotate(-45deg) scale(0); transition: transform .18s cubic-bezier(.3,1.6,.5,1); margin-top: -2px; }
+.tk-ck.on { background: var(--d-live); border-color: var(--d-live); } .tk-ck.on::after { transform: rotate(-45deg) scale(1); }
+button.tk-ck { cursor: pointer; } button.tk-ck:hover { border-color: var(--d-live); }
+.dk-tchip { display: inline-flex; align-items: center; gap: 7px; max-width: 100%; padding: 1px 9px 1px 6px; margin: 0 1px; border-radius: 9px; border: 1px solid var(--d-line); background: var(--d-raise); font-size: .94em; line-height: 1.5; vertical-align: middle; margin-top: -3px; white-space: nowrap; }
+.dk-tchip .tk-ck { vertical-align: 0; }
+.dk-tchip .tc-t { font-weight: 500; overflow: hidden; text-overflow: ellipsis; }
+.dk-tchip.done .tc-t { color: var(--d-faint); text-decoration: line-through; }
+.tc-s { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--d-muted); }
+.tc-s::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--c, #8E8E93); }
+.tc-d { flex: none; font-size: 12px; color: var(--d-muted); white-space: nowrap; } .tc-d.late { color: var(--d-warn); font-weight: 600; }
+.dk-tasks { margin: 20px 0; padding: 14px 16px 12px; border-radius: 16px; border: 1px solid var(--d-line); background: var(--d-raise); font-family: var(--d-ff); font-size: 15px; line-height: 1.45; }
+.dk-doc > .dk-tasks[data-view="board"] { margin-inline: calc(-1 * var(--bleed)); }
+.tk-h { display: flex; align-items: center; gap: 8px; min-height: 26px; margin-bottom: 8px; }
+.tk-h > i, .tk-colh > i { flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--c, #8E8E93); }
+.tk-h > b { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tk-h > span { font-size: 12.5px; color: var(--d-faint); white-space: nowrap; }
+.tk-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-top: 1px solid var(--d-line); }
+.tk-row .tk-ck { vertical-align: 0; } .tk-row .tk-t { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.tk-row.done .tk-t { color: var(--d-faint); text-decoration: line-through; }
+.tk-av { flex: none; display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--c, #8E8E93); color: #fff; font-size: 10.5px; font-weight: 700; }
+.tk-none { padding: 10px 0 4px; border-top: 1px solid var(--d-line); color: var(--d-faint); font-size: 14px; }
+.tk-board { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(150px, 1fr); gap: 10px; overflow-x: auto; padding-bottom: 2px; }
+.tk-col { min-width: 0; padding: 8px; border-radius: 12px; background: var(--d-hover); display: flex; flex-direction: column; gap: 6px; min-height: 64px; }
+.tk-colh { display: flex; align-items: center; gap: 7px; padding: 2px 4px 4px; font-size: 12.5px; }
+.tk-colh > b { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .tk-colh > span { margin-left: auto; color: var(--d-faint); }
+.tk-card { padding: 8px 10px; border-radius: 9px; background: var(--d-bg); border: 1px solid var(--d-line); font-size: 14px; line-height: 1.35; overflow-wrap: anywhere; }
+.tk-card.done { color: var(--d-faint); text-decoration: line-through; }
+@media print {
+  .dk-tasks { break-inside: avoid; margin-inline: 0 !important; border-color: #CCC; } .tk-board { overflow: visible; grid-auto-columns: 1fr; }
+  .tk-ck, .tk-col, .tk-av, .tc-s::before, .tk-h > i, .tk-colh > i { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+}
+
 /* Save as PDF: the page alone, on white, whatever its mode */
 @media print {
   :root, :root[data-mode="dark"] { --d-bg: #FFFFFF; --d-fg: #1D1D1F; --d-muted: #55555A; --d-faint: #77777C; --d-line: rgba(0,0,0,0.12); --d-line2: rgba(0,0,0,0.25); --d-hover: rgba(0,0,0,0.04); --d-code: #F1F1F5; --d-hl: #FFE78F; color-scheme: light; }

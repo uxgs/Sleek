@@ -21,7 +21,8 @@
     cols: '<rect x="3" y="5" width="8" height="14" rx="2"/><rect x="13" y="5" width="8" height="14" rx="2"/>', web: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/>',
     eye: '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
     deck: '<rect x="3" y="5" width="18" height="12" rx="2"/><path d="M12 17v4M8 21h8"/>', chart: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>', nums: '<path d="M4 17V7l-2 2M9 17h5l-4-5a2.5 2.5 0 1 1 4-2M18 7h3l-2 4a3 3 0 1 1-2 5"/>',
-    cmp: '<rect x="3" y="5" width="18" height="14" rx="3"/><path d="M12 3v18M8 10l-2 2 2 2M16 10l2 2-2 2"/>', word: '<path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4M9.5 12l1.2 5 1.3-4 1.3 4 1.2-5"/>'
+    cmp: '<rect x="3" y="5" width="18" height="14" rx="3"/><path d="M12 3v18M8 10l-2 2 2 2M16 10l2 2-2 2"/>',
+    task: '<circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.8 2.8L16 9.5"/>', board: '<rect x="3" y="4" width="5" height="16" rx="1.5"/><rect x="9.5" y="4" width="5" height="10" rx="1.5"/><rect x="16" y="4" width="5" height="13" rx="1.5"/>', word: '<path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4M9.5 12l1.2 5 1.3-4 1.3 4 1.2-5"/>'
   };
   function ico(n, cls){ return '<svg class="ico' + (cls ? ' ' + cls : '') + '" viewBox="0 0 24 24" aria-hidden="true">' + (ICON[n] || '') + '</svg>'; }
   function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
@@ -106,6 +107,9 @@
     { g: 'More', n: 'Table', h: 'Rows and columns', i: 'table', f: function(){ A.insertBlock(table()); } },
     { g: 'More', n: 'Chart', h: 'Bars, a line, a pie or a donut', i: 'chart', f: function(){ if(K.newData) A.insertBlock(K.newData('chart')); } },
     { g: 'More', n: 'Big numbers', h: 'Up to four numbers that count up', i: 'nums', f: function(){ if(K.newData) A.insertBlock(K.newData('results')); } },
+    { g: 'From Sleek Tasks', n: 'Task', h: 'One task, live: tick it here or there', i: 'task', f: function(){ if(K.insertTask) K.insertTask(); else A.toast('Tasks can’t be read in this browser'); } },
+    { g: 'From Sleek Tasks', n: 'Task list', h: 'A project’s tasks, to tick and add to', i: 'check', f: function(){ if(K.insertTasks) K.insertTasks('list'); else A.toast('Tasks can’t be read in this browser'); } },
+    { g: 'From Sleek Tasks', n: 'Board', h: 'A project’s board, cards and columns', i: 'board', f: function(){ if(K.insertTasks) K.insertTasks('board'); else A.toast('Tasks can’t be read in this browser'); } },
     { g: 'Designed sections', n: 'Cover', h: 'A title band across the top of the page', i: 'cover', f: addCover },
     { g: 'Designed sections', n: 'Callout', h: 'A tinted box that stands out', i: 'call', f: function(){ if(!A.run(cmd.wrapIn(N.callout))) A.insertBlock(N.callout.create(null, [N.paragraph.create()])); } },
     { g: 'Designed sections', n: 'Two columns', h: 'Side by side', i: 'cols', f: function(){ addColumns(2); } },
@@ -116,6 +120,7 @@
     var out = [];
     if(inside(N.cover)) out.push({ n: 'Remove the cover', h: 'Its title stays, as the page’s first heading', i: 'trash', f: removeCover });
     if(inside(N.columns)) out.push({ n: 'Remove the columns', h: 'What is in them stays, one after the other', i: 'trash', f: removeColumns });
+    if(K.makeTasks && inside(N.task_list)) out.push({ n: 'Make these tasks', h: 'Each line becomes a task in Sleek Tasks, and stays here, live', i: 'task', f: K.makeTasks });
     if(inside(N.callout)) out.push({ n: 'Remove the callout box', h: 'What is in it stays', i: 'trash', f: removeCallout });
     return out;
   }

@@ -40,6 +40,8 @@
     // a cover's empty lines, and empty captions, are left out
     Array.prototype.forEach.call(box.querySelectorAll('.dk-cover > p, figcaption'), function(p){ if(!p.textContent.trim()) p.remove(); });
     Array.prototype.forEach.call(box.querySelectorAll('.dk-fig img'), function(i){ i.setAttribute('loading', 'lazy'); i.setAttribute('decoding', 'async'); });
+    // tasks are shown as they stood when the page was published; what tied them to this browser's tasks is left out
+    Array.prototype.forEach.call(box.querySelectorAll('.dk-tchip, .dk-tasks'), function(el){ ['data-task', 'data-snap', 'data-ids', 'data-project', 'data-show'].forEach(function(a){ el.removeAttribute(a); }); });
     // charts and numbers are drawn into the file, finished, so they are there with scripts off (doc/data.js plays them when they can)
     Array.prototype.forEach.call(box.querySelectorAll('.dk-data'), function(el){
       var host = el.querySelector('.ds-host'), kind = el.getAttribute('data-kind') === 'results' ? 'results' : 'chart', ds = null;
@@ -64,6 +66,7 @@
   function build(viewers){
     var m = A.meta();
     return A.flush().then(function(){ return D.get(m.id); }).then(function(d){
+      if(K.freshenTasks) K.freshenTasks(d.seed.doc);
       var uses = JSON.stringify(d.seed.doc), hasData = uses.indexOf('"type":"data"') >= 0, hasCompare = uses.indexOf('"type":"compare"') >= 0;
       // the scripts a page gets, in order: the reader, then only what its own blocks need, then the beacon
       var extra = (hasData ? ['features/data-layout.js', 'doc/data.js'] : []).concat(hasCompare ? ['doc/compare.js'] : []).concat(viewers ? ['features/viewers-beacon.js'] : []);
