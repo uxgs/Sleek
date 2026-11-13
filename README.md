@@ -158,8 +158,9 @@ next seven days, across every project, with a box to add a task.
 
 Tasks live in the browser you made them in, in their own storage. Every open tab of Tasks follows the
 others at once, and so does any Sleek Docs page that shows a task, a list or a board
-([Tasks in a page](#sleek-docs)). Pictures and clips go in the picture store every Sleek app shares.
-Boards on slides come next.
+([Tasks in a page](#sleek-docs)) and any deck with a Tasks slide: add one from Add slide, and in Edit
+mode **Choose tasks** picks the project, a board or a list, and whether done tasks show. Pictures and
+clips go in the picture store every Sleek app shares.
 
 ## The sample deck
 
@@ -182,6 +183,7 @@ notes explain that layout:
 | Full video | The whole slide is a film, with the title over it |
 | Results | One to four big numbers that count up as the slide appears |
 | Chart | Bars, a line, a pie or a donut, drawn from a small table you edit, in the deck's colours or your own |
+| Tasks | A project's board or list from Sleek Tasks. It follows your tasks while you edit and present; a published deck shows them as they were when you published |
 | Lessons | Two columns: what landed and what to watch, with a press clipping on one bullet |
 | Wrap up | A recap in cards, then questions |
 | Annotated screen | A full-screen capture with pins, boxes and arrows, each with its own note |

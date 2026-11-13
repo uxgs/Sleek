@@ -27,6 +27,7 @@
 <link rel="stylesheet" href="features/collage.css">
 <link rel="stylesheet" href="features/floats.css">
 <link rel="stylesheet" href="features/data.css">
+<link rel="stylesheet" href="features/tasks.css">
 <link rel="stylesheet" href="features/viewers.css">
 <!-- the storage, the sample deck, then the loader: it opens the deck and starts the engine on it -->
 <script src="core/store.js"></script>
@@ -181,6 +182,11 @@
       <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M15.5 8.5A6 6 0 0 0 4.7 6.6"/><path d="M4.5 3.5v3.3h3.3"/><path d="M4.5 11.5a6 6 0 0 0 10.8 1.9"/><path d="M15.5 16.5v-3.3h-3.3"/></svg></button>
     <button id="cl-add" class="eb-ico" type="button" title="Add pictures or videos, from the deck or your computer">
       <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4.5v11M4.5 10h11"/></svg><span class="lbl">Add to the board</span></button>
+    <span class="sep"></span>
+  </span>
+  <span class="eb-group" id="eb-tasks" hidden>
+    <button id="tks-edit" class="eb-ico" type="button" title="Which project this slide shows, as a board or a list" aria-haspopup="true" aria-expanded="false">
+      <svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="4" width="4" height="12" rx="1.2"/><rect x="8" y="4" width="4" height="7.5" rx="1.2"/><rect x="13" y="4" width="4" height="10" rx="1.2"/></svg><span class="lbl">Choose tasks</span></button>
     <span class="sep"></span>
   </span>
   <span class="eb-group" id="eb-data" hidden>
@@ -560,6 +566,15 @@
         <p class="lead">Sessions finished each month, in thousands.</p>
       </div>
       <div class="ds-host" data-ds="chart"></div>
+    </section>
+
+    <!-- Tasks: a project's board or list from Sleek Tasks, as it stands (features/tasks-layout.js draws it) -->
+    <section class="slide s-tasks" data-label="Tasks" data-note="tasks">
+      <template class="slide-notes"><p>A project’s board or list from Sleek Tasks, as it stands when the slide is shown.</p>
+<ul><li>In Edit mode, Choose tasks picks the project, a board or a list, and whether done tasks show.</li><li>It follows Sleek Tasks while you edit and present: move a card there and it moves here. A published deck shows the tasks as they were when you published.</li></ul></template>
+      <div class="overline"><span class="tick">This week ·</span> The plan</div>
+      <h2 class="display">Where things stand.</h2>
+      <div class="tks-host" data-view="board"></div>
     </section>
 
     <!-- Lessons: what landed and what to watch -->

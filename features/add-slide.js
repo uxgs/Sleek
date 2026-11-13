@@ -39,7 +39,10 @@
       { k: 'chart', n: 'Bars', x: { ds: { type: 'bars' } }, d: 'Compare amounts side by side, with one picked out.', find: 'bar column compare amounts' },
       { k: 'chart', n: 'Line', x: { ds: { type: 'line' } }, d: 'Show how one thing changed over time.', find: 'trend over time growth line' },
       { k: 'chart', n: 'Pie', x: { ds: { type: 'pie' } }, d: 'Show the parts of a whole.', find: 'pie share split parts percentage breakdown' },
-      { k: 'chart', n: 'Donut', x: { ds: { type: 'donut' } }, d: 'Parts of a whole, with the main share written in the middle.', find: 'donut ring share split parts percentage breakdown' } ] }
+      { k: 'chart', n: 'Donut', x: { ds: { type: 'donut' } }, d: 'Parts of a whole, with the main share written in the middle.', find: 'donut ring share split parts percentage breakdown' } ] },
+    { id: 'tasks', g: 'numbers', name: 'Tasks', isNew: true, find: 'tasks board kanban todo to-do list plan status progress project roadmap sprint', v: [
+      { k: 'tasks', n: 'Board', x: { tk: { view: 'board' } }, d: 'A project’s board from Sleek Tasks, as it stands when you show it.', find: 'board kanban columns cards status' },
+      { k: 'tasks', n: 'List', x: { tk: { view: 'list' } }, d: 'A project’s tasks from Sleek Tasks as a list, as they stand when you show it.', find: 'list todo to-do checklist' } ] }
   ];
   var have = {}; D.templates().forEach(function(t){ have[t.key] = true; });
   CARDS = CARDS.map(function(c){ var o = Object.assign({}, c); o.v = c.v.filter(function(v){ return have[v.k]; }); return o; }).filter(function(c){ return c.v.length; });

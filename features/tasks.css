@@ -1,0 +1,61 @@
+/* The Tasks slide (features/tasks-layout.js draws it, in slide pixels, from the theme's own colours;
+   features/tasks-slides.js is its motion and its Choose tasks panel). */
+.s-tasks h2.display { font-size: 40px; max-width: 26ch; margin-top: 16px; }
+.tks-host { flex: 1 1 auto; min-width: 0; min-height: 0; margin-top: 26px; display: flex; flex-direction: column; gap: 12px; font-family: var(--ff-body); user-select: none; -webkit-user-select: none;
+  --tk-col: color-mix(in srgb, var(--fg) 6%, transparent); --tk-card: var(--surface); }
+body.editing .slide.active .tks-host { cursor: pointer; border-radius: 12px; outline: 1px dashed rgba(130,130,140,0.55); outline-offset: 10px; }
+body.editing .slide.active .tks-host:hover, body.tks-open .slide.active .tks-host { outline: 2px solid var(--accent); }
+
+/* a board: one column for each status */
+.tks-board { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: repeat(var(--n, 3), minmax(0, 1fr)); gap: 14px; }
+.tks-col { min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 9px; padding: 12px; border-radius: 16px; background: var(--tk-col); }
+.tks-colh { flex: none; display: flex; align-items: center; gap: 9px; padding: 0 4px; font-size: 14px; letter-spacing: 0.02em; color: var(--muted); }
+.tks-colh > i, .tks-foot > i { flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--c, var(--faint)); }
+.tks-colh > b { font-weight: 600; color: var(--fg); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tks-colh > span { margin-left: auto; font-variant-numeric: tabular-nums; }
+.tks-cards { flex: 1 1 auto; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: 8px; }
+.tks-card { flex: none; display: flex; flex-direction: column; gap: 6px; padding: 11px 13px; border-radius: 11px; background: var(--tk-card); border: 1px solid var(--line); box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+.tks-card[hidden], .tks-row[hidden] { display: none; }
+.tks-t { font-size: 16.5px; line-height: 1.3; font-weight: 500; letter-spacing: -0.005em; color: var(--fg); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.tks-card.done .tks-t, .tks-row.done .tks-t { color: var(--faint); text-decoration: line-through; font-weight: 400; }
+.tks-m { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 20px; }
+.tks-host em { font-style: normal; font-size: 13px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; } .tks-host em.late { color: var(--warn); font-weight: 600; }
+.tks-av { flex: none; margin-left: auto; width: 21px; height: 21px; border-radius: 50%; display: inline-grid; place-items: center; background: var(--c, var(--faint)); color: #fff; font-style: normal; font-size: 10.5px; font-weight: 700; }
+.tks-more { flex: none; height: 16px; padding: 0 4px; font-size: 13px; color: var(--faint); }
+/* a list: every task on a line; in two columns when there are many */
+.tks-list { flex: 1 1 auto; min-height: 0; overflow: hidden; display: flex; flex-direction: column; flex-wrap: wrap; align-content: flex-start; column-gap: 44px; }
+.tks-row { flex: none; width: 100%; display: flex; align-items: center; gap: 13px; padding: 12px 2px; border-bottom: 1px solid var(--line); }
+.tks-list.two .tks-row { width: calc(50% - 22px); }
+.tks-row .tks-t { flex: 1; min-width: 0; font-size: 19px; -webkit-line-clamp: 1; }
+.tks-row .tks-av { margin-left: 0; }
+.tks-ck { flex: none; width: 20px; height: 20px; border-radius: 50%; border: 1.7px solid var(--line-strong); display: inline-grid; place-items: center; }
+.tks-ck.on { background: var(--good); border-color: var(--good); }
+.tks-ck.on::after { content: ""; width: 8px; height: 4.5px; border-left: 2px solid #fff; border-bottom: 2px solid #fff; transform: rotate(-45deg); margin-top: -2px; }
+.tks-st { flex: none; display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); white-space: nowrap; }
+.tks-st::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--c, var(--faint)); }
+.tks-none { color: var(--faint); font-size: 18px; }
+/* under it: which project, and where it comes from */
+.tks-foot { flex: none; display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--faint); }
+.tks-foot > b { font-weight: 600; color: var(--muted); } .tks-rest { margin-left: auto; }
+/* arriving: cards rise in one after another; a new task flashes once */
+@keyframes tks-rise { from { opacity: 0; transform: translateY(14px); } }
+.tks-in .tks-card, .tks-in .tks-row { animation: tks-rise .5s cubic-bezier(.2,.8,.2,1) both; animation-delay: calc(120ms + var(--i, 0) * 45ms); }
+@keyframes tks-flash { from { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 70%, transparent); } to { box-shadow: 0 0 0 12px transparent; } }
+.tks-new { animation: tks-flash .7s ease-out; }
+@media (prefers-reduced-motion: reduce) { .tks-in .tks-card, .tks-in .tks-row, .tks-new { animation: none; } }
+
+/* ---------- Choose tasks: the panel over the bar ---------- */
+.tks-ed { position: fixed; z-index: 46; width: min(340px, calc(100vw - 16px)); display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px 12px; align-items: center;
+  background: var(--surface); color: var(--fg); border: 1px solid var(--line-strong); border-radius: 14px; padding: 14px; box-shadow: var(--shadow); font: 14px/1.4 var(--ff-body, system-ui); }
+.tks-ed-h { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 8px; } .tks-ed-h b { font-weight: 600; }
+.tks-ed-x { width: 28px; height: 28px; border: 0; border-radius: 8px; background: none; color: var(--muted); font-size: 18px; line-height: 1; cursor: pointer; } .tks-ed-x:hover { background: var(--surface-2); color: var(--fg); }
+.tks-ed p { grid-column: 1 / -1; margin: 0; color: var(--muted); }
+.tks-ed label, .tks-ed-l { color: var(--muted); font-size: 13px; }
+.tks-ed select { min-width: 0; width: 100%; height: 34px; border-radius: 9px; border: 1px solid var(--line-strong); background: var(--bg); color: var(--fg); padding: 0 8px; font: inherit; }
+.tks-ed-seg { display: inline-flex; padding: 3px; border-radius: 10px; background: var(--surface-2); justify-self: start; }
+.tks-ed-seg button { height: 28px; padding: 0 14px; border: 0; border-radius: 8px; background: none; color: var(--muted); font: inherit; font-weight: 500; cursor: pointer; }
+.tks-ed-seg button.on { background: var(--bg); color: var(--fg); box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+.tks-ed-c { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; color: var(--fg) !important; font-size: 14px !important; cursor: pointer; } .tks-ed-c input { accent-color: var(--accent); }
+.tks-ed-f { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 4px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 12.5px; color: var(--faint); }
+.tks-ed-f a { color: var(--accent); font-size: 13.5px; font-weight: 500; text-decoration: none; align-self: flex-start; } .tks-ed-f a:hover { text-decoration: underline; }
+.tks-ed :is(select, button, a, input):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

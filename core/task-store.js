@@ -171,6 +171,20 @@
     cache.tasks = cache.tasks.filter(function(x){ return x.id !== id; }); del('tasks', id); changed({ kind: 'task', id: id, project: t.project, removed: true });
   }
 
+  // A project as it stands: its columns, and in each its tasks in order (a done column: latest first).
+  // For showing a project somewhere that can't read the tasks itself, such as a published deck
+  // (features/tasks-layout.js). With ids, each task carries its id, for following it as it moves.
+  function snapshot(pid, ids){
+    var p = project(pid); if(!p) return null;
+    var today = dayKey(new Date()), all = tasks(pid).slice().sort(function(a, b){ return (a.order || 0) - (b.order || 0); });
+    return { n: p.name, c: p.color, at: now(), cols: p.statuses.map(function(s){
+      var mine = all.filter(function(t){ return t.status === s.id; }); if(s.done) mine.sort(function(a, b){ return (b.doneAt || 0) - (a.doneAt || 0); });
+      return { n: s.name, c: s.color, done: !!s.done, tasks: mine.map(function(t){
+        var w = t.who ? person(t.who) : null, o = { t: t.title, done: !!s.done, due: t.due || '', late: !!t.due && !s.done && t.due < today, who: t.who || '', wc: w ? w.color : '' };
+        if(ids) o.id = t.id; return o; }) };
+    }) };
+  }
+
   // ---------- your own fields ----------
   // A project's own fields (project.fields) are the extra columns of its grid; a task keeps its values
   // for them in task.vals, by field id:
@@ -224,7 +238,7 @@
     open: open, ready: ready, on: on, uid: uid, COLORS: COLORS, STATUSES: STATUSES,
     projects: projects, project: project, addProject: addProject, setProject: setProject, removeProject: removeProject, removeStatus: removeStatus, firstOpen: firstOpen, firstDone: firstDone,
     tasks: tasks, task: task, isDone: isDone, addTask: addTask, setTask: setTask, tick: tick, removeTask: removeTask,
-    REPEATS: REPEATS, nextDue: nextDue, repeatsUntil: repeatsUntil,
+    REPEATS: REPEATS, nextDue: nextDue, repeatsUntil: repeatsUntil, snapshot: snapshot,
     FIELD_TYPES: FIELD_TYPES, fields: fields, field: field, addField: addField, setField: setField, addOption: addOption, removeField: removeField, setVal: setVal,
     people: people, person: person, addPerson: addPerson
   };

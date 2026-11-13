@@ -59,6 +59,7 @@
     el.setAttribute('data-label', a.name); el.setAttribute('data-note', 'add-' + a.id); el.setAttribute('data-added', a.id);
     if(window.SleekCollage) SleekCollage.build(el, a);          // a moodboard: a tile for each of its pictures (features/collage-layout.js)
     if(window.SleekData) SleekData.build(el, a);                // Results and Chart: drawn from the slide's numbers (features/data-layout.js)
+    if(window.SleekTaskSlide) SleekTaskSlide.build(el, a);     // Tasks: a project's board or list, from Sleek Tasks (features/tasks-layout.js)
     if(a.fill === 'sample') return el;                         // the layout's own words, pictures and notes
     el.removeAttribute('data-before');
     var notes = el.querySelector('template.slide-notes'); if(notes) notes.remove();
@@ -1061,6 +1062,7 @@
     var d = document.createElement('div'); d.innerHTML = t.html;
     var c = d.firstElementChild, n = c.querySelector('template.slide-notes'); if(n) n.remove();
     if(window.SleekData) SleekData.build(c, extra || null);          // a chart, in the version asked for
+    if(window.SleekTaskSlide) SleekTaskSlide.build(c, extra || null); // tasks, as a board or a list
     var board = window.SleekCollage && SleekCollage.build(c, null);   // a moodboard, laid out as it would be on the slide
     if(board) SleekCollage.place(board, SleekCollage.NOMINAL.W, SleekCollage.NOMINAL.H, 'fit');
     Array.prototype.forEach.call(c.querySelectorAll('.media[data-default-src]'), function(m){

@@ -5,8 +5,8 @@
    feature; it doesn't edit. Built from this page's own files, so it needs a page served over
    http(s) or one where the browser allows reading them. */
 (function(){
-  var CSS = ['styles.css', 'glow.css', 'features/features.css', 'features/add-slide.css', 'features/before-picker.css', 'features/fit.css', 'features/collage.css', 'features/floats.css', 'features/data.css'];
-  var JS = ['features/collage-layout.js', 'features/data-layout.js', 'app.js', 'glow-fx.js', 'features/disassemble.js', 'features/press.js', 'features/mobile.js', 'features/fit.js', 'features/collage.js', 'features/floats.js', 'features/data-slides.js'];
+  var CSS = ['styles.css', 'glow.css', 'features/features.css', 'features/add-slide.css', 'features/before-picker.css', 'features/fit.css', 'features/collage.css', 'features/floats.css', 'features/data.css', 'features/tasks.css'];
+  var JS = ['features/collage-layout.js', 'features/data-layout.js', 'features/tasks-layout.js', 'app.js', 'glow-fx.js', 'features/disassemble.js', 'features/press.js', 'features/mobile.js', 'features/fit.js', 'features/collage.js', 'features/floats.js', 'features/data-slides.js', 'features/tasks-slides.js'];
   var HEAD_JS = ['theme-boot.js'];
 
   function text(u){ return fetch(u, { cache: 'no-cache' }).then(function(r){ if(!r.ok) throw new Error(u + ': ' + r.status); return r.text(); }); }
@@ -20,9 +20,18 @@
   function safe(s){ return String(s).replace(/<\/(script)/gi, '<\\/$1').replace(/<!--/g, '<\\!--'); }
   function slugFile(t){ return (String(t || 'deck').trim().replace(/[\\/:*?"<>|]+/g, '').replace(/\s+/g, ' ') || 'deck'); }
 
+  // A Tasks slide (features/tasks-layout.js) is published as its tasks stand now: a published deck
+  // has no tasks to read, so it carries how they looked. This page may not have opened the tasks yet.
+  function tasksNow(seed){
+    var slides = (seed.added || []).filter(function(a){ return a.t === 'tasks' && a.tk && a.tk.project; });
+    if(!slides.length) return Promise.resolve();
+    return new Promise(function(ok){ if(window.SleekTasks){ ok(); return; } var s = document.createElement('script'); s.src = 'core/task-store.js'; s.onload = ok; s.onerror = ok; document.head.appendChild(s); })
+      .then(function(){ return window.SleekTasks ? window.SleekTasks.ready() : null; })
+      .then(function(){ var T = window.SleekTasks; if(T) slides.forEach(function(a){ var now = T.snapshot(a.tk.project); if(now) a.tk.snap = now; }); }, function(e){ console.error(e); });
+  }
   function build(id){
     var S = window.SleekStore;
-    return S.get(id).then(function(deck){
+    return S.get(id).then(function(deck){ return deck ? tasksNow(deck.seed).then(function(){ return deck; }) : deck; }).then(function(deck){
       if(!deck) throw new Error('No such deck.');
       // Viewers (core/online.js): only a deck published with it switched on carries the few lines that
       // report in, and the deck's public code. Any other published page makes no request at all.
@@ -32,6 +41,7 @@
         Promise.all(CSS.map(text)), Promise.all((vw ? JS.concat(['features/viewers-beacon.js']) : JS).map(text)), Promise.all(HEAD_JS.map(text))
       ]).then(function(r){
         var seed = r[0], html = r[1], css = r[2], js = r[3], headJs = r[4];
+        (seed.added || []).forEach(function(a){ if(a.t === 'tasks' && a.tk) delete a.tk.project; });      // what tied the slide to this browser's tasks stays behind
         var doc = new DOMParser().parseFromString(html, 'text/html');
         // only the layouts this deck uses
         var used = {}; (seed.added || []).forEach(function(a){ used[a.t] = true; });

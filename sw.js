@@ -3,7 +3,7 @@
    the network behind it, so a new version shows on the next visit. Change VERSION (and the list)
    when files are added or removed. */
 // 'sleek-' + Slides' version (data/changelog.js) + '-d' + Docs' (data/doc-changelog.js) + '-t' + Tasks' (data/task-changelog.js): a new version of any app renews the cache
-var VERSION = 'sleek-1.0.49-d1.0.6-t1.0.2';
+var VERSION = 'sleek-1.0.50-d1.0.6-t1.0.3';
 var FILES = [
   './', 'index.html', 'slides.html', 'deck.html', 'manifest.webmanifest', 'docs.html', 'doc.html', 'docs.webmanifest', 'core/short.js',
   'styles.css', 'glow.css', 'app.js', 'glow-fx.js', 'theme-boot.js',
@@ -11,7 +11,7 @@ var FILES = [
   'features/features.css', 'features/add-slide.css', 'features/add-slide.js', 'features/before-picker.css', 'features/before-picker.js', 'features/take-apart-editor.css', 'features/take-apart-editor.js', 'features/press-editor.css',
   'features/deck-file.css', 'features/deck-file.js', 'features/disassemble.js', 'features/press.js', 'features/tour.js', 'features/mobile.js',
   'features/setup.css', 'features/setup.js', 'features/library.css', 'features/library.js', 'features/changelog.js', 'features/settings.js', 'features/film.css', 'features/film.js',
-  'features/collage-layout.js', 'features/fit.js', 'features/fit.css', 'features/collage.js', 'features/collage.css', 'features/floats.js', 'features/floats.css', 'features/data-layout.js', 'features/data-slides.js', 'features/data.css', 'features/viewers.js', 'features/viewers.css', 'features/viewers-beacon.js',
+  'features/collage-layout.js', 'features/fit.js', 'features/fit.css', 'features/collage.js', 'features/collage.css', 'features/floats.js', 'features/floats.css', 'features/data-layout.js', 'features/tasks-layout.js', 'features/tasks-slides.js', 'features/tasks.css', 'features/data-slides.js', 'features/data.css', 'features/viewers.js', 'features/viewers.css', 'features/viewers-beacon.js',
   // Sleek Docs: the editor engine and the readers and writer of Markdown and Word files (vendor/), the store, and the app
   'vendor/prosemirror.js', 'vendor/prosemirror.css', 'vendor/markdown-it.js', 'vendor/mammoth.js', 'vendor/docx.js', 'core/doc-store.js', 'core/doc-boot.js', 'data/doc-changelog.js',
   'doc/schema.js', 'doc/editor.js', 'doc/toolbar.js', 'doc/sidebar.js', 'doc/paste.js', 'doc/blocks-figure.js', 'doc/export.js', 'doc/import.js', 'doc/library.js', 'doc/publish.js', 'doc/reader.js', 'doc/viewers.js',
