@@ -66,7 +66,7 @@
       var docs = r[0]; closeMenu(); grid.innerHTML = '';
       count.textContent = docs.length ? docs.length + (docs.length === 1 ? ' page' : ' pages') : '';
       if(!docs.length){
-        var e = el('div', 'lib-empty'); e.appendChild(el('b', '', 'No pages yet')); e.appendChild(el('span', '', 'Start one, or open a Markdown or text file you already have.'));
+        var e = el('div', 'lib-empty'); e.appendChild(el('b', '', 'No pages yet')); e.appendChild(el('span', '', 'Start one, or open a Word, Markdown or text file you already have.'));
         var w = el('div'), a = el('a', 'btn btn-new'); a.href = 'doc.html?new=1'; a.innerHTML = '<span class="plus" aria-hidden="true">+</span>New page'; w.appendChild(a); e.appendChild(w); grid.appendChild(e); return;
       }
       docs.forEach(function(d){ grid.appendChild(card(d, r[1], d.id === freshId)); });

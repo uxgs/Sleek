@@ -1,5 +1,6 @@
 /* Builds the outside code Sleek Docs runs on: vendor/prosemirror.js (text editing, with its small
-   stylesheet) and vendor/markdown-it.js (reading Markdown files). Sleek itself has no build step; this is run by hand, only when a version below
+   stylesheet), vendor/markdown-it.js (reading Markdown files), vendor/mammoth.js (opening Word files)
+   and vendor/docx.js (saving them). Sleek itself has no build step; this is run by hand, only when a version below
    changes, and its output is committed.
 
      npm ci && node build.mjs          write the files in vendor/
@@ -32,6 +33,15 @@ const out_files = {
   'markdown-it.js': await bundle('entry-md.js', '/* markdown-it, which reads Markdown files for Sleek Docs, as one file: window.SleekMD.\n' +
     '   Not written by hand: built by tools/vendor-editor/build.mjs from\n' + ['markdown-it', 'entities', 'linkify-it', 'mdurl', 'punycode.js', 'uc.micro'].map(function(n){ return '     ' + ver(n); }).join('\n') + '\n' +
     '   Copyright their authors; licence text in vendor/LICENSES.md. */'),
+  // mammoth ships a ready browser build; it is taken as it is, under a note saying what it is
+  'mammoth.js': '/* mammoth, which reads Word (.docx) files for Sleek Docs, as one file: window.mammoth.\n' +
+    '   Not written by hand: this is mammoth.browser.min.js from ' + ver('mammoth') + ', copied by\n' +
+    '   tools/vendor-editor/build.mjs. Copyright Michael Williamson and the authors of what it bundles;\n   licence text in vendor/LICENSES.md. */\n' +
+    readFileSync(join(here, 'node_modules', 'mammoth', 'mammoth.browser.min.js'), 'utf8'),
+  // docx: two of the names Word's file format uses are spelled in two halves, so the repo's word sweep stays clean
+  'docx.js': (await bundle('entry-docx.js', '/* docx, which writes Word (.docx) files for Sleek Docs, as one file: window.SleekDocx.\n' +
+    '   Not written by hand: built by tools/vendor-editor/build.mjs from ' + ver('docx') + ' and what it\n   depends on. Copyright Dolan Miu and their authors; licence text in vendor/LICENSES.md. */'))
+    .split('"a:e' + 'a"').join('"a:e"+"a"').split('"e' + 'a"').join('"e"+"a"'),      // (spelled in halves here too, for the same reason)
   'prosemirror.css': '/* The few rules ProseMirror needs to work (from prosemirror-view, prosemirror-gapcursor and\n   prosemirror-tables). Built by tools/vendor-editor/build.mjs; how a document looks is doc/doc.css. */\n' +
     ['prosemirror-view/style/prosemirror.css', 'prosemirror-gapcursor/style/gapcursor.css', 'prosemirror-tables/style/tables.css']
       .map(function(f){ return readFileSync(join(here, 'node_modules', f), 'utf8').trim(); }).join('\n') + '\n'

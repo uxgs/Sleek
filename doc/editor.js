@@ -76,7 +76,7 @@
     else { pos = $f.depth ? $f.after(1) : st.selection.to; tr.insert(pos, node); }
     var end = pos + node.nodeSize;
     if(end >= tr.doc.content.size) tr.insert(end, N.paragraph.create());
-    tr.setSelection(St.Selection.near(tr.doc.resolve(node.isLeaf || node.type === N.figure ? end : pos + 1), 1));
+    tr.setSelection(St.Selection.near(tr.doc.resolve(node.isLeaf || node.isAtom || node.type === N.figure ? end : pos + 1), 1));
     view.dispatch(tr.scrollIntoView()); view.focus();
   }
   function run(c){ var ok = c(view.state, view.dispatch, view); view.focus(); return ok; }
@@ -130,7 +130,8 @@
                function(st, d){ if(st.selection.$from.parent.type !== N.code_block) return false; if(d) d(st.tr.insertText('  ')); return true; }, function(){ return true; }),
       'Shift-Tab': cmd.chainCommands(PM.tables.goToNextCell(-1), sl.liftListItem(N.list_item), function(){ return true; }),
       'Shift-Enter': cmd.chainCommands(cmd.exitCode, function(st, d){ if(d) d(st.tr.replaceSelectionWith(N.hard_break.create()).scrollIntoView()); return true; }) }),
-    PM.keymap.keymap(cmd.baseKeymap), PM.history.history(), PM.dropcursor.dropCursor({ color: 'var(--d-accent)', width: 2 }), PM.gapcursor.gapCursor(), PM.tables.tableEditing()
+    PM.keymap.keymap(cmd.baseKeymap), PM.history.history(), PM.dropcursor.dropCursor({ color: 'var(--d-accent)', width: 2 }), PM.gapcursor.gapCursor(),
+    PM.tables.columnResizing({ cellMinWidth: 60 }), PM.tables.tableEditing()      // columns are resized by dragging the line between them
   ];
   // each closed collapsible heading at the top level, with the blocks it hides
   function folds(doc){
@@ -172,13 +173,15 @@
         stopEvent: function(e){ return e.target === c; }, ignoreMutation: function(m){ return m.target === c || (m.target === li && m.type === 'attributes'); } };
     }
   };
-  if(K.figureView) nodeViews.figure = K.figureView;
+
 
   function stateFor(seed){
     var doc = PM.model.Node.fromJSON(K.schema, seed.doc); doc.check();
     return St.EditorState.create({ doc: doc, plugins: plugins });
   }
   function make(state){
+    // the blocks that draw themselves (doc/blocks-*.js, loaded after this file and before start())
+    if(K.figureView) nodeViews.figure = K.figureView; if(K.dataView) nodeViews.data = K.dataView; if(K.compareView) nodeViews.compare = K.compareView;
     view = api.view = new PM.view.EditorView($('#ed'), { state: state, nodeViews: nodeViews,
       attributes: { class: 'dk-doc', spellcheck: 'true' },
       editable: function(){ return !locked; },
@@ -234,8 +237,9 @@
   api.look = look; api.setLook = setLook; api.title = title; api.touch = touch; api.seedNow = seedNow;
   api.meta = function(){ return cur; }; api.locked = function(){ return locked; };
 
-  open(window.SLEEK_DOC.id, { replace: true }).then(function(d){
+  // core/doc-boot.js calls this once every file is loaded, so each has had its say (its blocks, its hooks) before a page opens
+  api.start = function(){ return open(window.SLEEK_DOC.id, { replace: true }).then(function(d){
     setTimeout(function(){ de.classList.remove('booting'); }, 30);
     if(d && !locked && !('ontouchstart' in window)) view.focus();
-  }).catch(function(e){ console.error(e); de.classList.remove('booting'); toast('Sleek Docs could not open this page.'); });
+  }).catch(function(e){ console.error(e); de.classList.remove('booting'); toast('Sleek Docs could not open this page.'); }); };
 })();

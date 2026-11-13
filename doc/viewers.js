@@ -99,7 +99,7 @@
   }
   A.onOpen.push(sync); A.viewersChanged = sync;
   A.onUpdate.push(function(tr){ if(tr.docChanged && V) requestAnimationFrame(paintRail); });
-  if(window.ResizeObserver) new ResizeObserver(function(){ if(V) paintRail(); }).observe(A.view.dom);
+  var sized = false;
+  A.onOpen.push(function(){ if(sized || !window.ResizeObserver) return; sized = true; new ResizeObserver(function(){ if(V) paintRail(); }).observe(A.view.dom); });
   setInterval(function(){ if(pan) paintPanel(); }, 20000);      // "3 min ago" keeps up
-  sync();
 })();

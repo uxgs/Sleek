@@ -1,7 +1,7 @@
 {
   "name": "sleek-vendor-editor",
   "private": true,
-  "description": "Builds the outside code Sleek Docs runs on: vendor/prosemirror.js (text editing) and vendor/markdown-it.js (reading Markdown files). Run: node build.mjs",
+  "description": "Builds the outside code Sleek Docs runs on, into vendor/: prosemirror.js (text editing), markdown-it.js (reading Markdown), mammoth.js (opening Word files) and docx.js (saving them). Run: node build.mjs",
   "type": "module",
   "dependencies": {
     "prosemirror-commands": "1.7.2",
@@ -16,7 +16,9 @@
     "prosemirror-tables": "1.8.5",
     "prosemirror-transform": "1.12.5",
     "prosemirror-view": "1.42.9",
-    "markdown-it": "15.0.3"
+    "markdown-it": "15.0.3",
+    "mammoth": "1.13.0",
+    "docx": "9.15.3"
   },
   "devDependencies": {
     "esbuild": "0.28.2"

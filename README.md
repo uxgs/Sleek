@@ -89,6 +89,13 @@ paper pages, and it saves as you write.
   be as wide as the text, wide, or full width.
 - **Designed sections.** A cover across the top of the page, callout boxes, and two or three columns,
   all from Insert. ⌘Enter steps out of whatever you are in.
+- **Charts and big numbers.** The same ones as Sleek Slides: bars, a line, a pie or a donut, and up to
+  four numbers that count up as they come into view. Press one to edit its data; rows can be pasted
+  from a spreadsheet.
+- **Before and after.** Two pictures with a slider between them, or next to each other. Printed, they
+  are always next to each other.
+- **Tables.** Controls above the table add and delete rows and columns and switch the header row;
+  drag the line between two columns to resize them.
 - **Paste from Word or Google Docs.** Headings, lists, tables, links, bold, italic, underline, strike
   and highlight come across; fonts, sizes and colours are left behind, so the page keeps its look.
 - **Folders and search.** The list on the left holds your pages in folders, and folders in folders.
@@ -98,9 +105,10 @@ paper pages, and it saves as you write.
   an outline at the side and a light or dark switch, and no editor. Switch on **See who's reading**
   as you publish and Docs shows who is reading now and how far people got, the same way decks do
   ([what is sent and kept](#see-whos-viewing); for a page, "which slide" is how far down the page).
-  Also: Save as PDF (through your browser's print), Save as Markdown (a .zip when the page has
-  pictures), and Download a copy: a .sleek file that opens in Sleek Docs in any browser.
-- **Open a file.** The Docs start screen opens .sleek pages and Markdown or text files.
+  Also: Save as PDF (through your browser's print), Save as Word (a .docx: charts become pictures,
+  columns and big numbers become tables), Save as Markdown (a .zip when the page has pictures), and
+  Download a copy: a .sleek file that opens in Sleek Docs in any browser.
+- **Open a file.** The Docs start screen opens .sleek pages and Word (.docx), Markdown or text files.
 
 Pages live in the browser you wrote them in, in their own storage beside your decks. A linked folder
 (above) mirrors decks only, for now.
@@ -166,7 +174,7 @@ on the slide named in its `data-before`. A pick made with the button takes over 
 
 ## Run it from your own copy
 
-Sleek is static files, with no build step (the two files in `vendor/` are built once, by hand, and
+Sleek is static files, with no build step (the files in `vendor/` are built once, by hand, and
 committed). Serve the folder with any web server and open it:
 
 ```
@@ -216,10 +224,13 @@ doc/                  the editor: schema.js (what a page can hold), editor.js, t
                       menus, Look, Share), sidebar.js (pages and folders), blocks-figure.js (pictures),
                       paste.js (Word and Google Docs), export.js and import.js (Markdown), library.js
                       (the start screen), publish.js (the one-file web page), reader.js and reader.css
-                      (what that page's reader gets), viewers.js (who is reading), doc.css (how a
+                      (what that page's reader gets), viewers.js (who is reading), data.js and
+                      blocks-data.js (charts and big numbers), compare.js and blocks-compare.js
+                      (before and after), tables.js, word.js (saving Word files), doc.css (how a
                       page looks) and doc-ui.css (the app around it)
 vendor/               outside code, under free licences (vendor/LICENSES.md): ProseMirror, the text
-                      editing engine under Sleek Docs, and markdown-it, which reads Markdown files
+                      editing engine under Sleek Docs; markdown-it, which reads Markdown files;
+                      mammoth, which reads Word files; and docx, which writes them
 tools/vendor-editor/  builds the files in vendor/ from pinned versions; run by hand, output committed
 docs.webmanifest      install Sleek Docs as an app
 ```

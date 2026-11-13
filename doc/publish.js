@@ -3,7 +3,9 @@
    The file holds the page as plain HTML (made from the document by the page's own rules, so it
    reads, prints and can be searched even with scripts off), its pictures inside it, the page's look
    (doc/doc.css), and a small reader (doc/reader.css, doc/reader.js): an outline, a progress bar,
-   light or dark, and the arrows on collapsible headings. There is no editor in it.
+   light or dark, and the arrows on collapsible headings. A page with a chart or a before-and-after
+   also gets the few scripts those need (doc/data.js with features/data-layout.js; doc/compare.js),
+   and nothing it doesn't use. There is no editor in it.
 
    With "See who's reading" switched on (core/online.js; off unless you switch it on), the file also
    carries the public code and the few lines that report in (features/viewers-beacon.js), exactly as
@@ -37,7 +39,23 @@
     Array.prototype.forEach.call(box.children, function(el, i){ el.setAttribute('data-stop', Math.floor(i / step)); if(/^H[1-3]$/.test(el.tagName)) el.id = 'h' + i; });
     // a cover's empty lines, and empty captions, are left out
     Array.prototype.forEach.call(box.querySelectorAll('.dk-cover > p, figcaption'), function(p){ if(!p.textContent.trim()) p.remove(); });
-    Array.prototype.forEach.call(box.querySelectorAll('img'), function(i){ i.setAttribute('loading', 'lazy'); i.setAttribute('decoding', 'async'); });
+    Array.prototype.forEach.call(box.querySelectorAll('.dk-fig img'), function(i){ i.setAttribute('loading', 'lazy'); i.setAttribute('decoding', 'async'); });
+    // charts and numbers are drawn into the file, finished, so they are there with scripts off (doc/data.js plays them when they can)
+    Array.prototype.forEach.call(box.querySelectorAll('.dk-data'), function(el){
+      var host = el.querySelector('.ds-host'), kind = el.getAttribute('data-kind') === 'results' ? 'results' : 'chart', ds = null;
+      try { ds = JSON.parse(el.getAttribute('data-json') || 'null'); } catch(e){}
+      if(host && window.SleekData){ ds = window.SleekData.norm(kind, ds); el.setAttribute('data-type', kind === 'chart' ? ds.type : 'results'); window.SleekData.draw(host, ds, 1e9, { width: 595, max: 76 }); }
+    });
+    // a table's column widths, as shares of its width
+    Array.prototype.forEach.call(box.querySelectorAll('table'), function(t){
+      var row = t.querySelector('tr'), ws = []; if(!row) return;
+      Array.prototype.forEach.call(row.children, function(c){ String(c.getAttribute('data-colwidth') || '').split(',').forEach(function(w){ ws.push(parseFloat(w) || 0); }); });
+      Array.prototype.forEach.call(t.querySelectorAll('[data-colwidth]'), function(c){ c.removeAttribute('data-colwidth'); c.style.removeProperty('width'); });
+      if(!ws.some(Boolean)) return;
+      // a column you sized keeps its share; the ones you left alone split what remains
+      var free = ws.filter(function(w){ return !w; }).length, sum = Math.max(680, ws.reduce(function(a, b){ return a + b; }, 0) + free * 120), g = document.createElement('colgroup');
+      ws.forEach(function(w){ var c = document.createElement('col'); if(w) c.style.width = (w / sum * 100).toFixed(2) + '%'; g.appendChild(c); }); t.insertBefore(g, t.firstChild);
+    });
     return box.innerHTML;
   }
   function wordsIn(doc){ var m = doc.textBetween(0, doc.content.size, ' ', ' ').match(/\S+/g); return m ? m.length : 0; }
@@ -46,7 +64,10 @@
   function build(viewers){
     var m = A.meta();
     return A.flush().then(function(){ return D.get(m.id); }).then(function(d){
-      return Promise.all([S.inline(d.seed, false), text('doc/doc.css'), text('doc/reader.css'), text('doc/reader.js'), viewers ? text('features/viewers-beacon.js') : '']).then(function(r){
+      var uses = JSON.stringify(d.seed.doc), hasData = uses.indexOf('"type":"data"') >= 0, hasCompare = uses.indexOf('"type":"compare"') >= 0;
+      // the scripts a page gets, in order: the reader, then only what its own blocks need, then the beacon
+      var extra = (hasData ? ['features/data-layout.js', 'doc/data.js'] : []).concat(hasCompare ? ['doc/compare.js'] : []).concat(viewers ? ['features/viewers-beacon.js'] : []);
+      return Promise.all([S.inline(d.seed, false), text('doc/doc.css'), text('doc/reader.css'), text('doc/reader.js'), Promise.all(extra.map(text))]).then(function(r){
         var seed = r[0], doc = PM.model.Node.fromJSON(K.schema, seed.doc), t = seed.theme || {};
         var mode = t.mode === 'dark' ? 'dark' : 'light', font = t.font === 'editorial' ? 'editorial' : 'inter', accent = /^#[0-9a-f]{6}$/i.test(t.accent || '') ? t.accent : '#7C5CFF';
         var info = { id: 'p' + d.id, title: d.title, published: true }; if(viewers) info.viewers = { url: viewers.url, room: viewers.room };
@@ -60,7 +81,7 @@
           '<button type="button" class="rd-mode" id="rd-mode" title="Light or dark" aria-label="Light or dark"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg></button><i class="rd-bar" id="rd-bar"></i></header>\n' +
           '<div class="rd-in"><nav class="rd-outline" id="rd-outline" aria-label="On this page"></nav><main class="rd-main"><article class="dk-doc" id="doc">\n' + body(doc) + '\n</article><footer class="rd-foot">Made with Sleek Docs</footer></main></div>\n' +
           '<script>window.SLEEK_DECK = ' + JSON.stringify(info).replace(/</g, '\\u003c') + '; window.SLEEK_NS = ' + JSON.stringify('pub:p' + d.id + ':') + ';</script>\n' +
-          '<script>\n' + inScript(r[3]) + '\n</script>\n' + (viewers ? '<script>\n' + inScript(r[4]) + '\n</script>\n' : '') + '</body>\n</html>\n';
+          '<script>\n' + inScript(r[3]) + '\n</script>\n' + r[4].map(function(js){ return '<script>\n' + inScript(js) + '\n</script>\n'; }).join('') + '</body>\n</html>\n';
         return { html: html, name: A.fileName(d.title) + '.html' };
       });
     });

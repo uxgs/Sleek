@@ -19,7 +19,9 @@
     edit: '<path d="M4 20h4l10-10-4-4L4 16zM13 7l4 4"/>', fold: '<path d="M5 6h3M11 6h8M11 12h8M11 18h8"/><path d="M5 11l2 2-2 2"/>',
     cover: '<rect x="3" y="4" width="18" height="9" rx="2"/><path d="M5 17h14M5 20h9"/>', call: '<rect x="3" y="5" width="18" height="14" rx="3"/><path d="M7 10h10M7 14h6"/>',
     cols: '<rect x="3" y="5" width="8" height="14" rx="2"/><rect x="13" y="5" width="8" height="14" rx="2"/>', web: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/>',
-    eye: '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>'
+    eye: '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+    chart: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>', nums: '<path d="M4 17V7l-2 2M9 17h5l-4-5a2.5 2.5 0 1 1 4-2M18 7h3l-2 4a3 3 0 1 1-2 5"/>',
+    cmp: '<rect x="3" y="5" width="18" height="14" rx="3"/><path d="M12 3v18M8 10l-2 2 2 2M16 10l2 2-2 2"/>', word: '<path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4M9.5 12l1.2 5 1.3-4 1.3 4 1.2-5"/>'
   };
   function ico(n, cls){ return '<svg class="ico' + (cls ? ' ' + cls : '') + '" viewBox="0 0 24 24" aria-hidden="true">' + (ICON[n] || '') + '</svg>'; }
   function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
@@ -100,7 +102,10 @@
     { g: 'Text', n: 'Code', h: 'Fixed-width text', i: 'code', f: function(){ A.run(setType(N.code_block)); } },
     { g: 'Text', n: 'Divider', h: 'A line between sections', i: 'rule', f: function(){ A.insertBlock(N.horizontal_rule.create()); } },
     { g: 'More', n: 'Picture', h: 'Choose one, or drop it on the page', i: 'image', f: function(){ var i = $('#pick-pic'); i.value = ''; i.click(); } },
+    { g: 'More', n: 'Before and after', h: 'Two pictures with a slider between them', i: 'cmp', f: function(){ if(K.newCompare) A.insertBlock(K.newCompare()); } },
     { g: 'More', n: 'Table', h: 'Rows and columns', i: 'table', f: function(){ A.insertBlock(table()); } },
+    { g: 'More', n: 'Chart', h: 'Bars, a line, a pie or a donut', i: 'chart', f: function(){ if(K.newData) A.insertBlock(K.newData('chart')); } },
+    { g: 'More', n: 'Big numbers', h: 'Up to four numbers that count up', i: 'nums', f: function(){ if(K.newData) A.insertBlock(K.newData('results')); } },
     { g: 'Designed sections', n: 'Cover', h: 'A title band across the top of the page', i: 'cover', f: addCover },
     { g: 'Designed sections', n: 'Callout', h: 'A tinted box that stands out', i: 'call', f: function(){ if(!A.run(cmd.wrapIn(N.callout))) A.insertBlock(N.callout.create(null, [N.paragraph.create()])); } },
     { g: 'Designed sections', n: 'Two columns', h: 'Side by side', i: 'cols', f: function(){ addColumns(2); } },
@@ -227,6 +232,7 @@
       p.appendChild(el('h4', '', 'Share'));
       if(A.shareFirst) A.shareFirst(p);        // Publish as a web page (doc/publish.js)
       item(p, 'pdf', 'Save as PDF', 'A clean copy on paper-white, through your browser’s print', function(){ closePop(); A.flush().then(function(){ window.print(); }); });
+      item(p, 'word', 'Save as Word', 'A .docx file, for people who need one', function(){ closePop(); if(K.saveWord) K.saveWord(); });
       item(p, 'code', 'Save as Markdown', 'Plain text that other writing apps open', function(){ closePop(); if(K.saveMarkdown) K.saveMarkdown(); });
       p.appendChild(el('div', 'line'));
       item(p, 'down', 'Download a copy', 'A .sleek file to keep, or open in another browser', function(){
@@ -242,5 +248,4 @@
 
   A.onUpdate.push(function(){ bar(); slashCheck(); });
   A.onOpen.push(function(){ closePop(); bar(); });
-  bar();
 })();

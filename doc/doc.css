@@ -84,6 +84,50 @@
 .dk-col > :last-child { margin-bottom: 0; }
 .dk-col h1, .dk-col h2, .dk-col h3, .dk-callout h1, .dk-callout h2, .dk-callout h3 { margin: 0 0 8px; font-size: 19px; }
 
+/* ---------- charts and big numbers ---------- */
+/* drawn by Sleek Slides' own code (features/data-layout.js), which asks for these names */
+.dk-data { position: relative; margin: 22px 0; padding: 20px; border-radius: 16px; border: 1px solid var(--d-line);
+  --accent: var(--d-accent); --fg: var(--d-fg); --muted: var(--d-muted); --faint: var(--d-faint); --line-strong: var(--d-line2); --surface-2: var(--d-code); --bg: var(--d-bg);
+  --good: var(--d-live); --warn: #C2710C; --ff-display: var(--d-display); --ff-body: var(--d-ff); --ds-rest: color-mix(in srgb, var(--d-fg) 13%, transparent); }
+:root[data-mode="dark"] .dk-data { --warn: #FF9F0A; }
+.dk-data .ds-host { font-family: var(--d-ff); user-select: none; -webkit-user-select: none; }
+.dk-data[data-kind="chart"] .ds-host { max-width: 560px; margin: 0 auto; }
+.dk-data[data-kind="chart"] .ds-host > svg { display: block; width: 100%; height: auto; overflow: visible; }
+.dk-data .ds-host text { font-family: var(--d-ff); font-variant-numeric: tabular-nums; }
+.dk-data .ds-stats { display: grid; gap: 22px 40px; }
+.dk-data .ds-stat { position: relative; min-width: 0; padding-top: 16px; }
+.dk-data .ds-stat::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 1px; background: var(--d-line2); transform-origin: 0 50%; transform: scaleX(var(--k, 1)); }
+.dk-data .ds-num { font-family: var(--d-display); font-weight: 600; letter-spacing: -0.04em; line-height: 1; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--d-fg); }
+:root[data-font="editorial"] .dk-data .ds-num { font-weight: 400; letter-spacing: -0.02em; }
+.dk-data .ds-stat:first-child .ds-num { color: var(--d-accent); }
+.dk-data .ds-what { margin-top: 10px; font-size: 15.5px; font-weight: 500; line-height: 1.35; color: var(--d-fg); }
+.dk-data .ds-chg { margin-top: 5px; font-size: 13.5px; color: var(--d-muted); display: flex; align-items: center; gap: 6px; min-height: 20px; }
+.dk-data .ds-chg svg { flex: none; width: 11px; height: 10px; }
+.dk-data .ds-chg.ds-good { color: var(--good); } .dk-data .ds-chg.ds-watch { color: var(--warn); }
+
+/* ---------- before and after ---------- */
+/* as plain HTML: the two pictures next to each other. doc/compare.js makes it a slider (cmp-live). */
+.dk-compare { position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 22px calc(-1 * var(--bleed)); --p: 50%; }
+.dk-compare figure { margin: 0; min-width: 0; }
+.dk-compare img { display: block; width: 100%; height: auto; border-radius: 12px; }
+.dk-compare figcaption { margin-top: 6px; font-size: 13px; color: var(--d-muted); text-align: center; }
+.dk-compare .cmp-h, .dk-compare .cmp-t { display: none; }
+.dk-compare .cmp-t { grid-column: 1 / -1; justify-self: center; height: 28px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--d-line2); background: none; font: 500 12.5px var(--d-ff); color: var(--d-muted); cursor: pointer; }
+.dk-compare .cmp-t:hover { color: var(--d-fg); border-color: var(--d-muted); }
+.dk-compare:has(.cmp-h) .cmp-t { display: block; }
+.dk-compare.cmp-live { display: block; cursor: ew-resize; user-select: none; -webkit-user-select: none; touch-action: pan-y; outline: none; }
+.dk-compare.cmp-live:focus-visible { outline: 2px solid var(--d-accent); outline-offset: 4px; border-radius: 16px; }
+.dk-compare.cmp-live .cmp-a img { border-radius: 16px; pointer-events: none; }
+.dk-compare.cmp-live .cmp-b { position: absolute; z-index: 1; left: 0; top: 0; width: 100%; clip-path: inset(0 calc(100% - var(--p)) 0 0); }      /* over the after picture, as far as the handle */
+.dk-compare.cmp-live .cmp-b img { height: 100%; object-fit: cover; border-radius: 16px; pointer-events: none; }
+.dk-compare.cmp-live .cmp-b { height: var(--cmp-h, auto); }
+.dk-compare.cmp-live figcaption { position: absolute; z-index: 1; bottom: 10px; margin: 0; padding: 3px 9px; border-radius: 999px; background: rgba(0,0,0,0.62); color: #fff; font-size: 12px; font-weight: 600; pointer-events: none; }
+.dk-compare.cmp-live .cmp-b figcaption { left: 10px; } .dk-compare.cmp-live .cmp-a figcaption { right: 10px; }
+.dk-compare.cmp-live .cmp-a { position: relative; }
+.dk-compare.cmp-live .cmp-h { display: block; position: absolute; z-index: 2; top: 0; left: var(--p); width: 2px; margin-left: -1px; height: var(--cmp-h, 100%); background: #fff; box-shadow: 0 0 0 1px rgba(0,0,0,0.2); pointer-events: none; }
+.dk-compare.cmp-live .cmp-h::after { content: "\2039\00a0\203A"; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 38px; height: 38px; border-radius: 50%; background: #fff; color: #1D1D1F; display: grid; place-items: center; font: 700 16px/1 var(--d-ff); box-shadow: 0 6px 18px rgba(0,0,0,0.35); }
+.dk-compare.cmp-live .cmp-t { margin: 8px auto 0; }
+
 /* ---------- collapsible headings ---------- */
 .dk-doc .dk-toggle { position: relative; padding-left: 30px; }
 .dk-fold { position: absolute; left: 0; top: 0.08em; width: 24px; height: 1.15em; min-height: 22px; padding: 0; border: 0; border-radius: 6px; background: none; cursor: pointer; color: var(--d-muted); display: grid; place-items: center; }
@@ -100,6 +144,7 @@
 .dk-doc th { background: var(--d-hover); font-weight: 600; }
 
 @media (max-width: 760px) {
+  .dk-data { padding: 16px 14px; } .dk-data .ds-stats { gap: 18px 24px; }
   .dk-cols, .dk-cols.dk-cols-3 { grid-template-columns: 1fr; }
   .dk-cover { padding: 30px 20px 26px; border-radius: 18px; }
   .dk-doc { font-size: 16px; }
@@ -118,6 +163,12 @@
   .dk-cover::before { display: none; } .dk-doc .dk-cover h1 { color: inherit; font-size: 30pt; }
   .dk-doc .dk-folded { display: revert !important; } .dk-fold { display: none; } .dk-doc .dk-toggle { padding-left: 0; }
   .dk-callout, .dk-col { break-inside: avoid; }
+  /* a before and after is always the two pictures next to each other on paper */
+  .dk-compare, .dk-compare.cmp-live { display: grid !important; grid-template-columns: 1fr 1fr; gap: 8pt; margin-inline: 0; break-inside: avoid; }
+  .dk-compare .cmp-b, .dk-compare .cmp-a { position: static !important; clip-path: none !important; width: auto !important; height: auto !important; }
+  .dk-compare figcaption { position: static !important; background: none !important; color: #55555A !important; padding: 0 !important; margin-top: 4pt !important; font-weight: 400 !important; }
+  .dk-compare .cmp-h, .dk-compare .cmp-t { display: none !important; }
+  .dk-data { break-inside: avoid; border-color: #CCC; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
   .dk-doc h1, .dk-doc h2, .dk-doc h3 { break-after: avoid; }
   .dk-fig, .dk-doc pre, .dk-doc blockquote, .dk-doc tr, .dk-task { break-inside: avoid; }
   .dk-doc thead, .dk-doc tr:first-child { display: table-row-group; }

@@ -49,6 +49,12 @@
           var src = n.attrs.src, name = src;
           if(!/^https?:/i.test(src)){ name = 'images/picture-' + (pics.length + 1); pics.push({ name: name, src: src }); }
           return '![' + n.textContent.replace(/[\[\]]/g, '') + '](' + name + ')' + (n.content.size ? '\n\n*' + inline(n) + '*' : '');
+        case N.data:
+          var ds = window.SleekData ? window.SleekData.norm(n.attrs.kind, n.attrs.ds) : n.attrs.ds;
+          if(n.attrs.kind === 'results') return ds.rows.map(function(r){ return '- **' + esc(r.v) + '** ' + esc(r.l) + (r.c ? ' (' + esc(r.c) + ')' : ''); }).join('\n');
+          return '| | |\n| --- | --- |\n' + ds.rows.map(function(r){ return '| ' + esc(String(r[0])) + ' | ' + ds.pre + r[1] + ds.post + ' |'; }).join('\n');
+        case N.compare:
+          return ['before', 'after'].map(function(k){ var src = n.attrs[k]; if(!src) return ''; var name = src; if(!/^https?:/i.test(src)){ name = 'images/picture-' + (pics.length + 1); pics.push({ name: name, src: src }); } return '![' + (k === 'before' ? 'Before' : 'After') + '](' + name + ')'; }).filter(Boolean).join('\n\n') || null;
         case N.table:
           var rows = []; n.forEach(function(r){ var cells = []; r.forEach(function(c){ cells.push(blocks(c).replace(/\n+/g, '<br>').replace(/\|/g, '\\|') || ' '); }); rows.push('| ' + cells.join(' | ') + ' |'); });
           if(rows.length) rows.splice(1, 0, '|' + new Array(n.firstChild.childCount + 1).join(' --- |'));

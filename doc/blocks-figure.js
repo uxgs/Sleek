@@ -85,5 +85,5 @@
       ignoreMutation: function(m){ return !cap.contains(m.target) || m.target === fig; } };
   }
 
-  K.addPictures = addPictures; K.pastePictures = pastePictures; K.dropPictures = dropPictures; K.localize = localize; K.figureView = figureView;
+  K.keepPicture = keep; K.addPictures = addPictures; K.pastePictures = pastePictures; K.dropPictures = dropPictures; K.localize = localize; K.figureView = figureView;
 })();

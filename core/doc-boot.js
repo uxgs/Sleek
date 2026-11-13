@@ -7,7 +7,8 @@
 (function(){
   var de = document.documentElement;
   de.classList.add('booting');
-  var SCRIPTS = ['vendor/prosemirror.js', '@body', 'doc/schema.js', 'doc/paste.js', 'doc/blocks-figure.js', 'doc/editor.js', 'doc/toolbar.js', 'doc/sidebar.js', 'doc/export.js', 'doc/publish.js', 'doc/viewers.js'];
+  var SCRIPTS = ['vendor/prosemirror.js', '@body', 'doc/schema.js', 'doc/paste.js', 'features/data-layout.js', 'doc/data.js', 'doc/compare.js', 'doc/editor.js', 'doc/blocks-figure.js', 'doc/blocks-data.js', 'doc/blocks-compare.js',
+                 'doc/toolbar.js', 'doc/sidebar.js', 'doc/tables.js', 'doc/export.js', 'doc/word.js', 'doc/publish.js', 'doc/viewers.js'];
   var params = new URLSearchParams(location.search), id = params.get('d');
 
   function load(list, done){
@@ -71,6 +72,6 @@
     if(!found){ fail('That page isn’t here.', 'It may have been deleted, or made in another browser. Pages live in the browser they were made in.'); return; }
     try { history.replaceState(null, '', location.pathname + '?d=' + found); } catch(e){}
     window.SLEEK_DOC = { id: found };
-    load(SCRIPTS, function(){ if(!window.SleekDoc) fail('Sleek Docs could not start.', 'Part of it did not load. Check your connection and reload.'); });
+    load(SCRIPTS, function(){ if(!window.SleekDoc || !window.SleekDoc.start){ fail('Sleek Docs could not start.', 'Part of it did not load. Check your connection and reload.'); return; } window.SleekDoc.start(); });
   }).catch(function(e){ console.error(e); fail('Sleek Docs could not start.', 'It could not open its storage in this browser (a private window can block it).'); });
 })();

@@ -78,10 +78,11 @@
   }
 
   // ---------- Results ----------
-  function results(host, d, e){
-    var n = d.rows.length, cols = n === 4 ? 2 : n, colW = (1072 - (cols - 1) * 40) / cols, face = fontOf(host, '--ff-display');   // four numbers sit two by two, so they stay large
+  // opts (Sleek Docs gives them: a page is narrower than a slide): width, the room across in px (a slide's 1072 unless given); max, the largest the numbers may be
+  function results(host, d, e, opts){
+    var n = d.rows.length, cols = n === 4 ? 2 : n, colW = (((opts && opts.width) || 1072) - (cols - 1) * 40) / cols, face = fontOf(host, '--ff-display');   // four numbers sit two by two, so they stay large
     var widest = Math.max.apply(null, d.rows.map(function(r){ return wide(String(r.v), 600, face) - 0.04 * String(r.v).length; }).concat([0.5]));
-    var size = Math.max(36, Math.min([0, 176, 128, 100, 84][n] || 84, Math.floor(colW * 0.98 / widest)));
+    var size = Math.max(Math.min(36, (opts && opts.max) || 36), Math.min([0, 176, 128, 100, 84][n] || 84, (opts && opts.max) || 1e9, Math.floor(colW * 0.98 / widest)));
     var h = '<div class="ds-stats" style="grid-template-columns: repeat(' + cols + ', minmax(0, 1fr))">';
     d.rows.forEach(function(r, i){
       var at = e - 200 - i * 140, a = out(at / 500), k = out(at / 1100), c = out((at - 850) / 420), p = parts(r.v);
@@ -165,8 +166,8 @@
   // ---------- the slide ----------
   function kindOf(host){ return host.getAttribute('data-ds') === 'results' ? 'results' : 'chart'; }
   // paint a host as it looks ms after its slide appeared; returns how long its motion lasts
-  function draw(host, ds, ms){
-    if(kindOf(host) === 'results'){ results(host, ds, ms); return 200 + (ds.rows.length - 1) * 140 + 1300; }
+  function draw(host, ds, ms, opts){
+    if(kindOf(host) === 'results'){ results(host, ds, ms, opts); return 200 + (ds.rows.length - 1) * 140 + 1300; }
     chart(host, ds, ms); return ds.type === 'bars' ? 500 + ds.rows.length * 70 + 800 : 1500;
   }
   // a slide made from the Results or Chart layout: its host takes the slide's data (a: its entry in the deck;

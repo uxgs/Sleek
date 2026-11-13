@@ -1,6 +1,6 @@
 /* What a Sleek Docs page can hold: its blocks (paragraphs, headings, lists, checklists, quotes, code,
-   dividers, pictures with captions, tables, and the designed sections: a cover, callouts and
-   columns) and the marks on its words (bold, italic, underline,
+   dividers, pictures with captions, tables, charts and big numbers, before-and-after pictures, and
+   the designed sections: a cover, callouts and columns) and the marks on its words (bold, italic, underline,
    strike, highlight, code, links). The editor (vendor/prosemirror.js) keeps every page to these
    rules, which is also what cleans a paste: anything not listed here doesn't get in.
 
@@ -56,6 +56,18 @@
     // columns: two or three side by side, each holding its own blocks
     columns: { group: 'block', content: 'column{2,3}', isolating: true, parseDOM: [{ tag: 'div.dk-cols' }], toDOM: function(n){ return ['div', { class: 'dk-cols dk-cols-' + n.childCount }, 0]; } },
     column: { content: 'block+', isolating: true, parseDOM: [{ tag: 'div.dk-col' }], toDOM: function(){ return ['div', { class: 'dk-col' }, 0]; } },
+    // ---------- data and comparisons ----------
+    // big numbers, or a chart: drawn by the same code as Sleek Slides' Results and Chart slides
+    // (features/data-layout.js says what ds holds). kind is 'results' or 'chart'.
+    data: { group: 'block', atom: true, draggable: true, attrs: { kind: { default: 'chart' }, ds: { default: null } },
+      parseDOM: [{ tag: 'div.dk-data', getAttrs: function(d){ var ds = null; try { ds = JSON.parse(d.getAttribute('data-json') || 'null'); } catch(e){} return { kind: d.getAttribute('data-kind') === 'results' ? 'results' : 'chart', ds: ds }; } }],
+      toDOM: function(n){ return ['div', { class: 'dk-data', 'data-kind': n.attrs.kind, 'data-json': JSON.stringify(n.attrs.ds || null) }, ['div', { class: 'ds-host', 'data-ds': n.attrs.kind === 'results' ? 'results' : 'chart' }]]; } },
+    // before and after: two pictures, compared with a slider ('slider') or shown next to each other ('side')
+    compare: { group: 'block', atom: true, draggable: true, attrs: { before: { default: '' }, after: { default: '' }, mode: { default: 'slider' } },
+      parseDOM: [{ tag: 'div.dk-compare', getAttrs: function(d){ var b = d.querySelector('.cmp-b img'), a = d.querySelector('.cmp-a img'); return { before: b ? b.getAttribute('src') : '', after: a ? a.getAttribute('src') : '', mode: d.getAttribute('data-mode') === 'side' ? 'side' : 'slider' }; } }],
+      toDOM: function(n){ return ['div', { class: 'dk-compare', 'data-mode': n.attrs.mode },
+        ['figure', { class: 'cmp-b' }, ['img', { src: safeSrc(n.attrs.before), alt: 'Before' }], ['figcaption', 'Before']],
+        ['figure', { class: 'cmp-a' }, ['img', { src: safeSrc(n.attrs.after), alt: 'After' }], ['figcaption', 'After']]]; } },
     table: tn.table, table_row: tn.table_row, table_cell: tn.table_cell, table_header: tn.table_header,
     text: { group: 'inline' },
     hard_break: { inline: true, group: 'inline', selectable: false, parseDOM: [{ tag: 'br' }], toDOM: function(){ return ['br']; } }
@@ -75,7 +87,7 @@
     code: { parseDOM: [{ tag: 'code' }], toDOM: function(){ return ['code', 0]; } }
   };
   // every block that can sit at the top level of a page carries an id (see the note at the top)
-  ['paragraph', 'heading', 'blockquote', 'code_block', 'horizontal_rule', 'bullet_list', 'ordered_list', 'task_list', 'figure', 'cover', 'callout', 'columns', 'table'].forEach(function(name){
+  ['paragraph', 'heading', 'blockquote', 'code_block', 'horizontal_rule', 'bullet_list', 'ordered_list', 'task_list', 'figure', 'cover', 'callout', 'columns', 'table', 'data', 'compare'].forEach(function(name){
     var spec = nodes[name] = Object.assign({}, nodes[name]); spec.attrs = Object.assign({}, spec.attrs, { id: { default: null } });
   });
   var schema = new PM.model.Schema({ nodes: nodes, marks: marks });
