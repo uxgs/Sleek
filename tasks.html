@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sleek Tasks</title>
+<script src="core/analytics.js"></script>
+<link rel="manifest" href="tasks.webmanifest">
+<link rel="icon" href="icons/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="theme-color" content="#FFFFFF">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Sleek Tasks">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<!-- a task's notes are written with the Sleek Docs editor, so they take its look (doc/doc.css); the app is task/tasks.css -->
+<link rel="stylesheet" href="vendor/prosemirror.css">
+<link rel="stylesheet" href="doc/doc.css">
+<link rel="stylesheet" href="task/tasks.css">
+<!-- light or dark, as last chosen here, before anything is drawn -->
+<script>try{ if(localStorage.getItem('sleek-tasks-look') === 'dark') document.documentElement.setAttribute('data-mode', 'dark'); }catch(e){} document.documentElement.classList.add('booting');</script>
+<!-- the storage: tasks in their own database; pictures in notes go in the decks' picture store, like every picture in Sleek -->
+<script src="core/store.js"></script>
+<script src="core/task-store.js"></script>
+</head>
+<body>
+<div class="tk" id="app">
+  <!-- Today and your projects (task/app.js) -->
+  <aside class="side" id="side" aria-label="Today and your projects"></aside>
+  <div class="main" id="main">
+    <div class="top" id="top"></div>
+    <!-- the view: Today, a project's board, or its list (task/views.js) -->
+    <div class="body" id="body"></div>
+  </div>
+</div>
+<script src="data/task-changelog.js"></script>
+<script src="task/app.js"></script>
+<script src="task/views.js"></script>
+<script src="task/sheet.js"></script>
+<script src="core/short.js"></script>
+</body>
+</html>

@@ -6,10 +6,10 @@
 <title>Not here · Sleek</title>
 <meta name="robots" content="noindex">
 <script>
-  /* The hosted site shows this page for an address it doesn't have. Two near misses are put right
-     first: /slides/ and /docs/ (with a slash on the end) go to /slides and /docs. */
+  /* The hosted site shows this page for an address it does not have. Three near misses are put right
+     first: /slides/, /docs/ and /tasks/ (with a slash on the end) go to /slides, /docs and /tasks. */
   (function(){
-    var m = /^(.*\/)(slides|docs)\/+$/.exec(location.pathname);
+    var m = /^(.*\/)(slides|docs|tasks)\/+$/.exec(location.pathname);
     if(m) location.replace(m[1] + m[2] + location.search + location.hash);
   })();
 </script>
@@ -28,7 +28,7 @@
 <main>
   <h1>That page isn’t here.</h1>
   <p>The address may be mistyped, or the page may have moved.</p>
-  <nav id="go"><a href="./">Sleek</a><a href="slides">Sleek Slides</a><a href="docs">Sleek Docs</a></nav>
+  <nav id="go"><a href="./">Sleek</a><a href="slides">Sleek Slides</a><a href="docs">Sleek Docs</a><a href="tasks">Sleek Tasks</a></nav>
 </main>
 <script>
   // this page can be shown for an address any number of folders deep: point its links at the site's own folder

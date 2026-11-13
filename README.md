@@ -1,24 +1,26 @@
 # Sleek
 
-Two apps that run in your browser, with no account and nothing to install, and that work offline:
+Three apps that run in your browser, with no account and nothing to install, and that work offline:
 
 - **Sleek Slides**, a presentation app. Build a deck, present it with speaker notes and a live
   preview, and share it as a file or a web page.
 - **Sleek Docs**, a writing app. Write pages with rich formatting, pictures and tables, keep them in
   folders, and save them as PDF or Markdown. [More below](#sleek-docs).
+- **Sleek Tasks**, a planning app. Projects, a board you drag, a list, and everything due today in
+  one place. [More below](#sleek-tasks).
 
 Your work stays in your browser; the one thing Sleek can send anywhere is
 [who is viewing a deck](#see-whos-viewing), and only for a deck you switch that on for.
 
-The front page asks which one you want. Each app also has a short address on the hosted site, `/slides`
-and `/docs`, and each start screen has a **Slides | Docs** switch. Each app has its own version number
+The front page asks which one you want. Each app also has a short address on the hosted site,
+`/slides`, `/docs` and `/tasks`, and each can switch to the others. Each app has its own version number
 and What's new. Most of this page is about Sleek Slides.
 
 **Open it** from the link in this repo's About box (it's hosted on GitHub Pages), or run your own copy
 (below).
 
-In Chrome or Edge, use the install button in the address bar to add Sleek Slides or Sleek Docs as an
-app, with its own window and icon. In Safari, choose File › Add to Dock.
+In Chrome or Edge, use the install button in the address bar to add Sleek Slides, Sleek Docs or Sleek
+Tasks as an app, with its own window and icon. In Safari, choose File › Add to Dock.
 
 ## On a phone
 
@@ -121,6 +123,26 @@ Pages live in the browser you wrote them in, in their own storage beside your de
 A page's .sleek file is `{ "format": "sleek", "version": 2, "kind": "doc", "id", "title", "seed" }`,
 and the seed is `{ "kind": "doc", "v": 1, "theme", "doc" }`, where `doc` is the document.
 
+## Sleek Tasks
+
+Open **Tasks** from the front page. It opens on **Today**: what is overdue, due today and due in the
+next seven days, across every project, with a box to add a task.
+
+- **Projects.** Each has its own tasks and its own columns. New project is in the list on the left;
+  a project's ⋯ menu renames it, changes its colour or deletes it.
+- **Board.** A column for each status. Drag a card to another column, or up and down within one,
+  with a mouse or a finger (hold a moment, then drag). Add a column, press a column's name to rename
+  it, and use its ⋯ menu for its colour, to delete it, or to say that ticked tasks go there.
+  **Customize** chooses what a card shows, roomy or compact cards, and columns by status or by person.
+- **List.** A project's open tasks, soonest first, with the done ones under them.
+- **A task.** Press one to open its details: its name, status, due date, person, tags, subtasks and
+  notes. Notes are written with the Sleek Docs editor, so they take headings, lists, checklists,
+  links and pictures. People are names you type; there are no accounts.
+
+Tasks live in the browser you made them in, in their own storage. Every open tab of Tasks follows the
+others at once. A grid with your own fields, a calendar, repeating tasks, and tasks shown live inside
+Docs pages and on slides come next.
+
 ## The sample deck
 
 A launch story for Pace, a made-up fitness app. It has one slide per layout, and each slide's speaker
@@ -191,8 +213,9 @@ Pages (Settings › Pages › Deploy from a branch › main, root). Any static h
 
 The offline cache (`sw.js`) stays off on localhost, so your edits to the code show on reload. To try it
 there, run `localStorage.setItem('sleek-sw', '1')` in the console. When you add or remove a file the
-app needs, add it to the list in `sw.js` and bump `VERSION` (it carries both apps' version numbers:
-Slides' from `data/changelog.js` and Docs' from `data/doc-changelog.js`).
+app needs, add it to the list in `sw.js` and bump `VERSION` (it carries each app's version number:
+Slides' from `data/changelog.js`, Docs' from `data/doc-changelog.js`, Tasks' from
+`data/task-changelog.js`).
 
 ## Files
 
@@ -238,6 +261,14 @@ vendor/               outside code, under free licences (vendor/LICENSES.md): Pr
                       mammoth, which reads Word files; and docx, which writes them
 tools/vendor-editor/  builds the files in vendor/ from pinned versions; run by hand, output committed
 docs.webmanifest      install Sleek Docs as an app
+
+tasks.html            Sleek Tasks: Today, projects, the board and the list
+core/task-store.js    projects, tasks and people in this browser (IndexedDB "sleek-tasks"), held in
+                      memory, with a notice to every open tab whenever something changes
+task/                 the app: app.js (what is showing, the side list, how a task is drawn), views.js
+                      (Today, the list, the board and dragging), sheet.js (a task's details and its
+                      notes editor), tasks.css
+tasks.webmanifest     install Sleek Tasks as an app
 ```
 
 A `.sleek` file is JSON: `{ "format": "sleek", "version": 1, "id", "title", "seed" }`. The seed is the
