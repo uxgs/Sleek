@@ -34,7 +34,7 @@
       var HEAD = on('B', '.slide.active [data-eid$=".t1"]', { at: [0.24, 0.5] });
       cues.push({ t: 0.05, f: 'B', hash: '#title' }, { t: 0.1, f: 'B', js: function(w, d){ d.documentElement.classList.remove('film-nobar'); w.dispatchEvent(new w.Event('resize')); } });
       cues.push({ t: 0.3, f: 'B', key: 'e' });
-      shot('B', [[0, [800, 450, 1600]], [2.7, [800, 450, 1600]], [3.7, [800, 590, 1180]]]);
+      shot('B', [[0, [800, 450, 1600]], [2.7, [800, 450, 1600]], [3.7, [800, 590, 1180]], [4.2, [800, 590, 1180]], [5.0, [1010, 600, 1180]]]);   // in on the words, then along the bar to Saved
       from(0.62, 0.72); ptr.push({ t: 1.15, to: HEAD });
       cues.push({ t: 1.25, click: 1 });
       [' ', '2', '.', '0'].forEach(function(ch, k){ cues.push({ t: 1.8 + k * 0.16, text: ch }); });

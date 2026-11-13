@@ -27,11 +27,16 @@
     tally: { shots: ['overview', 'spending', 'cards'], names: ['Overview', 'Spending', 'Cards'],
       theme: { mode: 'dark', accent: '#5B8CFF', glow: 'spotlight', glowColor: 'ocean', motion: 'on', fx: 'smoke' },
       text: { 'title.t0': 'Tally · Design review', 'title.t1': 'Tally', 'title.t2': 'A money app that shows where it went, before you ask.',
-        'statement.t1': 'Money you can see is money you keep.', 'statement.t2': 'One screen for what came in, what went out and what is left.' } },
+        'statement.t1': 'Money you can see is money you keep.', 'statement.t2': 'One screen for what came in, what went out and what is left.',
+        'results.t0': '<span class="tick">Tally ·</span> Year one', 'results.t1': 'The first year, in four numbers.' },
+      results: { rows: [{ v: '412,000', l: 'People budgeting with Tally', c: '+58% since launch', t: 'good' }, { v: '$1,240', l: 'Saved per person, on average', c: '+$310 on last year', t: 'good' },
+        { v: '87%', l: 'Still here after three months', c: '+9 points', t: 'good' }, { v: '4.9', l: 'Rating in the app stores', c: 'From 18,000 reviews', t: 'plain' }] } },
     atlas: { shots: ['explore', 'trip'], names: ['Explore', 'Your trip'],
       theme: { mode: 'light', accent: '#0E9F8E', glow: 'horizon', glowColor: 'gold', motion: 'on', fx: 'grid' },
       text: { 'title.t0': 'Atlas · Launch review', 'title.t1': 'Atlas', 'title.t2': 'Trips planned around the weeks you are free.',
-        'statement.t1': 'The best trips leave room to wander.', 'statement.t2': 'Atlas plans the route and keeps the afternoons free.' },
+        'statement.t1': 'The best trips leave room to wander.', 'statement.t2': 'Atlas plans the route and keeps the afternoons free.',
+        'chart.t0': '<span class="tick">Atlas ·</span> Where people go', 'chart.t1': 'City breaks lead the way.', 'chart.t2': 'Trips booked this year, by kind.' },
+      chart: { type: 'donut', rows: [['City breaks', 44], ['Coast', 27], ['Mountains', 18], ['Road trips', 11]], hi: 0, pre: '', post: '%' },
       screen: { img: 'explore', ann: [
           { x: 9.6, y: 55.6, title: 'One clear next step', note: 'The only dark button on the page.', color: '#7AD3FF' },
           { x: 23.4, y: 93.2, title: 'Price, always in view', note: 'Nobody should have to open a trip to see what it costs.', color: '#FFB648' }],
@@ -63,6 +68,7 @@
     var S2 = 'assets/sample/', items = [[pic('today', 'after'), 1.7778], [S2 + 'phone.svg', 0.5625], [pic('explore', 'after'), 1.7778], [pic('overview', 'before'), 1.7778], [S2 + 'swatch.svg', 1], [pic('cards', 'after'), 1.7778],
       [S2 + 'type.svg', 0.8], [pic('trip', 'after'), 1.7778], [pic('workout', 'before'), 1.7778], [S2 + 'icon.svg', 1], [pic('overview', 'after'), 1.7778], [pic('plan', 'after'), 1.7778], [pic('explore', 'before'), 1.7778], [pic('workout', 'after'), 1.7778]];
     s.added.forEach(function(e){ if(e.id === 'moodboard') e.cl = { style: 'masonry', motion: 'drift', mix: 3, items: items.map(function(it, i){ return { id: 'f' + i, r: it[1], def: it[0] }; }) }; });
+    s.added.forEach(function(e){ if(e.id === 'results' && wd.results) e.ds = wd.results; if(e.id === 'chart' && wd.chart) e.ds = wd.chart; });   // each product's own numbers
     var sc = s.annotations.screens[0], ws = wd.screen;
     if(ws){ sc.img = pic(ws.img, 'after'); sc.ann = ws.ann; sc.shapes = ws.shapes; }
     else {                                                       // Pace: the finished workout screen, with its notes where they belong on it

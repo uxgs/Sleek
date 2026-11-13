@@ -22,7 +22,7 @@ window.FILM_TIMELINE = function(h){
   var part = function(cx, cy, w, tw, tcx){ return TALL ? [tcx == null ? cx : tcx, cy, tw || Math.min(w, 1000)] : [cx, cy, w]; };
   var push = function(t0, t1, a, b){ return [[t0, a], [t1, b]]; };          // a slow move from one framing to another
 
-  var T = { open: 0, hero: 2, pick: 4, move: 6, ba: 12, ba2: 16, apart: 20, ann: 24, pres: 28, theme: 36, build: 40, share: 44, end: 47, out: 52 };
+  var T = { open: 0, hero: 2, pick: 4, move: 6, num: 12, ba: 18, ba2: 22, apart: 26, ann: 30, pres: 34, theme: 42, build: 46, share: 50, end: 53, out: 58 };
   var TILE = '.slide.active .car-set:not(.car-copy) > .media:not(.car-gone)';
   var shots = [], cues = [], ptr = [], caps = [];
   var PARK = [W - 30, H - 24];
@@ -35,23 +35,31 @@ window.FILM_TIMELINE = function(h){
 
   // ------------------------------------------------------------------ all slides, then a new one (Pace)
   caps.push({ t0: T.hero + 0.1, t1: T.pick - 0.1, text: 'Your whole deck, {at a glance.}' });
-  caps.push({ t0: T.pick + 0.05, t1: T.move - 0.12, text: 'Sixteen layouts. {One click.}' });
+  caps.push({ t0: T.pick + 0.05, t1: T.move - 0.12, text: 'A layout for every idea. {One click.}' });
   cues.push({ t: T.hero - 0.1, f: 'A', key: 'g', sfx: 'none' });                 // All slides rises as the shot opens
   shots.push({ id: 'hero', t0: T.hero, t1: T.pick, wins: { A: { slot: ONE, view: push(T.hero, T.pick, part(800, 450, 1600, 1600), part(800, 430, 1500, 1500)), rise: [T.hero, T.hero + 0.6] } } });
   cues.push({ t: T.pick, f: 'A', js: function(w, d){ var a = d.querySelector('.gt-add'); if(a) a.click(); }, sfx: 'snap' });   // the layout picker grows out of the last tile
   shots.push({ id: 'pick', t0: T.pick, t1: T.move, soft: true, wins: { A: { slot: ONE, view: push(T.pick, T.move, part(800, 430, 1500, 1500), part(800, 450, 1380, 1300)) } } });
 
   // ------------------------------------------------------------------ slides that move: three, a bar each
-  caps.push({ t0: T.move + 0.05, t1: T.ba - 0.12, text: 'Slides that {move.}' });
+  caps.push({ t0: T.move + 0.05, t1: T.num - 0.12, text: 'Slides that {move.}' });
   // the film strip is shown exactly as the app shows it: no assembly, no camera move, only the strip rolling
   shots.push({ id: 'strip', t0: T.move, t1: T.move + 2, wins: { B: { slot: ONE, view: [[T.move, part(800, 450, 1600, 1000, 1160)]] } } });
   shots.push({ id: 'mood', t0: T.move + 2, t1: T.move + 4, wins: { C: { slot: ONE, view: push(T.move + 2, T.move + 4, part(800, 470, 1600, 1000), part(800, 480, 1500, 940, 860)) } } });
-  shots.push({ id: 'sketch', t0: T.move + 4, t1: T.ba, wins: { A: { slot: ONE, view: push(T.move + 4, T.ba, part(800, 450, 1600, 1000, 620), part(800, 450, 1500, 940, 700)) } } });
+  shots.push({ id: 'sketch', t0: T.move + 4, t1: T.num, wins: { A: { slot: ONE, view: push(T.move + 4, T.num, part(800, 450, 1600, 1000, 620), part(800, 450, 1500, 940, 700)) } } });
   assemble(T.move + 1.98, 'C'); assemble(T.move + 3.98, 'A');
   cues.push({ t: T.move + 0.05, f: 'A', key: 'Escape', sfx: 'none' }, { t: T.move + 0.3, f: 'A', key: 'Escape', sfx: 'none' });   // out of the picker, out of All slides
   cues.push({ t: T.move + 0.6, f: 'A', hash: '#carousel' }, { t: T.move + 0.8, f: 'A', js: roll });
-  cues.push({ t: T.move + 2.05, f: 'B', hash: '#before-and-after' }, { t: T.move + 2.2, f: 'B', js: roll });
   cues.push({ t: T.ba + 0.1, f: 'A', hash: '#take-apart' });
+
+  // ------------------------------------------------------------------ numbers that count: results, bars, a donut (a bar each)
+  // Each slide is shown the moment its shot opens, so its numbers count up, its bars grow and its donut sweeps round on screen.
+  caps.push({ t0: T.num + 0.05, t1: T.ba - 0.12, text: 'Numbers that {count.}' });
+  cues.push({ t: T.num - 0.02, f: 'B', hash: '#results' }, { t: T.num + 1.98, f: 'A', hash: '#chart' }, { t: T.num + 3.98, f: 'C', hash: '#chart' });
+  shots.push({ id: 'results', t0: T.num, t1: T.num + 2, wins: { B: { slot: ONE, view: push(T.num, T.num + 2, part(800, 450, 1600, 1000, 560), part(800, 460, 1500, 940, 600)) } } });
+  shots.push({ id: 'bars', t0: T.num + 2, t1: T.num + 4, wins: { A: { slot: ONE, view: push(T.num + 2, T.num + 4, part(800, 450, 1600, 1000, 1040), part(840, 450, 1500, 940, 1060)) } } });
+  shots.push({ id: 'donut', t0: T.num + 4, t1: T.ba, wins: { C: { slot: ONE, view: push(T.num + 4, T.ba, part(800, 450, 1600, 1000, 1000), part(840, 450, 1500, 940, 1000)) } } });
+  cues.push({ t: T.num + 2.05, f: 'B', hash: '#before-and-after' }, { t: T.num + 2.2, f: 'B', js: roll });      // Tally gets ready for its drag while the charts play
 
   // ------------------------------------------------------------------ before and after: drag it (Tally)
   caps.push({ t0: T.ba + 0.08, t1: T.ba + 1.9, text: 'Before. {After.}' });
@@ -147,7 +155,7 @@ window.FILM_TIMELINE = function(h){
   cues.push({ t: T.ba2 + 0.2, f: 'B', key: 'Escape', sfx: 'none' }, { t: T.ba2 + 0.6, f: 'B', hash: '#carousel' });
   cues.push({ t: T.build + 0.5, f: 'B', js: bar }, { t: T.build + 0.8, f: 'B', key: 'e', sfx: 'none' });
   var CT = function(n, u){ return on('B', TILE, { n: n, at: [u == null ? 0.5 : u, 0.5] }); };
-  shots.push({ id: 'order', t0: T.build + 2, t1: T.share, cursor: true, wins: { B: { slot: ONE, follow: false, view: push(T.build + 2, T.share, part(800, 450, 1580, 1300, 800), part(800, 450, 1500, 1240, 800)) } } });
+  shots.push({ id: 'order', t0: T.build + 2, t1: T.share, cursor: true, wins: { B: { slot: ONE, follow: false, view: push(T.build + 2, T.share, part(800, 456, 1580, 1300, 800), part(800, 478, 1500, 1240, 800)) } } });   // low enough to keep the edit bar, in the bottom row, in view
   ptr.push({ t: T.build + 2, to: CT(0), show: 0 }, { t: T.build + 2.15, to: CT(0), show: 1 });
   cues.push({ t: T.build + 2.3, down: 1, sfx: 'grab' });
   ptr.push({ t: T.build + 2.35, to: CT(0) }, { t: T.build + 3.3, to: on('B', '.slide.active .carousel', { at: [0.93, 0.5] }) });

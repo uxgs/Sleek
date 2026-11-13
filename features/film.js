@@ -41,7 +41,7 @@
       box.classList.toggle('fm-silent', video.muted);
     }
     function tick(){
-      var d = video.duration || 52; fill.style.transform = 'scaleX(' + Math.min(1, video.currentTime / d) + ')';
+      var d = video.duration || 58; fill.style.transform = 'scaleX(' + Math.min(1, video.currentTime / d) + ')';
       raf = requestAnimationFrame(tick);
     }
     function fail(){ msg.hidden = false; sound.hidden = true; if(first) setTimeout(close, 1600); }
