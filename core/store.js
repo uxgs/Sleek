@@ -90,6 +90,15 @@
     // a film's address says so (#video), since a blob: address has no file extension to tell by
     var u = URL.createObjectURL(blob) + (/^video\//.test(blob.type || '') ? '#video' : ''); keyToUrl[key] = u; urlToKey[u] = key; return u;
   }
+  // a new picture (a file someone chose, dropped or pasted): kept in the media store, and given back as
+  // the blob: URL the page shows it by, which dehydrate() knows to store as "sleek-media:<key>"
+  function addMedia(blob){
+    return blobToDataUrl(blob).then(function(u){
+      if(!u) return null;
+      var key = hash(u);
+      return putMedia(key, blob).then(function(){ return mediaUrl(key, blob); });
+    });
+  }
   // stored seed -> a seed the page can show
   function hydrate(seed){
     var s = clone(seed || {});
@@ -253,6 +262,7 @@
   function parseFile(text){
     var o = JSON.parse(text);
     if(!o || o.format !== FORMAT || typeof o.seed !== 'object') throw new Error('This is not a Sleek deck file.');
+    if(o.kind === 'doc') throw new Error('That file is a page from Sleek Docs. Open it from Docs.');   // core/doc-store.js
     if(o.version > FORMAT_VERSION) throw new Error('This deck was made with a newer Sleek. Update the page and try again.');
     return o;
   }
@@ -290,7 +300,7 @@
   window.SleekStore = {
     open: open, ns: ns, uid: uid,
     list: list, get: get, create: create, save: save, rename: rename, setThumb: setThumb, setViewers: setViewers, duplicate: duplicate, remove: remove,
-    hydrate: hydrate, dehydrate: dehydrate, inline: inline,
+    hydrate: hydrate, dehydrate: dehydrate, inline: inline, addMedia: addMedia,
     undo: function(id, o){ return step(id, -1, o); }, redo: function(id, o){ return step(id, 1, o); }, canStep: canStep,
     exportDeck: exportDeck, importDeck: importDeck, parseFile: parseFile, hasNotes: hasNotes,
     ensureSample: ensureSample, addSample: addSample, clearDeviceState: clearDeviceState

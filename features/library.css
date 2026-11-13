@@ -250,3 +250,10 @@ footer b { color: var(--muted); font-weight: 600; }
 .lib-vw i { display: inline-block; width: 7px; height: 7px; margin: 0 6px 1px 0; border-radius: 50%; background: #5EE0A0; animation: lib-vw 2s ease-out infinite; }
 @keyframes lib-vw { from { box-shadow: 0 0 0 0 rgba(94, 224, 160, 0.6); } to { box-shadow: 0 0 0 7px rgba(94, 224, 160, 0); } }
 @media (prefers-reduced-motion: reduce) { .lib-vw i { animation: none; } }
+
+/* Slides | Docs: the switch between Sleek's two apps, in the brand row of each start screen */
+.swap { display: inline-flex; align-self: center; margin-left: 6px; padding: 3px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line); }
+.swap a { padding: 5px 14px; border-radius: 999px; font: 600 14px/1.2 var(--ff); color: var(--muted); text-decoration: none; transition: color .2s ease, background .2s ease; }
+.swap a:hover, .swap a:focus-visible { color: var(--fg); outline: none; }
+.swap a:focus-visible { box-shadow: 0 0 0 2px var(--accent); }
+.swap a[aria-current="page"] { background: var(--fg); color: var(--bg); }

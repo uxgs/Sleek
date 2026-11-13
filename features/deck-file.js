@@ -86,7 +86,7 @@
     var t = name.value.trim();
     if(!t){ name.value = info.title; return; }
     if(t === info.title) return;
-    info.title = t; document.title = t + ' · Sleek';
+    info.title = t; document.title = t + ' · Sleek Slides';
     S.rename(info.id, t).then(function(){ sub.textContent = 'Renamed'; });
   }
   name.addEventListener('change', rename);

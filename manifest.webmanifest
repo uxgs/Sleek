@@ -1,6 +1,6 @@
 {
-  "name": "Sleek",
-  "short_name": "Sleek",
+  "name": "Sleek Slides",
+  "short_name": "Sleek Slides",
   "description": "Build and present decks in your browser. Everything saves as you go, and it works offline.",
   "id": "./",
   "start_url": "./index.html",

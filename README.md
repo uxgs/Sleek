@@ -1,15 +1,22 @@
 # Sleek
 
-A presentation app that runs in your browser. Build a deck, present it with speaker notes and a live
-preview, and share it as a file or a web page. There's no account and nothing to install, and it
-works offline. Your decks stay in your browser; the one thing Sleek can send anywhere is
+Two apps that run in your browser, with no account and nothing to install, and that work offline:
+
+- **Sleek Slides**, a presentation app. Build a deck, present it with speaker notes and a live
+  preview, and share it as a file or a web page.
+- **Sleek Docs**, a writing app. Write pages with rich formatting, pictures and tables, keep them in
+  folders, and save them as PDF or Markdown. [More below](#sleek-docs).
+
+Your work stays in your browser; the one thing Sleek can send anywhere is
 [who is viewing a deck](#see-whos-viewing), and only for a deck you switch that on for.
+
+The start screen has a **Slides | Docs** switch. Most of this page is about Sleek Slides.
 
 **Open it** from the link in this repo's About box (it's hosted on GitHub Pages), or run your own copy
 (below).
 
-In Chrome or Edge, use the install button in the address bar to add Sleek as an app, with its own
-window and icon. In Safari, choose File › Add to Dock.
+In Chrome or Edge, use the install button in the address bar to add Sleek Slides or Sleek Docs as an
+app, with its own window and icon. In Safari, choose File › Add to Dock.
 
 ## On a phone
 
@@ -66,6 +73,33 @@ Cloudflare. Like any web host, Cloudflare sees the network address of each reque
 it; the service does not store it. To run a copy of Sleek that can never call out, empty `ADDRESS`
 in `core/online.js` and Viewers doesn't appear in it; to use a service of your own, deploy
 `service/` and put its address there.
+
+## Sleek Docs
+
+Open **Docs** from the switch on the start screen. A page is one continuous sheet, not a stack of
+paper pages, and it saves as you write.
+
+- **Write.** Headings, bullets, numbers, checklists, quotes, code, dividers, tables, and bold, italic,
+  underline, strike, highlight and links. The bar across the top has them all; so does typing `/` on
+  an empty line. Shortcuts as you type: `# ` `## ` `### ` for headings, `- ` bullets, `1. ` numbers,
+  `[] ` a checklist, `> ` a quote, three backticks for code, `---` a divider.
+- **Pictures.** Choose one from Insert, drop it on the page, or paste it. Each has a caption and can
+  be as wide as the text or wider.
+- **Paste from Word or Google Docs.** Headings, lists, tables, links, bold, italic, underline, strike
+  and highlight come across; fonts, sizes and colours are left behind, so the page keeps its look.
+- **Folders and search.** The list on the left holds your pages in folders, and folders in folders.
+  Drag to move things. Search looks through titles and every page's words. ⌘\ hides the list.
+- **Look.** Light or dark, a colour, and clean or editorial type, saved with each page.
+- **Share.** Save as PDF (through your browser's print), Save as Markdown (a .zip when the page has
+  pictures), or Download a copy: a .sleek file that opens in Sleek Docs in any browser.
+- **Open a file.** The Docs start screen opens .sleek pages and Markdown or text files.
+
+Pages live in the browser you wrote them in, in their own storage beside your decks. A linked folder
+(above) mirrors decks only, for now. Publishing a page as a web page, and seeing who is reading it,
+come next.
+
+A page's .sleek file is `{ "format": "sleek", "version": 2, "kind": "doc", "id", "title", "seed" }`,
+and the seed is `{ "kind": "doc", "v": 1, "theme", "doc" }`, where `doc` is the document.
 
 ## The sample deck
 
@@ -125,7 +159,8 @@ on the slide named in its `data-before`. A pick made with the button takes over 
 
 ## Run it from your own copy
 
-Sleek is static files, with no build step. Serve the folder with any web server and open it:
+Sleek is static files, with no build step (the two files in `vendor/` are built once, by hand, and
+committed). Serve the folder with any web server and open it:
 
 ```
 python3 -m http.server 8000
@@ -160,7 +195,20 @@ service/              the Viewers service (a Cloudflare Worker); not part of the
 tools/film/           how the film is made: the real app, rendered a frame at a time, and its score
 icons/                the logo and app icons
 sw.js                 the offline cache
-manifest.webmanifest  install as an app
+manifest.webmanifest  install Sleek Slides as an app
+
+docs.html             Sleek Docs' start screen: your pages, New page, Open a file
+doc.html              a page: the editor, with your pages and folders down the left
+core/doc-store.js     pages, folders and search in this browser (IndexedDB "sleek-docs"); .sleek files
+core/doc-boot.js      finds the page to open and loads the editor
+doc/                  the editor: schema.js (what a page can hold), editor.js, toolbar.js (format bar,
+                      menus, Look, Share), sidebar.js (pages and folders), blocks-figure.js (pictures),
+                      paste.js (Word and Google Docs), export.js and import.js (Markdown), library.js
+                      (the start screen), doc.css (how a page looks) and doc-ui.css (the app around it)
+vendor/               outside code, under free licences (vendor/LICENSES.md): ProseMirror, the text
+                      editing engine under Sleek Docs, and markdown-it, which reads Markdown files
+tools/vendor-editor/  builds the files in vendor/ from pinned versions; run by hand, output committed
+docs.webmanifest      install Sleek Docs as an app
 ```
 
 A `.sleek` file is JSON: `{ "format": "sleek", "version": 1, "id", "title", "seed" }`. The seed is the
@@ -169,4 +217,5 @@ inside it as data URLs.
 
 ## License
 
-MIT
+MIT. The files in `vendor/` are other people's work under their own free licences, listed in
+`vendor/LICENSES.md`.

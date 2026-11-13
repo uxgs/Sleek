@@ -1,0 +1,87 @@
+/* How a Sleek Docs page looks: its colours, its type, and every kind of block. These rules dress the
+   page in the editor and when it is printed (Save as PDF); the app around the page is doc-ui.css.
+
+   The look is three settings saved with the page (seed.theme, set from the Look menu):
+     data-mode on <html>   light (the default) or dark
+     --d-accent            the page's colour
+     data-font on <html>   inter (clean) or editorial (serif headings) */
+:root {
+  --d-bg: #FFFFFF; --d-app: #F4F4F7; --d-raise: #FFFFFF; --d-fg: #1D1D1F; --d-muted: #6E6E73; --d-faint: #8E8E93;
+  --d-line: rgba(0,0,0,0.10); --d-line2: rgba(0,0,0,0.18); --d-hover: rgba(0,0,0,0.05); --d-accent: #7C5CFF; --d-on-accent: #FFFFFF;
+  --d-live: #1F9D61; --d-warn: #D43C2F; --d-hl: #FFE78F; --d-code: #F1F1F5; --d-shadow: 0 24px 60px -24px rgba(0,0,0,0.35);
+  --d-soft: color-mix(in srgb, var(--d-accent) 12%, transparent);
+  --d-ff: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --d-display: var(--d-ff);
+  color-scheme: light;
+}
+:root[data-mode="dark"] {
+  --d-bg: #0E0E11; --d-app: #141417; --d-raise: #1D1D22; --d-fg: #F2F2F5; --d-muted: #A1A1A6; --d-faint: #7C7C84;
+  --d-line: rgba(255,255,255,0.10); --d-line2: rgba(255,255,255,0.20); --d-hover: rgba(255,255,255,0.07); --d-live: #5EE0A0; --d-warn: #FF7B72;
+  --d-hl: rgba(255,214,80,0.34); --d-code: #1B1B20; --d-shadow: 0 24px 60px -18px rgba(0,0,0,0.8);
+  color-scheme: dark;
+}
+:root[data-font="editorial"] { --d-display: "Instrument Serif", "Iowan Old Style", Georgia, serif; }
+
+/* the page: a column of words about 70 characters wide; wide blocks reach past it where there is room */
+.dk-doc { max-width: 680px; margin: 0 auto; font: 16.5px/1.65 var(--d-ff); color: var(--d-fg); outline: none; letter-spacing: -0.003em;
+          --bleed: min(72px, max(0px, (100cqw - 728px) / 2)); }
+.dk-doc > * { margin: 0 0 14px; }
+.dk-doc h1, .dk-doc h2, .dk-doc h3 { font-family: var(--d-display); line-height: 1.15; letter-spacing: -0.02em; text-wrap: balance; font-weight: 600; margin: 0; }
+:root[data-font="editorial"] .dk-doc :is(h1, h2, h3) { font-weight: 400; letter-spacing: -0.01em; }
+.dk-doc > h1 { font-size: 38px; margin: 8px 0 14px; }
+.dk-doc > h2 { font-size: 26px; margin: 34px 0 10px; }
+.dk-doc > h3 { font-size: 19px; margin: 22px 0 6px; }
+.dk-doc > :first-child { margin-top: 0; }
+.dk-doc p { margin: 0 0 14px; }
+.dk-doc li p, .dk-doc td p, .dk-doc th p, .dk-doc blockquote p:last-child { margin: 0; }
+.dk-doc a { color: var(--d-accent); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: color-mix(in srgb, var(--d-accent) 45%, transparent); cursor: pointer; }
+.dk-doc mark { background: var(--d-hl); color: inherit; border-radius: 3px; padding: 0 2px; }
+.dk-doc code { font: 0.88em ui-monospace, "SF Mono", Menlo, Consolas, monospace; background: var(--d-code); padding: 2px 5px; border-radius: 5px; }
+.dk-doc pre { background: var(--d-code); padding: 14px 16px; border-radius: 12px; overflow-x: auto; font-size: 14px; line-height: 1.5; white-space: pre-wrap; }
+.dk-doc pre code { background: none; padding: 0; }
+.dk-doc ul, .dk-doc ol { padding-left: 24px; margin: 0 0 14px; }
+.dk-doc li { margin: 3px 0; }
+.dk-doc li > ul, .dk-doc li > ol { margin: 3px 0 0; }
+.dk-doc blockquote { margin: 18px 0; padding: 2px 0 2px 18px; border-left: 3px solid var(--d-accent); font-family: var(--d-display); font-size: 21px; line-height: 1.4; }
+.dk-doc hr { border: 0; height: 1px; background: var(--d-line2); margin: 28px 0; }
+
+/* checklists */
+.dk-doc ul.dk-tasks { list-style: none; padding-left: 2px; }
+.dk-task { display: flex; gap: 10px; align-items: flex-start; }
+.dk-task > div { flex: 1; min-width: 0; }
+.dk-check { flex: none; width: 19px; height: 19px; margin-top: 4px; border-radius: 6px; border: 1.6px solid var(--d-line2); background: none; padding: 0; cursor: pointer; display: inline-grid; place-items: center; transition: background .15s ease, border-color .15s ease; }
+.dk-check::after { content: ""; width: 9px; height: 5px; border-left: 2px solid var(--d-on-accent); border-bottom: 2px solid var(--d-on-accent); transform: rotate(-45deg) scale(0); transition: transform .18s cubic-bezier(.3,1.6,.5,1); margin-top: -2px; }
+.dk-task.done > .dk-check { background: var(--d-accent); border-color: var(--d-accent); }
+.dk-task.done > .dk-check::after { transform: rotate(-45deg) scale(1); }
+.dk-task.done > div { color: var(--d-faint); text-decoration: line-through; }
+
+/* pictures */
+.dk-fig { margin: 22px 0; position: relative; }
+.dk-fig img { display: block; max-width: 100%; height: auto; margin: 0 auto; border-radius: 14px; }
+.dk-fig.dk-wide img { width: 100%; }
+.dk-fig figcaption { margin-top: 8px; font-size: 13.5px; color: var(--d-muted); text-align: center; min-height: 1.4em; }
+.dk-wide, .dk-doc > .tableWrapper, .dk-doc > table { margin-inline: calc(-1 * var(--bleed)); }
+
+/* tables */
+.dk-doc table { border-collapse: collapse; width: calc(100% + 2 * var(--bleed)); table-layout: fixed; font-size: 15px; margin-bottom: 18px; }
+.dk-doc th, .dk-doc td { border: 1px solid var(--d-line2); padding: 8px 12px; vertical-align: top; text-align: left; position: relative; min-width: 2em; }
+.dk-doc th { background: var(--d-hover); font-weight: 600; }
+
+@media (max-width: 760px) {
+  .dk-doc { font-size: 16px; }
+  .dk-doc > h1 { font-size: 30px; } .dk-doc > h2 { font-size: 22px; }
+  .dk-doc table { font-size: 13.5px; } .dk-doc th, .dk-doc td { padding: 6px 8px; }
+}
+
+/* Save as PDF: the page alone, on white, whatever its mode */
+@media print {
+  :root, :root[data-mode="dark"] { --d-bg: #FFFFFF; --d-fg: #1D1D1F; --d-muted: #55555A; --d-faint: #77777C; --d-line: rgba(0,0,0,0.12); --d-line2: rgba(0,0,0,0.25); --d-hover: rgba(0,0,0,0.04); --d-code: #F1F1F5; --d-hl: #FFE78F; color-scheme: light; }
+  @page { margin: 18mm; }
+  html, body { background: #fff !important; height: auto !important; overflow: visible !important; }
+  .dk-doc { max-width: none; font-size: 11.5pt; --bleed: 0px; }
+  .dk-doc h1, .dk-doc h2, .dk-doc h3 { break-after: avoid; }
+  .dk-fig, .dk-doc pre, .dk-doc blockquote, .dk-doc tr, .dk-task { break-inside: avoid; }
+  .dk-doc thead, .dk-doc tr:first-child { display: table-row-group; }
+  .dk-doc a { color: inherit; }
+  .dk-check { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+}

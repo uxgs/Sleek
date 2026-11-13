@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sleek Docs</title>
+<script src="core/analytics.js"></script>
+<link rel="manifest" href="docs.webmanifest">
+<link rel="icon" href="icons/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="theme-color" content="#FFFFFF">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Sleek Docs">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Instrument+Serif&display=swap">
+<link rel="stylesheet" href="vendor/prosemirror.css">
+<link rel="stylesheet" href="doc/doc.css">
+<link rel="stylesheet" href="doc/doc-ui.css">
+<!-- the storage (pictures live in the decks' store, pages in their own), then the page opens (core/doc-boot.js) -->
+<script src="core/store.js"></script>
+<script src="core/doc-store.js"></script>
+<script src="core/doc-boot.js"></script>
+</head>
+<body>
+<div class="app" id="app">
+  <!-- the list of pages (doc/sidebar.js) -->
+  <aside class="side" id="side" aria-label="Your pages">
+    <a class="brand" href="docs.html" title="All your pages"><img src="icons/logo.svg" alt="" width="22" height="20">Sleek <span>Docs</span></a>
+    <label class="search"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="q" type="search" placeholder="Search pages" aria-label="Search pages" autocomplete="off"></label>
+    <div class="side-new"><button type="button" id="new-doc">＋ Page</button><button type="button" id="new-folder">＋ Folder</button></div>
+    <nav class="tree" id="tree" aria-label="Pages and folders"></nav>
+    <div class="side-foot">Drag a page or a folder onto a folder to move it.</div>
+  </aside>
+  <div class="main" id="main">
+    <div class="top">
+      <button type="button" class="ib" id="b-side" title="Show or hide your pages (⌘\)" aria-label="Show or hide your pages"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/></svg></button>
+      <div class="crumb" id="crumb"></div>
+      <span class="saved" id="saved" aria-live="polite"></span>
+      <button type="button" class="ib" id="b-look" title="Look" aria-label="Look" aria-haspopup="true"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.4 1.4M17.6 17.6L19 19M5 19l1.4-1.4M17.6 6.4L19 5"/></svg></button>
+      <button type="button" class="btn" id="b-share" aria-haspopup="true">Share</button>
+    </div>
+    <!-- the format bar (doc/toolbar.js) -->
+    <div class="fmt" id="fmt" role="toolbar" aria-label="Formatting">
+      <select id="f-style" aria-label="Text style"><option value="p">Text</option><option value="h1">Heading 1</option><option value="h2">Heading 2</option><option value="h3">Heading 3</option><option value="quote">Quote</option><option value="code">Code</option></select>
+      <button type="button" class="fb" data-m="strong" title="Bold (⌘B)" aria-label="Bold"><b>B</b></button>
+      <button type="button" class="fb" data-m="em" title="Italic (⌘I)" aria-label="Italic"><i>I</i></button>
+      <button type="button" class="fb" data-m="underline" title="Underline (⌘U)" aria-label="Underline"><u>U</u></button>
+      <button type="button" class="fb" data-m="strike" title="Strikethrough (⇧⌘X)" aria-label="Strikethrough"><s>S</s></button>
+      <button type="button" class="fb" data-m="highlight" title="Highlight (⇧⌘H)" aria-label="Highlight"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h6M14 4l6 6-9 9H7v-4z"/></svg></button>
+      <button type="button" class="fb" data-m="code" title="Code (⌘E)" aria-label="Code"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 7l-5 5 5 5M16 7l5 5-5 5"/></svg></button>
+      <button type="button" class="fb" id="f-link" title="Link (⌘K)" aria-label="Link"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg></button>
+      <span class="sep"></span>
+      <button type="button" class="fb" data-l="bullet_list" title="Bullets" aria-label="Bullets"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1"/><circle cx="4.5" cy="12" r="1"/><circle cx="4.5" cy="18" r="1"/></svg></button>
+      <button type="button" class="fb" data-l="ordered_list" title="Numbers" aria-label="Numbers"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 6h10M10 12h10M10 18h10M4 5h1v4M4 15h2l-2 3h2"/></svg></button>
+      <button type="button" class="fb" data-l="task_list" title="Checklist" aria-label="Checklist"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="7" height="7" rx="2"/><path d="M4.8 7.6l1.4 1.4 2.4-2.6M14 7.5h7M14 16.5h7"/><rect x="3" y="13" width="7" height="7" rx="2"/></svg></button>
+      <span class="sep"></span>
+      <button type="button" class="fb" id="f-undo" title="Undo (⌘Z)" aria-label="Undo"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg></button>
+      <button type="button" class="fb" id="f-redo" title="Redo (⇧⌘Z)" aria-label="Redo"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 14l5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h3"/></svg></button>
+      <button type="button" class="fb w" id="f-insert" aria-haspopup="true">＋ Insert</button>
+    </div>
+    <div class="scroll" id="scroll">
+      <div class="pagebox" id="pagebox"><div class="locked" id="locked" hidden></div><div id="ed"></div></div>
+    </div>
+    <input type="file" id="pick-pic" accept="image/*" multiple hidden>
+  </div>
+</div>
+</body>
+</html>

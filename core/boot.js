@@ -30,7 +30,7 @@
     window.SEED = seed;
     window.SLEEK_DECK = { id: deck.id, title: deck.title };
     window.SLEEK_NS = window.SleekStore.ns(deck.id);
-    if(!mirror && !presenter) document.title = deck.title + ' · Sleek';
+    if(!mirror && !presenter) document.title = deck.title + ' · Sleek Slides';
     load(SCRIPTS, function(){ setTimeout(function(){ de.classList.remove('booting'); }, 30); });
   }
   function fail(msg){

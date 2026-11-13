@@ -1,7 +1,8 @@
 /* Google Analytics, for the hosted site only. It stays quiet anywhere else: a copy run from the
    zip, a local server, a published deck (publishing leaves this file out), the presenter's
-   windows and its live preview. Each visit is counted as "Start screen" or "Deck", with the
-   address trimmed to the page, so deck names and deck ids are never sent. */
+   windows and its live preview. Each visit is counted as "Start screen" or "Deck" (Slides), or
+   "Docs start screen" or "Page" (Docs), with the address trimmed to the page, so names and ids
+   are never sent. */
 (function(){
   var ID = 'G-BQMRCNNXKF';                // the Measurement ID (G-…) from Analytics > Admin > Data streams
   var HOST = '1fhyi5b';         // a hash of the hosted site's address, so copies hosted elsewhere stay quiet
@@ -10,12 +11,12 @@
     if(!ID || hash(location.hostname) !== HOST) return;
     if(/[?&]mirror=1/.test(location.search) || /^#presenter/.test(location.hash) || window.top !== window) return;
   } catch(e){ return; }
-  var deck = /deck\.html$/.test(location.pathname);
+  var path = location.pathname, name = /deck\.html$/.test(path) ? 'Deck' : /docs\.html$/.test(path) ? 'Docs start screen' : /doc\.html$/.test(path) ? 'Page' : 'Start screen';
   window.dataLayer = window.dataLayer || [];
   window.gtag = function(){ window.dataLayer.push(arguments); };
   window.gtag('js', new Date());
   window.gtag('config', ID, {
-    page_title: deck ? 'Deck' : 'Start screen',
+    page_title: name,
     page_location: location.origin + location.pathname
   });
   var s = document.createElement('script');
