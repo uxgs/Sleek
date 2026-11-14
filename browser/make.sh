@@ -38,7 +38,7 @@ for pair in "ads=https://easylist.to/easylist/easylist.txt" "privacy=https://eas
 done
 cp Resources/lists-credits.txt "$APP/Contents/Resources/lists/CREDITS.txt"
 # Slides, Docs and Tasks: the site itself, without what only its makers need
-rsync -a --delete --delete-excluded --exclude '.git' --exclude '.DS_Store' --exclude 'browser' --exclude 'ios' --exclude 'tools' --exclude 'service' --exclude '__pycache__' --exclude 'node_modules' --exclude 'README.md' --exclude 'LICENSE' --exclude '.claude' --exclude 'data/backups' ../ "$APP/Contents/Resources/app/"
+rsync -a --delete --delete-excluded --exclude '.git' --exclude '.DS_Store' --exclude 'browser' --exclude 'ios' --exclude 'ios-tasks' --exclude 'tools' --exclude 'service' --exclude '__pycache__' --exclude 'node_modules' --exclude 'README.md' --exclude 'LICENSE' --exclude '.claude' --exclude 'data/backups' ../ "$APP/Contents/Resources/app/"
 # the type the three apps use, inside the app rather than asked of the web each time one opens (fonts.py)
 python3 fonts.py "$APP/Contents/Resources/app" build/fonts || echo "fonts were not put inside the app"
 cp Resources/fonts-credits.txt "$APP/Contents/Resources/app/fonts/CREDITS.txt" 2>/dev/null || true

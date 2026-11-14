@@ -177,6 +177,12 @@ A Mac app that browses the web with Slides, Docs and Tasks inside it is being bu
 [browser](browser/README.md) folder. It is not a public download yet. Sleek for iPhone, the same browser
 for the phone, is in the [ios](ios/README.md) folder; it is not in the App Store yet.
 
+## Sleek Tasks for iPhone
+
+Tasks as an app of its own for the iPhone, made for the phone rather than shrunk to it, is in the
+[ios-tasks](ios-tasks/README.md) folder. It keeps its tasks in the same file Sleek Tasks saves here
+("Save a copy of them all"), so a copy moves between the two. It is not in the App Store yet.
+
 ## The sample deck
 
 A launch story for Pace, a made-up fitness app. It has one slide per layout, and each slide's speaker
