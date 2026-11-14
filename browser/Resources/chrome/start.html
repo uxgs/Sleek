@@ -18,7 +18,7 @@
   .private { font-size: 14px; color: var(--muted); margin: -14px 0 0; }
   /* the box: with the cursor in it, a ring that follows its shape and a soft light in Sleek's colours behind it */
   form { display: flex; position: relative; isolation: isolate; }
-  form::before { content: ""; position: absolute; inset: 4px 14px -6px; z-index: -1; border-radius: 22px; pointer-events: none; opacity: 0; filter: blur(22px); transition: opacity .35s ease; background: linear-gradient(90deg, #7C5CFF, #A77BFF 50%, #E58CFF); }
+  form::before { content: ""; position: absolute; inset: 4px 14px -6px; z-index: -1; border-radius: 22px; pointer-events: none; opacity: 0; filter: blur(22px); will-change: opacity; transition: opacity .35s ease; background: linear-gradient(90deg, #7C5CFF, #A77BFF 50%, #E58CFF); }
   form:focus-within::before { opacity: var(--bloom); }
   input { flex: 1; min-width: 0; height: 52px; border-radius: 16px; border: 1.5px solid var(--line); background: var(--card); color: inherit; font: inherit; font-size: 16px; padding: 0 18px; outline: none; transition: border-color .15s ease, background .15s ease; }
   input:focus { border-color: var(--accent); background: var(--bg); }
@@ -34,7 +34,8 @@
   a.site i img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: var(--card); }
   a.site span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
   .apps a.site i { background: none; } .apps a.site i img { position: static; width: 22px; height: auto; display: block; background: none; }
-  .bloom { position: absolute; inset: 6px 10px 0; z-index: -1; border-radius: 14px; overflow: hidden; pointer-events: none; opacity: 0; filter: blur(16px) saturate(1.8); transform: scale(.94);
+  /* will-change keeps the light on a layer of its own: without it the engine, once the light has finished arriving, paints it into the row's layer and cuts it off at the row's edges */
+  .bloom { position: absolute; inset: 6px 10px 0; z-index: -1; border-radius: 14px; overflow: hidden; pointer-events: none; opacity: 0; filter: blur(16px) saturate(1.8); transform: scale(.94); will-change: opacity, transform;
            transition: opacity .35s ease, transform .5s cubic-bezier(.2,.7,.2,1); background: linear-gradient(90deg, #7C5CFF, #A77BFF 50%, #E58CFF); }
   .bloom img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .tile:has(a:hover) .bloom, .tile:has(a:focus-visible) .bloom { opacity: var(--bloom); transform: translateY(5px) scale(1.08); }

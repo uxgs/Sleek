@@ -66,6 +66,22 @@ enum SelfTest {
     _ = await until(8) { (await page(w.current, "return !!window.Start && document.querySelectorAll('.apps a.site').length")) as? Int == 3 }
     s = await see(w)
     check("a new tab opens on the start page, with an empty address box", w.current?.kind == "start" && (s["url"] as? String) == "" && (s["on"] as? String) == "New tab", s)
+    // no rule that draws a ring on whatever has the cursor may reach a field (the address box once wore a square ring inside its own lit shape that way)
+    let ring = (await bar(w, "var u = document.getElementById('url'), bad = [], lit = false; [].forEach.call(document.styleSheets, function(sh){ var rules; try { rules = sh.cssRules; } catch(e){ return; } [].forEach.call(rules, function(r){ if(!r.selectorText || !r.style) return; var o = r.style.getPropertyValue('outline') || r.style.getPropertyValue('outline-style'); if(/:focus-within/.test(r.selectorText) && /\\.addr/.test(r.selectorText) && r.style.getPropertyValue('border-color')) lit = true; if(!o || r.style.outlineStyle === 'none' || /none/.test(o) || !/:focus/.test(r.selectorText)) return; r.selectorText.split(/,(?![^(]*\\))/).forEach(function(sel){ var bare = sel.replace(/:focus-visible|:focus-within|:focus/g, '').trim(); try { if(bare && u.matches(bare)) bad.push(sel.trim()); } catch(e){} }); }); }); return { bad: bad.join(' ; '), lit: lit };")) as? [String: Any] ?? [:]
+    check("with the cursor in the address box, the box itself is lit, and there is no second, square ring inside it", (ring["bad"] as? String) == "" && (ring["lit"] as? Bool) == true, ring)
+    await press(w, "#b-menu")
+    let menu = (await bar(w, "var p = document.getElementById('pop'); if(!p) return {}; return { groups: [].map.call(p.querySelectorAll('h5'), function(h){ return h.textContent; }).join('|'), rows: [].map.call(p.querySelectorAll('.grp'), function(g){ return [].map.call(g.children, function(r){ return r.querySelector('span').textContent.trim(); }).join('|'); }).join(' / '), fits: p.getBoundingClientRect().bottom <= innerHeight + 1 }")) as? [String: Any] ?? [:]
+    check("the ⋯ menu is in named groups: New, Appearance, Manage, Defaults, and this page", (menu["groups"] as? String) == "New|Appearance|Manage|Defaults|This page" && (menu["rows"] as? String) == "Tab|Window|Private Window / Zoom|Theme|Bar Placement|Bookmarks Bar / Bookmarks|History|Passwords|Downloads / Search Provider|Make Sleek Default Browser / Find on This Page|Print…" && (menu["fits"] as? Bool) == true, menu)
+    let barWas = (w.store.settings["bar"] as? Bool) == true
+    await press(w, "[data-barswitch]")
+    let flipped = (w.store.settings["bar"] as? Bool) == !barWas, stillOpen = (await bar(w, "var p = document.getElementById('pop'); return !!p && p.classList.contains('sets') && p.querySelector('[data-barswitch]').getAttribute('aria-checked') === '" + String(!barWas) + "'")) as? Bool ?? false
+    await press(w, "[data-barswitch]")
+    let flippedBack = (w.store.settings["bar"] as? Bool) == barWas
+    await shot(w, "05-menu", to: out)
+    await press(w, "#b-menu"); await nap(0.8)
+    let shut = (await bar(w, "return !document.getElementById('pop')")) as? Bool ?? false
+    check("the bookmarks bar switches from the menu and back, and the menu stays open for it", flipped && stillOpen && flippedBack && shut, [flipped, stillOpen, flippedBack, shut])
+    s = await see(w)
     check("the page sits under the bar, filling the rest of the window", w.chrome.slots.count == 1 && abs(w.chrome.slots[0].minY - CGFloat(s["barBottom"] as? Int ?? -1)) <= 1 && abs(w.chrome.slots[0].maxY - 860) <= 1 && w.current?.web.frame == w.chrome.slots[0], w.chrome.slots)
     await shot(w, "1-start", to: out)
 

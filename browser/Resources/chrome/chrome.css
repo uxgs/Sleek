@@ -17,8 +17,8 @@ html, body { margin: 0; height: 100%; background: transparent; overflow: hidden;
 .sk.private { --c0: #2A2140; --b0: #221A35; --f0: #33284D; }
 .priv { flex: none; height: 24px; padding: 0 10px; border-radius: 12px; display: inline-flex; align-items: center; font-size: 11.5px; font-weight: 600; letter-spacing: .01em; color: #E9DDFF; background: color-mix(in srgb, #A77BFF 34%, transparent); white-space: nowrap; }
 .sk button, .sk input, .sk select { font: inherit; color: inherit; }
-.sk :is(button, input, a, [tabindex]):focus-visible { outline: 2px solid var(--k-accent); outline-offset: 2px; }
-.sk input:focus-visible { outline: none; }      /* a field shows focus itself: a ring that follows its own shape, and a soft light behind it */
+.sk :is(button, a, [tabindex]):not(input):focus-visible { outline: 2px solid var(--k-accent); outline-offset: 2px; }
+.sk input:focus-visible { outline: none; }      /* a field shows focus itself: its own shape lit, and a soft light behind it. Never a square ring of its own (the rule above leaves fields out for that) */
 .win { position: fixed; inset: 0; display: flex; flex-direction: column; }
 
 /* ---------- the bar ---------- */
@@ -44,7 +44,7 @@ svg.i { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-widt
 .addr { flex: 1; min-width: 0; height: 32px; display: flex; align-items: center; gap: 4px; padding: 0 4px 0 8px; border-radius: 10px; background: var(--k-field); border: 1.5px solid transparent; position: relative; transition: border-color .15s ease, background .15s ease; }
 .addr:focus-within { background: var(--k-bg); border-color: var(--k-accent); }
 /* the bloom: with the cursor in the box, a soft light in Sleek's colours sits behind it (as behind a deck's tile in Slides) */
-.addr::before { content: ""; position: absolute; inset: -1px 6px -3px; z-index: -1; border-radius: 14px; pointer-events: none; opacity: 0; filter: blur(12px); transition: opacity .3s ease;
+.addr::before { content: ""; position: absolute; inset: -1px 6px -3px; z-index: -1; border-radius: 14px; pointer-events: none; opacity: 0; filter: blur(12px); will-change: opacity; transition: opacity .3s ease;
                 background: linear-gradient(90deg, var(--k-accent), color-mix(in srgb, var(--k-accent) 60%, #FFFFFF) 50%, color-mix(in srgb, var(--k-accent) 40%, #FF8CD9)); }
 .addr:focus-within::before { opacity: .42; } .sk[data-mode="dark"] .addr:focus-within::before { opacity: .55; }
 .addr input { flex: 1; min-width: 0; height: 100%; border: 0; background: none; outline: none; font-size: 13px; -webkit-user-select: text; user-select: text; cursor: text; }
@@ -134,6 +134,17 @@ svg.i { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-widt
 .pop input[type=text] { height: 32px; border-radius: 8px; border: 1px solid var(--k-line2); background: var(--k-bg); padding: 0 9px; width: 100%; -webkit-user-select: text; user-select: text; transition: border-color .15s ease, box-shadow .2s ease; }
 .pop input[type=text]:focus, .findbox input:focus { border-color: var(--k-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--k-accent) 18%, transparent), 0 4px 16px -4px color-mix(in srgb, var(--k-accent) 50%, transparent); }
 .pop.menu { width: 270px; gap: 1px; padding: 6px; }
+/* the ⋯ menu: named groups, each a card of rows, like a phone's settings */
+.pop.sets { width: 304px; gap: 0; padding: 8px; max-height: calc(100vh - 70px); overflow-y: auto; }
+.pop.sets h5 { margin: 10px 8px 4px; font-size: 10.5px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--k-faint); flex: none; } .pop.sets h5:first-child { margin-top: 2px; }
+.pop.sets .grp { display: flex; flex-direction: column; flex: none; border-radius: 11px; background: var(--k-field); overflow: hidden; }
+.pop.sets .grp > * + * { box-shadow: inset 0 1px 0 var(--k-line); }
+.pop.sets .mi, .pop.sets .row { display: flex; align-items: center; justify-content: flex-start; gap: 10px; min-height: 36px; padding: 0 10px; border-radius: 0; flex: none; }
+.pop.sets .mi > span, .pop.sets .row .lbl { flex: 1; min-width: 0; font-weight: 500; }
+.pop.sets svg.i { width: 16px; height: 16px; flex: none; color: var(--k-muted); }
+.pop.sets .mi small { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; } .pop.sets .chev { font-style: normal; font-size: 15px; line-height: 1; color: var(--k-faint); }
+.pop.sets .zoomrow { padding: 0 10px; } .pop.sets .zoomrow .pct { width: auto; min-width: 46px; padding: 0 6px; border-color: transparent; font-weight: 600; font-variant-numeric: tabular-nums; }
+.pop.sets .seg { align-self: center; } .pop.sets .sw { flex: none; }
 .mi { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; padding: 7px 9px; border: 0; border-radius: 8px; background: none; cursor: pointer; text-align: left; flex: none; } .mi:hover { background: var(--k-hover); } .mi small { color: var(--k-faint); font-size: 11.5px; white-space: nowrap; }
 .mi .two { display: flex; flex-direction: column; min-width: 0; } .mi .two b { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .mi .two i { font-style: normal; font-size: 11.5px; color: var(--k-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .zoomrow { display: flex; align-items: center; justify-content: space-between; padding: 4px 9px; } .zoomrow span { display: inline-flex; align-items: center; gap: 4px; } .zoomrow button { width: 28px; height: 26px; border-radius: 7px; border: 1px solid var(--k-line2); background: none; cursor: pointer; } .zoomrow b { min-width: 46px; text-align: center; font-weight: 500; font-variant-numeric: tabular-nums; }

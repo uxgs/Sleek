@@ -22,7 +22,9 @@
   function $$(s, r){ return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
   var ICON = { back: '<path d="M14 5l-7 7 7 7"/>', fwd: '<path d="M10 5l7 7-7 7"/>', reload: '<path d="M19 12a7 7 0 1 1-2.1-5M19 5v4h-4"/>', stop: '<path d="M6 6l12 12M18 6L6 18"/>', lock: '<rect x="6" y="11" width="12" height="9" rx="2"/><path d="M9 11V8a3 3 0 0 1 6 0v3"/>',
     shield: '<path d="M12 3l7 3v5c0 4.500-3 8-7 10-4-2-7-5.500-7-10V6z"/><path d="M9 12l2 2 4-4"/>', shieldoff: '<path d="M12 3l7 3v5c0 4.500-3 8-7 10-4-2-7-5.500-7-10V6z"/>',
-    split: '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M12 4v16"/>', more: '<circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/>', search: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.500-3.500"/>',
+    split: '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M12 4v16"/>', more: '<circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/>', win: '<rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 9.5h18"/>', glasses: '<circle cx="7" cy="14" r="3.2"/><circle cx="17" cy="14" r="3.2"/><path d="M10.2 14h3.6M3.9 13l1.5-5M20.1 13l-1.5-5"/>',
+    print: '<path d="M7 8V4h10v4"/><rect x="4" y="8" width="16" height="8" rx="2"/><path d="M7 13h10v7H7z"/>', zoom: '<circle cx="11" cy="11" r="6"/><path d="M20 20l-4.2-4.2M8.5 11h5M11 8.5v5"/>', findp: '<circle cx="11" cy="11" r="6"/><path d="M20 20l-4.2-4.2"/>',
+    barpos: '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M7 8h10"/>', book: '<path d="M7 4h10v16l-5-3.6L7 20z"/>', search: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.500-3.500"/>',
     clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>', star: '<path d="M12 4l2.500 5 5.500.800-4 3.900.900 5.500-4.900-2.600-4.900 2.600.900-5.500-4-3.900 5.500-.800z"/>', tab: '<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/>', up: '<path d="M6 14l6-6 6 6"/>', down: '<path d="M6 10l6 6 6-6"/>', panel: '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M15 4v16"/>', look: '<circle cx="12" cy="12" r="8.500"/><path d="M12 3.500a8.500 8.500 0 0 1 0 17z" fill="currentColor" stroke="none"/>', globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.200 3 14.800 0 18M12 3c-3 3.200-3 14.800 0 18"/>' };
   function ico(n){ return '<svg class="i" viewBox="0 0 24 24" aria-hidden="true">' + ICON[n] + '</svg>'; }
   // who answers a search typed in the address box: one of these, or an address of your own (with %s where the words go)
@@ -128,10 +130,22 @@
     if(L.pop === 'save' && t && web) h += savePop(t);
 
     // what floats
-    if(L.pop === 'menu') h += '<div class="pop menu" id="pop" data-anchor="#b-menu" data-side="right">' + [['newtab', 'New tab', '⌘T'], ['window', 'New window', '⌘N'], ['private', 'Private Browsing', '⇧⌘N'], ['-'], ['passwords', 'Passwords', '⌥⌘P'], ['history', 'History', '⌘Y'], ['allmarks', 'Bookmarks', '⌥⌘B'], ['bar', set.bar ? 'Hide the bookmarks bar' : 'Show the bookmarks bar', '⇧⌘B'], ['downloads', 'Downloads', '⌥⌘L'], ['-'],
-        ['find', 'Find on this page', '⌘F'], ['zoom'], ['print', 'Print…', '⌘P'], ['-'], ['search', 'Search with ' + (engine() ? engine()[0] : 'your own choice'), ''],['default', 'Make Sleek the default browser', '']].map(function(m){
-          return m[0] === '-' ? '<div class="line" style="margin:4px"></div>' : m[0] === 'zoom' ? '<div class="zoomrow"><span>Zoom</span><span><button type="button" data-zoom="-1" aria-label="Smaller">−</button><b>' + (t ? t.zoom : 100) + '%</b><button type="button" data-zoom="1" aria-label="Larger">+</button><button type="button" data-zoom="0" style="width:auto;padding:0 8px">Reset</button></span></div>'
-            : '<button type="button" class="mi" data-menu="' + m[0] + '"><span>' + m[1] + '</span><small>' + m[2] + '</small></button>'; }).join('') + '</div>';
+    // the ⋯ menu, laid out like a phone's settings: a few named groups, each a card of rows
+    if(L.pop === 'menu'){
+      var row = function(id, icon, label, right){ return '<button type="button" class="mi" data-menu="' + id + '">' + ico(icon) + '<span>' + label + '</span><small>' + (right || '') + '</small></button>'; };
+      var themeNow = (THEMES.filter(function(x){ return x[0] === set.theme; })[0] || THEMES[0])[1], more = '<i class="chev">›</i>';
+      h += '<div class="pop menu sets" id="pop" data-anchor="#b-menu" data-side="right">' +
+        '<h5>New</h5><div class="grp">' + row('newtab', 'tab', 'Tab', '⌘T') + row('window', 'win', 'Window', '⌘N') + row('private', 'glasses', 'Private Window', '⇧⌘N') + '</div>' +
+        '<h5>Appearance</h5><div class="grp">' +
+          '<div class="row zoomrow">' + ico('zoom') + '<span class="lbl">Zoom</span><span><button type="button" data-zoom="-1" aria-label="Smaller">−</button><button type="button" class="pct" data-zoom="0" aria-label="Back to 100%">' + (t ? t.zoom : 100) + '%</button><button type="button" data-zoom="1" aria-label="Larger">+</button></span></div>' +
+          row('look', 'look', 'Theme', esc(themeNow) + more) +
+          '<div class="row">' + ico('barpos') + '<span class="lbl">Bar Placement</span><span class="seg">' + [['top', 'Top'], ['bottom', 'Bottom']].map(function(o){ return '<button type="button" data-barat="' + o[0] + '" class="' + (set.barAt === o[0] ? 'on' : '') + '">' + o[1] + '</button>'; }).join('') + '</span></div>' +
+          '<div class="row">' + ico('star') + '<span class="lbl">Bookmarks Bar</span><span class="sw"><button type="button" role="switch" aria-checked="' + !!set.bar + '" data-barswitch aria-label="Show the bookmarks bar"></button></span></div>' +
+        '</div>' +
+        '<h5>Manage</h5><div class="grp">' + row('allmarks', 'book', 'Bookmarks', more) + row('history', 'clock', 'History', more) + row('passwords', 'lock', 'Passwords', more) + row('downloads', 'down', 'Downloads', more) + '</div>' +
+        '<h5>Defaults</h5><div class="grp">' + row('search', 'search', 'Search Provider', esc(engine() ? engine()[0] : 'Your own') + more) + row('default', 'globe', 'Make Sleek Default Browser', '') + '</div>' +
+        '<h5>This page</h5><div class="grp">' + row('find', 'findp', 'Find on This Page', '⌘F') + row('print', 'print', 'Print…', '⌘P') + '</div></div>';
+    }
     if(L.pop === 'shield' && t){ var bl = t.blocked || {}, total = blockedTotal(t), off = !t.blockOn;
       h += '<div class="pop" id="pop" data-anchor=".shield" data-side="left"><h4>' + esc(t.host || hostOf(t.url)) + '</h4>' +
         (!S.blocker.ready ? '<p>Sleek is getting its block lists ready. This takes a few seconds the first time.</p>' : off ? '<p>Blocking is off for this site. Its adverts, banners and requests are showing.</p>' :
@@ -305,6 +319,7 @@
     if((x = t.closest('[data-corner]'))){ var cn = x.getAttribute('data-corner').split(' '); post({ do: 'corner', side: cn[0], at: cn[1] }); return; }
     if((x = t.closest('[data-engine]'))){ var se = SEARCH[+x.getAttribute('data-engine')]; post({ do: 'set', k: 'search', v: se[1] }); L.pop = null; paint(); toast('Searching with ' + se[0]); return; }
     if((x = t.closest('[data-barat]'))){ post({ do: 'set', k: 'barAt', v: x.getAttribute('data-barat') }); return; }
+    if((x = t.closest('[data-barswitch]'))){ post({ do: 'set', k: 'bar', v: !S.settings.bar }); return; }
     if((x = t.closest('[data-lay]'))){ L.pop = null; post({ do: 'split', n: +x.getAttribute('data-lay') }); paint(); return; }
     if((x = t.closest('[data-menu]'))){
       var m = x.getAttribute('data-menu'); L.pop = null;
