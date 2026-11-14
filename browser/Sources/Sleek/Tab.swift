@@ -170,7 +170,11 @@ final class Tab: NSObject, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegat
     if let ok = m["pull"] as? Bool, pulling { if ok { if pageSays == nil { pageSays = true; owner?.pullChanged(self) } } else { pageSays = false; stopPull() } }
     if let b = m["blocked"] as? String { blocked[b == "notification" ? "notes" : "cookies", default: 0] += 1; owner?.tabChanged(self) }
     // Sleek's own start page asks for what to show, and says where to go
-    if message.frameInfo.request.url?.scheme == "sleek" { if m["want"] as? String == "start" { owner?.fillStart(self) }; if let text = m["go"] as? String { owner?.navigate(text, in: self) } }
+    if let from = message.frameInfo.request.url, from.scheme == "sleek", from.host == "ui" {
+      if m["want"] as? String == "start" { owner?.fillStart(self) }; if let text = m["go"] as? String { owner?.navigate(text, in: self) }
+      // your day, on a new tab: tick a task, add one for today
+      if owner?.isPrivate == false { if let id = m["tick"] as? String { Work.shared.tick(id, m["on"] as? Bool ?? true) }; if let title = m["addTask"] as? String { owner?.addTask(title: title, board: m["board"] as? String ?? "", due: "today") } }
+    }
   }
 
   // ---------- going places ----------

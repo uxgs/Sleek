@@ -165,3 +165,37 @@ svg.i { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-widt
 @media (prefers-reduced-motion: reduce) { .tab .spin { animation-duration: 2s; } }
 /* an icon sits over a letter; if the icon can't be had, the letter shows */
 .ic { position: relative; } .ic img { position: absolute; inset: 0; background: var(--k-bar); } .ic.mk img { position: static; background: none; }
+
+/* ---------- Sleek inside: your tasks beside the page, and Save to Sleek ---------- */
+.mid { position: relative; }
+.panel { flex: none; width: 300px; border-left: 1px solid var(--k-line); background: var(--k-bar); display: flex; flex-direction: column; min-height: 0; } .panel.in { animation: panelIn .32s cubic-bezier(.2, .8, .2, 1) both; }
+@keyframes panelIn { from { opacity: 0; transform: translateX(18px); } }
+
+.panel-h { display: flex; align-items: center; gap: 8px; padding: 10px 8px 6px 12px; font-weight: 600; } .panel-h img { display: block; flex: none; } .panel-h .grow { flex: 1; }
+.panel-h select { min-width: 0; max-width: 170px; height: 28px; border: 0; border-radius: 8px; background: none; font-weight: 600; font-size: 14px; padding: 0 4px; cursor: pointer; text-overflow: ellipsis; } .panel-h select:hover { background: var(--k-hover); }
+.panel-b { flex: 1; min-height: 0; overflow-y: auto; padding: 2px 8px 10px; display: flex; flex-direction: column; gap: 2px; }
+.panel-f { padding: 8px 12px; border-top: 1px solid var(--k-line); font-size: 12.5px; color: var(--k-muted); display: flex; justify-content: space-between; gap: 8px; flex: none; }
+.sk .linkish { border: 0; background: none; padding: 0; color: var(--k-accent) !important; cursor: pointer; font-size: 12.5px; font-weight: 500; } .linkish:hover { text-decoration: underline; }
+.quick { display: flex; margin: 2px 4px 6px; flex: none; }
+.quick input { flex: 1; min-width: 0; height: 34px; border-radius: 9px; border: 1px solid var(--k-line2); background: var(--k-bg); padding: 0 10px; -webkit-user-select: text; user-select: text; cursor: text; transition: border-color .15s ease, box-shadow .2s ease; }
+.quick input:focus { border-color: var(--k-good); box-shadow: 0 0 0 3px color-mix(in srgb, var(--k-good) 18%, transparent), 0 6px 18px -8px color-mix(in srgb, var(--k-good) 55%, transparent); }
+h5.sec { margin: 10px 6px 3px; font-size: 11px; letter-spacing: .13em; text-transform: uppercase; color: var(--k-faint); font-weight: 600; flex: none; } h5.sec.late { color: var(--k-warn); }
+.trow { display: flex; align-items: flex-start; gap: 9px; padding: 6px; border-radius: 9px; flex: none; transition: background .15s ease; } .trow:hover { background: var(--k-hover); }
+.trow .tx { min-width: 0; display: flex; flex-direction: column; } .trow .tx b { font-weight: 500; overflow-wrap: anywhere; } .trow .tx small { color: var(--k-muted); font-size: 12px; } .trow .late { color: var(--k-warn); }
+.trow.done .tx b { text-decoration: line-through; color: var(--k-muted); }
+.ck { flex: none; width: 18px; height: 18px; margin-top: 1px; border-radius: 50%; border: 1.5px solid var(--k-faint); background: none; padding: 0; cursor: pointer; position: relative; transition: background .15s ease, border-color .15s ease, transform .15s ease; }
+.ck:hover { border-color: var(--k-good); transform: scale(1.1); } .ck.on { background: var(--k-good); border-color: var(--k-good); }
+.ck.on::after { content: ""; position: absolute; left: 5px; top: 2px; width: 4px; height: 8px; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+.panel .none { margin: 8px 6px; color: var(--k-muted); font-size: 13px; }
+/* immersive: the panel floats too, under (or over) the floating bar */
+.win.imm .panel { position: absolute; z-index: 14; right: 10px; top: 108px; bottom: 10px; border: 1px solid var(--k-line2); border-radius: 16px; overflow: hidden; box-shadow: 0 18px 44px -18px rgba(0,0,0,.5); }
+.win.imm.bottom .panel { top: 10px; bottom: 108px; }
+/* Save to Sleek: Sleek's mark in the address box, and the two ways to keep a page */
+.savebtn { flex: none; width: 28px; height: 26px; border: 0; border-radius: 8px; background: none; cursor: pointer; display: grid; place-items: center; padding: 0; transition: background .15s ease, transform .12s ease; }
+.savebtn img { width: 16px; height: auto; display: block; opacity: .8; transition: opacity .15s ease; } .savebtn:hover, .savebtn[aria-expanded="true"] { background: var(--k-hover); } .savebtn:hover img, .savebtn[aria-expanded="true"] img { opacity: 1; } .savebtn:active { transform: scale(.9); }
+.pop .clip { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.choice { display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 10px; border-radius: 11px; border: 1.5px solid var(--k-line); background: none; cursor: pointer; text-align: left; transition: border-color .15s ease, background .15s ease; }
+.choice > i { flex: none; width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid var(--k-faint); } .choice.on { border-color: var(--c); background: color-mix(in srgb, var(--c) 8%, transparent); } .choice.on > i { border: 4.500px solid var(--c); }
+.choice span { display: flex; flex-direction: column; min-width: 0; } .choice b { font-weight: 600; } .choice small { color: var(--k-muted); font-size: 12px; }
+.pop select { height: 28px; border-radius: 8px; border: 1px solid var(--k-line2); background: var(--k-bg); padding: 0 6px; max-width: 150px; }
+.sg img.i { width: 15px; height: auto; flex: none; }

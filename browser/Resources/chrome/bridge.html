@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sleek's work</title>
+<!-- The browser's door to your Sleek work. This page is never shown: the app keeps it open out of
+     sight (Sources/Sleek/Work.swift), at sleek://app/_bridge.html, so it shares its storage with
+     Slides, Docs and Tasks. Through it the app reads what is due, your boards, your pages and decks,
+     and adds a task, ticks one, or keeps a web page as a Docs page. It tells the app whenever tasks
+     change, here or in any tab. Nothing in it touches the network. -->
+<script src="core/store.js"></script>
+<script src="core/doc-store.js"></script>
+<script src="core/task-store.js"></script>
+</head>
+<body>
+<script>
+(function(){
+  var S = window.SleekStore, D = window.SleekDocs, T = window.SleekTasks, DAY = 86400000;
+  function post(m){ try { window.webkit.messageHandlers.sleekWork.postMessage(m); } catch(e){} }
+  function key(d){ return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+  function byDue(a, b){ return (a.due || '9999') < (b.due || '9999') ? -1 : (a.due || '9999') > (b.due || '9999') ? 1 : (a.order || 0) - (b.order || 0); }
+  function row(t){
+    var p = T.project(t.project), done = T.isDone(t), td = key(new Date());
+    return { id: t.id, title: t.title, due: t.due || '', done: done, late: !!t.due && t.due < td && !done, board: p ? p.name : '', boardId: t.project, color: p ? p.color : '#12A36A', repeats: !!t.rep,
+             link: t.link || '' };
+  }
+  function text(s){ return { type: 'text', text: String(s) }; }
+  function para(s){ return { type: 'paragraph', content: s ? [text(s)] : [] }; }
+  function linkLine(label, url){ return { type: 'paragraph', content: [text(label + ' '), { type: 'text', text: url, marks: [{ type: 'link', attrs: { href: url } }] }] }; }
+  var justDone = {};      // tasks ticked through the browser stay in view for a while, struck through, so a slip can be undone
+
+  window.Work = {
+    // What the browser shows of your work: what is due, your boards, and what you last worked on.
+    day: function(){
+      return Promise.all([T.ready(), D.list().catch(function(){ return []; }), S.list().catch(function(){ return []; })]).then(function(r){
+        var td = key(new Date()), week = key(new Date(Date.now() + 7 * DAY)), now = Date.now();
+        Object.keys(justDone).forEach(function(id){ if(now - justDone[id] > 10 * 60000 || !T.task(id) || !T.isDone(T.task(id))) delete justDone[id]; });
+        var open = T.tasks().filter(function(t){ return !T.isDone(t); });
+        return {
+          late: open.filter(function(t){ return t.due && t.due < td; }).sort(byDue).map(row),
+          today: open.filter(function(t){ return t.due === td; }).sort(byDue).map(row),
+          soon: open.filter(function(t){ return t.due && t.due > td && t.due <= week; }).sort(byDue).slice(0, 10).map(row),
+          done: Object.keys(justDone).map(function(id){ return row(T.task(id)); }),
+          boards: T.projects().map(function(p){ var ts = T.tasks(p.id).filter(function(t){ return !T.isDone(t); }); return { id: p.id, name: p.name, color: p.color, open: ts.length, tasks: ts.sort(function(a, b){ return (a.order || 0) - (b.order || 0); }).slice(0, 60).map(row) }; }),
+          pages: r[1].slice(0, 6).map(function(d){ return { id: d.id, title: d.title || 'Untitled page', at: d.updated, url: 'sleek://app/doc.html?d=' + encodeURIComponent(d.id) }; }),
+          decks: r[2].slice(0, 6).map(function(d){ return { id: d.id, title: d.title || 'Untitled deck', at: d.updated, slides: d.slides || 0, url: 'sleek://app/deck.html?d=' + encodeURIComponent(d.id) }; })
+        };
+      });
+    },
+    // Every deck, page, board and open task by name, for the address box.
+    names: function(){
+      return Promise.all([T.ready(), D.list().catch(function(){ return []; }), S.list().catch(function(){ return []; })]).then(function(r){
+        var out = [];
+        r[2].forEach(function(d){ out.push({ kind: 'slides', title: d.title || 'Untitled deck', url: 'sleek://app/deck.html?d=' + encodeURIComponent(d.id) }); });
+        r[1].forEach(function(d){ out.push({ kind: 'docs', title: d.title || 'Untitled page', url: 'sleek://app/doc.html?d=' + encodeURIComponent(d.id) }); });
+        T.projects().forEach(function(p){ out.push({ kind: 'tasks', title: p.name, url: 'sleek://app/tasks.html#/' + p.id + '/board' }); });
+        T.tasks().filter(function(t){ return !T.isDone(t); }).slice(0, 400).forEach(function(t){ out.push({ kind: 'tasks', title: t.title, url: 'sleek://app/tasks.html#/' + t.project + '/list', task: true }); });
+        return out;
+      });
+    },
+    // A task: its title, the board it goes on (the first, when none is named), when it is due, and where it came from.
+    add: function(o){
+      return T.ready().then(function(){
+        var p = T.project(o.board) || T.projects()[0] || T.addProject({ name: 'My tasks' });
+        var t = T.addTask({ project: p.id, title: o.title, due: o.due || '' }); if(!t) return null;
+        var notes = []; if(o.url) notes.push(linkLine('From', o.url)); if(o.words) notes.push({ type: 'blockquote', content: String(o.words).split(/\n+/).filter(Boolean).slice(0, 40).map(para) });
+        if(notes.length) T.setTask(t.id, { notes: { type: 'doc', content: notes } });
+        return { id: t.id, board: p.name };
+      });
+    },
+    tick: function(id, on){ return T.ready().then(function(){ if(!T.task(id)) return false; T.tick(id, on); if(on) justDone[id] = Date.now(); else delete justDone[id]; return true; }); },
+    // A web page kept as a Docs page: its name, a link back to it, and its words (those selected, or the article's).
+    page: function(o){
+      var blocks = [{ type: 'heading', attrs: { level: 1 }, content: [text(o.title || 'A page from the web')] }, linkLine('Saved from', o.url)];
+      (o.blocks || []).slice(0, 400).forEach(function(b){
+        var s = String(b.t || '').trim(); if(!s) return;
+        if(b.k === 'h') blocks.push({ type: 'heading', attrs: { level: 2 }, content: [text(s.slice(0, 300))] });
+        else if(b.k === 'q') blocks.push({ type: 'blockquote', content: [para(s)] });
+        else blocks.push(para(s));
+      });
+      return D.create({ seed: { kind: 'doc', v: 1, theme: {}, doc: { type: 'doc', content: blocks } } }).then(function(d){ return d ? { id: d.id, title: d.title } : null; });
+    }
+  };
+  // tell the app when tasks change (here, or in any other tab), a moment later so a run of changes is one telling
+  var told = 0;
+  T.ready().then(function(){ T.on(function(){ clearTimeout(told); told = setTimeout(function(){ post({ changed: 'tasks' }); }, 120); }); post({ ready: true }); }, function(e){ post({ failed: String(e) }); });
+})();
+</script>
+</body>
+</html>

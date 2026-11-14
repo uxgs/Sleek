@@ -38,6 +38,27 @@
            transition: opacity .35s ease, transform .5s cubic-bezier(.2,.7,.2,1); background: linear-gradient(90deg, #7C5CFF, #A77BFF 50%, #E58CFF); }
   .bloom img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .tile:has(a:hover) .bloom, .tile:has(a:focus-visible) .bloom { opacity: var(--bloom); transform: translateY(5px) scale(1.08); }
+  /* your day: what is due, from Sleek Tasks, to tick off and add to; and the decks and pages you last worked on */
+  .hello { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; margin: -6px 0 -8px; } .hello b { font-size: 24px; font-weight: 650; letter-spacing: -0.025em; } .hello span { color: var(--muted); }
+  .cols2 { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+  .box { border: 1px solid var(--line); border-radius: 16px; padding: 12px; background: color-mix(in srgb, var(--card) 55%, var(--bg)); display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .box > h2 { margin: 2px 6px 8px; }
+  .quick { display: flex; margin: 0 2px 6px; } .quick input { height: 36px; border-radius: 10px; font-size: 14px; padding: 0 11px; background: var(--bg); }
+  .quick input:focus { box-shadow: 0 0 0 3px color-mix(in srgb, #12A36A 18%, transparent), 0 6px 18px -8px color-mix(in srgb, #12A36A 55%, transparent); border-color: #12A36A; }
+  h3.sec { margin: 8px 6px 2px; font-size: 11px; letter-spacing: .13em; text-transform: uppercase; color: var(--muted); font-weight: 600; } h3.sec.late { color: #D43C2F; }
+  .trow { display: flex; align-items: flex-start; gap: 10px; padding: 6px; border-radius: 9px; transition: background .15s ease, opacity .25s ease; } .trow:hover { background: color-mix(in srgb, var(--fg) 5%, transparent); }
+  .trow .tx { min-width: 0; display: flex; flex-direction: column; } .trow .tx b { font-weight: 500; overflow-wrap: anywhere; } .trow .tx small { color: var(--muted); font-size: 12px; }
+  .trow.done .tx b { text-decoration: line-through; color: var(--muted); }
+  .ck { flex: none; width: 18px; height: 18px; margin-top: 2px; border-radius: 50%; border: 1.5px solid var(--muted); background: none; padding: 0; cursor: pointer; position: relative; transition: background .15s ease, border-color .15s ease, transform .15s ease; }
+  .ck:hover { border-color: #12A36A; transform: scale(1.1); } .ck.on { background: #12A36A; border-color: #12A36A; }
+  .ck.on::after { content: ""; position: absolute; left: 5px; top: 2px; width: 4px; height: 8px; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+  .none { margin: 6px; color: var(--muted); font-size: 14px; }
+  .recent { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  a.rc { display: flex; flex-direction: column; gap: 8px; padding: 10px; border-radius: 12px; border: 1px solid var(--line); text-decoration: none; color: inherit; min-width: 0; transition: transform .25s cubic-bezier(.2,.7,.2,1), border-color .2s ease, box-shadow .3s ease; }
+  a.rc:hover, a.rc:focus-visible { border-color: var(--c); transform: translateY(-2px); outline: none; box-shadow: 0 14px 30px -16px var(--c); }
+  a.rc i { height: 50px; border-radius: 8px; background: linear-gradient(135deg, color-mix(in srgb, var(--c) 85%, #000), color-mix(in srgb, var(--c) 55%, #fff)); display: grid; place-items: center; } a.rc i img { width: 20px; height: auto; filter: brightness(0) invert(1); opacity: .9; }
+  a.rc b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } a.rc small { color: var(--muted); font-size: 12px; }
+  @media (max-width: 680px) { .cols2 { grid-template-columns: minmax(0, 1fr); } }
   /* motion: the page arrives piece by piece; with the cursor in the box, the box comes forward and the rest steps back */
   @keyframes arrive { from { opacity: 0; transform: translateY(14px); } }
   main > * { animation: arrive .5s cubic-bezier(.2,.8,.2,1) backwards; } .still main > * { animation: none; }
@@ -53,7 +74,14 @@
 <main>
   <div class="brand"><img src="sleek://app/icons/logo.svg" alt="">Sleek</div>
   <p class="private" id="private" hidden>Private Browsing: pages you open in this window are not kept in history, and its cookies are forgotten when you close it.</p>
+  <div class="hello" id="hello" hidden><b id="hi"></b><span id="hi-sub"></span></div>
   <form id="f"><input id="q" placeholder="Search the web, or type an address" aria-label="Search the web, or type an address" autocomplete="off" autocapitalize="off" spellcheck="false" autofocus></form>
+  <section id="day" hidden>
+    <div class="cols2">
+      <div class="box"><h2>Today, from Sleek Tasks</h2><div class="quick"><input id="addtask" placeholder="Add a task for today and press Enter" aria-label="Add a task for today" maxlength="300" autocomplete="off"></div><div id="tasks"></div></div>
+      <div class="box"><h2>Pick up where you left off</h2><div class="recent" id="recent"></div></div>
+    </div>
+  </section>
   <section class="apps"><h2>Sleek</h2><div class="grid">
     <div class="tile"><b class="bloom" style="background:linear-gradient(90deg,#7C5CFF,#A77BFF,#E58CFF)"></b><a class="site" href="sleek://app/slides.html"><i><img src="sleek://app/icons/slides.svg" alt=""></i><span>Slides</span></a></div>
     <div class="tile"><b class="bloom" style="background:linear-gradient(90deg,#3D8BFF,#5FA8FF,#7EDBFF)"></b><a class="site" href="sleek://app/docs.html"><i><img src="sleek://app/icons/docs.svg" alt=""></i><span>Docs</span></a></div>
@@ -71,8 +99,29 @@
   function tile(title, url){ var h = host(url), pic = '<img src="sleek://ui/_icon/' + esc(h) + '" alt="" onerror="this.remove()">';
     return '<div class="tile"><b class="bloom">' + pic + '</b><a class="site" href="' + esc(url) + '" title="' + esc(url) + '"><i>' + esc((h.charAt(0) || '?').toUpperCase()) + pic + '</i><span>' + esc(title || h) + '</span></a></div>'; }
   document.getElementById('f').addEventListener('submit', function(e){ e.preventDefault(); var v = document.getElementById('q').value.trim(); if(v) post({ go: v }); });
+  // ---------- your day ----------
+  function $(id){ return document.getElementById(id); }
+  function when(at){ var d = new Date(at), now = new Date(), days = Math.round((new Date(now.getFullYear(), now.getMonth(), now.getDate()) - new Date(d.getFullYear(), d.getMonth(), d.getDate())) / 86400000);
+    return days <= 0 ? 'today' : days === 1 ? 'yesterday' : days < 7 ? d.toLocaleDateString(undefined, { weekday: 'long' }) : d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }); }
+  function dueWord(t){ if(!t.due) return ''; var p = t.due.split('-'), d = new Date(+p[0], +p[1] - 1, +p[2]), now = new Date(), n = Math.round((d - new Date(now.getFullYear(), now.getMonth(), now.getDate())) / 86400000);
+    return n === 0 ? 'Today' : n === 1 ? 'Tomorrow' : n === -1 ? 'Yesterday' : n < 0 ? (-n) + ' days late' : d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric' }); }
+  function taskRow(t){ return '<div class="trow' + (t.done ? ' done' : '') + '"><button type="button" class="ck' + (t.done ? ' on' : '') + '" data-tick="' + esc(t.id) + '" role="checkbox" aria-checked="' + !!t.done + '" aria-label="Done: ' + esc(t.title) + '"></button>' +
+    '<span class="tx"><b>' + esc(t.title) + '</b><small><span style="color:' + esc(t.color) + '">●</span> ' + esc(t.board) + (dueWord(t) ? ' · ' + dueWord(t) : '') + '</small></span></div>'; }
+  function day(d){
+    var has = !!d; $('day').hidden = !has; $('hello').hidden = !has; if(!has) return;
+    var h = new Date().getHours(), n = d.today.length, late = d.late.length;
+    $('hi').textContent = (h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening') + '.';
+    $('hi-sub').textContent = (n ? n + (n === 1 ? ' task' : ' tasks') + ' for today' : 'Nothing due today') + (late ? ', and ' + late + ' overdue' : '') + '.';
+    function sec(name, ts, cls){ return ts.length ? '<h3 class="sec ' + (cls || '') + '">' + name + '</h3>' + ts.map(taskRow).join('') : ''; }
+    $('tasks').innerHTML = (sec('Overdue', d.late, 'late') + sec('Today', d.today) + sec('Next 7 days', d.soon.slice(0, 5)) + sec('Just done', d.done)) || '<p class="none">Nothing is due. Add a task above, or give one a date in Tasks.</p>';
+    var rec = d.decks.map(function(x){ return { c: '#7C5CFF', app: 'slides', t: x.title, url: x.url, at: x.at, sub: 'Slides · ' + (x.slides ? x.slides + (x.slides === 1 ? ' slide' : ' slides') : 'edited ' + when(x.at)) }; })
+      .concat(d.pages.map(function(x){ return { c: '#0A84FF', app: 'docs', t: x.title, url: x.url, at: x.at, sub: 'Docs · edited ' + when(x.at) }; })).sort(function(a, b){ return b.at - a.at; }).slice(0, 4);
+    $('recent').innerHTML = rec.map(function(x){ return '<a class="rc" style="--c:' + x.c + '" href="' + esc(x.url) + '"><i><img src="sleek://app/icons/' + x.app + '.svg" alt=""></i><b>' + esc(x.t) + '</b><small>' + esc(x.sub) + '</small></a>'; }).join('') || '<p class="none" style="grid-column:1/-1">The decks and pages you make will show here.</p>';
+  }
+  $('tasks').addEventListener('click', function(e){ var b = e.target.closest('[data-tick]'); if(!b) return; var on = !b.classList.contains('on'); b.classList.toggle('on', on); b.closest('.trow').classList.toggle('done', on); post({ tick: b.getAttribute('data-tick'), on: on }); });
+  $('addtask').addEventListener('keydown', function(e){ if(e.key === 'Enter'){ var v = this.value.trim(); if(v){ post({ addTask: v }); this.value = ''; } } });
   window.Start = { fill: function(d){
-    document.getElementById('private').hidden = !d.private; if(d.still) document.documentElement.classList.add('still');
+    document.getElementById('private').hidden = !d.private; if(d.still) document.documentElement.classList.add('still'); day(d.day);
     var m = d.bookmarks || [], t = (d.top || []).filter(function(x){ return /^https?:/.test(x.u); });
     document.getElementById('marks').hidden = !m.length; document.getElementById('marks-g').innerHTML = m.map(function(b){ return tile(b.title, b.url); }).join('');
     document.getElementById('top').hidden = !t.length; document.getElementById('top-g').innerHTML = t.map(function(x){ return tile(x.t, x.u); }).join('');

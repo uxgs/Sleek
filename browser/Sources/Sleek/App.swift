@@ -22,6 +22,8 @@ final class App: NSObject, NSApplicationDelegate {
     Blocker.shared.start(dir: dir.appendingPathComponent("lists"))
     Icons.dir = dir.appendingPathComponent("icons")
     Icons.onNew = { [weak self] in self?.windows.forEach { $0.iconsChanged() } }
+    Work.shared.onChange.append { [weak self] in self?.windows.forEach { $0.workChanged() } }
+    if !Res.args.contains("--lists") { Work.shared.start() }
     buildMenu()
     // `--lists`: only make the block lists ready, say what came of it, and quit (for whoever is working on the lists)
     if Res.args.contains("--lists") {

@@ -63,7 +63,7 @@ final class BrowserWindow: NSObject, NSWindowDelegate, WKScriptMessageHandler, W
 
   init(store: Store, isPrivate: Bool = false) {
     self.store = store; self.isPrivate = isPrivate
-    dataStore = isPrivate || Res.selfTest != nil ? .nonPersistent() : .default()
+    dataStore = isPrivate ? .nonPersistent() : Work.store
     window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1280, height: 860), styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView], backing: .buffered, defer: false)
     let c = WKWebViewConfiguration(); c.websiteDataStore = .nonPersistent(); c.setURLSchemeHandler(OwnPages(), forURLScheme: "sleek")
     chrome = ChromeView(frame: .zero, configuration: c)
@@ -210,12 +210,57 @@ final class BrowserWindow: NSObject, NSWindowDelegate, WKScriptMessageHandler, W
       s.tell(["type": "state", "tabs": s.tabs.map { $0.state }, "panes": s.panes, "at": s.at, "n": s.n, "settings": s.store.settings, "bookmarks": s.store.bookmarks, "private": s.isPrivate, "downloads": Downloads.shared.list, "blocker": Blocker.shared.summary]) }
   }
   func tabChanged(_ t: Tab?) { push() }
-  func visited(_ t: Tab) { if !isPrivate, t.kind == "web" { store.visit(url: t.address, title: t.web.title ?? "") }; push() }
+  func visited(_ t: Tab) {
+    if !isPrivate, t.kind == "web" { store.visit(url: t.address, title: t.web.title ?? "") }
+    if !isPrivate, t.kind != "web" { Work.shared.refresh() }      // one of Sleek's own pages loaded: pages and decks may have changed since it was last looked at
+    push()
+  }
   func pageScrolled(_ t: Tab, _ how: String) { if t === current { tell(["type": "scroll", "how": how]) } }
-  /// The start page asks what to show: your bookmarks, and the places you go most.
+  /// The start page asks what to show: your day (what is due, and what you last worked on), your bookmarks, and the
+  /// places you go most. A Private Browsing window shows none of your work or your history.
   func fillStart(_ t: Tab) {
     let top = isPrivate ? [] : Array(store.history.sorted { ($0["n"] as? Int ?? 1) > ($1["n"] as? Int ?? 1) }.prefix(8))
-    t.web.evaluateJavaScript("window.Start && Start.fill(" + json(["bookmarks": store.bookmarks, "top": top, "private": isPrivate, "still": Res.selfTest != nil]) + ")")
+    var all: [String: Any] = ["bookmarks": store.bookmarks, "top": top, "private": isPrivate, "still": Res.selfTest != nil]
+    if !isPrivate, Work.shared.ready { all["day"] = Work.shared.day }
+    t.web.evaluateJavaScript("window.Start && Start.fill(" + json(all) + ")")
+  }
+
+  // ---------- Sleek inside: your work, beside and within the web ----------
+  /// Your tasks, pages or decks changed: the Tasks panel and any new tab showing follow.
+  func workChanged() { if !isPrivate { tell(["type": "work", "day": Work.shared.day]) }; for t in tabs where t.kind == "start" { fillStart(t) } }
+  /// Add a task from the panel or a new tab; say where it went.
+  func addTask(title: String, board: String = "", due: String = "") {
+    Task { @MainActor in if let b = await Work.shared.addTask(title: title, board: board, due: due) { tell(["type": "toast", "text": "Added to " + b]) } else { tell(["type": "toast", "text": "That could not be added"]) } }
+  }
+  /// What Save to Sleek takes from a page: its name and address, the words selected, and otherwise the words of its article.
+  private static let readPage = """
+  (function(){ var sel = String(window.getSelection ? window.getSelection() : '').trim(), out = { title: document.title || location.hostname, url: location.href, sel: sel, blocks: [] };
+    if(sel){ sel.split(/\\n+/).forEach(function(s){ s = s.trim(); if(s) out.blocks.push({ k: 'p', t: s.slice(0, 4000) }); }); return out; }
+    var root = document.querySelector('article') || document.querySelector('main, [role=main]') || document.body, n = 0;
+    Array.prototype.forEach.call(root.querySelectorAll('h2, h3, p, li, blockquote'), function(e){
+      if(n >= 300 || (e.closest && e.closest('nav, header, footer, aside, form, figure, [role=navigation], [aria-hidden=true]'))) return;
+      var tag = e.tagName, t = (e.innerText || '').replace(/\\s+/g, ' ').trim();
+      if(tag === 'P' && t.length < 40) return; if(tag === 'LI' && (t.length < 40 || e.querySelector('p, li'))) return; if(tag === 'BLOCKQUOTE' && e.querySelector('p')) return;
+      if(tag.charAt(0) === 'H' && (t.length < 3 || t.length > 200)) return;
+      out.blocks.push({ k: tag.charAt(0) === 'H' ? 'h' : tag === 'BLOCKQUOTE' ? 'q' : 'p', t: t.slice(0, 4000) }); n++;
+    });
+    return out; })()
+  """
+  /// Save to Sleek: the page you are on becomes a task (with a link back, and the words you selected) or a Docs page.
+  private func saveToSleek(as kind: String, board: String, due: String) {
+    guard let t = current, t.kind == "web" else { return }
+    t.web.evaluateJavaScript(BrowserWindow.readPage) { [weak self] value, _ in
+      let p = value as? [String: Any] ?? [:], title = (p["title"] as? String) ?? (t.web.title ?? ""), url = (p["url"] as? String) ?? t.address
+      let blocks = p["blocks"] as? [[String: Any]] ?? [], sel = p["sel"] as? String ?? ""
+      Task { @MainActor in
+        guard let s = self else { return }
+        if kind == "page" {
+          if let made = await Work.shared.keepPage(title: title, url: url, blocks: blocks) { s.tell(["type": "saved", "text": "Kept as a Docs page", "url": made]) } else { s.tell(["type": "toast", "text": "That could not be saved"]) }
+        } else if let b = await Work.shared.addTask(title: "Read: " + title, board: board, due: due, url: url, words: String(sel.prefix(4000))) {
+          s.tell(["type": "saved", "text": "Added to " + b, "url": ""])
+        } else { s.tell(["type": "toast", "text": "That could not be saved"]) }
+      }
+    }
   }
   /// A site's icon was just kept: new tabs that are showing fill in again, so it appears.
   func iconsChanged() { for t in tabs where t.kind == "start" { fillStart(t) }; push() }
@@ -230,7 +275,7 @@ final class BrowserWindow: NSObject, NSWindowDelegate, WKScriptMessageHandler, W
     guard let m = message.body as? [String: Any], let what = m["do"] as? String else { return }
     let id = m["id"] as? String ?? ""
     switch what {
-    case "ready": ready = true; if tabs.isEmpty { newTab() }; push()
+    case "ready": ready = true; if tabs.isEmpty { newTab() }; push(); if !isPrivate, Work.shared.ready { tell(["type": "work", "day": Work.shared.day]) }
     case "layout":
       chrome.slots = rects(m["slots"]); chrome.solid = rects(m["solid"]); chrome.drag = rects(m["drag"]); chrome.modal = m["modal"] as? Bool ?? false
       let p = (m["lightsAt"] as? [Any])?.compactMap { ($0 as? NSNumber)?.doubleValue }
@@ -262,8 +307,13 @@ final class BrowserWindow: NSObject, NSWindowDelegate, WKScriptMessageHandler, W
       var items = isPrivate ? store.suggest(q).filter { ($0["kind"] as? String) == "bookmark" } : store.suggest(q)
       let have = Set(items.compactMap { ($0["url"] as? String).flatMap { URL(string: $0)?.host }.map(Icons.key) })
       items += Sites.matching(q, limit: 8).filter { !have.contains(Icons.key(URL(string: $0["url"] as? String ?? "")?.host ?? "")) }.prefix(max(2, 6 - items.count))
+      if !isPrivate { items = Work.shared.suggest(q, limit: 3) + items }      // your own decks, pages, boards and tasks come first
       tell(["type": "suggest", "q": q, "items": items, "fill": store.finish(q, known: !isPrivate)])
     case "image": imageChosen(m["how"] as? String ?? "")
+    case "task-add": addTask(title: m["title"] as? String ?? "", board: m["board"] as? String ?? "", due: m["due"] as? String ?? "")
+    case "task-tick": Work.shared.tick(id, m["on"] as? Bool ?? true)
+    case "save": saveToSleek(as: m["as"] as? String ?? "task", board: m["board"] as? String ?? "", due: m["due"] as? String ?? "")
+    case "work": Work.shared.refresh(); if !isPrivate { tell(["type": "work", "day": Work.shared.day]) }
     case "corner":      // immersive: which corner the bar's tile rests in (left or right; top or bottom)
       store.settings["immSide"] = m["side"] as? String == "right" ? "right" : "left"; store.set("barAt", m["at"] as? String == "bottom" ? "bottom" : "top")
     case "history": tell(["type": "history", "items": Array(store.history.prefix(60))])

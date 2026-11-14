@@ -355,15 +355,85 @@ enum SelfTest {
     _ = await page(w.current, "document.body.style.transition = 'none'; document.body.style.opacity = '1'; return 1"); await nap(0.3)
     await shot(w, "10-sleek-tasks", to: out)
 
+    print("Sleek inside")
+    let W = Work.shared
+    func dayList(_ k: String) -> [[String: Any]] { W.day[k] as? [[String: Any]] ?? [] }
+    func titles(_ k: String) -> [String] { dayList(k).compactMap { $0["title"] as? String } }
+    ok = await until(12) { W.ready && titles("today").count == 2 && !dayList("boards").isEmpty }
+    check("the browser itself knows your work: what is due today, and your boards", ok && (dayList("boards").first?["name"] as? String) == "Getting started", [W.ready, titles("today"), dayList("boards").count])
+    // your day, on a new tab
+    await press(w, ".plus"); _ = await until(5) { w.current?.kind == "start" }
+    ok = await until(8) { (await page(w.current, "return document.querySelectorAll('#tasks .trow').length")) as? Int ?? 0 >= 2 }
+    var dayText = (await page(w.current, "return [document.getElementById('hi').textContent, document.getElementById('hi-sub').textContent, [].map.call(document.querySelectorAll('#tasks h3.sec'), function(e){ return e.textContent; }).join('|'), document.getElementById('day').hidden]")) as? [Any] ?? []
+    check("a new tab is your day: a greeting, and today's tasks from Sleek Tasks", ok && ((dayText.first as? String) ?? "").hasPrefix("Good") && ((dayText.dropFirst().first as? String) ?? "").contains("2 tasks for today") && (dayText.last as? Bool) == false, dayText)
+    _ = await page(w.current, "document.querySelector('#tasks [data-tick]').click(); return 1")
+    ok = await until(8) { titles("today").count == 1 && titles("done").count == 1 }
+    check("ticking a task there ticks it in Sleek Tasks", ok, [titles("today"), titles("done")])
+    _ = await page(w.current, "var i = document.getElementById('addtask'); i.value = 'Call the printer'; i.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); return 1")
+    ok = await until(8) { titles("today").contains("Call the printer") }
+    let shownToo = await until(5) { (await page(w.current, "return [].some.call(document.querySelectorAll('#tasks .trow b'), function(b){ return b.textContent === 'Call the printer'; })")) as? Bool == true }
+    check("and a task added there is added for today, and shows at once", ok && shownToo, titles("today"))
+    await nap(0.4); await shot(w, "18-your-day", to: out)
+    // the Tasks panel beside a page
+    _ = await bar(w, "Sleek.test.type('https://example.com'); return Sleek.test.enter()"); _ = await loaded(w, "example.com"); await nap(0.4)
+    let wideBefore = w.chrome.slots.first?.width ?? 0
+    await press(w, "#b-panel"); _ = await until(5) { ((await see(w))["panel"] as? [String: Any]) != nil && (w.chrome.slots.first?.width ?? 0) < wideBefore }
+    s = await see(w); var pn = s["panel"] as? [String: Any] ?? [:]
+    check("the Tasks button opens your tasks beside the page, and the page makes room", (pn["rows"] as? [String] ?? []).contains("Call the printer") && (pn["heads"] as? [String] ?? []).contains("Today") && wideBefore - (w.chrome.slots.first?.width ?? 0) == 300 && w.current?.web.frame == w.chrome.slots[0], [pn, w.chrome.slots])
+    _ = await bar(w, "var i = document.getElementById('padd'); i.focus(); i.value = 'Buy stamps'; i.dispatchEvent(new Event('input', { bubbles: true })); i.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })); return 1")
+    ok = await until(8) { let rows = ((await see(w))["panel"] as? [String: Any])?["rows"] as? [String] ?? []; return titles("today").contains("Buy stamps") && rows.contains("Buy stamps") }
+    check("a task typed in the panel is added for today", ok, titles("today"))
+    _ = await bar(w, "[].filter.call(document.querySelectorAll('.panel .trow'), function(r){ return r.querySelector('b').textContent === 'Buy stamps'; })[0].querySelector('[data-tick]').click(); return 1")
+    ok = await until(8) { !titles("today").contains("Buy stamps") && titles("done").contains("Buy stamps") }
+    check("and ticked there, it is done everywhere", ok, [titles("today"), titles("done")])
+    let boardId = (dayList("boards").first?["id"] as? String) ?? ""
+    _ = await bar(w, "var s = document.getElementById('pview'); s.value = '\(boardId)'; s.dispatchEvent(new Event('change', { bubbles: true })); return 1"); await nap(0.5)
+    s = await see(w); pn = s["panel"] as? [String: Any] ?? [:]
+    check("the panel can show one board instead of Today", (pn["view"] as? String) == boardId && (pn["rows"] as? [String] ?? []).count >= 4, pn)
+    _ = await bar(w, "var s = document.getElementById('pview'); s.value = 'today'; s.dispatchEvent(new Event('change', { bubbles: true })); return 1"); await nap(0.4)
+    await shot(w, "19-tasks-panel", to: out)
+    // Save to Sleek
+    await press(w, ".savebtn"); s = await see(w)
+    check("Sleek's mark in the address box offers to keep the page", (s["pop"] as? String) == "save" && (s["save"] as? Bool) == true, s["pop"])
+    await shot(w, "20-save-to-sleek", to: out)
+    await press(w, "[data-do=dosave]")
+    ok = await until(8) { titles("today").contains("Read: Example Domain") }
+    s = await see(w)
+    check("as a task: “Read: …”, due today, on your board", ok && ((s["toast"] as? String) ?? "").hasPrefix("Added to"), [titles("today"), s["toast"] ?? ""])
+    let noted = (await W.ask("var t = SleekTasks.tasks().filter(function(x){ return x.title === 'Read: Example Domain'; })[0]; return JSON.stringify(t && t.notes)")) as? String ?? ""
+    check("with a link back to the page in its notes", noted.contains("https://example.com/") && noted.contains("\"link\""), noted.prefix(200))
+    await press(w, ".savebtn"); await press(w, "[data-as=page]"); await press(w, "[data-do=dosave]")
+    ok = await until(8) { (dayList("pages").first?["title"] as? String) == "Example Domain" }
+    let pageURL = (dayList("pages").first?["url"] as? String) ?? ""
+    check("or as a Docs page", ok && pageURL.hasPrefix("sleek://app/doc.html?d="), [dayList("pages").compactMap { $0["title"] as? String }])
+    if let u = URL(string: pageURL) {
+      w.newTab(u); _ = await until(15) { (await page(w.current, "return !!document.querySelector('#ed .ProseMirror') && document.querySelector('#ed .ProseMirror').textContent.length > 20")) as? Bool == true }
+      let kept = (await page(w.current, "var e = document.querySelector('#ed .ProseMirror'); return [e.querySelector('h1') ? e.querySelector('h1').textContent : '', !!e.querySelector('a[href=\"https://example.com/\"]'), e.textContent.indexOf('documentation examples') >= 0]")) as? [Any] ?? []
+      check("the page opens in Sleek Docs with its name, a link back, and the article's words", (kept.first as? String) == "Example Domain" && (kept.dropFirst().first as? Bool) == true && (kept.last as? Bool) == true, kept)
+      _ = await page(w.current, "document.body.style.transition = 'none'; document.body.style.opacity = '1'; return 1"); await nap(0.4)
+      await shot(w, "21-kept-page", to: out)
+      if let t = w.current { w.closeTab(t.id) }; await nap(0.3)
+    }
+    // the address box finds your work
+    _ = await bar(w, "Sleek.test.type('getting st'); return 1"); await nap(0.6); s = await see(w)
+    check("typing in the address box finds your boards, pages, decks and tasks", (s["rows"] as? [String] ?? []).contains("tasks:Getting started"), s["rows"])
+    _ = await bar(w, "document.getElementById('url').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); return 1"); await nap(0.3)
+    await press(w, "#b-panel"); await nap(0.4); s = await see(w)
+    check("the panel closes again, and the page takes the room back", s["panel"] is NSNull || s["panel"] == nil, s["panel"])
+
     print("closing, and a private window")
     let before = w.tabs.count; if let t = w.current { w.closeTab(t.id) }; await nap(0.4)
     check("closing a tab shows another", w.tabs.count == before - 1 && w.current != nil && !(w.current!.web.isHidden), w.tabs.count)
     let p = App.shared.newWindow(isPrivate: true); _ = await until(8) { !p.tabs.isEmpty && !p.chrome.slots.isEmpty }
     _ = await bar(p, "return Sleek.test.still()")
+    _ = await until(6) { (await page(p.current, "return !!window.Start && document.getElementById('private').hidden === false")) as? Bool == true }
+    let privDay = (await page(p.current, "return document.getElementById('day').hidden")) as? Bool
     let n0 = w.store.history.count
     _ = await bar(p, "Sleek.test.type('example.org'); return Sleek.test.enter()"); _ = await loaded(p, "example.org"); await nap(0.5)
     let ps = await see(p)
     check("a private window is dark, keeps no history, and has its own cookies", p.isPrivate && (ps["mode"] as? String) == "dark" && w.store.history.count == n0 && !p.dataStore.isPersistent, [ps["mode"] ?? "", w.store.history.count - n0])
+    let noPanelButton = (await bar(p, "return !document.getElementById('b-panel')")) as? Bool == true
+    check("and shows none of your work: no day on its new tab, no Tasks panel, no Save to Sleek", privDay == true && (ps["save"] as? Bool) == false && (ps["work"] as? Bool) == false && noPanelButton, [privDay as Any, ps["save"] ?? "", ps["work"] ?? ""])
     await shot(p, "11-private", to: out)
     p.window.close()
     w.store.flush()

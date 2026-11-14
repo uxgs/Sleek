@@ -36,8 +36,11 @@ final class OwnPages: NSObject, WKURLSchemeHandler {
       } else { task.didReceive(HTTPURLResponse(url: url, statusCode: 404, httpVersion: "HTTP/1.1", headerFields: ["Content-Type": "text/plain"])!); task.didReceive(Data()); task.didFinish() }
       return
     }
-    let base = url.host == "ui" ? Res.root.appendingPathComponent("chrome") : Res.site
-    var path = url.path; if path.isEmpty || path == "/" { path = "/index.html" }
+    // sleek://app/_bridge.html is the app's own door to your work (Work.swift): it lives with the bar's pages, but is served
+    // beside Slides, Docs and Tasks so that it shares their storage
+    let bridge = url.host == "app" && url.path == "/_bridge.html"
+    let base = url.host == "ui" || bridge ? Res.root.appendingPathComponent("chrome") : Res.site
+    var path = bridge ? "/bridge.html" : url.path; if path.isEmpty || path == "/" { path = "/index.html" }
     let file = base.appendingPathComponent(String(path.dropFirst())).standardizedFileURL
     guard file.path.hasPrefix(base.standardizedFileURL.path), let data = try? Data(contentsOf: file) else {
       task.didReceive(HTTPURLResponse(url: url, statusCode: 404, httpVersion: "HTTP/1.1", headerFields: ["Content-Type": "text/plain"])!)
