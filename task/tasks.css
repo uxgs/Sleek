@@ -19,7 +19,8 @@ button, input, select { font: inherit; color: inherit; }
 .side { width: 244px; flex: none; display: flex; flex-direction: column; gap: 3px; padding: 12px 10px calc(10px + env(safe-area-inset-bottom, 0px)) max(10px, env(safe-area-inset-left, 0px)); border-right: 1px solid var(--d-line); min-height: 0; overflow-y: auto; }
 .brand { display: flex; align-items: center; gap: 9px; padding: 3px 6px 10px; font-weight: 700; font-size: 16px; letter-spacing: -0.03em; color: var(--d-fg); text-decoration: none; border-radius: 8px; }
 .brand img { display: block; width: 22px; height: auto; }
-.brand span { color: var(--d-muted); font-weight: 500; letter-spacing: -0.01em; }
+.brand a { display: inline-flex; align-items: center; gap: 9px; color: var(--d-muted); text-decoration: none; border-radius: 6px; transition: color .15s ease; } .brand a:hover, .brand a:focus-visible { color: var(--d-fg); }
+.brand i { font-style: normal; font-weight: 400; color: var(--d-faint); margin: 0 -3px; } .brand b { font-weight: 700; }
 .nav { position: relative; display: flex; align-items: center; gap: 9px; width: 100%; min-height: 34px; padding: 5px 9px; border: 0; border-radius: 9px; background: none; text-align: left; cursor: pointer; flex: none; }
 .nav:hover, .nav:focus-within { background: var(--d-hover); }
 .nav.on { background: var(--d-soft); font-weight: 600; }
@@ -249,7 +250,7 @@ select.cx option { color: var(--d-fg); background: var(--d-raise); font-weight: 
   .tk { flex-direction: column; }
   .side { width: auto; flex-direction: row; align-items: center; gap: 6px; border-right: 0; border-bottom: 1px solid var(--d-line); overflow-x: auto; padding: 8px max(10px, env(safe-area-inset-right, 0px)) 8px max(10px, env(safe-area-inset-left, 0px)); scrollbar-width: none; }
   .side::-webkit-scrollbar { display: none; }
-  .side h4, .brand span, .side-foot .hide-s { display: none; } .brand { padding: 0 4px 0 0; flex: none; }
+  .side h4, .brand i, .brand b, .side-foot .hide-s { display: none; } .brand a { font-size: 0; gap: 0; } .brand { padding: 0 4px 0 0; flex: none; }
   .nav { width: auto; flex: none; } .nav > em { display: none !important; } .nav .more { display: grid; }
   .side-foot { margin: 0; padding: 0; flex: none; flex-wrap: nowrap; }
   .col { min-width: min(280px, 78vw); } .top h1 { font-size: 16px; }

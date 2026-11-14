@@ -90,7 +90,7 @@
   var naming = false;
   function shell(){
     var due = T.tasks().filter(function(t){ return !T.isDone(t) && t.due && away(t) <= 0; }).length, isToday = state.view === 'today';
-    var h = '<a class="brand" href="index.html" title="Sleek: pick an app"><img src="icons/tasks.svg" alt="" width="22" height="20">Sleek <span>Tasks</span></a>' +
+    var h = '<nav class="brand" aria-label="Where you are"><a href="index.html" title="Back to Sleek, to pick another app"><img src="icons/tasks.svg" alt="" width="22" height="20">Sleek</a><i aria-hidden="true">/</i><b>Tasks</b></nav>' +
       '<button type="button" class="nav' + (isToday ? ' on' : '') + '" data-go="today"' + (isToday ? ' aria-current="page"' : '') + '><i class="dot"></i><span>Today</span><em>' + (due || '') + '</em></button><h4>Projects</h4>';
     T.projects().forEach(function(p){
       var on = !isToday && p.id === state.proj, n = T.tasks(p.id).filter(function(t){ return !T.isDone(t); }).length;
@@ -98,7 +98,7 @@
         '<span class="more" role="button" tabindex="0" data-pmore="' + p.id + '" aria-label="More for ' + esc(p.name) + '" aria-haspopup="true">⋯</span></div>';
     });
     h += '<button type="button" class="nav new" data-do="newproject"><i></i><span>New project</span></button>' +
-      '<div class="side-foot"><a href="slides.html" data-slug="slides">Slides</a><a href="docs.html" data-slug="docs">Docs</a><span class="grow"></span>' +
+      '<div class="side-foot"><span class="grow"></span>' +
       '<button type="button" data-do="news" class="hide-s" aria-haspopup="true">' + (window.SLEEK_TASK_CHANGES ? 'v' + window.SLEEK_TASK_CHANGES[0].v : '') + '</button><button type="button" data-do="look" title="Light or dark" aria-label="Light or dark">◐</button></div>';
     if(!naming) side.innerHTML = h;
     var p = T.project(state.proj);

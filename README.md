@@ -13,7 +13,7 @@ Your work stays in your browser; the one thing Sleek can send anywhere is
 [who is viewing a deck](#see-whos-viewing), and only for a deck you switch that on for.
 
 The front page asks which one you want. Each app also has a short address on the hosted site,
-`/slides`, `/docs` and `/tasks`, and each can switch to the others. Each app has its own version number
+`/slides`, `/docs` and `/tasks`. In each app, “Sleek” beside its name goes back to the front page. Each app has its own version number
 and What's new. Most of this page is about Sleek Slides.
 
 **Open it** from the link in this repo's About box (it's hosted on GitHub Pages), or run your own copy
