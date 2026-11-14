@@ -217,6 +217,42 @@ enum SelfTest {
     print("   on nytimes.com the shield counted:", w.current?.blocked ?? [:])
     await shot(w, "13-real-site", to: out)
 
+    print("pull down to refresh")
+    // The stroke is handed to the tab as the trackpad would hand it over; the page's say comes from a real wheel event in the page.
+    _ = await bar(w, "Sleek.test.type('https://example.com'); return Sleek.test.enter()"); _ = await loaded(w, "example.com"); await nap(0.5)
+    if let pt = w.current {
+      func begin(_ js: String = "") async { pt.wheel(phase: .began, dx: 0, dy: 0); _ = await page(pt, js + "document.body.dispatchEvent(new WheelEvent('wheel', { deltaY: -20, bubbles: true, cancelable: true })); return 1"); _ = await until(4) { pt.pageSays != nil } }
+      func move(_ dy: Double, dx: Double = 0) async { for _ in 0..<5 { pt.wheel(phase: .changed, dx: dx / 5, dy: dy / 5) }; await nap(0.3) }
+      func lift() async { pt.wheel(phase: .ended, dx: 0, dy: 0); await nap(0.5) }
+      func same() async -> Bool { (await page(pt, "return window.__same === 1")) as? Bool == true }
+      func arrow() async -> [String: Any]? { (await see(w))["pull"] as? [String: Any] }
+      _ = await page(pt, "window.__same = 1; return 1")
+      await begin(); await move(60); var a = await arrow(); let slot = w.chrome.slots[0]
+      check("a pull at the top of a page brings an arrow down from the top of that page", pt.pulled == 0.5 && (a?["cls"] as? String) == "ptr" && (a?["top"] as? Int) == Int(slot.minY) && (a?["width"] as? Int) == Int(slot.width) && (a?["y"] as? Int ?? -99) > -30 && (a?["y"] as? Int ?? 99) < 10, [pt.pulled, a ?? [:]])
+      await lift(); a = await arrow(); var kept = await same()
+      check("let go too soon, and nothing happens", kept && a == nil && !pt.refreshing, [kept, a ?? [:]])
+      await begin(); await move(70); await move(70); a = await arrow()
+      check("pulled far enough, the arrow says so", pt.pulled >= 1 && (a?["cls"] as? String) == "ptr ready", [pt.pulled, a ?? [:]])
+      await shot(w, "14-pull", to: out)
+      pt.wheel(phase: .ended, dx: 0, dy: 0)
+      check("letting go then starts the page loading again, and the arrow turns", pt.refreshing, pt.refreshing)
+      ok = await until(12) { !(await same()) && !pt.web.isLoading }
+      let gone = await until(5) { !pt.refreshing }; a = await arrow()
+      check("the page is loaded again, and the arrow goes", ok && gone && a == nil, [ok, gone, a ?? [:]])
+      _ = await page(pt, "window.__same = 1; document.body.style.minHeight = '4000px'; window.scrollTo(0, 300); return 1")
+      await begin(); await move(200); a = await arrow(); await lift(); kept = await same()
+      check("a page that is scrolled down is not pulled", pt.pageSays == false && a == nil && kept && !pt.refreshing, [pt.pageSays as Any, a ?? [:], kept])
+      _ = await page(pt, "window.scrollTo(0, 0); return 1")
+      await begin(); await move(20, dx: 200); await move(200); a = await arrow(); await lift(); kept = await same()
+      check("a stroke that goes sideways is not a pull", a == nil && kept && !pt.refreshing, [a ?? [:], kept])
+      await begin("window.addEventListener('wheel', function(e){ e.preventDefault(); }, { passive: false }); "); await move(200); a = await arrow(); await lift(); kept = await same()
+      check("a page that uses the wheel itself (a map) is not pulled", pt.pageSays == false && a == nil && kept && !pt.refreshing, [pt.pageSays as Any, a ?? [:], kept])
+      if let own = w.tabs.first(where: { $0.kind == "start" }) {
+        own.wheel(phase: .began, dx: 0, dy: 0); for _ in 0..<5 { own.wheel(phase: .changed, dx: 0, dy: 50) }; let far = own.pulled; own.wheel(phase: .ended, dx: 0, dy: 0)
+        check("Sleek's own pages are not pulled", far == 0 && !own.refreshing, far)
+      }
+    }
+
     print("Sleek's own apps")
     await press(w, "[data-pin=tasks]"); ok = await until(15) { (await page(w.current, "return !!(window.SleekTasks && window.SleekTaskApp && SleekTasks.projects().length)")) as? Bool == true }
     s = await see(w)

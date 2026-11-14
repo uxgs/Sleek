@@ -26,6 +26,8 @@ final class ChromeView: WKWebView {
     _ = w; return fallsThrough(own(sup.convert(point, to: nil))) ? nil : super.hitTest(point)
   }
   override func mouseMoved(with event: NSEvent) { if !fallsThrough(own(event.locationInWindow)) { super.mouseMoved(with: event) } }
+  /// Which page a point of the window is over (0, 1, 2, 3), or nil where the bar has something of its own.
+  func page(at pointInWindow: NSPoint) -> Int? { let p = own(pointInWindow); return fallsThrough(p) ? slots.firstIndex { $0.contains(p) } : nil }
 }
 /// Holds the pages; a press that misses every page goes on to the bare window behind.
 final class PagesView: FlippedView { override func hitTest(_ point: NSPoint) -> NSView? { let v = super.hitTest(point); return v === self ? nil : v } }
@@ -64,12 +66,25 @@ final class BrowserWindow: NSObject, NSWindowDelegate, WKScriptMessageHandler, W
     chrome.load(URLRequest(url: URL(string: "sleek://ui/chrome.html")!))
     applyLook()
     // reaching for the edge the bar lives on calls it back when it is hidden (immersive)
-    monitor = NSEvent.addLocalMonitorForEvents(matching: [.mouseMoved]) { [weak self] e in
-      if let s = self, e.window === s.window { let h = s.window.contentLayoutRect.height, y = e.locationInWindow.y, bottom = (s.store.settings["barAt"] as? String) == "bottom"
-        let near = bottom ? y < 14 : h - y < 14; if near != s.nearEdge { s.nearEdge = near; s.tell(["type": "edge", "near": near]) } }
+    // and two fingers moving over a page are watched for a pull down to refresh (the page still gets them)
+    monitor = NSEvent.addLocalMonitorForEvents(matching: [.mouseMoved, .scrollWheel]) { [weak self] e in
+      guard let s = self, e.window === s.window else { return e }
+      if e.type == .scrollWheel { s.wheel(e); return e }
+      let h = s.window.contentLayoutRect.height, y = e.locationInWindow.y, bottom = (s.store.settings["barAt"] as? String) == "bottom"
+      let near = bottom ? y < 14 : h - y < 14; if near != s.nearEdge { s.nearEdge = near; s.tell(["type": "edge", "near": near]) }
       return e
     }
   }
+
+  // ---------- pull down to refresh ----------
+  private weak var pullTab: Tab?
+  /// A stroke of the trackpad belongs to the page it began over, until the fingers lift.
+  private func wheel(_ e: NSEvent) {
+    if e.phase.contains(.began) || e.phase.contains(.mayBegin) { pullTab = chrome.page(at: e.locationInWindow).flatMap { $0 < panes.count ? tab(panes[$0]) : nil } }
+    pullTab?.wheel(e)
+  }
+  /// Tell the bar how far the arrow has come over a page, or that the page is loading again.
+  func pullChanged(_ t: Tab) { tell(["type": "pull", "id": t.id, "by": t.pulled, "going": t.refreshing]) }
 
   // ---------- tabs ----------
   var current: Tab? { tabs.first { $0.id == (at < panes.count ? panes[at] : "") } ?? tabs.first }

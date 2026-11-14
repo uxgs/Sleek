@@ -23,6 +23,21 @@ final class Tab: NSObject, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegat
     document.addEventListener('DOMContentLoaded', icon); window.addEventListener('load', icon); window.addEventListener('pageshow', icon);      // pageshow: a page brought back by Back or Forward
     var last = window.scrollY; window.addEventListener('scroll', function(){ var y = window.scrollY; if(y <= 0 && last > 0) post({ scroll: 'top' }); else if(y > last + 4) post({ scroll: 'down' }); last = y; }, { passive: true, capture: true });
     window.addEventListener('wheel', function(e){ if(e.deltaY < 0 && window.scrollY <= 0) post({ scroll: 'top' }); }, { passive: true });
+    // pull down to refresh: the page says whether a pull here may refresh it. Not when it is scrolled down, when a
+    // box inside it is, when the page uses the wheel itself (a map), or when it has said it wants no such thing.
+    var pOk = null, pSent = 0, pAt = 0, pT = null, pFree = true, NO = /none|contain/;
+    function free(t){ try { var d = document.documentElement, b = document.body;
+        if(NO.test(getComputedStyle(d).overscrollBehaviorY) || (b && NO.test(getComputedStyle(b).overscrollBehaviorY))) return false;
+        for(var el = t; el && el.nodeType === 1 && el !== b && el !== d; el = el.parentElement){ if(el.scrollHeight > el.clientHeight + 1){ var s = getComputedStyle(el); if(/auto|scroll/.test(s.overflowY) && NO.test(s.overscrollBehaviorY)) return false; } }
+      } catch(e){} return true; }
+    window.addEventListener('wheel', function(e){
+      var now = Date.now(), t = e.target; if(t !== pT || now - pAt > 400){ pT = t; pFree = free(t); } pAt = now;
+      setTimeout(function(){      // after the page's own listeners, so we know whether it took the wheel for itself
+        var ok = pFree && !e.defaultPrevented && !e.ctrlKey && window.scrollY <= 0, d = document.scrollingElement;
+        for(var el = t; ok && el && el.nodeType === 1; el = el.parentElement) if(el !== d && el.scrollTop > 0) ok = false;
+        if(ok !== pOk || now - pSent > 80){ pOk = ok; pSent = now; post({ pull: ok }); }
+      }, 0);
+    }, { passive: true });
   })();
   """
 
@@ -66,7 +81,7 @@ final class Tab: NSObject, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegat
     web.navigationDelegate = self; web.uiDelegate = self
     web.allowsBackForwardNavigationGestures = true
     web.allowsMagnification = true
-    let tell: (WKWebView, Any) -> Void = { [weak self] _, _ in Task { @MainActor in self?.owner?.tabChanged(self) } }
+    let tell: (WKWebView, Any) -> Void = { [weak self] _, _ in Task { @MainActor in self?.owner?.tabChanged(self); self?.refreshed() } }
     watching = [web.observe(\.title, changeHandler: tell), web.observe(\.url, changeHandler: tell), web.observe(\.isLoading, changeHandler: tell),
                 web.observe(\.estimatedProgress, changeHandler: tell), web.observe(\.canGoBack, changeHandler: tell), web.observe(\.canGoForward, changeHandler: tell)]
   }
@@ -86,6 +101,38 @@ final class Tab: NSObject, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegat
   func rule(_ webView: WKWebView, list identifier: String, did action: NSObject, for url: URL) {
     guard action.responds(to: Selector(("blockedLoad"))), (action.value(forKey: "blockedLoad") as? Bool) == true else { return }
     blocked[identifier.contains("-ads-") ? "ads" : identifier.contains("-privacy-") ? "trackers" : "cookies", default: 0] += 1; owner?.tabChanged(self)
+  }
+
+  // ---------- pull down to refresh ----------
+  // Two fingers pulling down on a page that is at its top: an arrow comes down from the top of the page, and
+  // letting go once it has come far enough loads the page again. Only on the web, only with a trackpad or a
+  // mouse you stroke (a wheel has no "letting go"), and only where the page says a pull is free (its script, above).
+  static let pullAt = 120.0                // how far a pull has to go, in points
+  private var pulling = false, pull = 0.0, sideways = 0.0
+  private(set) var refreshing = false, pageSays: Bool?      // pageSays: what the page said of this stroke; nothing yet, a pull is free here, or it is not
+  private var refreshedAt = Date.distantPast
+  /// How far the arrow has come, 0 to a little over 1 (1 is far enough).
+  var pulled: Double { pulling && pageSays == true ? min(1.4, pull / Tab.pullAt) : 0 }
+  func wheel(_ e: NSEvent) { if e.hasPreciseScrollingDeltas, e.momentumPhase == [] { wheel(phase: e.phase, dx: e.scrollingDeltaX, dy: e.scrollingDeltaY) } }
+  func wheel(phase: NSEvent.Phase, dx: Double, dy: Double) {
+    if phase.contains(.began) || phase.contains(.mayBegin) { pulling = !refreshing && ["http", "https"].contains(web.url?.scheme ?? ""); pull = 0; sideways = 0; pageSays = nil }
+    guard pulling else { return }
+    if phase.contains(.ended) {
+      let go = pulled >= 1; pulling = false
+      if go { refreshing = true; refreshedAt = Date(); mine = true; web.reload(); DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in self?.refreshed() } }
+      owner?.pullChanged(self)
+    } else if phase.contains(.cancelled) { stopPull() }
+    else if phase.contains(.began) || phase.contains(.changed) {
+      sideways += abs(dx); pull = max(0, pull + dy)
+      if sideways > 12 && sideways > pull { stopPull() } else { owner?.pullChanged(self) }      // going sideways is Back and Forward, not this
+    }
+  }
+  private func stopPull() { if pulling { pulling = false; owner?.pullChanged(self) } }
+  /// The page has loaded again (or given up): the arrow has turned for at least a moment, and goes.
+  private func refreshed() {
+    guard refreshing, !web.isLoading else { return }
+    DispatchQueue.main.asyncAfter(deadline: .now() + max(0, 0.6 - Date().timeIntervalSince(refreshedAt))) { [weak self] in
+      guard let s = self, s.refreshing, !s.web.isLoading else { return }; s.refreshing = false; s.owner?.pullChanged(s) }
   }
 
   var address: String { web.url?.absoluteString ?? "" }
@@ -108,6 +155,7 @@ final class Tab: NSObject, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegat
     guard message.frameInfo.isMainFrame, let m = message.body as? [String: Any] else { return }
     if let i = m["icon"] as? String, i != icon { icon = i; owner?.tabChanged(self) }
     if let s = m["scroll"] as? String { owner?.pageScrolled(self, s) }
+    if let ok = m["pull"] as? Bool, pulling { if ok { if pageSays == nil { pageSays = true; owner?.pullChanged(self) } } else { pageSays = false; stopPull() } }
     if let b = m["blocked"] as? String { blocked[b == "notification" ? "notes" : "cookies", default: 0] += 1; owner?.tabChanged(self) }
     // Sleek's own start page asks for what to show, and says where to go
     if message.frameInfo.request.url?.scheme == "sleek" { if m["want"] as? String == "start" { owner?.fillStart(self) }; if let text = m["go"] as? String { owner?.navigate(text, in: self) } }

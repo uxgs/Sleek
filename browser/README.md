@@ -19,6 +19,11 @@ This is Stage 2: the browser itself, and blocking. It is not yet a public downlo
   floats over it, fading away after a moment and coming back when you scroll up to the top or reach
   for its edge.
 - **Look**: light, dark or matching the Mac, and six themes.
+- **Pull down to refresh**: with a trackpad, pull down on a page that is at its top. An arrow comes
+  down from the top of the page; let go once it turns purple and the page loads again. It leaves
+  alone a page that is scrolled down, a sideways stroke (that is Back and Forward), pages that use
+  the wheel themselves such as maps, and Sleek's own pages. A mouse with a plain wheel has no
+  "letting go", so it doesn't pull.
 - **History, downloads, find on the page, zoom, print, a private window**, and the usual menu bar
   with its shortcuts.
 - Pages may ask to open a new tab, upload a file, or use the camera or microphone (Sleek asks you).

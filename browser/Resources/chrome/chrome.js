@@ -116,7 +116,29 @@
     if(imm && (L.pop || L.typed != null || L.find)) win.classList.add('show');
     place();
     if(keep){ var again = document.getElementById(keep); if(again){ again.focus(); try { again.setSelectionRange(a0, a1); } catch(e){} } }
-    report();
+    report(); pullDraw();
+  }
+  // ---------- pull down to refresh: an arrow that comes down from the top of the page being pulled ----------
+  // It lives outside #win so that drawing the bar again doesn't start its turning over. L.pull is what the app
+  // last said: which tab, how far (1 is far enough to let go), and whether the page is loading again.
+  var ptr = null, ptrT = 0;
+  function pullDraw(){
+    var p = L.pull, i = p ? S.panes.indexOf(p.id) : -1, slot = i >= 0 ? $$('.slot')[i] : null;
+    if(!ptr){ if(!p) return; ptr = document.createElement('div'); ptr.className = 'sk ptrc'; ptr.hidden = true; ptr.innerHTML = '<div class="ptr">' + ico('reload') + '</div>'; document.body.appendChild(ptr); }
+    var a = ptr.firstChild;
+    if(!slot || (!p.going && p.by <= 0)){
+      L.pull = null; if(ptr.hidden) return;
+      a.style.opacity = 0; clearTimeout(ptrT); if(L.still) ptr.hidden = true; else ptrT = setTimeout(function(){ ptr.hidden = true; }, 220);
+      return;
+    }
+    clearTimeout(ptrT);
+    var r = slot.getBoundingClientRect(), top = r.top, by = p.going ? 1 : p.by;
+    if(S.settings.imm && S.settings.barAt !== 'bottom' && win.classList.contains('show')) top = Math.max(top, $('#bar').getBoundingClientRect().bottom + 4);      // immersive: come out from under the floating bar
+    ptr.setAttribute('data-mode', win.getAttribute('data-mode') || ''); ptr.classList.toggle('still', !!L.still); ptr.hidden = false;
+    ptr.style.left = r.left + 'px'; ptr.style.top = top + 'px'; ptr.style.width = r.width + 'px'; ptr.style.height = Math.max(0, r.bottom - top) + 'px';
+    a.className = 'ptr' + (p.going ? ' going' : by >= 1 ? ' ready' : '');
+    a.style.transform = 'translateY(' + (-44 + 66 * Math.min(1, by) + 30 * Math.max(0, by - 1)).toFixed(1) + 'px)'; a.style.opacity = p.going ? 1 : Math.min(1, by * 2.5).toFixed(2);
+    a.firstChild.style.transform = p.going ? '' : 'rotate(' + Math.round(by * 300) + 'deg)';
   }
   function when(at){ var d = new Date(at * 1000), now = new Date(); return d.toDateString() === now.toDateString() ? d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) : d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }); }
   // put what floats beside what it came from: under it with the bar at the top, over it with the bar at the bottom
@@ -246,6 +268,7 @@
       else if(m.type === 'edge'){ L.reach = !!m.near; if(m.near) showBar(); else { clearTimeout(immT); immT = setTimeout(hideBar, 1400); } }
       else if(m.type === 'scroll'){ if(m.how === 'top') showBar(); else if(!busy()){ clearTimeout(immT); win.classList.remove('show'); report(); } }
       else if(m.type === 'full'){ L.full = !!m.on; paint(); }
+      else if(m.type === 'pull'){ L.pull = { id: m.id, by: +m.by || 0, going: !!m.going }; pullDraw(); }
     },
     // for the app's own checks: press something, type in the address box, and say what is showing
     test: {
@@ -253,7 +276,7 @@
       click: function(sel){ var e = $(sel); if(!e) return false; e.click(); return true; },
       type: function(text){ $('#url').focus(); var u = $('#url'); u.focus(); u.value = text; u.dispatchEvent(new Event('input', { bubbles: true })); return true; },      // focusing draws the bar again, so the box is found a second time
       enter: function(){ var u = document.activeElement; if(!u) return false; u.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })); return true; },
-      see: function(){ var b = $('#bar').getBoundingClientRect(); return { tabs: $$('.tab .tt').map(function(e){ return e.textContent; }), on: ($('.tab.on .tt') || {}).textContent || '', url: $('#url').value, pop: L.pop, rows: (L.rows || []).map(function(r){ return r.kind + ':' + r.title; }), marks: $$('.bbar .bm[data-bm] span:last-child').map(function(e){ return e.textContent; }), star: !!$('.star.on'), shield: ($('.shield') || {}).textContent || '', shieldOff: !!$('.shield.off'), blockerReady: S.blocker.ready,
+      see: function(){ var b = $('#bar').getBoundingClientRect(); return { tabs: $$('.tab .tt').map(function(e){ return e.textContent; }), on: ($('.tab.on .tt') || {}).textContent || '', url: $('#url').value, pop: L.pop, rows: (L.rows || []).map(function(r){ return r.kind + ':' + r.title; }), marks: $$('.bbar .bm[data-bm] span:last-child').map(function(e){ return e.textContent; }), star: !!$('.star.on'), shield: ($('.shield') || {}).textContent || '', shieldOff: !!$('.shield.off'), blockerReady: S.blocker.ready, pull: ptr && !ptr.hidden ? { cls: ptr.firstChild.className, y: Math.round(ptr.firstChild.getBoundingClientRect().top - ptr.getBoundingClientRect().top), left: Math.round(ptr.getBoundingClientRect().left), top: Math.round(ptr.getBoundingClientRect().top), width: Math.round(ptr.getBoundingClientRect().width) } : null,
         panes: $$('.pane').length, ring: $$('.pane.on').length, barTop: Math.round(b.top), barBottom: Math.round(b.bottom), height: win.clientHeight, cls: win.className, mode: win.getAttribute('data-mode'), find: !!$('#findbox'), miss: L.miss, toast: L.toast ? L.toast.text : '', floating: getComputedStyle($('#bar')).position === 'absolute' }; }
     }
   };
