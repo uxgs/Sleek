@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleName</key><string>Sleek</string>
+  <key>CFBundleDisplayName</key><string>Sleek</string>
+  <key>CFBundleIdentifier</key><string>com.sleek.browser</string>
+  <key>CFBundleExecutable</key><string>Sleek</string>
+  <key>CFBundleIconFile</key><string>Sleek</string>
+  <key>CFBundlePackageType</key><string>APPL</string>
+  <key>CFBundleShortVersionString</key><string>0.1.0</string>
+  <key>CFBundleVersion</key><string>1</string>
+  <key>LSMinimumSystemVersion</key><string>14.0</string>
+  <key>LSApplicationCategoryType</key><string>public.app-category.productivity</string>
+  <key>NSHighResolutionCapable</key><true/>
+  <key>NSPrincipalClass</key><string>NSApplication</string>
+  <key>NSSupportsAutomaticTermination</key><false/>
+  <key>NSAppTransportSecurity</key><dict><key>NSAllowsArbitraryLoadsInWebContent</key><true/></dict>
+  <key>NSCameraUsageDescription</key><string>A site you are on asked to use the camera. Sleek asks you before letting it.</string>
+  <key>NSMicrophoneUsageDescription</key><string>A site you are on asked to use the microphone. Sleek asks you before letting it.</string>
+  <key>CFBundleURLTypes</key>
+  <array><dict><key>CFBundleURLName</key><string>Web address</string><key>CFBundleTypeRole</key><string>Viewer</string><key>CFBundleURLSchemes</key><array><string>http</string><string>https</string></array></dict></array>
+  <key>CFBundleDocumentTypes</key>
+  <array><dict><key>CFBundleTypeName</key><string>Web page</string><key>CFBundleTypeRole</key><string>Viewer</string><key>LSHandlerRank</key><string>Alternate</string><key>LSItemContentTypes</key><array><string>public.html</string><string>public.xhtml</string></array></dict></array>
+</dict>
+</plist>

@@ -162,6 +162,11 @@ others at once, and so does any Sleek Docs page that shows a task, a list or a b
 mode **Choose tasks** picks the project, a board or a list, and whether done tasks show. Pictures and
 clips go in the picture store every Sleek app shares.
 
+## Sleek, the browser
+
+A Mac app that browses the web with Slides, Docs and Tasks inside it is being built in the
+[browser](browser/README.md) folder. It is not a public download yet.
+
 ## The sample deck
 
 A launch story for Pace, a made-up fitness app. It has one slide per layout, and each slide's speaker
