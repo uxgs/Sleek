@@ -20,6 +20,8 @@ final class App: NSObject, NSApplicationDelegate {
     Downloads.shared.onChange.append { [weak self] in self?.windows.forEach { $0.push() } }
     Blocker.shared.onChange.append { [weak self] in self?.windows.forEach { $0.blockerChanged() } }
     Blocker.shared.start(dir: dir.appendingPathComponent("lists"))
+    Icons.dir = dir.appendingPathComponent("icons")
+    Icons.onNew = { [weak self] in self?.windows.forEach { $0.iconsChanged() } }
     buildMenu()
     // `--lists`: only make the block lists ready, say what came of it, and quit (for whoever is working on the lists)
     if Res.args.contains("--lists") {
@@ -65,7 +67,7 @@ final class App: NSObject, NSApplicationDelegate {
     let main = NSMenu(), sep = { NSMenuItem.separator() }
     main.addItem(menu("Sleek", [item("About Sleek", "", [], #selector(NSApplication.orderFrontStandardAboutPanel(_:))), sep(), item("Look…", ",", [.command], #selector(look)), item("Make Sleek the Default Browser", "", [], #selector(makeDefaultMenu)), sep(),
                            item("Hide Sleek", "h", [.command], #selector(NSApplication.hide(_:))), item("Quit Sleek", "q", [.command], #selector(NSApplication.terminate(_:)))]))
-    main.addItem(menu("File", [item("New Tab", "t", [.command], #selector(newTab)), item("New Window", "n", [.command], #selector(newWin)), item("New Private Window", "n", [.command, .shift], #selector(newPrivate)), sep(),
+    main.addItem(menu("File", [item("New Tab", "t", [.command], #selector(newTab)), item("New Window", "n", [.command], #selector(newWin)), item("New Private Browsing Window", "n", [.command, .shift], #selector(newPrivate)), sep(),
                           item("Open Location…", "l", [.command], #selector(address)), sep(), item("Close Tab", "w", [.command], #selector(closeTab)), item("Print…", "p", [.command], #selector(printPage))]))
     main.addItem(menu("Edit", [item("Undo", "z", [.command], Selector(("undo:"))), item("Redo", "z", [.command, .shift], Selector(("redo:"))), sep(), item("Cut", "x", [.command], #selector(NSText.cut(_:))), item("Copy", "c", [.command], #selector(NSText.copy(_:))),
                           item("Paste", "v", [.command], #selector(NSText.paste(_:))), item("Select All", "a", [.command], #selector(NSText.selectAll(_:))), sep(), item("Find…", "f", [.command], #selector(find))]))

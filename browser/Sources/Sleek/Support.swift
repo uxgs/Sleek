@@ -28,6 +28,14 @@ final class OwnPages: NSObject, WKURLSchemeHandler {
     "svg": "image/svg+xml", "png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg", "webp": "image/webp", "gif": "image/gif", "mp4": "video/mp4", "webm": "video/webm", "woff2": "font/woff2", "ico": "image/x-icon"]
   func webView(_ webView: WKWebView, start task: WKURLSchemeTask) {
     guard let url = task.request.url else { task.didFailWithError(URLError(.badURL)); return }
+    // sleek://ui/_icon/<site>: the icon Sleek kept for a site, if it has one
+    if url.host == "ui", url.path.hasPrefix("/_icon/") {
+      if let f = Icons.file(url.lastPathComponent), let d = try? Data(contentsOf: f), let type = Icons.type(d) {
+        task.didReceive(HTTPURLResponse(url: url, statusCode: 200, httpVersion: "HTTP/1.1", headerFields: ["Content-Type": type, "Content-Length": "\(d.count)", "Cache-Control": "max-age=3600"])!)
+        task.didReceive(d); task.didFinish()
+      } else { task.didReceive(HTTPURLResponse(url: url, statusCode: 404, httpVersion: "HTTP/1.1", headerFields: ["Content-Type": "text/plain"])!); task.didReceive(Data()); task.didFinish() }
+      return
+    }
     let base = url.host == "ui" ? Res.root.appendingPathComponent("chrome") : Res.site
     var path = url.path; if path.isEmpty || path == "/" { path = "/index.html" }
     let file = base.appendingPathComponent(String(path.dropFirst())).standardizedFileURL

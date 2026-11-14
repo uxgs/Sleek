@@ -28,6 +28,19 @@ final class ChromeView: WKWebView {
   override func mouseMoved(with event: NSEvent) { if !fallsThrough(own(event.locationInWindow)) { super.mouseMoved(with: event) } }
   /// Which page a point of the window is over (0, 1, 2, 3), or nil where the bar has something of its own.
   func page(at pointInWindow: NSPoint) -> Int? { let p = own(pointInWindow); return fallsThrough(p) ? slots.firstIndex { $0.contains(p) } : nil }
+  // a picture dropped on the bar itself (the tabs, the address row): Sleek asks what to do with it
+  var onImage: ((DroppedImage) -> Void)?, imagesIn: URL?
+  private func image(_ s: NSDraggingInfo) -> DroppedImage? { imagesIn.flatMap { DroppedImage.from(s.draggingPasteboard, keepIn: $0) } }
+  private func hasImage(_ s: NSDraggingInfo) -> Bool {
+    let pb = s.draggingPasteboard, urls = (pb.readObjects(forClasses: [NSURL.self], options: nil) as? [URL]) ?? []
+    return urls.contains { DroppedImage.isImage($0) } || (urls.isEmpty && pb.availableType(from: [.png, .tiff]) != nil)
+  }
+  override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation { hasImage(sender) ? .copy : [] }
+  override func draggingUpdated(_ sender: NSDraggingInfo) -> NSDragOperation { hasImage(sender) ? .copy : [] }
+  override func draggingExited(_ sender: NSDraggingInfo?) {}
+  override func prepareForDragOperation(_ sender: NSDraggingInfo) -> Bool { hasImage(sender) }
+  override func performDragOperation(_ sender: NSDraggingInfo) -> Bool { guard let i = image(sender) else { return false }; onImage?(i); return true }
+  override func concludeDragOperation(_ sender: NSDraggingInfo?) {}
 }
 /// Holds the pages; a press that misses every page goes on to the bare window behind.
 final class PagesView: FlippedView { override func hitTest(_ point: NSPoint) -> NSView? { let v = super.hitTest(point); return v === self ? nil : v } }
@@ -66,14 +79,50 @@ final class BrowserWindow: NSObject, NSWindowDelegate, WKScriptMessageHandler, W
     chrome.load(URLRequest(url: URL(string: "sleek://ui/chrome.html")!))
     applyLook()
     // reaching for the edge the bar lives on calls it back when it is hidden (immersive)
-    // and two fingers moving over a page are watched for a pull down to refresh (the page still gets them)
-    monitor = NSEvent.addLocalMonitorForEvents(matching: [.mouseMoved, .scrollWheel]) { [weak self] e in
+    // Two fingers moving over a page are watched for a pull down to refresh, and a press on a page closes
+    // whatever hangs from the bar (suggestions, a menu). The page still gets both.
+    monitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .scrollWheel]) { [weak self] e in
       guard let s = self, e.window === s.window else { return e }
-      if e.type == .scrollWheel { s.wheel(e); return e }
-      let h = s.window.contentLayoutRect.height, y = e.locationInWindow.y, bottom = (s.store.settings["barAt"] as? String) == "bottom"
-      let near = bottom ? y < 14 : h - y < 14; if near != s.nearEdge { s.nearEdge = near; s.tell(["type": "edge", "near": near]) }
+      if e.type == .scrollWheel { s.wheel(e) } else if s.chrome.page(at: e.locationInWindow) != nil { s.tell(["type": "away"]) }
       return e
     }
+    chrome.onImage = { [weak self] image in self?.imageDropped(image) }
+    chrome.imagesIn = store.dir.appendingPathComponent("dropped")
+    chrome.registerForDraggedTypes([.fileURL, .URL, .png, .tiff])
+  }
+
+  // ---------- the window's own buttons ----------
+  // The red, yellow and green buttons sit where the bar says: in the tab row, which in immersive is inside the
+  // floating bar, so they come and go with it. (The Mac lays them out afresh whenever the window changes, so
+  // this is done again each time it does.)
+  private var lightsAt: NSPoint?, lightsHome: (height: CGFloat, origins: [NSPoint])?
+  private var lights: [NSButton] { [.closeButton, .miniaturizeButton, .zoomButton].compactMap { window.standardWindowButton($0) } }
+  func placeLights() {
+    let b = lights; guard b.count == 3, let strip = b[0].superview?.superview, !window.styleMask.contains(.fullScreen) else { return }
+    if lightsHome == nil { lightsHome = (strip.frame.height, b.map { $0.frame.origin }) }
+    guard let home = lightsHome else { return }
+    let step = home.origins[1].x - home.origins[0].x, h = b[0].frame.height
+    let tall = lightsAt.map { h + 2 * $0.y } ?? home.height
+    var f = strip.frame; f.size.height = tall; f.origin.y = window.frame.height - tall; strip.frame = f
+    for (i, button) in b.enumerated() { button.setFrameOrigin(lightsAt.map { NSPoint(x: $0.x + CGFloat(i) * step, y: (tall - h) / 2) } ?? home.origins[i]) }
+  }
+  private func showLights(_ show: Bool) {
+    if show == lightsShown { return }; lightsShown = show
+    let b = lights; if show { b.forEach { $0.isHidden = false } }
+    NSAnimationContext.runAnimationGroup({ c in c.duration = Res.selfTest != nil ? 0 : 0.3; b.forEach { $0.animator().alphaValue = show ? 1 : 0 } }, completionHandler: { [weak self] in if self?.lightsShown == false { b.forEach { $0.isHidden = true } } })
+  }
+  func windowDidResize(_ notification: Notification) { placeLights() }
+  func windowDidBecomeKey(_ notification: Notification) { placeLights() }
+  func windowDidResignKey(_ notification: Notification) { placeLights() }
+
+  // ---------- a picture dragged in ----------
+  private var dropped: DroppedImage?
+  /// Ask what to do with a picture that was dropped on the bar, on a new tab, or on a page with no use for it.
+  func imageDropped(_ image: DroppedImage) { dropped = image; tell(["type": "image", "name": image.name, "thumb": image.thumb]) }
+  private func imageChosen(_ how: String) {
+    guard let d = dropped else { return }; dropped = nil
+    if how == "open", let u = d.file ?? d.url { newTab(u) }
+    else if how == "search", let r = d.search { let t = Tab(configuration: Tab.configuration(store: dataStore), owner: self); tabs.append(t); t.go(r); select(t.id) }
   }
 
   // ---------- pull down to refresh ----------
@@ -159,6 +208,8 @@ final class BrowserWindow: NSObject, NSWindowDelegate, WKScriptMessageHandler, W
     let top = isPrivate ? [] : Array(store.history.sorted { ($0["n"] as? Int ?? 1) > ($1["n"] as? Int ?? 1) }.prefix(8))
     t.web.evaluateJavaScript("window.Start && Start.fill(" + json(["bookmarks": store.bookmarks, "top": top, "private": isPrivate]) + ")")
   }
+  /// A site's icon was just kept: new tabs that are showing fill in again, so it appears.
+  func iconsChanged() { for t in tabs where t.kind == "start" { fillStart(t) }; push() }
   private func applyLook() {
     let look = store.settings["look"] as? String ?? "auto"
     window.appearance = isPrivate || look == "dark" ? NSAppearance(named: .darkAqua) : look == "light" ? NSAppearance(named: .aqua) : nil
@@ -173,8 +224,9 @@ final class BrowserWindow: NSObject, NSWindowDelegate, WKScriptMessageHandler, W
     case "ready": ready = true; if tabs.isEmpty { newTab() }; push()
     case "layout":
       chrome.slots = rects(m["slots"]); chrome.solid = rects(m["solid"]); chrome.drag = rects(m["drag"]); chrome.modal = m["modal"] as? Bool ?? false
-      let show = m["lights"] as? Bool ?? true
-      if show != lightsShown { lightsShown = show; [.closeButton, .miniaturizeButton, .zoomButton].forEach { window.standardWindowButton($0)?.isHidden = !show } }
+      let p = (m["lightsAt"] as? [Any])?.compactMap { ($0 as? NSNumber)?.doubleValue }
+      lightsAt = p?.count == 2 ? NSPoint(x: p![0], y: p![1]) : nil; placeLights()
+      showLights(m["lights"] as? Bool ?? true)
       arrange()
     case "go": navigate(m["text"] as? String ?? "")
     case "open": if let u = URL(string: m["url"] as? String ?? "") { if m["new"] as? Bool == true { newTab(u) } else { current?.go(u); focusPage() } }
@@ -196,7 +248,13 @@ final class BrowserWindow: NSObject, NSWindowDelegate, WKScriptMessageHandler, W
       guard let t = current, let h = t.web.url?.host else { return }
       var off = blockOff.filter { $0 != h }; if m["on"] as? Bool == false { off.append(h) }
       store.set("blockOff", off); t.mine = true; t.web.reload()
-    case "suggest": let q = m["q"] as? String ?? ""; tell(["type": "suggest", "q": q, "items": isPrivate ? store.suggest(q).filter { ($0["kind"] as? String) == "bookmark" } : store.suggest(q)])
+    case "suggest":      // places you know (bookmarks, history) first, then well-known sites; and how to finish the address being typed
+      let q = m["q"] as? String ?? ""
+      var items = isPrivate ? store.suggest(q).filter { ($0["kind"] as? String) == "bookmark" } : store.suggest(q)
+      let have = Set(items.compactMap { ($0["url"] as? String).flatMap { URL(string: $0)?.host }.map(Icons.key) })
+      items += Sites.matching(q, limit: 8).filter { !have.contains(Icons.key(URL(string: $0["url"] as? String ?? "")?.host ?? "")) }.prefix(max(2, 6 - items.count))
+      tell(["type": "suggest", "q": q, "items": items, "fill": store.finish(q, known: !isPrivate)])
+    case "image": imageChosen(m["how"] as? String ?? "")
     case "history": tell(["type": "history", "items": Array(store.history.prefix(60))])
     case "clearHistory": store.clearHistory(); tell(["type": "history", "items": []])
     case "find":

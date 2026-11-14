@@ -15,8 +15,10 @@ html, body { margin: 0; height: 100%; background: transparent; overflow: hidden;
       --k-hover: rgba(255,255,255,0.08); --f0: #26262D; --k-warn: #FF7B72; --k-good: #5EE0A0; --k-shadow: 0 24px 60px -18px rgba(0,0,0,0.8); color-scheme: dark; }
 .sk { --k-chrome: color-mix(in srgb, var(--tint, #7C5CFF) var(--tp, 0%), var(--c0)); --k-bar: color-mix(in srgb, var(--tint, #7C5CFF) var(--tp2, 0%), var(--b0)); --k-field: color-mix(in srgb, var(--tint, #7C5CFF) var(--tp3, 0%), var(--f0)); }
 .sk.private { --c0: #2A2140; --b0: #221A35; --f0: #33284D; }
+.priv { flex: none; height: 24px; padding: 0 10px; border-radius: 12px; display: inline-flex; align-items: center; font-size: 11.5px; font-weight: 600; letter-spacing: .01em; color: #E9DDFF; background: color-mix(in srgb, #A77BFF 34%, transparent); white-space: nowrap; }
 .sk button, .sk input, .sk select { font: inherit; color: inherit; }
 .sk :is(button, input, a, [tabindex]):focus-visible { outline: 2px solid var(--k-accent); outline-offset: 2px; }
+.sk input:focus-visible { outline: none; }      /* a field shows focus itself: a ring that follows its own shape, and a soft light behind it */
 .win { position: fixed; inset: 0; display: flex; flex-direction: column; }
 
 /* ---------- the bar ---------- */
@@ -35,12 +37,16 @@ html, body { margin: 0; height: 100%; background: transparent; overflow: hidden;
 .tab .spin { flex: none; width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--k-line2); border-top-color: var(--k-accent); animation: spin .8s linear infinite; } @keyframes spin { to { transform: rotate(360deg); } }
 .tab.in::after { content: ""; position: absolute; left: 10px; right: 10px; bottom: 2px; height: 2px; border-radius: 2px; background: var(--k-accent); opacity: .5; } .tab.on.in::after { opacity: 0; }
 .plus { align-self: center; flex: none; width: 28px; height: 28px; border: 0; border-radius: 8px; background: none; cursor: pointer; font-size: 18px; line-height: 1; color: var(--k-muted) !important; } .plus:hover { background: var(--k-hover); color: var(--k-fg) !important; }
-.tool { flex: none; display: flex; align-items: center; gap: 6px; height: 46px; padding: 0 10px; background: var(--k-bar); border-bottom: 1px solid var(--k-line); position: relative; }
+.tool { flex: none; display: flex; align-items: center; gap: 6px; height: 46px; padding: 0 10px; background: var(--k-bar); border-bottom: 1px solid var(--k-line); position: relative; isolation: isolate; }
 .ib { flex: none; height: 32px; min-width: 32px; padding: 0 8px; border: 0; border-radius: 9px; background: none; cursor: pointer; color: var(--k-muted) !important; display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-size: 12.5px; font-weight: 500; white-space: nowrap; }
 .ib:hover, .ib[aria-expanded="true"], .ib.on { background: var(--k-hover); color: var(--k-fg) !important; } .ib:disabled { opacity: .32; background: none; }
 svg.i { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: none; }
-.addr { flex: 1; min-width: 0; height: 32px; display: flex; align-items: center; gap: 4px; padding: 0 4px 0 8px; border-radius: 10px; background: var(--k-field); border: 1.5px solid transparent; }
+.addr { flex: 1; min-width: 0; height: 32px; display: flex; align-items: center; gap: 4px; padding: 0 4px 0 8px; border-radius: 10px; background: var(--k-field); border: 1.5px solid transparent; position: relative; transition: border-color .15s ease, background .15s ease; }
 .addr:focus-within { background: var(--k-bg); border-color: var(--k-accent); }
+/* the bloom: with the cursor in the box, a soft light in Sleek's colours sits behind it (as behind a deck's tile in Slides) */
+.addr::before { content: ""; position: absolute; inset: -1px 6px -3px; z-index: -1; border-radius: 14px; pointer-events: none; opacity: 0; filter: blur(12px); transition: opacity .3s ease;
+                background: linear-gradient(90deg, var(--k-accent), color-mix(in srgb, var(--k-accent) 60%, #FFFFFF) 50%, color-mix(in srgb, var(--k-accent) 40%, #FF8CD9)); }
+.addr:focus-within::before { opacity: .42; } .sk[data-mode="dark"] .addr:focus-within::before { opacity: .55; }
 .addr input { flex: 1; min-width: 0; height: 100%; border: 0; background: none; outline: none; font-size: 13px; -webkit-user-select: text; user-select: text; cursor: text; }
 .addr input::placeholder { color: var(--k-faint); }
 .sec { flex: none; display: inline-flex; align-items: center; gap: 5px; color: var(--k-muted); font-size: 12px; } .sec img { width: 16px; height: auto; display: block; } .sec.warn { color: var(--k-warn); font-weight: 600; } .sec svg.i { width: 14px; height: 14px; }
@@ -80,20 +86,34 @@ svg.i { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-widt
 .pane-h > span:not(.ic) { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pane-h button { flex: none; width: 20px; height: 20px; border: 0; border-radius: 6px; background: none; cursor: pointer; color: var(--k-faint) !important; font-size: 14px; line-height: 1; } .pane-h button:hover { background: var(--k-hover); color: var(--k-fg) !important; }
 
-/* ---------- immersive: the bar is a card floating over the page ---------- */
-.win.imm .chrome { position: absolute; z-index: 16; left: 10px; right: 10px; top: 10px; border-radius: 16px; overflow: hidden; border: 1px solid var(--k-line2); box-shadow: 0 18px 44px -18px rgba(0,0,0,.5);
-  opacity: 0; transform: translateY(-12px); pointer-events: none; transition: opacity .4s ease, transform .4s cubic-bezier(.2,.8,.2,1); }
-.win.imm.bottom .chrome { top: auto; bottom: 10px; transform: translateY(12px); }
-.win.imm.show .chrome { opacity: 1; transform: none; pointer-events: auto; }
+/* ---------- immersive: the bar is a card floating over the page ----------
+   When it goes away it draws itself in to a small tile holding Sleek's mark, in the corner where the window's
+   buttons were; resting the pointer on the tile opens it out again. (chrome.js knows these sizes too: IMM.) */
+.win.imm .chrome { position: absolute; z-index: 16; left: 10px; top: 10px; width: 46px; height: 38px; border-radius: 14px; overflow: hidden; border: 1px solid var(--k-line2); background: var(--k-chrome);
+  box-shadow: 0 10px 24px -12px rgba(0,0,0,.55); pointer-events: none;
+  transition: width .5s cubic-bezier(.32,.72,0,1), height .5s cubic-bezier(.32,.72,0,1), border-radius .5s cubic-bezier(.32,.72,0,1), box-shadow .4s ease, transform .25s cubic-bezier(.32,.72,0,1); }
+.win.imm.bottom .chrome { top: auto; bottom: 10px; }
+.win.imm.show .chrome { width: calc(100% - 20px); height: 88px; border-radius: 16px; box-shadow: 0 18px 44px -18px rgba(0,0,0,.5); pointer-events: auto; }
+.win.imm .tabs, .win.imm .tool { width: calc(100vw - 22px); opacity: 0; transition: opacity .16s ease; }      /* they keep their width while the card closes over them */
+.win.imm.show .tabs, .win.imm.show .tool { opacity: 1; transition: opacity .28s ease .14s; }
+.isle { display: none; }
+.win.imm .isle { display: block; position: absolute; left: 11px; top: 50%; width: 22px; height: auto; margin-top: -9px; opacity: 1; pointer-events: none; transition: opacity .22s ease .16s, transform .45s cubic-bezier(.32,.72,0,1); }
+.win.imm.show .isle { opacity: 0; transform: scale(.5); transition: opacity .12s ease, transform .3s ease; top: 19px; }
+.win.imm:not(.show):has(.peek:hover) .chrome { transform: scale(1.07); }
 .win.imm .tabs { background: color-mix(in srgb, var(--k-chrome) 96%, transparent); } .win.imm .tool { background: color-mix(in srgb, var(--k-bar) 97%, transparent); border: 0; }
 .win.imm .bbar, .win.imm .titlestrip { display: none; } .win.imm .tabs { --lights: 80px; } .win.imm.bottom .tabs, .win.imm.full .tabs { --lights: 10px; }
-.peek { position: absolute; z-index: 15; left: 50%; top: 5px; width: 44px; height: 5px; margin-left: -22px; border: 0; border-radius: 3px; background: var(--k-fg); opacity: .25; cursor: pointer; padding: 0; mix-blend-mode: difference; } .win.bottom .peek { top: auto; bottom: 5px; }
+/* what takes the pointer while the bar is drawn in: it lies over the tile, with a little room round it. Resting on it opens the bar. */
+.peek { position: absolute; z-index: 17; left: 4px; top: 4px; width: 58px; height: 50px; border: 0; background: none; cursor: pointer; padding: 0; } .win.bottom .peek { top: auto; bottom: 4px; }
 .win.imm.show .peek, .win:not(.imm) .peek { display: none; }
+@media (prefers-reduced-motion: reduce) { .win.imm .chrome, .win.imm .isle { transition: none; } }
 
 /* ---------- what opens from the bar ---------- */
 .pop { position: absolute; z-index: 20; width: 320px; max-width: calc(100% - 16px); max-height: calc(100% - 120px); overflow-y: auto; padding: 12px; border-radius: 14px; background: var(--k-raise); border: 1px solid var(--k-line2); box-shadow: var(--k-shadow); display: flex; flex-direction: column; gap: 8px; }
 .pop h4 { margin: 0; font-size: 13.5px; font-weight: 600; } .pop p { margin: 0; font-size: 12px; color: var(--k-muted); } .pop .line { height: 1px; background: var(--k-line); flex: none; }
-.pop input[type=text] { height: 32px; border-radius: 8px; border: 1px solid var(--k-line2); background: var(--k-bg); padding: 0 9px; width: 100%; -webkit-user-select: text; user-select: text; }
+.pop .imgq { display: flex; align-items: center; gap: 12px; min-width: 0; } .pop .imgq img { flex: none; width: 64px; height: 64px; border-radius: 10px; object-fit: cover; background: var(--k-hover); }
+.pop .imgq .two { display: flex; flex-direction: column; min-width: 0; } .pop .imgq b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; } .pop .imgq i { font-style: normal; color: var(--k-muted); font-size: 12.5px; }
+.pop input[type=text] { height: 32px; border-radius: 8px; border: 1px solid var(--k-line2); background: var(--k-bg); padding: 0 9px; width: 100%; -webkit-user-select: text; user-select: text; transition: border-color .15s ease, box-shadow .2s ease; }
+.pop input[type=text]:focus, .findbox input:focus { border-color: var(--k-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--k-accent) 18%, transparent), 0 4px 16px -4px color-mix(in srgb, var(--k-accent) 50%, transparent); }
 .pop.menu { width: 270px; gap: 1px; padding: 6px; }
 .mi { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; padding: 7px 9px; border: 0; border-radius: 8px; background: none; cursor: pointer; text-align: left; flex: none; } .mi:hover { background: var(--k-hover); } .mi small { color: var(--k-faint); font-size: 11.5px; white-space: nowrap; }
 .mi .two { display: flex; flex-direction: column; min-width: 0; } .mi .two b { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .mi .two i { font-style: normal; font-size: 11.5px; color: var(--k-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -123,6 +143,6 @@ svg.i { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-widt
 .toast { position: absolute; z-index: 40; left: 50%; transform: translateX(-50%); max-width: calc(100% - 32px); padding: 9px 14px; border-radius: 12px; background: #1C1C21; color: #F2F2F5; font-size: 13px; display: flex; gap: 12px; align-items: center; box-shadow: 0 16px 40px -16px rgba(0,0,0,.6); white-space: nowrap; }
 .toast button { border: 0; background: none; color: #B9A7FF !important; font-weight: 600; cursor: pointer; padding: 0; }
 .still *, .still *::before, .still *::after { transition: none !important; animation: none !important; }
-@media (prefers-reduced-motion: reduce) { .win.imm .chrome { transition: opacity .2s linear; transform: none !important; } .tab .spin { animation-duration: 2s; } }
+@media (prefers-reduced-motion: reduce) { .tab .spin { animation-duration: 2s; } }
 /* an icon sits over a letter; if the icon can't be had, the letter shows */
 .ic { position: relative; } .ic img { position: absolute; inset: 0; background: var(--k-bar); } .ic.mk img { position: static; background: none; }

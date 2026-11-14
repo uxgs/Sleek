@@ -23,6 +23,13 @@ final class Tab: NSObject, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegat
     document.addEventListener('DOMContentLoaded', icon); window.addEventListener('load', icon); window.addEventListener('pageshow', icon);      // pageshow: a page brought back by Back or Forward
     var last = window.scrollY; window.addEventListener('scroll', function(){ var y = window.scrollY; if(y <= 0 && last > 0) post({ scroll: 'top' }); else if(y > last + 4) post({ scroll: 'down' }); last = y; }, { passive: true, capture: true });
     window.addEventListener('wheel', function(e){ if(e.deltaY < 0 && window.scrollY <= 0) post({ scroll: 'top' }); }, { passive: true });
+    // a picture dragged in from outside: if nothing on the page takes it, Sleek does (and asks whether to open it or search for it).
+    // Sleek's own apps are left to themselves: they take dropped files in their own ways.
+    if(!(location.protocol === 'sleek:' && location.host === 'app')){
+      var pic = function(e){ var it = e.dataTransfer && e.dataTransfer.items; if(!it) return false; for(var i = 0; i < it.length; i++) if(it[i].kind === 'file' && /^image\\//.test(it[i].type)) return true; return false; };
+      window.addEventListener('dragover', function(e){ if(!e.defaultPrevented && pic(e)){ e.preventDefault(); try { e.dataTransfer.dropEffect = 'copy'; } catch(x){} } });
+      window.addEventListener('drop', function(e){ if(!e.defaultPrevented && pic(e)){ e.preventDefault(); post({ drop: 'free' }); } });
+    }
     // pull down to refresh: the page says whether a pull here may refresh it. Not when it is scrolled down, when a
     // box inside it is, when the page uses the wheel itself (a map), or when it has said it wants no such thing.
     var pOk = null, pSent = 0, pAt = 0, pT = null, pFree = true, NO = /none|contain/;
@@ -73,9 +80,10 @@ final class Tab: NSObject, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegat
   }
 
   init(configuration: WKWebViewConfiguration, owner: BrowserWindow) {
-    web = WKWebView(frame: .zero, configuration: configuration)
+    let view = PageView(frame: .zero, configuration: configuration); web = view
     self.owner = owner
     super.init()
+    view.onDrop = { [weak self] pb in if let s = self, let dir = s.owner?.store.dir.appendingPathComponent("dropped"), let image = DroppedImage.from(pb, keepIn: dir) { s.drop = (image, Date()) } }
     configuration.userContentController.add(Weak(self), name: "sleekPage")
     applyBlocking(false)
     web.navigationDelegate = self; web.uiDelegate = self
@@ -148,13 +156,17 @@ final class Tab: NSObject, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegat
     return ["id": id, "url": address, "kind": k, "title": t.isEmpty ? (k == "start" ? "New tab" : web.url?.host ?? "New tab") : t, "loading": web.isLoading, "progress": web.estimatedProgress,
             "back": web.canGoBack, "fwd": web.canGoForward, "icon": icon, "zoom": Int((web.pageZoom * 100).rounded()), "blockOn": blocking, "blocked": blocked, "host": web.url?.host ?? ""]
   }
-  func go(_ url: URL) { icon = ""; mine = true; web.load(URLRequest(url: url)) }
+  func go(_ url: URL) { icon = ""; mine = true; if url.isFileURL { web.loadFileURL(url, allowingReadAccessTo: url) } else { web.load(URLRequest(url: url)) } }
+  func go(_ request: URLRequest) { icon = ""; mine = true; web.load(request) }
+  /// A picture just dropped on this page. If the page takes it, nothing more happens; if the engine sets off to show the bare picture, Sleek asks instead.
+  var drop: (image: DroppedImage, at: Date)?
 
   // ---------- what the page tells the browser ----------
   func userContentController(_ c: WKUserContentController, didReceive message: WKScriptMessage) {
     guard message.frameInfo.isMainFrame, let m = message.body as? [String: Any] else { return }
-    if let i = m["icon"] as? String, i != icon { icon = i; owner?.tabChanged(self) }
+    if let i = m["icon"] as? String, i != icon { icon = i; owner?.tabChanged(self); if owner?.isPrivate == false, let h = web.url?.host { Icons.keep(host: h, from: i) } }
     if let s = m["scroll"] as? String { owner?.pageScrolled(self, s) }
+    if m["drop"] != nil, let d = drop, Date().timeIntervalSince(d.at) < 3 { drop = nil; owner?.imageDropped(d.image) }      // a dropped picture nothing on the page took
     if let ok = m["pull"] as? Bool, pulling { if ok { if pageSays == nil { pageSays = true; owner?.pullChanged(self) } } else { pageSays = false; stopPull() } }
     if let b = m["blocked"] as? String { blocked[b == "notification" ? "notes" : "cookies", default: 0] += 1; owner?.tabChanged(self) }
     // Sleek's own start page asks for what to show, and says where to go
@@ -170,6 +182,8 @@ final class Tab: NSObject, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegat
     // ⌘-click opens the link in a new tab behind this one
     if action.navigationType == .linkActivated, action.modifierFlags.contains(.command), let u = action.request.url { owner?.newTab(u, select: false); decisionHandler(.cancel, preferences); return }
     if action.targetFrame?.isMainFrame == true, let u = action.request.url {
+      // a picture dropped on a page that had no use for it: ask what to do with it, rather than replace the page with the bare picture
+      if let d = drop, !mine, Date().timeIntervalSince(d.at) < 2 { drop = nil; owner?.imageDropped(d.image); decisionHandler(.cancel, preferences); return }
       // a page that sends you off to a site that only ever serves pop-up adverts: no
       if blocking, !mine, action.navigationType == .other, Blocker.shared.isPopupHost(u.host) { blocked["popups", default: 0] += 1; owner?.tabChanged(self); decisionHandler(.cancel, preferences); return }
       let want = owner?.blockingWanted(for: u) ?? false

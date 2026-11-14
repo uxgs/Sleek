@@ -8,7 +8,7 @@ import Foundation
 
 final class Store {
   let dir: URL
-  var settings: [String: Any] = ["look": "auto", "theme": "graphite", "barAt": "top", "imm": false, "bar": true, "search": "https://duckduckgo.com/"]
+  var settings: [String: Any] = ["look": "auto", "theme": "graphite", "barAt": "top", "imm": false, "bar": false, "search": "https://duckduckgo.com/"]
   var bookmarks: [[String: Any]] = []
   var history: [[String: Any]] = []
   var onChange: [() -> Void] = []
@@ -18,6 +18,7 @@ final class Store {
     self.dir = dir
     try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
     if let s = read("settings") as? [String: Any] { for (k, v) in s { settings[k] = v } }
+    if settings["barSet"] == nil { settings["bar"] = false }      // the bookmarks bar starts hidden; once you show or hide it yourself, that is kept
     if let b = read("bookmarks") as? [[String: Any]] { bookmarks = b }
     if let h = read("history") as? [[String: Any]] { history = h }
   }
@@ -31,7 +32,7 @@ final class Store {
   func flush() { write("settings", settings); write("bookmarks", bookmarks); write("history", history) }
   private func changed() { onChange.forEach { $0() } }
 
-  func set(_ key: String, _ value: Any) { settings[key] = value; soon("settings"); changed() }
+  func set(_ key: String, _ value: Any) { settings[key] = value; if key == "bar" { settings["barSet"] = true }; soon("settings"); changed() }
   var search: String { settings["search"] as? String ?? "https://duckduckgo.com/" }
 
   func bookmark(for url: String) -> [String: Any]? { bookmarks.first { ($0["url"] as? String) == url } }
@@ -49,6 +50,18 @@ final class Store {
   }
   func retitle(url: String, title: String) { if let i = history.firstIndex(where: { ($0["u"] as? String) == url }), !title.isEmpty { history[i]["t"] = title; soon("history") } }
   func clearHistory() { history = []; soon("history"); changed() }
+  /// How to finish an address that is being typed: the site you go to most that begins that way, then a bookmark,
+  /// then a well-known site. What was typed comes back as typed, with the rest added; nothing when there is no match.
+  func finish(_ typed: String, known: Bool) -> String {
+    let q = typed.lowercased(); if q.isEmpty || q.contains(" ") || q.contains("/") || q.contains(":") { return "" }
+    let bare = q.hasPrefix("www.") ? String(q.dropFirst(4)) : q; if bare.isEmpty { return "" }
+    func site(_ address: String?) -> String? { guard let h = address.flatMap({ URL(string: $0)?.host?.lowercased() }) else { return nil }; return h.hasPrefix("www.") ? String(h.dropFirst(4)) : h }
+    var sites: [String] = []
+    if known { sites += history.prefix(400).sorted { ($0["n"] as? Int ?? 1) > ($1["n"] as? Int ?? 1) }.compactMap { site($0["u"] as? String) } }
+    sites += bookmarks.compactMap { site($0["url"] as? String) } + Sites.all.map { $0.host }
+    guard let s = sites.first(where: { $0.hasPrefix(bare) && $0.count > bare.count }) else { return "" }
+    return typed + s.dropFirst(bare.count)
+  }
   /// Pages from history and bookmarks whose title or address has every word typed; most visited and most recent first.
   func suggest(_ typed: String, limit: Int = 6) -> [[String: Any]] {
     let words = typed.lowercased().split(separator: " ").map(String.init); if words.isEmpty { return [] }

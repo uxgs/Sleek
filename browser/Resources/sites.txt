@@ -1,0 +1,220 @@
+# Well-known sites, best known first: the address, a space, the name. The address box uses this list to
+# finish an address as you type and to suggest a site you have not been to yet. It stays on this Mac.
+google.com Google
+facebook.com Facebook
+instagram.com Instagram
+wikipedia.org Wikipedia
+x.com X
+reddit.com Reddit
+amazon.com Amazon
+whatsapp.com WhatsApp
+chatgpt.com ChatGPT
+claude.ai Claude
+yahoo.com Yahoo
+tiktok.com TikTok
+linkedin.com LinkedIn
+bing.com Bing
+duckduckgo.com DuckDuckGo
+office.com Microsoft 365
+live.com Outlook
+microsoft.com Microsoft
+apple.com Apple
+icloud.com iCloud
+github.com GitHub
+gitlab.com GitLab
+stackoverflow.com Stack Overflow
+twitch.tv Twitch
+discord.com Discord
+pinterest.com Pinterest
+ebay.com eBay
+etsy.com Etsy
+walmart.com Walmart
+target.com Target
+bestbuy.com Best Buy
+costco.com Costco
+homedepot.com The Home Depot
+lowes.com Lowe's
+ikea.com IKEA
+wayfair.com Wayfair
+aliexpress.com AliExpress
+temu.com Temu
+shein.com SHEIN
+nike.com Nike
+adidas.com Adidas
+zillow.com Zillow
+redfin.com Redfin
+realtor.com Realtor.com
+craigslist.org Craigslist
+paypal.com PayPal
+venmo.com Venmo
+stripe.com Stripe
+chase.com Chase
+bankofamerica.com Bank of America
+wellsfargo.com Wells Fargo
+capitalone.com Capital One
+americanexpress.com American Express
+fidelity.com Fidelity
+schwab.com Charles Schwab
+vanguard.com Vanguard
+robinhood.com Robinhood
+coinbase.com Coinbase
+nytimes.com The New York Times
+washingtonpost.com The Washington Post
+wsj.com The Wall Street Journal
+cnn.com CNN
+bbc.com BBC
+bbc.co.uk BBC
+theguardian.com The Guardian
+reuters.com Reuters
+apnews.com AP News
+npr.org NPR
+bloomberg.com Bloomberg
+foxnews.com Fox News
+nbcnews.com NBC News
+usatoday.com USA Today
+theverge.com The Verge
+techcrunch.com TechCrunch
+wired.com WIRED
+arstechnica.com Ars Technica
+engadget.com Engadget
+medium.com Medium
+substack.com Substack
+espn.com ESPN
+nfl.com NFL
+nba.com NBA
+mlb.com MLB
+nhl.com NHL
+fifa.com FIFA
+weather.com The Weather Channel
+accuweather.com AccuWeather
+imdb.com IMDb
+rottentomatoes.com Rotten Tomatoes
+spotify.com Spotify
+soundcloud.com SoundCloud
+hulu.com Hulu
+max.com Max
+primevideo.com Prime Video
+paramountplus.com Paramount+
+vimeo.com Vimeo
+dailymotion.com Dailymotion
+gmail.com Gmail
+outlook.com Outlook
+proton.me Proton
+zoom.us Zoom
+slack.com Slack
+notion.so Notion
+figma.com Figma
+canva.com Canva
+adobe.com Adobe
+dropbox.com Dropbox
+box.com Box
+trello.com Trello
+asana.com Asana
+atlassian.com Atlassian
+airtable.com Airtable
+miro.com Miro
+linear.app Linear
+salesforce.com Salesforce
+hubspot.com HubSpot
+shopify.com Shopify
+squarespace.com Squarespace
+wix.com Wix
+wordpress.com WordPress
+wordpress.org WordPress.org
+godaddy.com GoDaddy
+cloudflare.com Cloudflare
+vercel.com Vercel
+netlify.com Netlify
+npmjs.com npm
+pypi.org PyPI
+docker.com Docker
+developer.mozilla.org MDN
+mozilla.org Mozilla
+w3schools.com W3Schools
+anthropic.com Anthropic
+openai.com OpenAI
+huggingface.co Hugging Face
+kaggle.com Kaggle
+arxiv.org arXiv
+nature.com Nature
+sciencedirect.com ScienceDirect
+researchgate.net ResearchGate
+jstor.org JSTOR
+coursera.org Coursera
+udemy.com Udemy
+edx.org edX
+khanacademy.org Khan Academy
+duolingo.com Duolingo
+quizlet.com Quizlet
+quora.com Quora
+tumblr.com Tumblr
+snapchat.com Snapchat
+threads.net Threads
+bsky.app Bluesky
+mastodon.social Mastodon
+telegram.org Telegram
+signal.org Signal
+messenger.com Messenger
+booking.com Booking.com
+airbnb.com Airbnb
+expedia.com Expedia
+tripadvisor.com Tripadvisor
+kayak.com KAYAK
+skyscanner.com Skyscanner
+uber.com Uber
+lyft.com Lyft
+doordash.com DoorDash
+ubereats.com Uber Eats
+grubhub.com Grubhub
+instacart.com Instacart
+yelp.com Yelp
+opentable.com OpenTable
+delta.com Delta
+united.com United
+aa.com American Airlines
+southwest.com Southwest
+ups.com UPS
+fedex.com FedEx
+usps.com USPS
+dhl.com DHL
+indeed.com Indeed
+glassdoor.com Glassdoor
+webmd.com WebMD
+mayoclinic.org Mayo Clinic
+nih.gov NIH
+cdc.gov CDC
+irs.gov IRS
+usa.gov USA.gov
+gov.uk GOV.UK
+steampowered.com Steam
+roblox.com Roblox
+playstation.com PlayStation
+xbox.com Xbox
+nintendo.com Nintendo
+ign.com IGN
+goodreads.com Goodreads
+archive.org Internet Archive
+genius.com Genius
+unsplash.com Unsplash
+pexels.com Pexels
+dribbble.com Dribbble
+behance.net Behance
+deviantart.com DeviantArt
+producthunt.com Product Hunt
+news.ycombinator.com Hacker News
+speedtest.net Speedtest
+translate.google.com Google Translate
+maps.google.com Google Maps
+docs.google.com Google Docs
+drive.google.com Google Drive
+calendar.google.com Google Calendar
+mail.google.com Gmail
+photos.google.com Google Photos
+meet.google.com Google Meet
+tesla.com Tesla
+samsung.com Samsung
+sony.com Sony
+dell.com Dell
+hp.com HP
+lenovo.com Lenovo
+logitech.com Logitech

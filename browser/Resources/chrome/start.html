@@ -8,35 +8,48 @@
   /* The page a new tab opens on: Sleek's mark, one box to search or type an address, your bookmarks,
      and the places you go most. It follows the window: light or dark. (Your day, from Sleek Tasks,
      arrives here in a later stage.) */
-  :root { --bg: #FFFFFF; --fg: #1D1D1F; --muted: #6E6E73; --line: rgba(0,0,0,0.14); --card: #F4F4F7; --accent: #7C5CFF; color-scheme: light; }
-  @media (prefers-color-scheme: dark) { :root { --bg: #0E0E11; --fg: #F2F2F5; --muted: #A1A1A6; --line: rgba(255,255,255,0.18); --card: #1B1B20; color-scheme: dark; } }
+  :root { --bg: #FFFFFF; --fg: #1D1D1F; --muted: #6E6E73; --line: rgba(0,0,0,0.14); --card: #F4F4F7; --accent: #7C5CFF; --bloom: .5; color-scheme: light; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #0E0E11; --fg: #F2F2F5; --muted: #A1A1A6; --line: rgba(255,255,255,0.18); --card: #1B1B20; --bloom: .7; color-scheme: dark; } }
   *, *::before, *::after { box-sizing: border-box; }
   html, body { margin: 0; min-height: 100%; }
   body { background: var(--bg); color: var(--fg); font: 15px/1.5 "Inter", -apple-system, BlinkMacSystemFont, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
   main { max-width: 760px; margin: 0 auto; padding: 16vh 24px 60px; display: flex; flex-direction: column; gap: 26px; }
   .brand { display: flex; align-items: center; gap: 12px; font-size: 30px; font-weight: 700; letter-spacing: -0.04em; } .brand img { width: 40px; height: auto; display: block; }
   .private { font-size: 14px; color: var(--muted); margin: -14px 0 0; }
-  form { display: flex; }
-  input { flex: 1; min-width: 0; height: 52px; border-radius: 16px; border: 1px solid var(--line); background: var(--card); color: inherit; font: inherit; font-size: 16px; padding: 0 18px; outline: none; }
-  input:focus { border-color: var(--accent); background: var(--bg); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 16%, transparent); }
+  /* the box: with the cursor in it, a ring that follows its shape and a soft light in Sleek's colours behind it */
+  form { display: flex; position: relative; isolation: isolate; }
+  form::before { content: ""; position: absolute; inset: 4px 14px -6px; z-index: -1; border-radius: 22px; pointer-events: none; opacity: 0; filter: blur(22px); transition: opacity .35s ease; background: linear-gradient(90deg, #7C5CFF, #A77BFF 50%, #E58CFF); }
+  form:focus-within::before { opacity: var(--bloom); }
+  input { flex: 1; min-width: 0; height: 52px; border-radius: 16px; border: 1.5px solid var(--line); background: var(--card); color: inherit; font: inherit; font-size: 16px; padding: 0 18px; outline: none; transition: border-color .15s ease, background .15s ease; }
+  input:focus { border-color: var(--accent); background: var(--bg); }
   h2 { margin: 0 0 10px; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
-  a.site { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; background: var(--card); color: inherit; text-decoration: none; min-width: 0; border: 1px solid transparent; }
-  a.site:hover, a.site:focus-visible { border-color: var(--accent); outline: none; }
-  a.site i { flex: none; width: 26px; height: 26px; border-radius: 8px; background: var(--line); display: grid; place-items: center; font-style: normal; font-weight: 700; font-size: 12px; }
+  /* a tile: the site's own icon (kept by Sleek) over its first letter. Under the pointer it lifts a little, and
+     its icon's colours, blurred, glow softly behind it: the same bloom a deck's tile has in Slides. */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; isolation: isolate; }
+  .tile { position: relative; min-width: 0; }
+  a.site { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; background: var(--card); color: inherit; text-decoration: none; min-width: 0; border: 1px solid transparent; transition: transform .25s cubic-bezier(.2,.7,.2,1), border-color .2s ease; }
+  a.site:hover, a.site:focus-visible { border-color: color-mix(in srgb, var(--fg) 14%, transparent); outline: none; transform: translateY(-2px); }
+  a.site:focus-visible { box-shadow: 0 0 0 2px var(--accent); }
+  a.site i { position: relative; overflow: hidden; flex: none; width: 26px; height: 26px; border-radius: 8px; background: var(--line); display: grid; place-items: center; font-style: normal; font-weight: 700; font-size: 12px; }
+  a.site i img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: var(--card); }
   a.site span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
-  .apps a.site i { background: none; } .apps a.site img { width: 22px; height: auto; display: block; }
+  .apps a.site i { background: none; } .apps a.site i img { position: static; width: 22px; height: auto; display: block; background: none; }
+  .bloom { position: absolute; inset: 6px 10px 0; z-index: -1; border-radius: 14px; overflow: hidden; pointer-events: none; opacity: 0; filter: blur(16px) saturate(1.8); transform: scale(.94);
+           transition: opacity .35s ease, transform .5s cubic-bezier(.2,.7,.2,1); background: linear-gradient(90deg, #7C5CFF, #A77BFF 50%, #E58CFF); }
+  .bloom img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .tile:has(a:hover) .bloom, .tile:has(a:focus-visible) .bloom { opacity: var(--bloom); transform: translateY(5px) scale(1.08); }
+  @media (prefers-reduced-motion: reduce) { a.site, .bloom { transition: opacity .2s ease; transform: none !important; } }
 </style>
 </head>
 <body>
 <main>
   <div class="brand"><img src="sleek://app/icons/logo.svg" alt="">Sleek</div>
-  <p class="private" id="private" hidden>Private: pages you open in this window are not kept in history, and its cookies are forgotten when you close it.</p>
+  <p class="private" id="private" hidden>Private Browsing: pages you open in this window are not kept in history, and its cookies are forgotten when you close it.</p>
   <form id="f"><input id="q" placeholder="Search the web, or type an address" aria-label="Search the web, or type an address" autocomplete="off" autocapitalize="off" spellcheck="false" autofocus></form>
   <section class="apps"><h2>Sleek</h2><div class="grid">
-    <a class="site" href="sleek://app/slides.html"><i><img src="sleek://app/icons/slides.svg" alt=""></i><span>Slides</span></a>
-    <a class="site" href="sleek://app/docs.html"><i><img src="sleek://app/icons/docs.svg" alt=""></i><span>Docs</span></a>
-    <a class="site" href="sleek://app/tasks.html"><i><img src="sleek://app/icons/tasks.svg" alt=""></i><span>Tasks</span></a>
+    <div class="tile"><b class="bloom" style="background:linear-gradient(90deg,#7C5CFF,#A77BFF,#E58CFF)"></b><a class="site" href="sleek://app/slides.html"><i><img src="sleek://app/icons/slides.svg" alt=""></i><span>Slides</span></a></div>
+    <div class="tile"><b class="bloom" style="background:linear-gradient(90deg,#3D8BFF,#5FA8FF,#7EDBFF)"></b><a class="site" href="sleek://app/docs.html"><i><img src="sleek://app/icons/docs.svg" alt=""></i><span>Docs</span></a></div>
+    <div class="tile"><b class="bloom" style="background:linear-gradient(90deg,#0FA968,#2CC88E,#7FE3B5)"></b><a class="site" href="sleek://app/tasks.html"><i><img src="sleek://app/icons/tasks.svg" alt=""></i><span>Tasks</span></a></div>
   </div></section>
   <section id="marks" hidden><h2>Bookmarks</h2><div class="grid" id="marks-g"></div></section>
   <section id="top" hidden><h2>Where you go most</h2><div class="grid" id="top-g"></div></section>
@@ -46,7 +59,9 @@
   function post(m){ try { window.webkit.messageHandlers.sleekPage.postMessage(m); } catch(e){} }
   function esc(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, function(c){ return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function host(u){ try { return new URL(u).hostname.replace(/^www\./, ''); } catch(e){ return u; } }
-  function tile(title, url){ return '<a class="site" href="' + esc(url) + '" title="' + esc(url) + '"><i>' + esc((host(url).charAt(0) || '?').toUpperCase()) + '</i><span>' + esc(title || host(url)) + '</span></a>'; }
+  // a tile: the icon Sleek kept for the site, over its first letter when there is none; and behind it the same icon as the tile's bloom
+  function tile(title, url){ var h = host(url), pic = '<img src="sleek://ui/_icon/' + esc(h) + '" alt="" onerror="this.remove()">';
+    return '<div class="tile"><b class="bloom">' + pic + '</b><a class="site" href="' + esc(url) + '" title="' + esc(url) + '"><i>' + esc((h.charAt(0) || '?').toUpperCase()) + pic + '</i><span>' + esc(title || h) + '</span></a></div>'; }
   document.getElementById('f').addEventListener('submit', function(e){ e.preventDefault(); var v = document.getElementById('q').value.trim(); if(v) post({ go: v }); });
   window.Start = { fill: function(d){
     document.getElementById('private').hidden = !d.private;

@@ -14,6 +14,17 @@ cp .build/release/Sleek "$APP/Contents/MacOS/Sleek"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
 cp -R Resources/chrome "$APP/Contents/Resources/chrome"
 cp Resources/Sleek.icns "$APP/Contents/Resources/Sleek.icns"
+cp Resources/sites.txt "$APP/Contents/Resources/sites.txt"
+# More well-known sites can be added on this Mac without being in this repository: build/sites-more.txt, one a line,
+# "<place in the list, as three digits> <address> <name>". They are slotted in at those places.
+if [ -s build/sites-more.txt ]; then
+  python3 -c 'import sys
+base = [l for l in open(sys.argv[1]).read().split("\n") if l]
+for l in sorted(open(sys.argv[2]).read().split("\n")):
+    p = l.split(" ", 1)
+    if len(p) == 2 and p[0].isdigit(): base.insert(min(int(p[0]), len(base)), p[1])
+open(sys.argv[1], "w").write("\n".join(base) + "\n")' "$APP/Contents/Resources/sites.txt" build/sites-more.txt
+fi
 # The block lists: a copy inside the app, so blocking works from the first launch. They are fetched from
 # where they are published (not kept in this repository), again when the copy here is over four days old.
 # A fetch that fails or comes back too small is left aside, and the copy already here is used.

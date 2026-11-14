@@ -48,6 +48,19 @@ enum SelfTest {
     check("the window opens with its bar and one tab", up, ["tabs": w.tabs.count, "slots": w.chrome.slots.count])
     _ = await bar(w, "return Sleek.test.still()")
     var s = await see(w)
+    let noBar = (await bar(w, "return !document.querySelector('.bbar')")) as? Bool == true
+    check("the bookmarks bar starts hidden", noBar && (w.store.settings["bar"] as? Bool) == false)
+    w.store.set("bar", true); await nap(0.4)      // shown for the rest of these checks
+    /// Where the window's red button is, from the window's top-left corner.
+    func redButton() -> [Int] { guard let b = w.window.standardWindowButton(.closeButton) else { return [] }; let r = b.convert(b.bounds, to: nil); return [Int(r.minX.rounded()), Int((w.window.frame.height - r.maxY).rounded())] }
+    /// A real press of the mouse at a point of the window (measured from its top-left), sent the way the Mac sends one.
+    func mouse(_ x: CGFloat, _ y: CGFloat) async {
+      for kind in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
+        if let e = NSEvent.mouseEvent(with: kind, location: NSPoint(x: x, y: w.window.frame.height - y), modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: w.window.windowNumber, context: nil, eventNumber: 0, clickCount: 1, pressure: 1) { NSApp.sendEvent(e) }
+      }
+      await nap(0.35)
+    }
+    check("the window's red, yellow and green buttons sit in the tab row", redButton() == [13, 12], redButton())
 
     print("the start page")
     _ = await until(8) { (await page(w.current, "return !!window.Start && document.querySelectorAll('.apps a.site').length")) as? Int == 3 }
@@ -96,7 +109,16 @@ enum SelfTest {
     _ = await bar(w, "Sleek.test.type('wiki'); return 1"); await nap(0.6)
     s = await see(w)
     check("typing suggests the other open tab, pages from history, and a search", (s["rows"] as? [String] ?? []).contains { $0.hasPrefix("tab:") } && (s["rows"] as? [String] ?? []).contains { $0.hasPrefix("history:") } && (s["rows"] as? [String] ?? []).last?.hasPrefix("search:") == true, s["rows"])
+    check("and finishes the address for you, with the offered ending selected, and suggests the well-known site", (s["url"] as? String) == "wikipedia.org" && (s["fill"] as? String) == "pedia.org" && (s["sel"] as? [Int]) == [4, 13] && (s["rows"] as? [String] ?? []).contains("site:Wikipedia"), [s["url"] ?? "", s["fill"] ?? "", s["sel"] ?? "", s["rows"] ?? ""])
     await shot(w, "3-suggestions", to: out)
+    _ = await bar(w, "var u = document.getElementById('url'); u.value = 'wik'; u.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'deleteContentBackward' })); return 1"); await nap(0.5); s = await see(w)
+    check("deleting does not bring the ending back", (s["url"] as? String) == "wik" && (s["fill"] as? String) == "", [s["url"] ?? "", s["fill"] ?? ""])
+    await mouse(640, 600); s = await see(w)
+    let noRows = (await bar(w, "return !document.getElementById('sugg')")) as? Bool == true
+    check("a press on the page closes the suggestions", noRows && (s["url"] as? String) != "wik", [noRows, s["url"] ?? ""])
+    await press(w, "#b-menu"); await mouse(300, 600); s = await see(w)
+    check("and an open menu", s["pop"] is NSNull || s["pop"] == nil, s["pop"])
+    _ = await bar(w, "Sleek.test.type('wiki'); return 1"); await nap(0.5)
     _ = await bar(w, "document.getElementById('url').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); return 1"); await nap(0.3)
 
     print("bookmarks")
@@ -127,12 +149,20 @@ enum SelfTest {
     await shot(w, "6-bar-at-bottom", to: out)
     w.store.set("barAt", "top"); w.store.set("imm", true); await nap(0.7); s = await see(w)
     check("immersive: the page takes the whole window and the bar floats over it", (s["floating"] as? Bool) == true && w.chrome.slots.first == NSRect(x: 0, y: 0, width: 1280, height: 860) && ((s["cls"] as? String) ?? "").contains("show"), [s["cls"] ?? "", w.chrome.slots])
+    let inCard = (await bar(w, "var b = document.getElementById('bar'); return [b.offsetLeft, b.offsetTop, b.offsetWidth, b.offsetHeight]")) as? [Int] ?? []
+    check("and the window's buttons are inside the floating bar, at its top left", inCard == [10, 10, 1260, 88] && redButton() == [24, 23], [inCard, redButton()])
     await shot(w, "7-immersive", to: out)
     _ = await bar(w, "await new Promise(function(ok){ setTimeout(ok, 3300); }); return 1"); s = await see(w)
-    let hidden = !((s["cls"] as? String) ?? "").contains("show")
+    let hidden = !((s["cls"] as? String) ?? "").contains("show"), lightsGone = w.window.standardWindowButton(.closeButton)?.isHidden == true
     w.pageScrolled(w.current!, "top"); await nap(0.3); s = await see(w)
-    check("it fades after a moment, and scrolling up to the top brings it back", hidden && ((s["cls"] as? String) ?? "").contains("show"), [hidden, s["cls"] ?? ""])
+    let stillAway = !((s["cls"] as? String) ?? "").contains("show")
+    let tile = (await bar(w, "var b = document.getElementById('bar'), i = b.querySelector('.isle'); return [b.offsetLeft, b.offsetTop, b.offsetWidth, b.offsetHeight, +getComputedStyle(i).opacity]")) as? [Int] ?? []
+    check("after a moment it draws itself in to a small tile with Sleek's mark, taking the window's buttons with it, and scrolling does not bring it back", hidden && lightsGone && stillAway && tile == [10, 10, 46, 38, 1], [hidden, lightsGone, stillAway, tile])
+    await shot(w, "7b-immersive-drawn-in", to: out)
+    _ = await bar(w, "document.querySelector('.peek').dispatchEvent(new MouseEvent('mousemove', { bubbles: true })); return 1"); await nap(0.3); s = await see(w)
+    check("resting the pointer on its handle does", ((s["cls"] as? String) ?? "").contains("show") && w.window.standardWindowButton(.closeButton)?.isHidden == false, s["cls"])
     w.store.set("imm", false); await nap(0.5)
+    check("out of immersive, the buttons are back in the tab row", redButton() == [13, 12], redButton())
 
     print("themes")
     w.store.set("look", "dark"); w.store.set("theme", "ocean"); await nap(0.6); s = await see(w)
@@ -200,8 +230,10 @@ enum SelfTest {
     check("a pop-up to a site that only serves pop-up adverts is refused, and counted", !opened && w.tabs.count == tabsBefore && (counts["popups"] ?? 0) == 1, [opened, w.tabs.count - tabsBefore, counts])
     _ = await page(w.current, "location.href = 'https://\(popSite)/'; return 1"); await nap(1.0); counts = w.current?.blocked ?? [:]
     check("so is being sent off to one", (w.current?.address ?? "").contains("blocking-test.example") && (counts["popups"] ?? 0) == 2, [w.current?.address ?? "", counts])
+    check("the shield in the address box is just the shield, with no number beside it", (s["shieldText"] as? String) == "", s["shieldText"])
     await press(w, ".shield"); s = await see(w)
-    check("the shield opens with what was blocked", (s["pop"] as? String) == "shield", s["pop"])
+    let big = (await bar(w, "return (document.querySelector('.pop .big') || {}).textContent || ''")) as? String ?? ""
+    check("the shield opens with what was blocked, and how many", (s["pop"] as? String) == "shield" && (Int(big.split(separator: " ").first ?? "") ?? 0) >= 5, [s["pop"] ?? "", big])
     await shot(w, "12-shield", to: out)
     _ = await page(w.current, "var a = window.open('https://example.org/'); return !!a"); ok = await until(8) { w.tabs.count == tabsBefore + 1 }
     check("an ordinary link that opens a new tab still does", ok, w.tabs.count - tabsBefore)
@@ -216,6 +248,43 @@ enum SelfTest {
     _ = await bar(w, "Sleek.test.type('https://www.nytimes.com'); return Sleek.test.enter()"); _ = await loaded(w, "nytimes.com"); await nap(4)
     print("   on nytimes.com the shield counted:", w.current?.blocked ?? [:])
     await shot(w, "13-real-site", to: out)
+
+    print("icons of sites, and a new tab")
+    let iconKept = await until(10) { Icons.file("www.nytimes.com").map { FileManager.default.fileExists(atPath: $0.path) } == true }
+    let served = (await bar(w, "return await new Promise(function(ok){ var i = new Image(); i.onload = function(){ ok(i.naturalWidth); }; i.onerror = function(){ ok(0); }; i.src = 'sleek://ui/_icon/nytimes.com'; })")) as? Int ?? 0
+    check("a site's icon is kept on this Mac, and Sleek's own pages can show it", iconKept && served > 0, [iconKept, served])
+    await press(w, ".plus"); _ = await until(5) { w.current?.kind == "start" }
+    ok = await until(6) { (await page(w.current, "var i = document.querySelector('#top-g a.site[href*=nytimes] i img'); return !!(i && i.naturalWidth > 0)")) as? Bool == true }
+    check("a new tab shows where you go most, each with its site's icon", ok, await page(w.current, "return document.getElementById('top-g').innerHTML.slice(0, 400)"))
+    _ = await page(w.current, "var a = document.querySelector('#top-g a.site[href*=nytimes]'); if(a) a.focus(); return 1"); await nap(0.5)
+    await shot(w, "15-new-tab", to: out)
+
+    print("a picture dragged in")
+    let logo = Res.site.appendingPathComponent("icons/icon-192.png"), board = NSPasteboard(name: NSPasteboard.Name("sleek-selftest"))
+    board.clearContents(); board.writeObjects([logo as NSURL])
+    let pic = DroppedImage.from(board, keepIn: w.store.dir.appendingPathComponent("dropped"))
+    board.clearContents(); board.writeObjects([Res.root.appendingPathComponent("sites.txt") as NSURL])
+    let notPic = DroppedImage.from(board, keepIn: w.store.dir.appendingPathComponent("dropped"))
+    check("a dragged picture file is seen for what it is, and another kind of file is left alone", pic?.file == logo && notPic == nil && !(pic?.thumb ?? "").isEmpty, [pic?.name ?? "", notPic?.name ?? ""])
+    if let pic = pic, let t = w.current {
+      // The drop reaches the page the way a drop does (the picture itself is noted by the tab, as the window would note it).
+      let before = w.tabs.count, was = t.address
+      let dropJS = "var d = new DataTransfer(); d.items.add(new File([new Uint8Array(8)], 'icon-192.png', { type: 'image/png' })); ['dragover', 'drop'].forEach(function(n){ document.body.dispatchEvent(new DragEvent(n, { bubbles: true, cancelable: true, dataTransfer: d })); }); return 1"
+      _ = await page(t, "window.__take = function(e){ e.preventDefault(); }; document.addEventListener('dragover', window.__take); document.addEventListener('drop', window.__take); return 1")
+      t.drop = (pic, Date()); _ = await page(t, dropJS); await nap(0.6); s = await see(w)
+      check("dropped on a page that takes the picture itself, Sleek stays out of it", (s["pop"] as? String) != "image", s["pop"])
+      _ = await page(t, "document.removeEventListener('dragover', window.__take); document.removeEventListener('drop', window.__take); return 1")
+      t.drop = (pic, Date()); _ = await page(t, dropJS); await nap(0.6); s = await see(w)
+      check("dropped on a page with no use for it, Sleek asks what to do with it, and the page stays", (s["pop"] as? String) == "image" && t.address == was, [s["pop"] ?? "", t.address])
+      await shot(w, "16-picture-dropped", to: out)
+      await press(w, "[data-do=imgopen]"); ok = await until(8) { w.tabs.count == before + 1 && (w.current?.address ?? "").hasSuffix("icon-192.png") && !(w.current?.web.isLoading ?? true) }
+      let shown = (await page(w.current, "var i = document.querySelector('img'); return i ? i.naturalWidth : 0")) as? Int ?? 0
+      check("Open it shows the picture in a new tab", ok && shown == 192, [w.current?.address ?? "", shown])
+      w.imageDropped(pic); await nap(0.4); await press(w, "[data-do=imgsearch]")
+      ok = await until(25) { (w.current?.web.url?.host ?? "").contains("google.") && !(w.current?.web.isLoading ?? true) }
+      check("Search Google for it sends the picture up and lands on Google's results", ok && w.tabs.count == before + 2, w.current?.address.prefix(120))
+      await shot(w, "17-picture-search", to: out)
+    }
 
     print("pull down to refresh")
     // The stroke is handed to the tab as the trackpad would hand it over; the page's say comes from a real wheel event in the page.
