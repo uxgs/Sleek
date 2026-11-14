@@ -24,6 +24,7 @@
     shield: '<path d="M12 3l7 3v5c0 4.500-3 8-7 10-4-2-7-5.500-7-10V6z"/><path d="M9 12l2 2 4-4"/>', shieldoff: '<path d="M12 3l7 3v5c0 4.500-3 8-7 10-4-2-7-5.500-7-10V6z"/>',
     split: '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M12 4v16"/>', more: '<circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/>', win: '<rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 9.5h18"/>', glasses: '<circle cx="7" cy="14" r="3.2"/><circle cx="17" cy="14" r="3.2"/><path d="M10.2 14h3.6M3.9 13l1.5-5M20.1 13l-1.5-5"/>',
     print: '<path d="M7 8V4h10v4"/><rect x="4" y="8" width="16" height="8" rx="2"/><path d="M7 13h10v7H7z"/>', zoom: '<circle cx="11" cy="11" r="6"/><path d="M20 20l-4.2-4.2M8.5 11h5M11 8.5v5"/>', findp: '<circle cx="11" cy="11" r="6"/><path d="M20 20l-4.2-4.2"/>',
+    plusc: '<circle cx="12" cy="12" r="8.5"/><path d="M12 8.500v7M8.500 12h7"/>', folder: '<path d="M3.500 8a2 2 0 0 1 2-2h3.700l2 2.200h7.300a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/>', sliders: '<path d="M4 8h8M18 8h2M4 16h2M12 16h8"/><circle cx="15" cy="8" r="2.300"/><circle cx="9" cy="16" r="2.300"/>',
     barpos: '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M7 8h10"/>', book: '<path d="M7 4h10v16l-5-3.6L7 20z"/>', glass: '<rect x="4" y="4" width="16" height="16" rx="5"/><path d="M8 12.5c0-2.5 2-4.5 4.5-4.5"/>', search: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.500-3.500"/>',
     clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>', star: '<path d="M12 4l2.500 5 5.500.800-4 3.900.900 5.500-4.900-2.600-4.900 2.600.900-5.500-4-3.900 5.500-.800z"/>', tab: '<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/>', up: '<path d="M6 14l6-6 6 6"/>', down: '<path d="M6 10l6 6 6-6"/>', panel: '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M15 4v16"/>', look: '<circle cx="12" cy="12" r="8.500"/><path d="M12 3.500a8.500 8.500 0 0 1 0 17z" fill="currentColor" stroke="none"/>', globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.200 3 14.800 0 18M12 3c-3 3.200-3 14.800 0 18"/>' };
   function ico(n){ return '<svg class="i" viewBox="0 0 24 24" aria-hidden="true">' + ICON[n] + '</svg>'; }
@@ -32,6 +33,7 @@
   function engine(){ var u = S.settings.search || SEARCH[0][1]; return SEARCH.filter(function(e){ return e[1] === u; })[0] || null; }
   var THEMES = [['graphite', 'Graphite', '#6E6E73', '#7C5CFF'], ['violet', 'Violet', '#7C5CFF', '#7C5CFF'], ['ocean', 'Ocean', '#0A84FF', '#0A84FF'], ['forest', 'Forest', '#12A36A', '#12A36A'], ['rose', 'Rose', '#E0457B', '#E0457B'], ['sand', 'Sand', '#C08A2D', '#B0791F']];
   var APPS = { slides: ['Sleek Slides', 'slides.html'], docs: ['Sleek Docs', 'docs.html'], tasks: ['Sleek Tasks', 'tasks.html'] };
+  var GROUPS = [['new', 'plusc', 'New'], ['appearance', 'look', 'Appearance'], ['manage', 'folder', 'Manage'], ['defaults', 'sliders', 'Defaults']];      // the ⋯ menu's lines that open a small menu of their own
   var S = { tabs: [], panes: [], at: 0, n: 1, settings: { look: 'auto', theme: 'graphite', barAt: 'top', imm: false, bar: false }, bookmarks: [], private: false, downloads: [], blocker: { ready: false, rules: 0, updated: '' } };
   // what the shield counts, in the order it lists them
   var BLOCKED = [['ads', 'Ads'], ['trackers', 'Trackers'], ['cookies', 'Cookie banners'], ['notes', 'Notification requests'], ['popups', 'Pop-ups and redirects']];
@@ -130,22 +132,25 @@
     if(L.pop === 'save' && t && web) h += savePop(t);
 
     // what floats
-    // the ⋯ menu, laid out like a phone's settings: a few named groups, each a card of rows
+    // the ⋯ menu: a short list. Its first four lines (New, Appearance, Manage, Defaults) each open a small menu of
+    // their own beside it, when the pointer rests on the line or it is pressed; Find and Print are there at once.
+    if(L.pop !== 'menu') L.sub = null;
     if(L.pop === 'menu'){
-      var row = function(id, icon, label, right){ return '<button type="button" class="mi" data-menu="' + id + '">' + ico(icon) + '<span>' + label + '</span><small>' + (right || '') + '</small></button>'; };
+      var row = function(id, icon, label, right){ return '<button type="button" class="mi" data-menu="' + id + '" role="menuitem">' + ico(icon) + '<span>' + label + '</span><small>' + (right || '') + '</small></button>'; };
       var themeNow = (THEMES.filter(function(x){ return x[0] === set.theme; })[0] || THEMES[0])[1], more = '<i class="chev">›</i>';
-      h += '<div class="pop menu sets" id="pop" data-anchor="#b-menu" data-side="right">' +
-        '<h5>New</h5><div class="grp">' + row('newtab', 'tab', 'Tab', '⌘T') + row('window', 'win', 'Window', '⌘N') + row('private', 'glasses', 'Private Window', '⇧⌘N') + '</div>' +
-        '<h5>Appearance</h5><div class="grp">' +
-          '<div class="row zoomrow">' + ico('zoom') + '<span class="lbl">Zoom</span><span><button type="button" data-zoom="-1" aria-label="Smaller">−</button><button type="button" class="pct" data-zoom="0" aria-label="Back to 100%">' + (t ? t.zoom : 100) + '%</button><button type="button" data-zoom="1" aria-label="Larger">+</button></span></div>' +
+      h += '<div class="pop menu sets" id="pop" data-anchor="#b-menu" data-side="right" role="menu">' +
+        GROUPS.map(function(g){ return '<button type="button" class="mi top' + (L.sub === g[0] ? ' on' : '') + '" data-grp="' + g[0] + '" role="menuitem" aria-haspopup="true" aria-expanded="' + (L.sub === g[0]) + '">' + ico(g[1]) + '<span>' + g[2] + '</span><small>' + more + '</small></button>'; }).join('') +
+        '<div class="line"></div>' + row('find', 'findp', 'Find on This Page', '⌘F') + row('print', 'print', 'Print…', '⌘P') + '</div>';
+      var sub = L.sub === 'new' ? row('newtab', 'tab', 'Tab', '⌘T') + row('window', 'win', 'Window', '⌘N') + row('private', 'glasses', 'Private Window', '⇧⌘N')
+        : L.sub === 'appearance' ?
+          '<div class="row zoomrow">' + ico('zoom') + '<span class="lbl">Zoom</span><span class="zoomer"><button type="button" data-zoom="-1" aria-label="Smaller">−</button><button type="button" class="pct" data-zoom="0" aria-label="Back to 100%">' + (t ? t.zoom : 100) + '%</button><button type="button" data-zoom="1" aria-label="Larger">+</button></span></div>' +
           row('look', 'look', 'Theme', esc(themeNow) + more) +
           '<div class="row">' + ico('barpos') + '<span class="lbl">Bar Placement</span><span class="seg">' + [['top', 'Top'], ['bottom', 'Bottom']].map(function(o){ return '<button type="button" data-barat="' + o[0] + '" class="' + (set.barAt === o[0] ? 'on' : '') + '">' + o[1] + '</button>'; }).join('') + '</span></div>' +
           (S.glassOK ? '<div class="row">' + ico('glass') + '<span class="lbl">Glass</span><span class="sw"><button type="button" role="switch" aria-checked="' + !!set.glass + '" data-flip="glass" aria-label="Glass"></button></span></div>' : '') +
-          '<div class="row">' + ico('star') + '<span class="lbl">Bookmarks Bar</span><span class="sw"><button type="button" role="switch" aria-checked="' + !!set.bar + '" data-flip="bar" aria-label="Show the bookmarks bar"></button></span></div>' +
-        '</div>' +
-        '<h5>Manage</h5><div class="grp">' + row('allmarks', 'book', 'Bookmarks', more) + row('history', 'clock', 'History', more) + row('passwords', 'lock', 'Passwords', more) + row('downloads', 'down', 'Downloads', more) + '</div>' +
-        '<h5>Defaults</h5><div class="grp">' + row('search', 'search', 'Search Provider', esc(engine() ? engine()[0] : 'Your own') + more) + row('default', 'globe', 'Make Sleek Default Browser', '') + '</div>' +
-        '<h5>This page</h5><div class="grp">' + row('find', 'findp', 'Find on This Page', '⌘F') + row('print', 'print', 'Print…', '⌘P') + '</div></div>';
+          '<div class="row">' + ico('star') + '<span class="lbl">Bookmarks Bar</span><span class="sw"><button type="button" role="switch" aria-checked="' + !!set.bar + '" data-flip="bar" aria-label="Show the bookmarks bar"></button></span></div>'
+        : L.sub === 'manage' ? row('allmarks', 'book', 'Bookmarks', more) + row('history', 'clock', 'History', more) + row('passwords', 'lock', 'Passwords', more) + row('downloads', 'down', 'Downloads', more)
+        : L.sub === 'defaults' ? row('search', 'search', 'Search Provider', esc(engine() ? engine()[0] : 'Your own') + more) + row('default', 'globe', 'Make Sleek Default Browser', '') : '';
+      if(sub) h += '<div class="pop menu sets sub s-' + L.sub + '" id="sub" role="menu" aria-label="' + GROUPS.filter(function(g){ return g[0] === L.sub; })[0][2] + '">' + sub + '</div>';
     }
     if(L.pop === 'shield' && t){ var bl = t.blocked || {}, total = blockedTotal(t), off = !t.blockOn;
       h += '<div class="pop" id="pop" data-anchor=".shield" data-side="left"><h4>' + esc(t.host || hostOf(t.url)) + '</h4>' +
@@ -153,12 +158,12 @@
           '<div class="big">' + total + ' blocked</div><div class="rows">' + BLOCKED.map(function(k){ return '<span>' + k[1] + '</span><span>' + (bl[k[0]] || 0) + '</span>'; }).join('') + '</div>') +
         '<div class="line"></div><div class="sw"><span>Block on this site</span><button type="button" role="switch" aria-checked="' + !off + '" data-do="shieldswitch" aria-label="Block on this site"' + (S.blocker.ready ? '' : ' disabled') + '></button></div>' +
         '<p>On everywhere unless you switch a site off. Some video adverts may still get through.' + (S.blocker.ready ? ' ' + S.blocker.rules.toLocaleString() + ' rules from EasyList, EasyPrivacy and the EasyList Cookie List' + (S.blocker.updated ? ', dated ' + esc(listDate(S.blocker.updated)) : '') + '.' : '') + '</p></div>'; }
-    if(L.pop === 'look') h +='<div class="pop" id="pop" data-anchor="#b-look" data-side="right" style="width:330px"><h4>Look</h4><div class="looks">' + [['light', 'Light', '#FFFFFF'], ['dark', 'Dark', '#0E0E11'], ['auto', 'Match the Mac', 'linear-gradient(90deg,#FFFFFF 50%,#0E0E11 50%)']].map(function(l){ return '<button type="button" class="lookb' + (set.look === l[0] ? ' on' : '') + '" data-look="' + l[0] + '"><i style="--p:' + l[2] + '"></i>' + l[1] + '</button>'; }).join('') + '</div>' +
+    if(L.pop === 'look') h +='<div class="pop" id="pop" data-anchor="#b-look" data-side="right" style="width:360px"><h4>Look</h4><div class="looks">' + [['light', 'Light', '#FFFFFF'], ['dark', 'Dark', '#0E0E11'], ['auto', 'Match the Mac', 'linear-gradient(90deg,#FFFFFF 50%,#0E0E11 50%)']].map(function(l){ return '<button type="button" class="lookb' + (set.look === l[0] ? ' on' : '') + '" data-look="' + l[0] + '"><i style="--p:' + l[2] + '"></i>' + l[1] + '</button>'; }).join('') + '</div>' +
       '<h4 style="margin-top:4px">Theme</h4><div class="swatches">' + THEMES.map(function(x){ return '<button type="button" class="swb' + (set.theme === x[0] ? ' on' : '') + '" data-theme="' + x[0] + '"><i style="--c:' + x[2] + '"></i>' + x[1] + '</button>'; }).join('') + '</div>' +
       '<h4 style="margin-top:4px">The bar</h4><span class="seg">' + [['top', 'At the top'], ['bottom', 'At the bottom']].map(function(o){ return '<button type="button" data-barat="' + o[0] + '" class="' + (set.barAt === o[0] ? 'on' : '') + '">' + o[1] + '</button>'; }).join('') + '</span>' +
       '<div class="sw"><span>Immersive<small>The bar draws in to a small tile, and opens when you rest on it</small></span><button type="button" role="switch" aria-checked="' + imm + '" data-do="imm" aria-label="Immersive"></button></div>' +
       (imm ? '<div class="sw"><span>The tile’s corner<small>Or drag the tile there yourself</small></span><span class="corners">' + [['left', 'top'], ['right', 'top'], ['left', 'bottom'], ['right', 'bottom']].map(function(c){ var on = (set.immSide === 'right' ? 'right' : 'left') === c[0] && (bottom ? 'bottom' : 'top') === c[1]; return '<button type="button" class="' + (on ? 'on' : '') + '" data-corner="' + c[0] + ' ' + c[1] + '" aria-label="' + c[1] + ' ' + c[0] + '" aria-pressed="' + on + '"></button>'; }).join('') + '</span></div>' : '') + '</div>';
-    if(L.pop === 'split') h += '<div class="pop" id="pop" data-anchor="#b-split" data-side="right" style="width:330px"><h4>Split view</h4><div class="lays">' + [[1, 'One page', 'l1'], [2, 'Side by side', 'l2'], [3, 'Three across', 'l3'], [4, 'Four corners', 'l4']].map(function(l){ var c = ''; for(var k = 0; k < l[0]; k++) c += '<b></b>'; return '<button type="button" class="lay' + (S.n === l[0] ? ' on' : '') + '" data-lay="' + l[0] + '"><i class="' + l[2] + '">' + c + '</i>' + l[1] + '</button>'; }).join('') + '</div><p>The bar works on the page with the ring. Press a page to move the ring, or a tab to put it there.</p></div>';
+    if(L.pop === 'split') h += '<div class="pop" id="pop" data-anchor="#b-split" data-side="right" style="width:360px"><h4>Split view</h4><div class="lays">' + [[1, 'One page', 'l1'], [2, 'Side by side', 'l2'], [3, 'Three across', 'l3'], [4, 'Four corners', 'l4']].map(function(l){ var c = ''; for(var k = 0; k < l[0]; k++) c += '<b></b>'; return '<button type="button" class="lay' + (S.n === l[0] ? ' on' : '') + '" data-lay="' + l[0] + '"><i class="' + l[2] + '">' + c + '</i>' + l[1] + '</button>'; }).join('') + '</div><p>The bar works on the page with the ring. Press a page to move the ring, or a tab to put it there.</p></div>';
     if(L.pop === 'star' && t) h += '<div class="pop" id="pop" data-anchor=".star" data-side="right" style="width:300px"><h4>' + (L.justMarked ? 'Bookmark added' : 'Bookmark') + '</h4><input type="text" id="bmname" value="' + esc(bm ? bm.title : t.title) + '" aria-label="Name" maxlength="80"><div class="frow" style="justify-content:flex-end"><button type="button" class="go ghost" data-do="unstar">Remove</button><button type="button" class="go" data-do="closepop">Done</button></div></div>';
     if(L.pop === 'allmarks') h += '<div class="pop menu" id="pop" data-anchor="' + (set.bar && !imm ? '#b-all' : '#b-menu') + '" data-side="right" style="width:300px"><h4 style="padding:6px 9px 2px">All bookmarks</h4>' + (S.bookmarks.map(function(b, i){ return '<button type="button" class="mi" data-bm="' + i + '"><span class="two"><b>' + esc(b.title) + '</b><i>' + esc(pretty(b.url)) + '</i></span></button>'; }).join('') || '<p style="padding:6px 9px">None yet. Press the star in the address box to keep a page.</p>') + '</div>';
     if(L.pop === 'history') h += '<div class="pop menu" id="pop" data-anchor="#b-menu" data-side="right" style="width:340px"><h4 style="padding:6px 9px 2px">History</h4>' + (S.private ? '<p style="padding:6px 9px">A private window keeps no history.</p>' : !L.history ? '<p style="padding:6px 9px">…</p>' : (L.history.map(function(x){ return '<button type="button" class="mi" data-hist="' + esc(x.u) + '"><span class="two"><b>' + esc(x.t || pretty(x.u)) + '</b><i>' + esc(pretty(x.u)) + '</i></span><small>' + when(x.at) + '</small></button>'; }).join('') || '<p style="padding:6px 9px">Nothing yet.</p>') +
@@ -172,8 +177,8 @@
                    : L.pw.users.map(function(u){ return '<button type="button" class="mi" data-pwuse="' + esc(u.id) + '"><span class="two"><b>' + esc(u.user || 'Saved password') + '</b><i>Fill with Touch ID</i></span><small>' + ico('lock') + '</small></button>'; }).join('')) + '</div>';
     if(L.ask) h += '<div class="askbar" role="dialog" aria-label="' + (L.ask.update ? 'Update the saved password?' : 'Save this password?') + '"><b>' + (L.ask.update ? 'Update the saved password?' : 'Save this password?') + '</b><span>' + esc(L.ask.user ? L.ask.user + ' for ' + L.ask.site : 'For ' + L.ask.site) + '. It is kept on this Mac only, and filled with Touch ID.</span>' +
       '<div class="frow" style="justify-content:flex-end"><button type="button" class="go ghost" data-pwans="never">Never for this site</button><button type="button" class="go ghost" data-pwans="no">Not now</button><button type="button" class="go" data-pwans="save">' + (L.ask.update ? 'Update' : 'Save') + '</button></div></div>';
-    if(L.pop === 'image' && L.image) h += '<div class="pop mid" id="pop" style="width:340px"><div class="imgq">' + (L.image.thumb ? '<img src="' + esc(L.image.thumb) + '" alt="" onerror="this.remove()">' : '') + '<span class="two"><b>' + esc(L.image.name) + '</b><i>What would you like to do with this picture?</i></span></div>' +
-      '<div class="frow" style="justify-content:stretch"><button type="button" class="go" style="flex:1" data-do="imgopen">Open it</button><button type="button" class="go ghost" style="flex:1" data-do="imgsearch">Search Google for it</button></div><p>Searching sends the picture to Google. Opening it does not.</p></div>';
+    if(L.pop === 'image' && L.image) h += '<div class="pop center" id="pop" style="width:340px"><div class="imgq">' + (L.image.thumb ? '<img src="' + esc(L.image.thumb) + '" alt="" onerror="this.remove()">' : '') + '<span class="two"><b>' + esc(L.image.name) + '</b><i>What would you like to do with this picture?</i></span></div>' +
+      '<div class="frow" style="justify-content:stretch"><button type="button" class="go" style="flex:1 1 0" data-do="imgopen">Open it</button><button type="button" class="go ghost" style="flex:2 1 0" data-do="imgsearch">Search Google for it</button></div><p>Searching sends the picture to Google. Opening it does not.</p></div>';
     if(L.pop === 'downloads') h += '<div class="pop" id="pop" data-anchor="#b-menu" data-side="right" style="width:340px"><h4>Downloads</h4>' + (S.downloads.map(function(d){ return '<div class="dl"><span class="two"><b>' + esc(d.name) + '</b>' + (d.done ? '<i>In your Downloads folder</i>' : d.failed ? '<i style="color:var(--k-warn)">Didn’t finish</i>' : '<span class="bar"><u style="width:' + Math.round(d.part * 100) + '%"></u></span>') + '</span>' + (d.done ? '<button type="button" class="go ghost" data-dl="' + d.id + '">Show</button>' : '') + '</div>'; }).join('') || '<p>Nothing downloaded since Sleek opened.</p>') + '</div>';
     if(L.typed != null){ L.rows = rows(); if(L.sel >= L.rows.length) L.sel = L.rows.length - 1;
       if(L.rows.length) h += '<div class="sugg" id="sugg">' + L.rows.map(function(r, i){ return '<button type="button" class="sg' + (i === L.sel ? ' sel' : '') + '" data-sg="' + i + '">' + (APPS[r.kind] ? '<img class="i" src="sleek://app/icons/' + r.kind + '.svg" alt="">' : '') + (APPS[r.kind] ? '' : ico(r.kind === 'tab' ? 'tab' : r.kind === 'bookmark' ? 'star' : r.kind === 'history' ? 'clock' : r.kind === 'site' ? 'globe' : 'search')) + '<span>' + esc(r.title) + '</span><small>' + esc(r.hint) + '</small></button>'; }).join('') + '</div>'; }
@@ -195,7 +200,7 @@
   function arrive(el, key, ms, here){ var now = Date.now(); if(!born[key]) born[key] = now; here[key] = 1; var gone = now - born[key]; if(gone < ms && !L.still){ el.classList.add('in'); el.style.animationDelay = (-gone) + 'ms'; } }
   function arrivals(){
     var here = {}, p = $('#pop'), s = $('#sugg'), f = $('#findbox'), t = $('.toast');
-    if(p) arrive(p, 'pop:' + L.pop, 260, here); if(s) arrive(s, 'sugg', 220, here); if(f) arrive(f, 'find', 240, here); if(t) arrive(t, 'toast:' + L.toastN, 280, here);
+    if(p) arrive(p, 'pop:' + L.pop, 260, here); var sb = $('#sub'); if(sb) arrive(sb, 'sub:' + L.sub, 200, here); if(s) arrive(s, 'sugg', 220, here); if(f) arrive(f, 'find', 240, here); if(t) arrive(t, 'toast:' + L.toastN, 280, here);
     $$('.tab').forEach(function(e){ arrive(e, 'tab:' + e.getAttribute('data-tab'), 300, here); });
     $$('.pane').forEach(function(e, i){ arrive(e, 'pane:' + S.n + ':' + i, 320, here); }); var pn = $('.panel'); if(pn) arrive(pn, 'panel', 340, here); var ak = $('.askbar'); if(ak) arrive(ak, 'ask', 320, here);
     Object.keys(born).forEach(function(k){ if(!here[k]) delete born[k]; });
@@ -236,10 +241,18 @@
       if(fy + p.offsetHeight > H - 8) fy = sr.top + L.pw.rect.y - p.offsetHeight - 6;
       p.style.left = Math.max(8, Math.min(fx, W - p.offsetWidth - 8)) + 'px'; p.style.top = Math.max(8, fy) + 'px';
     }
-    else if(p && p.classList.contains('mid')){ p.style.left = Math.round((W - p.offsetWidth) / 2) + 'px'; p.style.top = Math.round(Math.max(60, (H - p.offsetHeight) * 0.38)) + 'px'; }      // a question, in the middle of the window
+    else if(p && p.classList.contains('center')){ p.style.left = Math.round((W - p.offsetWidth) / 2) + 'px'; p.style.top = Math.round(Math.max(60, (H - p.offsetHeight) * 0.38)) + 'px'; }      // a question, in the middle of the window
     else if(p){ var a = $(p.getAttribute('data-anchor')) || $('#b-menu'); under(p, a, p.getAttribute('data-side')); }
+    // a line of the ⋯ menu that is open: its small menu sits beside the menu (on the side with room), level with the line
+    var sb = $('#sub'); if(sb && p){
+      var ln = $('.mi.top.on', p), sw = sb.offsetWidth, sh = sb.offsetHeight, pl = p.offsetLeft, py = p.offsetTop, gap = 6;
+      var sx = pl - sw - gap; if(sx < 8 && pl + p.offsetWidth + gap + sw <= W - 8) sx = pl + p.offsetWidth + gap;      // on the other side, when only that side has room; in a window too narrow for either, it laps a little over the menu's near edge
+      var sy = py + (ln ? ln.offsetTop - p.scrollTop : 0) - (parseFloat(getComputedStyle(sb).paddingTop) || 0);
+      sb.style.left = Math.max(8, sx) + 'px'; sb.style.top = Math.max(8, Math.min(sy, H - sh - 8)) + 'px'; sb.classList.toggle('toright', sx > pl);
+    }
     var s = $('#sugg'); if(s){ var ad = $('#addr').getBoundingClientRect(); s.style.left = ad.left + 'px'; s.style.width = ad.width + 'px'; if(bottom) s.style.bottom = (H - ad.top + 6) + 'px'; else s.style.top = (ad.bottom + 6) + 'px'; }
     var f = $('#findbox'); if(f){ if(bottom) f.style.bottom = (H - bar.top + 10) + 'px'; else f.style.top = (S.settings.imm ? 10 : bar.bottom + 10) + 'px'; }
+    if(f && ab && f.offsetLeft < ab.offsetLeft + ab.offsetWidth / 2 + 8){ var step = f.offsetHeight + 8; if(bottom) ab.style.bottom = (H - bar.top + 10 + step) + 'px'; else ab.style.top = (Math.max(bar.bottom, 0) + 10 + step) + 'px'; }      // the find box and a question about a password, in a narrow window: one under the other, not one over the other
     var t = $('.toast'); if(t){ if(bottom && !S.settings.imm) t.style.top = '40px'; else t.style.bottom = '22px'; }
   }
   // tell the app where the pages go, what of this page is solid, and what drags the window
@@ -295,6 +308,17 @@
     clearTimeout(peekT); peekT = 0;
     var on = !!(e.target.closest && e.target.closest('#bar')); if(on !== L.over){ L.over = on; if(on) showBar(); else { clearTimeout(immT); immT = setTimeout(hideBar, 1400); } } });
   win.addEventListener('mouseover', function(e){ L.overPop = !!(e.target.closest && e.target.closest('.pwfill')); });      // with the pointer on the offer to fill, the page losing the cursor does not take the offer away
+  // the ⋯ menu: resting on one of its top lines opens that line's small menu. Moving on to another line waits a
+  // moment before changing over, so the pointer can cross the lines in between on its way to the small menu.
+  var subT = 0;
+  function setSub(k){ clearTimeout(subT); subT = 0; if(L.pop === 'menu' && L.sub !== k){ L.sub = k; paint(); } }
+  win.addEventListener('mouseover', function(e){
+    if(L.pop !== 'menu' || !e.target.closest) return;
+    var g = e.target.closest('[data-grp]'), k = g && g.getAttribute('data-grp');
+    if(g){ clearTimeout(subT); subT = 0; if(k !== L.sub) subT = setTimeout(function(){ setSub(k); }, L.sub ? 170 : 70); return; }
+    if(e.target.closest('#sub')){ clearTimeout(subT); subT = 0; return; }
+    if(e.target.closest('#pop .mi') && L.sub){ clearTimeout(subT); subT = setTimeout(function(){ setSub(null); }, 240); }
+  });
   win.addEventListener('mouseleave', function(){ L.overPop = false; if(L.over){ L.over = false; clearTimeout(immT); immT = setTimeout(hideBar, 1400); } });
 
   // ---------- pressing things ----------
@@ -328,6 +352,7 @@
     if((x = t.closest('[data-barat]'))){ post({ do: 'set', k: 'barAt', v: x.getAttribute('data-barat') }); return; }
     if((x = t.closest('[data-flip]'))){ var fk = x.getAttribute('data-flip'); post({ do: 'set', k: fk, v: !S.settings[fk] }); return; }
     if((x = t.closest('[data-lay]'))){ L.pop = null; post({ do: 'split', n: +x.getAttribute('data-lay') }); paint(); return; }
+    if((x = t.closest('[data-grp]'))){ setSub(x.getAttribute('data-grp')); return; }      // pressing a top line opens its small menu too (and Return, with the cursor on it)
     if((x = t.closest('[data-menu]'))){
       var m = x.getAttribute('data-menu'); L.pop = null;
       if(m === 'newtab') post({ do: 'newTab' }); else if(m === 'passwords') post({ do: 'passwords' }); else if(m === 'window' || m === 'private' || m === 'print' || m === 'default') post({ do: m });
@@ -363,7 +388,7 @@
       return;
     }
     if((x = t.closest('[data-pane]')) && +x.getAttribute('data-pane') !== S.at){ post({ do: 'pane', i: +x.getAttribute('data-pane') }); return; }
-    if(L.pop && !t.closest('#pop')) closePop();
+    if(L.pop && !t.closest('#pop, #sub')) closePop();
   });
   win.addEventListener('change', function(e){
     if(e.target.id === 'pview') post({ do: 'set', k: 'panelView', v: e.target.value });      // the panel shows Today, or one board

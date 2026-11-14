@@ -25,7 +25,7 @@
   h2 { margin: 0 0 10px; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
   /* a tile: the site's own icon (kept by Sleek) over its first letter. Under the pointer it lifts a little, and
      its icon's colours, blurred, glow softly behind it: the same bloom a deck's tile has in Slides. */
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; isolation: isolate; }
+  .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; isolation: isolate; }      /* three across, in every section, so the sections' tiles line up and names have room */
   .tile { position: relative; min-width: 0; }
   a.site { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; background: var(--card); color: inherit; text-decoration: none; min-width: 0; border: 1px solid transparent; transition: transform .25s cubic-bezier(.2,.7,.2,1), border-color .2s ease; }
   a.site:hover, a.site:focus-visible { border-color: color-mix(in srgb, var(--fg) 14%, transparent); outline: none; transform: translateY(-2px); }
@@ -44,22 +44,24 @@
   .cols2 { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
   .box { border: 1px solid var(--line); border-radius: 16px; padding: 12px; background: color-mix(in srgb, var(--card) 55%, var(--bg)); display: flex; flex-direction: column; gap: 2px; min-width: 0; }
   .box > h2 { margin: 2px 6px 8px; }
-  .quick { display: flex; margin: 0 2px 6px; } .quick input { height: 36px; border-radius: 10px; font-size: 14px; padding: 0 11px; background: var(--bg); }
+  .quick { display: flex; margin: 0 6px 6px; } .quick input { height: 36px; border-radius: 10px; font-size: 14px; padding: 0 11px; background: var(--bg); }
   .quick input:focus { box-shadow: 0 0 0 3px color-mix(in srgb, #12A36A 18%, transparent), 0 6px 18px -8px color-mix(in srgb, #12A36A 55%, transparent); border-color: #12A36A; }
   h3.sec { margin: 8px 6px 2px; font-size: 11px; letter-spacing: .13em; text-transform: uppercase; color: var(--muted); font-weight: 600; } h3.sec.late { color: #D43C2F; }
   .trow { display: flex; align-items: flex-start; gap: 10px; padding: 6px; border-radius: 9px; transition: background .15s ease, opacity .25s ease; } .trow:hover { background: color-mix(in srgb, var(--fg) 5%, transparent); }
   .trow .tx { min-width: 0; display: flex; flex-direction: column; } .trow .tx b { font-weight: 500; overflow-wrap: anywhere; } .trow .tx small { color: var(--muted); font-size: 12px; }
   .trow.done .tx b { text-decoration: line-through; color: var(--muted); }
+  .ck::before { content: ""; position: absolute; inset: -5px; }      /* room to press it */
   .ck { flex: none; width: 18px; height: 18px; margin-top: 2px; border-radius: 50%; border: 1.5px solid var(--muted); background: none; padding: 0; cursor: pointer; position: relative; transition: background .15s ease, border-color .15s ease, transform .15s ease; }
   .ck:hover { border-color: #12A36A; transform: scale(1.1); } .ck.on { background: #12A36A; border-color: #12A36A; }
   .ck.on::after { content: ""; position: absolute; left: 5px; top: 2px; width: 4px; height: 8px; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg); }
   .none { margin: 6px; color: var(--muted); font-size: 14px; }
-  .recent { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .recent { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 0 6px 6px; }
   a.rc { display: flex; flex-direction: column; gap: 8px; padding: 10px; border-radius: 12px; border: 1px solid var(--line); text-decoration: none; color: inherit; min-width: 0; transition: transform .25s cubic-bezier(.2,.7,.2,1), border-color .2s ease, box-shadow .3s ease; }
   a.rc:hover, a.rc:focus-visible { border-color: var(--c); transform: translateY(-2px); outline: none; box-shadow: 0 14px 30px -16px var(--c); }
   a.rc i { height: 50px; border-radius: 8px; background: linear-gradient(135deg, color-mix(in srgb, var(--c) 85%, #000), color-mix(in srgb, var(--c) 55%, #fff)); display: grid; place-items: center; } a.rc i img { width: 20px; height: auto; filter: brightness(0) invert(1); opacity: .9; }
   a.rc b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } a.rc small { color: var(--muted); font-size: 12px; }
   @media (max-width: 680px) { .cols2 { grid-template-columns: minmax(0, 1fr); } }
+  @media (max-width: 520px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   /* motion: the page arrives piece by piece; with the cursor in the box, the box comes forward and the rest steps back */
   @keyframes arrive { from { opacity: 0; transform: translateY(14px); } }
   main > * { animation: arrive .5s cubic-bezier(.2,.8,.2,1) backwards; } .still main > * { animation: none; }

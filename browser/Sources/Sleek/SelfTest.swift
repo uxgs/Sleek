@@ -70,11 +70,15 @@ enum SelfTest {
     let ring = (await bar(w, "var u = document.getElementById('url'), bad = [], lit = false; [].forEach.call(document.styleSheets, function(sh){ var rules; try { rules = sh.cssRules; } catch(e){ return; } [].forEach.call(rules, function(r){ if(!r.selectorText || !r.style) return; var o = r.style.getPropertyValue('outline') || r.style.getPropertyValue('outline-style'); if(/:focus-within/.test(r.selectorText) && /\\.addr/.test(r.selectorText) && r.style.getPropertyValue('border-color')) lit = true; if(!o || r.style.outlineStyle === 'none' || /none/.test(o) || !/:focus/.test(r.selectorText)) return; r.selectorText.split(/,(?![^(]*\\))/).forEach(function(sel){ var bare = sel.replace(/:focus-visible|:focus-within|:focus/g, '').trim(); try { if(bare && u.matches(bare)) bad.push(sel.trim()); } catch(e){} }); }); }); return { bad: bad.join(' ; '), lit: lit };")) as? [String: Any] ?? [:]
     check("with the cursor in the address box, the box itself is lit, and there is no second, square ring inside it", (ring["bad"] as? String) == "" && (ring["lit"] as? Bool) == true, ring)
     await press(w, "#b-menu")
-    let menu = (await bar(w, "var p = document.getElementById('pop'); if(!p) return {}; return { groups: [].map.call(p.querySelectorAll('h5'), function(h){ return h.textContent; }).join('|'), rows: [].map.call(p.querySelectorAll('.grp'), function(g){ return [].map.call(g.children, function(r){ return r.querySelector('span').textContent.trim(); }).join('|'); }).join(' / '), fits: p.getBoundingClientRect().bottom <= innerHeight + 1 }")) as? [String: Any] ?? [:]
-    check("the ⋯ menu is in named groups: New, Appearance, Manage, Defaults, and this page", (menu["groups"] as? String) == "New|Appearance|Manage|Defaults|This page" && (menu["rows"] as? String) == "Tab|Window|Private Window / Zoom|Theme|Bar Placement|" + (GlassView.available ? "Glass|" : "") + "Bookmarks Bar / Bookmarks|History|Passwords|Downloads / Search Provider|Make Sleek Default Browser / Find on This Page|Print…" && (menu["fits"] as? Bool) == true, menu)
+    let menu = (await bar(w, "var p = document.getElementById('pop'); if(!p) return {}; var out = { top: [].map.call(p.querySelectorAll('[data-grp]'), function(b){ return b.querySelector('span').textContent; }).join('|'), rest: [].map.call(p.querySelectorAll('[data-menu]'), function(b){ return b.querySelector('span').textContent; }).join('|'), closed: !document.getElementById('sub'), subs: [], beside: true }; ['new', 'appearance', 'manage', 'defaults'].forEach(function(g){ Sleek.test.click('[data-grp=' + g + ']'); var s = document.getElementById('sub'), pr = document.getElementById('pop').getBoundingClientRect(), sr = s ? s.getBoundingClientRect() : null; out.subs.push(s ? [].map.call(s.children, function(r){ return r.querySelector('span').textContent.trim(); }).join('|') : ''); if(!sr || sr.right > pr.left || sr.left < 0 || sr.bottom > innerHeight + 1) out.beside = false; }); return out;")) as? [String: Any] ?? [:]
+    check("the ⋯ menu is a short list: New, Appearance, Manage and Defaults each open a small menu beside it; Find and Print are there at once", (menu["top"] as? String) == "New|Appearance|Manage|Defaults" && (menu["rest"] as? String) == "Find on This Page|Print…" && (menu["closed"] as? Bool) == true && (menu["subs"] as? [String] ?? []) == ["Tab|Window|Private Window", "Zoom|Theme|Bar Placement|" + (GlassView.available ? "Glass|" : "") + "Bookmarks Bar", "Bookmarks|History|Passwords|Downloads", "Search Provider|Make Sleek Default Browser"] && (menu["beside"] as? Bool) == true, menu)
+    _ = await bar(w, "document.querySelector('[data-grp=manage]').dispatchEvent(new MouseEvent('mouseover', { bubbles: true })); return 1"); await nap(0.5)
+    let hovered = (await bar(w, "var s = document.getElementById('sub'); return s ? s.getAttribute('aria-label') : ''")) as? String ?? ""
+    check("resting the pointer on a line opens its small menu", hovered == "Manage", hovered)
+    await press(w, "[data-grp=appearance]")
     let barWas = (w.store.settings["bar"] as? Bool) == true
     await press(w, "[data-flip=bar]")
-    let flipped = (w.store.settings["bar"] as? Bool) == !barWas, stillOpen = (await bar(w, "var p = document.getElementById('pop'); return !!p && p.classList.contains('sets') && p.querySelector('[data-flip=bar]').getAttribute('aria-checked') === '" + String(!barWas) + "'")) as? Bool ?? false
+    let flipped = (w.store.settings["bar"] as? Bool) == !barWas, stillOpen = (await bar(w, "var p = document.getElementById('pop'), s = document.getElementById('sub'); return !!p && !!s && s.querySelector('[data-flip=bar]').getAttribute('aria-checked') === '" + String(!barWas) + "'")) as? Bool ?? false
     await press(w, "[data-flip=bar]")
     let flippedBack = (w.store.settings["bar"] as? Bool) == barWas
     await shot(w, "05-menu", to: out)
@@ -92,7 +96,8 @@ enum SelfTest {
       check("the page keeps clear of the bar: what it counts as its own height leaves the bar out", abs(tall - Double(slot.height)) <= 1, [tall, slot.height, slot.maxY])
       await press(w, "#b-menu"); await nap(0.4)
       let menuGlass = w.glass.panes.count == 2 ? w.glass.panes[1].frame : .zero
-      check("an open menu is glass too", menuGlass.width > 250 && menuGlass.height > 300, [w.glass.panes.count, menuGlass])
+      await press(w, "[data-grp=appearance]"); await nap(0.4)
+      check("an open menu is glass too, and so is the small menu beside it", menuGlass.width > 200 && menuGlass.height > 180 && w.glass.panes.count == 3, [w.glass.panes.count, menuGlass])
       await shot(w, "06-glass", to: out)
       await press(w, "#b-menu"); await nap(0.4)
       w.store.set("glass", false); await nap(0.9)
@@ -183,14 +188,14 @@ enum SelfTest {
     check("and it is the same way up there: the tabs over the address row", rowsAt.count == 2 && rowsAt[0] < rowsAt[1], rowsAt)
     await shot(w, "6-bar-at-bottom", to: out)
     print("the search provider")
-    await press(w, "#b-menu"); await press(w, "[data-menu=search]"); s = await see(w)
+    await press(w, "#b-menu"); await press(w, "[data-grp=defaults]"); await press(w, "[data-menu=search]"); s = await see(w)
     let offered = (await bar(w, "return [].map.call(document.querySelectorAll('[data-engine]'), function(e){ return e.querySelector('span').textContent + (e.getAttribute('aria-checked') === 'true' ? '*' : ''); })")) as? [String] ?? []
     check("the menu offers who to search with, DuckDuckGo to begin with", (s["pop"] as? String) == "search" && offered.first == "DuckDuckGo*" && offered.contains("Google"), offered)
     await shot(w, "6b-search-provider", to: out)
     await press(w, "[data-engine='1']"); await nap(0.3)
     let viaGoogle = destination(for: "two words", search: w.store.search)?.absoluteString ?? ""
     check("choosing one sends searches there", w.store.search == "https://www.google.com/search" && viaGoogle == "https://www.google.com/search?q=two%20words", viaGoogle)
-    await press(w, "#b-menu"); await press(w, "[data-menu=search]")
+    await press(w, "#b-menu"); await press(w, "[data-grp=defaults]"); await press(w, "[data-menu=search]")
     _ = await bar(w, "document.getElementById('engineurl').value = 'https://search.example/find?words=%s&lang=en'; return Sleek.test.click('[data-do=engineown]')"); await nap(0.4)
     let viaOwn = destination(for: "a&b c", search: w.store.search)?.absoluteString ?? ""
     check("or an address of your own, with %s where the words go", viaOwn == "https://search.example/find?words=a%26b%20c&lang=en", viaOwn)
@@ -240,7 +245,7 @@ enum SelfTest {
     await press(w, "#b-menu"); s = await see(w)
     check("the ⋯ menu opens", (s["pop"] as? String) == "menu", s["pop"])
     await shot(w, "9-menu", to: out)
-    _ = await bar(w, "return Sleek.test.click('[data-menu=history]')"); await nap(0.6)
+    _ = await bar(w, "Sleek.test.click('[data-grp=manage]'); return Sleek.test.click('[data-menu=history]')"); await nap(0.6)
     let hist = (await bar(w, "return document.querySelectorAll('#pop [data-hist]').length")) as? Int ?? 0
     check("History lists the pages visited", hist >= 2, hist)
     _ = await bar(w, "document.getElementById('win').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); return 1"); await nap(0.3)
