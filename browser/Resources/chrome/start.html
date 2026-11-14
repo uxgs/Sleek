@@ -38,7 +38,15 @@
            transition: opacity .35s ease, transform .5s cubic-bezier(.2,.7,.2,1); background: linear-gradient(90deg, #7C5CFF, #A77BFF 50%, #E58CFF); }
   .bloom img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .tile:has(a:hover) .bloom, .tile:has(a:focus-visible) .bloom { opacity: var(--bloom); transform: translateY(5px) scale(1.08); }
-  @media (prefers-reduced-motion: reduce) { a.site, .bloom { transition: opacity .2s ease; transform: none !important; } }
+  /* motion: the page arrives piece by piece; with the cursor in the box, the box comes forward and the rest steps back */
+  @keyframes arrive { from { opacity: 0; transform: translateY(14px); } }
+  main > * { animation: arrive .5s cubic-bezier(.2,.8,.2,1) backwards; } .still main > * { animation: none; }
+  main > :nth-child(2) { animation-delay: .04s; } main > :nth-child(3) { animation-delay: .08s; } main > :nth-child(4) { animation-delay: .13s; } main > :nth-child(5) { animation-delay: .18s; } main > :nth-child(6) { animation-delay: .23s; }
+  form { transition: transform .35s cubic-bezier(.2,.8,.2,1); } form:focus-within { transform: scale(1.025); }
+  section, .brand { transition: opacity .3s ease, transform .35s cubic-bezier(.2,.8,.2,1); }
+  main:has(form:focus-within) section { opacity: .55; transform: translateY(6px); }
+  main:has(form:focus-within) .brand { transform: translateY(-4px); }
+  @media (prefers-reduced-motion: reduce) { a.site, .bloom { transition: opacity .2s ease; transform: none !important; } main > * { animation: none; } form, section, .brand { transition: none; transform: none !important; } }
 </style>
 </head>
 <body>
@@ -64,7 +72,7 @@
     return '<div class="tile"><b class="bloom">' + pic + '</b><a class="site" href="' + esc(url) + '" title="' + esc(url) + '"><i>' + esc((h.charAt(0) || '?').toUpperCase()) + pic + '</i><span>' + esc(title || h) + '</span></a></div>'; }
   document.getElementById('f').addEventListener('submit', function(e){ e.preventDefault(); var v = document.getElementById('q').value.trim(); if(v) post({ go: v }); });
   window.Start = { fill: function(d){
-    document.getElementById('private').hidden = !d.private;
+    document.getElementById('private').hidden = !d.private; if(d.still) document.documentElement.classList.add('still');
     var m = d.bookmarks || [], t = (d.top || []).filter(function(x){ return /^https?:/.test(x.u); });
     document.getElementById('marks').hidden = !m.length; document.getElementById('marks-g').innerHTML = m.map(function(b){ return tile(b.title, b.url); }).join('');
     document.getElementById('top').hidden = !t.length; document.getElementById('top-g').innerHTML = t.map(function(x){ return tile(x.t, x.u); }).join('');

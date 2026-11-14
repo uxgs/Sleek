@@ -161,6 +161,17 @@ enum SelfTest {
     await shot(w, "7b-immersive-drawn-in", to: out)
     _ = await bar(w, "document.querySelector('.peek').dispatchEvent(new MouseEvent('mousemove', { bubbles: true })); return 1"); await nap(0.3); s = await see(w)
     check("resting the pointer on its handle does", ((s["cls"] as? String) ?? "").contains("show") && w.window.standardWindowButton(.closeButton)?.isHidden == false, s["cls"])
+    // the tile's corner: chosen in Look (dragging the tile ends in the same message)
+    func barBox() async -> [Int] { (await bar(w, "var b = document.getElementById('bar'); return [b.offsetLeft, b.offsetTop, b.offsetWidth, b.offsetHeight]")) as? [Int] ?? [] }
+    _ = await bar(w, "document.getElementById('b-look').click(); return 1"); await nap(0.3); await press(w, "[data-corner='right bottom']"); await nap(0.4)
+    let openLow = await barBox()
+    _ = await bar(w, "document.getElementById('win').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); return 1")
+    _ = await bar(w, "await new Promise(function(ok){ setTimeout(ok, 3400); }); return 1"); let tileLow = await barBox()
+    check("the tile can rest in another corner, and the bar opens out from there", openLow == [10, 762, 1260, 88] && tileLow == [1224, 812, 46, 38] && (w.store.settings["immSide"] as? String) == "right" && (w.store.settings["barAt"] as? String) == "bottom", [openLow, tileLow])
+    await shot(w, "7c-immersive-other-corner", to: out)
+    _ = await bar(w, "document.querySelector('.peek').dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0, clientX: 1240, clientY: 830 })); window.dispatchEvent(new MouseEvent('mousemove', { clientX: 300, clientY: 200 })); window.dispatchEvent(new MouseEvent('mouseup', { clientX: 60, clientY: 40 })); return 1"); await nap(0.6)
+    let tileBack = await barBox()
+    check("dragging the tile to a corner leaves it there", tileBack == [10, 10, 46, 38] && (w.store.settings["immSide"] as? String) == "left" && (w.store.settings["barAt"] as? String) == "top", tileBack)
     w.store.set("imm", false); await nap(0.5)
     check("out of immersive, the buttons are back in the tab row", redButton() == [13, 12], redButton())
 

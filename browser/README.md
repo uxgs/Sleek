@@ -10,22 +10,28 @@ This is Stage 2: the browser itself, and blocking. It is not yet a public downlo
 
 - **Tabs**, with Slides, Docs and Tasks pinned first. They open from inside the app, with no connection.
 - **The address box**: type an address to go there, or words to search (DuckDuckGo). As you type it
-  offers your other open tabs, bookmarks and pages from your history.
-- **Bookmarks**: the star in the address box keeps a page on the bookmarks bar; press it again to
-  rename or remove it. The bar can be hidden.
+  finishes the address for you and offers your other open tabs, bookmarks, pages from your history
+  and well-known sites (a list inside the app, `Resources/sites.txt`; nothing you type is sent
+  anywhere to make suggestions).
+- **Bookmarks**: the star in the address box keeps a page; press it again to rename or remove it.
+  The bookmarks bar starts hidden (⇧⌘B shows it).
+- **Site icons** are kept on this Mac, so bookmarks and the places you go most show them on a new tab.
+- **A picture dragged in** (onto the bar, a new tab, or a page with no use for it): Sleek asks whether
+  to open it or search Google for it. Searching sends the picture to Google; nothing is sent otherwise.
 - **Split view**: two pages side by side, three across, or four corners. The bar works on the page
   with the ring; press a page to move the ring, or a tab to put it there.
 - **The bar at the top or the bottom**, and **immersive**: the page takes the whole window and the bar
-  floats over it, fading away after a moment and coming back when you scroll up to the top or reach
-  for its edge.
-- **Look**: light, dark or matching the Mac, and six themes.
+  floats over it, holding the window's red, yellow and green buttons. After a moment it draws itself
+  in to a small tile with Sleek's mark; rest the pointer on the tile and it opens out again. Drag the
+  tile to any corner and it stays there.
+- **Look** (the button beside Split): light, dark or matching the Mac, and six themes.
+- **Private Browsing** (⇧⌘N): a window that keeps no history and forgets its cookies when it closes.
 - **Pull down to refresh**: with a trackpad, pull down on a page that is at its top. An arrow comes
   down from the top of the page; let go once it turns purple and the page loads again. It leaves
   alone a page that is scrolled down, a sideways stroke (that is Back and Forward), pages that use
   the wheel themselves such as maps, and Sleek's own pages. A mouse with a plain wheel has no
   "letting go", so it doesn't pull.
-- **History, downloads, find on the page, zoom, print, a private window**, and the usual menu bar
-  with its shortcuts.
+- **History, downloads, find on the page, zoom, print**, and the usual menu bar with its shortcuts.
 - Pages may ask to open a new tab, upload a file, or use the camera or microphone (Sleek asks you).
 - **Blocking**, on everywhere from the start: adverts, trackers, pop-ups and redirects to advert
   sites, requests to send notifications, and cookie banners. The shield in the address box shows
@@ -87,12 +93,15 @@ Sources/Sleek/
   BrowserWindow.swift    one window: its tabs, which are showing, and doing what the bar asks
   Tab.swift              one tab: a page, and what a page may ask of the browser; downloads
   Blocker.swift          blocking: turns the lists into the engine's rules and keeps them fresh
+  Known.swift            site icons kept on this Mac, and the list of well-known sites
+  Images.swift           a picture dragged in: open it, or search for it
   Store.swift            settings, bookmarks and history, as files on this Mac
   Support.swift          where files are, Sleek's own pages (sleek://ui and sleek://app), small helpers
   SelfTest.swift         the app checking itself
 Resources/
   chrome/                the bar: chrome.html, chrome.css, chrome.js; and start.html, a new tab's page
   lists-credits.txt      whose block lists these are, and their licences
+  sites.txt              well-known sites, for finishing and suggesting addresses
   Info.plist, Sleek.icns what a Mac needs to know about the app, and its icon
 ```
 

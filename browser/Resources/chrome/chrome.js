@@ -62,7 +62,7 @@
     var t = cur(), set = S.settings, bottom = set.barAt === 'bottom', imm = !!set.imm;
     var mode = S.private ? 'dark' : set.look === 'auto' ? (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : set.look;
     var th = THEMES.filter(function(x){ return x[0] === set.theme; })[0] || THEMES[0], tinted = th[0] !== 'graphite' && !S.private;
-    win.setAttribute('data-mode', mode); win.classList.toggle('bottom', bottom); win.classList.toggle('imm', imm); win.classList.toggle('private', !!S.private); win.classList.toggle('full', L.full); win.classList.toggle('still', L.still);
+    win.setAttribute('data-mode', mode); win.classList.toggle('bottom', bottom); win.classList.toggle('imm', imm); win.classList.toggle('right', imm && set.immSide === 'right'); win.classList.toggle('private', !!S.private); win.classList.toggle('full', L.full); win.classList.toggle('still', L.still);
     if(!imm) win.classList.remove('show');
     win.style.setProperty('--tint', th[2]); win.style.setProperty('--tp', tinted ? '20%' : '0%'); win.style.setProperty('--tp2', tinted ? '10%' : '0%'); win.style.setProperty('--tp3', tinted ? '14%' : '0%'); win.style.setProperty('--k-accent', th[3]);
     var act = document.activeElement, keep = act && act.id && /^(url|find|bmname)$/.test(act.id) ? act.id : null, a0 = keep ? act.selectionStart : 0, a1 = keep ? act.selectionEnd : 0;
@@ -103,7 +103,8 @@
     if(L.pop === 'look') h +='<div class="pop" id="pop" data-anchor="#b-look" data-side="right" style="width:330px"><h4>Look</h4><div class="looks">' + [['light', 'Light', '#FFFFFF'], ['dark', 'Dark', '#0E0E11'], ['auto', 'Match the Mac', 'linear-gradient(90deg,#FFFFFF 50%,#0E0E11 50%)']].map(function(l){ return '<button type="button" class="lookb' + (set.look === l[0] ? ' on' : '') + '" data-look="' + l[0] + '"><i style="--p:' + l[2] + '"></i>' + l[1] + '</button>'; }).join('') + '</div>' +
       '<h4 style="margin-top:4px">Theme</h4><div class="swatches">' + THEMES.map(function(x){ return '<button type="button" class="swb' + (set.theme === x[0] ? ' on' : '') + '" data-theme="' + x[0] + '"><i style="--c:' + x[2] + '"></i>' + x[1] + '</button>'; }).join('') + '</div>' +
       '<h4 style="margin-top:4px">The bar</h4><span class="seg">' + [['top', 'At the top'], ['bottom', 'At the bottom']].map(function(o){ return '<button type="button" data-barat="' + o[0] + '" class="' + (set.barAt === o[0] ? 'on' : '') + '">' + o[1] + '</button>'; }).join('') + '</span>' +
-      '<div class="sw"><span>Immersive<small>The bar fades away and floats back when you need it</small></span><button type="button" role="switch" aria-checked="' + imm + '" data-do="imm" aria-label="Immersive"></button></div></div>';
+      '<div class="sw"><span>Immersive<small>The bar draws in to a small tile, and opens when you rest on it</small></span><button type="button" role="switch" aria-checked="' + imm + '" data-do="imm" aria-label="Immersive"></button></div>' +
+      (imm ? '<div class="sw"><span>The tile’s corner<small>Or drag the tile there yourself</small></span><span class="corners">' + [['left', 'top'], ['right', 'top'], ['left', 'bottom'], ['right', 'bottom']].map(function(c){ var on = (set.immSide === 'right' ? 'right' : 'left') === c[0] && (bottom ? 'bottom' : 'top') === c[1]; return '<button type="button" class="' + (on ? 'on' : '') + '" data-corner="' + c[0] + ' ' + c[1] + '" aria-label="' + c[1] + ' ' + c[0] + '" aria-pressed="' + on + '"></button>'; }).join('') + '</span></div>' : '') + '</div>';
     if(L.pop === 'split') h += '<div class="pop" id="pop" data-anchor="#b-split" data-side="right" style="width:330px"><h4>Split view</h4><div class="lays">' + [[1, 'One page', 'l1'], [2, 'Side by side', 'l2'], [3, 'Three across', 'l3'], [4, 'Four corners', 'l4']].map(function(l){ var c = ''; for(var k = 0; k < l[0]; k++) c += '<b></b>'; return '<button type="button" class="lay' + (S.n === l[0] ? ' on' : '') + '" data-lay="' + l[0] + '"><i class="' + l[2] + '">' + c + '</i>' + l[1] + '</button>'; }).join('') + '</div><p>The bar works on the page with the ring. Press a page to move the ring, or a tab to put it there.</p></div>';
     if(L.pop === 'star' && t) h += '<div class="pop" id="pop" data-anchor=".star" data-side="right" style="width:300px"><h4>' + (L.justMarked ? 'Bookmark added' : 'Bookmark') + '</h4><input type="text" id="bmname" value="' + esc(bm ? bm.title : t.title) + '" aria-label="Name" maxlength="80"><div class="frow" style="justify-content:flex-end"><button type="button" class="go ghost" data-do="unstar">Remove</button><button type="button" class="go" data-do="closepop">Done</button></div></div>';
     if(L.pop === 'allmarks') h += '<div class="pop menu" id="pop" data-anchor="' + (set.bar && !imm ? '#b-all' : '#b-menu') + '" data-side="right" style="width:300px"><h4 style="padding:6px 9px 2px">All bookmarks</h4>' + (S.bookmarks.map(function(b, i){ return '<button type="button" class="mi" data-bm="' + i + '"><span class="two"><b>' + esc(b.title) + '</b><i>' + esc(pretty(b.url)) + '</i></span></button>'; }).join('') || '<p style="padding:6px 9px">None yet. Press the star in the address box to keep a page.</p>') + '</div>';
@@ -118,10 +119,23 @@
     if(L.toast) h += '<div class="toast" role="status"><span>' + esc(L.toast.text) + '</span>' + (L.toast.act ? '<button type="button" data-do="toastact">' + esc(L.toast.act) + '</button>' : '') + '</div>';
     win.innerHTML = h;
     if(imm && (L.pop || L.typed != null || L.find)) win.classList.add('show');
-    place();
+    place(); arrivals();
+    if(L.grab && L.grab.moved) hold(); else if(L.flip) settle();
     if(keep){ var again = document.getElementById(keep); if(again){ again.focus(); try { again.setSelectionRange(a0, a1); } catch(e){} } }
     if(L.fresh && L.fill && L.typed != null){ L.fresh = false; var box = $('#url'); try { box.setSelectionRange(L.typed.length, L.typed.length + L.fill.length); } catch(e){} }      // the offered ending is selected, so typing on replaces it
     report(); pullDraw();
+  }
+  // ---------- motion: what has only just appeared comes in softly ----------
+  // The bar is drawn afresh whenever anything changes, so each thing's arrival is timed from when it first appeared;
+  // a redraw part-way through carries its motion on from where it had got to, rather than starting it again.
+  var born = {};
+  function arrive(el, key, ms, here){ var now = Date.now(); if(!born[key]) born[key] = now; here[key] = 1; var gone = now - born[key]; if(gone < ms && !L.still){ el.classList.add('in'); el.style.animationDelay = (-gone) + 'ms'; } }
+  function arrivals(){
+    var here = {}, p = $('#pop'), s = $('#sugg'), f = $('#findbox'), t = $('.toast');
+    if(p) arrive(p, 'pop:' + L.pop, 260, here); if(s) arrive(s, 'sugg', 220, here); if(f) arrive(f, 'find', 240, here); if(t) arrive(t, 'toast:' + L.toastN, 280, here);
+    $$('.tab').forEach(function(e){ arrive(e, 'tab:' + e.getAttribute('data-tab'), 300, here); });
+    $$('.pane').forEach(function(e, i){ arrive(e, 'pane:' + S.n + ':' + i, 320, here); });
+    Object.keys(born).forEach(function(k){ if(!here[k]) delete born[k]; });
   }
   // ---------- pull down to refresh: an arrow that comes down from the top of the page being pulled ----------
   // It lives outside #win so that drawing the bar again doesn't start its turning over. L.pull is what the app
@@ -183,7 +197,27 @@
   function busy(){ var a = document.activeElement; return !!(L.pop || L.typed != null || L.find || L.over || L.reach || (a && a.id === 'url')); }
   function hideBar(){ clearTimeout(immT); if(!S.settings.imm) return; if(busy()){ immT = setTimeout(hideBar, 900); return; } win.classList.remove('show'); report(); }
   function showBar(){ if(!S.settings.imm) return; win.classList.add('show'); report(); clearTimeout(immT); immT = setTimeout(hideBar, 2600); }
-  win.addEventListener('mousemove', function(e){ if(e.target.closest && e.target.closest('.peek')){ showBar(); return; }      // resting on the handle brings the bar back
+  // The tile the bar draws in to: resting the pointer on it opens the bar; pressing and dragging it moves it, and it
+  // settles in whichever corner of the window it is let go nearest. The bar then opens out from that corner.
+  var peekT = 0;
+  function hold(){ var b = $('#bar'), g = L.grab; if(b && g){ b.style.transition = 'none'; b.style.transform = 'translate(' + g.dx + 'px,' + g.dy + 'px) scale(1.1)'; } }
+  function settle(){      // glide from where the tile was let go to the corner it now belongs in
+    var b = $('#bar'), f = L.flip; if(!b || !f) return; L.flip = null;
+    b.style.transition = 'none'; b.style.transform = ''; var r = b.getBoundingClientRect();
+    b.style.transform = 'translate(' + (f.x - r.left) + 'px,' + (f.y - r.top) + 'px)'; void b.offsetWidth;
+    b.style.transition = L.still ? 'none' : 'transform .5s cubic-bezier(.3,1.25,.4,1)'; b.style.transform = ''; setTimeout(function(){ b.style.transition = ''; }, 540);
+  }
+  win.addEventListener('mousedown', function(e){ if(e.button === 0 && e.target.closest && e.target.closest('.peek')){ e.preventDefault(); clearTimeout(peekT); peekT = 0; L.grab = { x: e.clientX, y: e.clientY, dx: 0, dy: 0, moved: false }; } });
+  window.addEventListener('mousemove', function(e){ var g = L.grab; if(!g) return; g.dx = e.clientX - g.x; g.dy = e.clientY - g.y; if(!g.moved && Math.abs(g.dx) + Math.abs(g.dy) > 5) g.moved = true; if(g.moved) hold(); });
+  window.addEventListener('mouseup', function(e){
+    var g = L.grab; if(!g) return; L.grab = null;
+    if(!g.moved){ showBar(); return; }      // a plain press opens the bar
+    var right = e.clientX > win.clientWidth / 2, low = e.clientY > win.clientHeight / 2, r = $('#bar').getBoundingClientRect(); L.flip = { x: r.left, y: r.top };
+    if((S.settings.immSide === 'right') === right && (S.settings.barAt === 'bottom') === low) settle(); else post({ do: 'corner', side: right ? 'right' : 'left', at: low ? 'bottom' : 'top' });
+  });
+  win.addEventListener('mousemove', function(e){
+    if(e.target.closest && e.target.closest('.peek')){ if(!L.grab && !peekT) peekT = setTimeout(function(){ peekT = 0; if(!L.grab) showBar(); }, 260); return; }      // resting on the tile opens the bar
+    clearTimeout(peekT); peekT = 0;
     var on = !!(e.target.closest && e.target.closest('#bar')); if(on !== L.over){ L.over = on; if(on) showBar(); else { clearTimeout(immT); immT = setTimeout(hideBar, 1400); } } });
   win.addEventListener('mouseleave', function(){ if(L.over){ L.over = false; clearTimeout(immT); immT = setTimeout(hideBar, 1400); } });
 
@@ -210,6 +244,7 @@
     if((x = t.closest('[data-zoom]'))){ post({ do: 'zoom', by: +x.getAttribute('data-zoom') }); return; }
     if((x = t.closest('[data-look]'))){ post({ do: 'set', k: 'look', v: x.getAttribute('data-look') }); return; }
     if((x = t.closest('[data-theme]'))){ post({ do: 'set', k: 'theme', v: x.getAttribute('data-theme') }); return; }
+    if((x = t.closest('[data-corner]'))){ var cn = x.getAttribute('data-corner').split(' '); post({ do: 'corner', side: cn[0], at: cn[1] }); return; }
     if((x = t.closest('[data-barat]'))){ post({ do: 'set', k: 'barAt', v: x.getAttribute('data-barat') }); return; }
     if((x = t.closest('[data-lay]'))){ L.pop = null; post({ do: 'split', n: +x.getAttribute('data-lay') }); paint(); return; }
     if((x = t.closest('[data-menu]'))){

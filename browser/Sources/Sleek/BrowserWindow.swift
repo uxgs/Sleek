@@ -181,10 +181,19 @@ final class BrowserWindow: NSObject, NSWindowDelegate, WKScriptMessageHandler, W
   func navigate(_ text: String, in t: Tab? = nil) { if let u = destination(for: text, search: store.search), let tab = t ?? current { tab.go(u); focusPage() } }
 
   // ---------- where the pages sit ----------
+  // A page that changes place (a split view opening or closing, the bar moving) glides to its new place; a page
+  // that comes into view (another tab, a new space in a split) fades in. Dragging the window's edge moves pages at once.
+  private var arrangedFor = NSSize.zero
   private func arrange() {
+    let resized = window.frame.size != arrangedFor; arrangedFor = window.frame.size
+    let still = Res.selfTest != nil || resized || NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
     for t in tabs {
-      if let k = panes.firstIndex(of: t.id), k < chrome.slots.count { if t.web.superview !== pages { pages.addSubview(t.web) }; t.web.frame = chrome.slots[k]; t.web.isHidden = false }
-      else { t.web.isHidden = true }
+      guard let k = panes.firstIndex(of: t.id), k < chrome.slots.count else { t.web.isHidden = true; continue }
+      let to = chrome.slots[k], fresh = t.web.superview !== pages || t.web.isHidden
+      if t.web.superview !== pages { pages.addSubview(t.web) }
+      if still || fresh || t.web.frame.isEmpty || to.isEmpty { t.web.frame = to }
+      else if t.web.frame != to { NSAnimationContext.runAnimationGroup { c in c.duration = 0.32; c.timingFunction = CAMediaTimingFunction(controlPoints: 0.2, 0.8, 0.2, 1); c.allowsImplicitAnimation = true; t.web.animator().frame = to } }
+      if fresh { t.web.isHidden = false; if !still { t.web.alphaValue = 0; NSAnimationContext.runAnimationGroup { c in c.duration = 0.2; t.web.animator().alphaValue = 1 } } }
     }
   }
   private func rects(_ any: Any?) -> [NSRect] { ((any as? [[String: Any]]) ?? []).map { NSRect(x: $0["x"] as? Double ?? 0, y: $0["y"] as? Double ?? 0, width: $0["w"] as? Double ?? 0, height: $0["h"] as? Double ?? 0) } }
@@ -206,7 +215,7 @@ final class BrowserWindow: NSObject, NSWindowDelegate, WKScriptMessageHandler, W
   /// The start page asks what to show: your bookmarks, and the places you go most.
   func fillStart(_ t: Tab) {
     let top = isPrivate ? [] : Array(store.history.sorted { ($0["n"] as? Int ?? 1) > ($1["n"] as? Int ?? 1) }.prefix(8))
-    t.web.evaluateJavaScript("window.Start && Start.fill(" + json(["bookmarks": store.bookmarks, "top": top, "private": isPrivate]) + ")")
+    t.web.evaluateJavaScript("window.Start && Start.fill(" + json(["bookmarks": store.bookmarks, "top": top, "private": isPrivate, "still": Res.selfTest != nil]) + ")")
   }
   /// A site's icon was just kept: new tabs that are showing fill in again, so it appears.
   func iconsChanged() { for t in tabs where t.kind == "start" { fillStart(t) }; push() }
@@ -255,6 +264,8 @@ final class BrowserWindow: NSObject, NSWindowDelegate, WKScriptMessageHandler, W
       items += Sites.matching(q, limit: 8).filter { !have.contains(Icons.key(URL(string: $0["url"] as? String ?? "")?.host ?? "")) }.prefix(max(2, 6 - items.count))
       tell(["type": "suggest", "q": q, "items": items, "fill": store.finish(q, known: !isPrivate)])
     case "image": imageChosen(m["how"] as? String ?? "")
+    case "corner":      // immersive: which corner the bar's tile rests in (left or right; top or bottom)
+      store.settings["immSide"] = m["side"] as? String == "right" ? "right" : "left"; store.set("barAt", m["at"] as? String == "bottom" ? "bottom" : "top")
     case "history": tell(["type": "history", "items": Array(store.history.prefix(60))])
     case "clearHistory": store.clearHistory(); tell(["type": "history", "items": []])
     case "find":

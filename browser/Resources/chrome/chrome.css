@@ -100,6 +100,27 @@ svg.i { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-widt
 .win.imm .isle { display: block; position: absolute; left: 11px; top: 50%; width: 22px; height: auto; margin-top: -9px; opacity: 1; pointer-events: none; transition: opacity .22s ease .16s, transform .45s cubic-bezier(.32,.72,0,1); }
 .win.imm.show .isle { opacity: 0; transform: scale(.5); transition: opacity .12s ease, transform .3s ease; top: 19px; }
 .win.imm:not(.show):has(.peek:hover) .chrome { transform: scale(1.07); }
+/* the tile can rest in any corner (drag it there); the bar opens out from that corner */
+.win.imm.right .chrome { left: auto; right: 10px; align-items: flex-end; }
+.win.right .peek { left: auto; right: 4px; }
+.corners { flex: none; display: grid; grid-template-columns: 1fr 1fr; gap: 3px; width: 46px; height: 34px; padding: 3px; border-radius: 8px; background: var(--k-hover); }
+.corners button { border: 0; padding: 0; border-radius: 4px; background: color-mix(in srgb, var(--k-fg) 14%, transparent); cursor: pointer; transition: background .15s ease, transform .15s ease; } .corners button:hover { background: color-mix(in srgb, var(--k-fg) 30%, transparent); } .corners button.on { background: var(--k-accent); }
+
+/* ---------- motion: what has only just appeared comes in softly (chrome.js: arrivals) ---------- */
+@keyframes popIn { from { opacity: 0; transform: translateY(-8px) scale(.96); } }
+@keyframes popUp { from { opacity: 0; transform: translateY(8px) scale(.96); } }
+@keyframes tabIn { from { opacity: 0; max-width: 0; padding-left: 0; padding-right: 0; } to { max-width: 210px; } }
+@keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(10px) scale(.96); } }
+@keyframes paneIn { from { opacity: 0; } }
+.pop.in, .sugg.in, .findbox.in { animation: popIn .24s cubic-bezier(.2,.8,.2,1) both; transform-origin: top center; }
+.win.bottom .pop.in, .win.bottom .sugg.in, .win.bottom .findbox.in { animation-name: popUp; transform-origin: bottom center; }
+.pop.mid.in { animation: popIn .3s cubic-bezier(.3,1.2,.4,1) both; }
+.tab.in { animation: tabIn .3s cubic-bezier(.2,.8,.2,1) both; }
+.toast.in { animation: toastIn .28s cubic-bezier(.2,.8,.2,1) both; }
+.pane.in .pane-h, .split:not(.n1) .pane.in::after { animation: paneIn .32s ease both; }
+.ib, .pin, .bm, .mi, .sg, .star, .shield, .plus, .tab { transition: background .15s ease, color .15s ease, transform .12s ease; }
+.ib:active, .pin:active, .star:active, .plus:active, .shield:active { transform: scale(.9); }
+@media (prefers-reduced-motion: reduce) { .in, .pane.in .pane-h, .pane.in::after { animation: none !important; } }
 .win.imm .tabs { background: color-mix(in srgb, var(--k-chrome) 96%, transparent); } .win.imm .tool { background: color-mix(in srgb, var(--k-bar) 97%, transparent); border: 0; }
 .win.imm .bbar, .win.imm .titlestrip { display: none; } .win.imm .tabs { --lights: 80px; } .win.imm.bottom .tabs, .win.imm.full .tabs { --lights: 10px; }
 /* what takes the pointer while the bar is drawn in: it lies over the tile, with a little room round it. Resting on it opens the bar. */
