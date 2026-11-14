@@ -25,7 +25,7 @@ html, body { margin: 0; height: 100%; background: transparent; overflow: hidden;
 .chrome { flex: none; display: flex; flex-direction: column; order: 0; position: relative; } .mid { order: 1; }
 .titlestrip { flex: none; order: 0; height: 28px; background: var(--k-chrome); }
 .tabs { flex: none; display: flex; align-items: flex-end; gap: 4px; height: 40px; padding: 0 10px 0 var(--lights, 80px); background: var(--k-chrome); }
-.win.bottom .tabs, .win.full .tabs { --lights: 10px; }
+.win.bottom .tabs, .win.full .tabs { --lights: 10px; } .tabs { transition: padding-left .35s cubic-bezier(.32,.72,0,1); }      /* the tab row closes up as the window goes full screen, and opens again as it comes back */
 .pins { display: flex; gap: 2px; align-self: center; padding-right: 8px; margin-right: 4px; border-right: 1px solid var(--k-line2); }
 .pin { width: 34px; height: 30px; border: 0; border-radius: 9px; background: none; display: grid; place-items: center; cursor: pointer; } .pin:hover { background: var(--k-hover); } .pin.on { background: var(--k-bg); box-shadow: 0 1px 3px rgba(0,0,0,0.15); }
 .pin img { width: 19px; height: auto; display: block; pointer-events: none; }
@@ -164,9 +164,13 @@ svg.i { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-widt
 .swatches { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
 .swb { display: flex; align-items: center; gap: 8px; min-width: 0; height: 34px; padding: 0 8px; border: 0; border-radius: 9px; background: none; cursor: pointer; font-size: 12.5px; text-align: left; white-space: nowrap; color: var(--k-muted) !important; } .swb:hover { background: var(--k-hover); }
 .swb i { flex: none; width: 18px; height: 18px; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 2px var(--k-raise), 0 0 0 3px var(--k-line2); } .swb.on i { box-shadow: 0 0 0 2px var(--k-raise), 0 0 0 4px var(--k-fg); } .swb.on { color: var(--k-fg) !important; font-weight: 600; }
-.lays { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-.lay { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 8px 10px 8px 8px; border-radius: 12px; border: 1.5px solid var(--k-line); background: none; cursor: pointer; font-size: 12.5px; text-align: left; white-space: nowrap; } .lay.on { border-color: var(--k-accent); }
-.lay i { flex: none; width: 46px; height: 32px; display: grid; gap: 2px; } .lay i b { border-radius: 3px; background: var(--k-line2); } .lay.on i b { background: var(--k-accent); } .lay i.l2 { grid-template-columns: 1fr 1fr; } .lay i.l3 { grid-template-columns: 1fr 1fr 1fr; } .lay i.l4 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
+/* Split view's strip: the four shapes side by side, no words; each comes in a moment after the one before (chrome.js: arrivals) */
+.pop.laysm { width: auto; min-width: 0; flex-direction: row; gap: 4px; padding: 6px; border-radius: 14px; overflow: visible; }
+.lay { flex: none; display: grid; place-items: center; width: 56px; height: 44px; padding: 0; border-radius: 9px; border: 0; background: none; cursor: pointer; transition: background .15s ease, transform .15s cubic-bezier(.2,.8,.2,1); }
+.lay:hover { background: var(--k-hover); transform: translateY(-1px); } .lay:active { transform: scale(.94); } .lay.on { background: color-mix(in srgb, var(--k-accent) 14%, transparent); }
+@keyframes layIn { from { opacity: 0; transform: translateY(-6px) scale(.7); } }
+.lay.in { animation: layIn .3s cubic-bezier(.3,1.4,.4,1) both; }
+.lay i { width: 36px; height: 26px; display: grid; gap: 2px; } .lay i b { border-radius: 3.5px; background: var(--k-line2); transition: background .15s ease; } .lay:hover i b { background: var(--k-muted); } .lay.on i b, .lay.on:hover i b { background: var(--k-accent); } .lay i.l2 { grid-template-columns: 1fr 1fr; } .lay i.l3 { grid-template-columns: 1fr 1fr 1fr; } .lay i.l4 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
 .sugg { position: absolute; z-index: 19; padding: 6px; border-radius: 14px; background: var(--k-raise); border: 1px solid var(--k-line2); box-shadow: var(--k-shadow); display: flex; flex-direction: column; gap: 1px; }
 .sg { display: flex; align-items: center; gap: 10px; padding: 7px 9px; border: 0; border-radius: 8px; background: none; cursor: pointer; text-align: left; width: 100%; } .sg:hover, .sg.sel { background: var(--k-hover); }
 .sg svg.i { width: 15px; height: 15px; color: var(--k-faint); } .sg span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .sg small { color: var(--k-faint); font-size: 11.5px; white-space: nowrap; max-width: 45%; overflow: hidden; text-overflow: ellipsis; }

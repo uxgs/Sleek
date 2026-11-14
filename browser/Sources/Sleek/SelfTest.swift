@@ -137,10 +137,28 @@ enum SelfTest {
 
     print("tabs")
     await press(w, ".plus"); _ = await until(5) { w.tabs.count == 2 && w.current?.kind == "start" }
-    // (the Mac lays the window's buttons out afresh when the window's name changes, as it does for a new tab; they must not be seen to jump)
-    await nap(0.3); w.window.contentView?.superview?.layoutSubtreeIfNeeded(); let afterNew = redButton()
-    w.window.title = "Another name"; w.window.contentView?.superview?.layoutSubtreeIfNeeded(); let afterName = redButton()
-    check("opening a new tab, or anything else that renames the window, leaves its red, yellow and green buttons where they were", afterNew == [13, 12] && afterName == [13, 12], [afterNew, afterName])
+    // (the Mac lays the window's buttons out afresh when the window's name changes, as it does for a new tab, and it
+    // moves the green one without a word; before the window is next drawn, all three must be back in their row)
+    /// Where each of the three buttons is (its left edge and top, from the window's top-left), and whether it can be seen.
+    func lightSpots() -> [[Int]] { [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton].compactMap { w.window.standardWindowButton($0) }.map { b in let r = b.convert(b.bounds, to: nil); return [Int(r.minX.rounded()), Int((w.window.frame.height - r.maxY).rounded()), b.isHidden || b.alphaValue < 0.99 ? 0 : 1] } }
+    func inRow(_ l: [[Int]]) -> Bool { l.count == 3 && l[0][0] == 13 && l.allSatisfy { $0[1] == 12 && $0[2] == 1 } && l[1][0] - l[0][0] == l[2][0] - l[1][0] && l[1][0] > l[0][0] }
+    await nap(0.3); let afterNew = lightSpots()
+    w.window.title = "Another name"; w.window.contentView?.superview?.layoutSubtreeIfNeeded(); await nap(0.1); let afterName = lightSpots()
+    check("opening a new tab, or anything else that renames the window, leaves its red, yellow and green buttons where they were: all three in a row in the tab row, evenly spaced", inRow(afterNew) && inRow(afterName), [afterNew, afterName])
+    let green = lightSpots().last ?? [0, 0, 0], under = w.window.contentView?.superview?.hitTest(NSPoint(x: CGFloat(green[0]) + 6, y: w.window.frame.height - CGFloat(green[1]) - 6))
+    check("a press on the green button reaches it", under != nil && under === w.window.standardWindowButton(.zoomButton), String(describing: under.map { type(of: $0) }))
+    print("full screen")
+    w.window.toggleFullScreen(nil)
+    let began = (await bar(w, "return document.getElementById('win').classList.contains('full')")) as? Bool ?? false      // asked at once: the bar should already know
+    if await until(8, { w.window.styleMask.contains(.fullScreen) }) {
+      await nap(1.2); let l = lightSpots(), cls = (await see(w))["cls"] as? String ?? ""
+      check("going full screen, the bar is told as it begins, and the window's buttons are left showing for the Mac to bring down with the menu bar", began && cls.contains("full") && l.allSatisfy { $0[2] == 1 }, [began, cls, l])
+      w.window.toggleFullScreen(nil)
+      let told = (await bar(w, "return !document.getElementById('win').classList.contains('full')")) as? Bool ?? false
+      _ = await until(8) { !w.window.styleMask.contains(.fullScreen) }; await nap(1.2)
+      let clsBack = (await see(w))["cls"] as? String ?? ""
+      check("coming back, the bar is told as it begins, and the buttons are in their row in the tab row again", told && inRow(lightSpots()) && !clsBack.contains("full"), [told, lightSpots(), clsBack])
+    } else { print("   (this Mac would not go full screen just now, so that was not checked)") }
     _ = await bar(w, "Sleek.test.type('https://en.wikipedia.org/wiki/Web_browser'); return Sleek.test.enter()")
     ok = await loaded(w, "wikipedia.org"); _ = await until(5) { ((await see(w))["on"] as? String ?? "").contains("Wikipedia") }
     s = await see(w)
@@ -174,6 +192,12 @@ enum SelfTest {
     w.current?.web.goBack(); _ = await loaded(w, "wikipedia.org")
 
     print("split view")
+    _ = await bar(w, "document.querySelector('#b-split').dispatchEvent(new MouseEvent('mouseover', { bubbles: true })); return 1"); await nap(0.45)
+    let strip = (await bar(w, "var p = document.getElementById('pop'); return p && p.classList.contains('laysm') ? { n: p.querySelectorAll('[data-lay]').length, words: p.textContent.trim() } : {}")) as? [String: Any] ?? [:]
+    await shot(w, "4a-split-strip", to: out)
+    _ = await bar(w, "document.getElementById('win').dispatchEvent(new MouseEvent('mouseleave')); return 1"); await nap(0.7)
+    let stripGone = (await bar(w, "return !document.getElementById('pop')")) as? Bool ?? false
+    check("resting the pointer on Split brings out its four shapes, with no words, and they go when the pointer leaves", (strip["n"] as? Int) == 4 && (strip["words"] as? String) == "" && stripGone, [strip, stripGone])
     await press(w, "#b-split"); _ = await bar(w, "return Sleek.test.click('[data-lay=\"2\"]')"); _ = await until(5) { w.chrome.slots.count == 2 }
     s = await see(w)
     let two = w.chrome.slots

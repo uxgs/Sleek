@@ -121,7 +121,7 @@
       (S.private ? '<span class="priv" title="Pages you open here are not kept in history, and cookies are forgotten when the window closes">Private Browsing</span>' : '') +
       (S.private ? '' : '<button type="button" class="ib' + (set.panel ? ' on' : '') + '" data-do="panel" id="b-panel" aria-pressed="' + !!set.panel + '" title="Your tasks, beside the page" aria-label="Tasks beside the page">' + ico('panel') + '</button>') +
       '<button type="button" class="ib" data-do="look" id="b-look" aria-expanded="' + (L.pop === 'look') + '" title="Look: light or dark, themes, where the bar sits" aria-label="Look">' + ico('look') + '</button>' +
-      '<button type="button" class="ib' + (S.n > 1 ? ' on' : '') + '" data-do="split" id="b-split" aria-expanded="' + (L.pop === 'split') + '" title="Show pages side by side">' + ico('split') + 'Split</button>' +
+      '<button type="button" class="ib' + (S.n > 1 ? ' on' : '') + '" data-do="split" id="b-split" aria-expanded="' + (L.pop === 'split') + '" aria-haspopup="true" aria-label="Split view">' + ico('split') + 'Split</button>' +
       '<button type="button" class="ib" data-do="menu" id="b-menu" aria-expanded="' + (L.pop === 'menu') + '" aria-label="More">' + ico('more') + '</button>' +
       '<i class="prog' + (t && t.loading ? ' on' : '') + '" id="prog" style="width:' + (t && t.loading ? Math.max(8, Math.round(t.progress * 100)) : 100) + '%"></i></div>';
     if(set.bar && !imm) h += '<div class="bbar" role="toolbar" aria-label="Bookmarks">' + (S.bookmarks.length ? S.bookmarks.map(function(b, i){ return '<button type="button" class="bm" data-bm="' + i + '" title="' + esc(b.url) + '">' + bmIcon(b) + '<span>' + esc(b.title) + '</span></button>'; }).join('') : '<span class="none">Press the star in the address box to keep a page here.</span>') +
@@ -134,7 +134,7 @@
     // what floats
     // the ⋯ menu: a short list. Its first four lines (New, Appearance, Manage, Defaults) each open a small menu of
     // their own beside it, when the pointer rests on the line or it is pressed; Find and Print are there at once.
-    if(L.pop !== 'menu') L.sub = null;
+    if(L.pop !== 'menu') L.sub = null; if(L.pop !== 'split') L.hoverPop = false;
     if(L.pop === 'menu'){
       var row = function(id, icon, label, right){ return '<button type="button" class="mi" data-menu="' + id + '" role="menuitem">' + ico(icon) + '<span>' + label + '</span><small>' + (right || '') + '</small></button>'; };
       var themeNow = (THEMES.filter(function(x){ return x[0] === set.theme; })[0] || THEMES[0])[1], more = '<i class="chev">›</i>';
@@ -163,7 +163,8 @@
       '<h4 style="margin-top:4px">The bar</h4><span class="seg">' + [['top', 'At the top'], ['bottom', 'At the bottom']].map(function(o){ return '<button type="button" data-barat="' + o[0] + '" class="' + (set.barAt === o[0] ? 'on' : '') + '">' + o[1] + '</button>'; }).join('') + '</span>' +
       '<div class="sw"><span>Immersive<small>The bar draws in to a small tile, and opens when you rest on it</small></span><button type="button" role="switch" aria-checked="' + imm + '" data-do="imm" aria-label="Immersive"></button></div>' +
       (imm ? '<div class="sw"><span>The tile’s corner<small>Or drag the tile there yourself</small></span><span class="corners">' + [['left', 'top'], ['right', 'top'], ['left', 'bottom'], ['right', 'bottom']].map(function(c){ var on = (set.immSide === 'right' ? 'right' : 'left') === c[0] && (bottom ? 'bottom' : 'top') === c[1]; return '<button type="button" class="' + (on ? 'on' : '') + '" data-corner="' + c[0] + ' ' + c[1] + '" aria-label="' + c[1] + ' ' + c[0] + '" aria-pressed="' + on + '"></button>'; }).join('') + '</span></div>' : '') + '</div>';
-    if(L.pop === 'split') h += '<div class="pop" id="pop" data-anchor="#b-split" data-side="right" style="width:360px"><h4>Split view</h4><div class="lays">' + [[1, 'One page', 'l1'], [2, 'Side by side', 'l2'], [3, 'Three across', 'l3'], [4, 'Four corners', 'l4']].map(function(l){ var c = ''; for(var k = 0; k < l[0]; k++) c += '<b></b>'; return '<button type="button" class="lay' + (S.n === l[0] ? ' on' : '') + '" data-lay="' + l[0] + '"><i class="' + l[2] + '">' + c + '</i>' + l[1] + '</button>'; }).join('') + '</div><p>The bar works on the page with the ring. Press a page to move the ring, or a tab to put it there.</p></div>';
+    // Split view: just the four shapes, in a small strip under the button. It comes out when the pointer rests on Split (no press needed) and goes when the pointer leaves.
+    if(L.pop === 'split') h += '<div class="pop laysm" id="pop" data-anchor="#b-split" data-side="right" role="menu" aria-label="Split view">' + [[1, 'One page', 'l1'], [2, 'Side by side', 'l2'], [3, 'Three across', 'l3'], [4, 'Four corners', 'l4']].map(function(l){ var c = ''; for(var k = 0; k < l[0]; k++) c += '<b></b>'; return '<button type="button" class="lay' + (S.n === l[0] ? ' on' : '') + '" data-lay="' + l[0] + '" role="menuitemradio" aria-checked="' + (S.n === l[0]) + '" title="' + l[1] + '" aria-label="' + l[1] + '"><i class="' + l[2] + '">' + c + '</i></button>'; }).join('') + '</div>';
     if(L.pop === 'star' && t) h += '<div class="pop" id="pop" data-anchor=".star" data-side="right" style="width:300px"><h4>' + (L.justMarked ? 'Bookmark added' : 'Bookmark') + '</h4><input type="text" id="bmname" value="' + esc(bm ? bm.title : t.title) + '" aria-label="Name" maxlength="80"><div class="frow" style="justify-content:flex-end"><button type="button" class="go ghost" data-do="unstar">Remove</button><button type="button" class="go" data-do="closepop">Done</button></div></div>';
     if(L.pop === 'allmarks') h += '<div class="pop menu" id="pop" data-anchor="' + (set.bar && !imm ? '#b-all' : '#b-menu') + '" data-side="right" style="width:300px"><h4 style="padding:6px 9px 2px">All bookmarks</h4>' + (S.bookmarks.map(function(b, i){ return '<button type="button" class="mi" data-bm="' + i + '"><span class="two"><b>' + esc(b.title) + '</b><i>' + esc(pretty(b.url)) + '</i></span></button>'; }).join('') || '<p style="padding:6px 9px">None yet. Press the star in the address box to keep a page.</p>') + '</div>';
     if(L.pop === 'history') h += '<div class="pop menu" id="pop" data-anchor="#b-menu" data-side="right" style="width:340px"><h4 style="padding:6px 9px 2px">History</h4>' + (S.private ? '<p style="padding:6px 9px">A private window keeps no history.</p>' : !L.history ? '<p style="padding:6px 9px">…</p>' : (L.history.map(function(x){ return '<button type="button" class="mi" data-hist="' + esc(x.u) + '"><span class="two"><b>' + esc(x.t || pretty(x.u)) + '</b><i>' + esc(pretty(x.u)) + '</i></span><small>' + when(x.at) + '</small></button>'; }).join('') || '<p style="padding:6px 9px">Nothing yet.</p>') +
@@ -201,6 +202,7 @@
   function arrivals(){
     var here = {}, p = $('#pop'), s = $('#sugg'), f = $('#findbox'), t = $('.toast');
     if(p) arrive(p, 'pop:' + L.pop, 260, here); var sb = $('#sub'); if(sb) arrive(sb, 'sub:' + L.sub, 200, here); if(s) arrive(s, 'sugg', 220, here); if(f) arrive(f, 'find', 240, here); if(t) arrive(t, 'toast:' + L.toastN, 280, here);
+    $$('.laysm .lay').forEach(function(e, i){ var k = 'lay:' + i; if(!born[k]) born[k] = Date.now() + 30 + i * 45; arrive(e, k, 320, here); });      // the split shapes, one after another
     $$('.tab').forEach(function(e){ arrive(e, 'tab:' + e.getAttribute('data-tab'), 300, here); });
     $$('.pane').forEach(function(e, i){ arrive(e, 'pane:' + S.n + ':' + i, 320, here); }); var pn = $('.panel'); if(pn) arrive(pn, 'panel', 340, here); var ak = $('.askbar'); if(ak) arrive(ak, 'ask', 320, here);
     Object.keys(born).forEach(function(k){ if(!here[k]) delete born[k]; });
@@ -319,11 +321,22 @@
     if(e.target.closest('#sub')){ clearTimeout(subT); subT = 0; return; }
     if(e.target.closest('#pop .mi') && L.sub){ clearTimeout(subT); subT = setTimeout(function(){ setSub(null); }, 240); }
   });
+  // Split: resting the pointer on the button brings its strip of shapes out; leaving both sends it away again.
+  // (Pressing the button, or Return with the cursor on it, still opens it, and then it stays until something is chosen.)
+  var splitT = 0;
+  function splitAway(ms){ clearTimeout(splitT); splitT = setTimeout(function(){ splitT = 0; if(L.pop === 'split' && L.hoverPop){ L.pop = null; L.hoverPop = false; paint(); } }, ms); }
+  win.addEventListener('mouseover', function(e){
+    if(!e.target.closest) return; var onBtn = !!e.target.closest('#b-split'), onPop = L.pop === 'split' && !!e.target.closest('#pop');
+    if(onBtn || onPop){ clearTimeout(splitT); splitT = 0; if(onBtn && !L.pop && L.typed == null) splitT = setTimeout(function(){ splitT = 0; if(!L.pop && L.typed == null){ L.pop = 'split'; L.hoverPop = true; paint(); } }, 110); return; }
+    if(L.pop === 'split' && L.hoverPop) splitAway(260); else { clearTimeout(splitT); splitT = 0; }
+  });
+  win.addEventListener('mouseleave', function(){ if(L.pop === 'split' && L.hoverPop) splitAway(320); else { clearTimeout(splitT); splitT = 0; } });
   win.addEventListener('mouseleave', function(){ L.overPop = false; if(L.over){ L.over = false; clearTimeout(immT); immT = setTimeout(hideBar, 1400); } });
 
   // ---------- pressing things ----------
   function closePop(){ if(L.pop){ L.pop = null; paint(); } }
-  function openPop(what){ L.pop = L.pop === what ? null : what; L.typed = null; if(what === 'history' && L.pop){ L.history = null; post({ do: 'history' }); } paint(); if(what === 'star'){ var n = $('#bmname'); if(n){ n.focus(); n.select(); } } }
+  function openPop(what){ if(what === 'split' && L.pop === 'split' && L.hoverPop){ L.hoverPop = false; return; }      // pressing Split while its strip is out from hovering keeps it there
+    L.hoverPop = false; L.pop = L.pop === what ? null : what; L.typed = null; if(what === 'history' && L.pop){ L.history = null; post({ do: 'history' }); } paint(); if(what === 'star'){ var n = $('#bmname'); if(n){ n.focus(); n.select(); } } }
   function choose(i){
     var r = L.rows[i]; L.typed = null; L.sel = -1; if(!r){ paint(); return; }
     if(r.kind === 'tab') post({ do: 'select', id: r.id }); else if(r.kind === 'search') post({ do: 'go', text: r.text }); else post({ do: 'open', url: r.url });

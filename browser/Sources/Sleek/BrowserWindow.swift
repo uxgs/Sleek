@@ -110,10 +110,10 @@ final class BrowserWindow: NSObject, NSWindowDelegate, WKScriptMessageHandler, W
   // The red, yellow and green buttons sit where the bar says: in the tab row, which in immersive is inside the
   // floating bar, so they come and go with it. (The Mac lays them out afresh whenever the window changes, so
   // this is done again each time it does.)
-  private var lightsAt: NSPoint?, lightsHome: (height: CGFloat, origins: [NSPoint])?, lightsWatch: [NSObjectProtocol] = [], placingLights = false
+  private var lightsAt: NSPoint?, lightsHome: (height: CGFloat, origins: [NSPoint])?, lightsWatch: [NSObjectProtocol] = [], placingLights = false, inFull = false, lightsLoop: CFRunLoopObserver?
   private var lights: [NSButton] { [.closeButton, .miniaturizeButton, .zoomButton].compactMap { window.standardWindowButton($0) } }
   func placeLights() {
-    let b = lights; guard !placingLights, b.count == 3, let strip = b[0].superview?.superview, !window.styleMask.contains(.fullScreen) else { return }
+    let b = lights; guard !placingLights, !inFull, b.count == 3, let strip = b[0].superview?.superview else { return }
     placingLights = true; defer { placingLights = false }
     if lightsHome == nil { lightsHome = (strip.frame.height, b.map { $0.frame.origin }) }
     // The Mac puts the buttons back in its own place at moments of its choosing (the window is renamed, as for a new tab;
@@ -121,11 +121,14 @@ final class BrowserWindow: NSObject, NSWindowDelegate, WKScriptMessageHandler, W
     // anything is drawn, so they are never seen to jump.
     if lightsWatch.isEmpty { for v in b as [NSView] + [strip] { v.postsFrameChangedNotifications = true
       lightsWatch.append(NotificationCenter.default.addObserver(forName: NSView.frameDidChangeNotification, object: v, queue: nil) { [weak self] _ in MainActor.assumeIsolated { self?.placeLights() } }) } }
+    // The Mac moves the green button without saying so. So, as well, each time the app is about to rest (which is
+    // before anything it has changed is drawn), the three are looked at and put right if they have been moved.
+    if lightsLoop == nil, let o = CFRunLoopObserverCreateWithHandler(nil, CFRunLoopActivity.beforeWaiting.rawValue, true, 0, { [weak self] _, _ in MainActor.assumeIsolated { self?.placeLights() } }) { CFRunLoopAddObserver(CFRunLoopGetMain(), o, .commonModes); lightsLoop = o }
     guard let home = lightsHome else { return }
     let step = home.origins[1].x - home.origins[0].x, h = b[0].frame.height
     let tall = lightsAt.map { h + 2 * $0.y } ?? home.height
-    var f = strip.frame; f.size.height = tall; f.origin.y = window.frame.height - tall; strip.frame = f
-    for (i, button) in b.enumerated() { button.setFrameOrigin(lightsAt.map { NSPoint(x: $0.x + CGFloat(i) * step, y: (tall - h) / 2) } ?? home.origins[i]) }
+    var f = strip.frame; f.size.height = tall; f.origin.y = window.frame.height - tall; if strip.frame != f { strip.frame = f }
+    for (i, button) in b.enumerated() { let o = lightsAt.map { NSPoint(x: $0.x + CGFloat(i) * step, y: (tall - h) / 2) } ?? home.origins[i]; if button.frame.origin != o { button.setFrameOrigin(o) } }
   }
   private func showLights(_ show: Bool) {
     if show == lightsShown { return }; lightsShown = show
@@ -303,7 +306,7 @@ final class BrowserWindow: NSObject, NSWindowDelegate, WKScriptMessageHandler, W
       glass.place(gl.map { (NSRect(x: $0["x"] as? Double ?? 0, y: $0["y"] as? Double ?? 0, width: $0["w"] as? Double ?? 0, height: $0["h"] as? Double ?? 0), CGFloat($0["r"] as? Double ?? 0)) })
       let p = (m["lightsAt"] as? [Any])?.compactMap { ($0 as? NSNumber)?.doubleValue }
       lightsAt = p?.count == 2 ? NSPoint(x: p![0], y: p![1]) : nil; placeLights()
-      showLights(m["lights"] as? Bool ?? true)
+      showLights(inFull || (m["lights"] as? Bool ?? true))      // in full screen the buttons are the Mac's to show: they come down with the menu bar
       arrange()
     case "go": navigate(m["text"] as? String ?? "")
     case "open": if let u = URL(string: m["url"] as? String ?? "") { if m["new"] as? Bool == true { newTab(u) } else { current?.go(u); focusPage() } }
@@ -363,8 +366,15 @@ final class BrowserWindow: NSObject, NSWindowDelegate, WKScriptMessageHandler, W
   func show(_ what: String) { tell(["type": "show", "what": what]) }      // the menu bar asking the bar to open something of its own
 
   // ---------- the window ----------
-  func windowWillClose(_ notification: Notification) { if let m = monitor { NSEvent.removeMonitor(m) }; lightsWatch.forEach { NotificationCenter.default.removeObserver($0) }; lightsWatch = []; tabs.forEach { $0.close() }; tabs = []; onClose?(self) }
-  func windowDidEnterFullScreen(_ notification: Notification) { tell(["type": "full", "on": true]) }
-  func windowDidExitFullScreen(_ notification: Notification) { tell(["type": "full", "on": false]) }
+  func windowWillClose(_ notification: Notification) { if let m = monitor { NSEvent.removeMonitor(m) }; lightsWatch.forEach { NotificationCenter.default.removeObserver($0) }; lightsWatch = []; if let o = lightsLoop { CFRunLoopObserverInvalidate(o); lightsLoop = nil }; tabs.forEach { $0.close() }; tabs = []; onClose?(self) }
+  // Full screen (the green button). The bar is told as the change begins, not once it is over, so the tab row closes
+  // up (and opens again) while the window is moving rather than jumping afterwards; and while the window is full
+  // screen its buttons are left to the Mac, shown, so the green one is there to come back with.
+  func windowWillEnterFullScreen(_ notification: Notification) { inFull = true; showLights(true); tell(["type": "full", "on": true]) }
+  func windowDidEnterFullScreen(_ notification: Notification) { inFull = true; showLights(true); tell(["type": "full", "on": true]) }
+  func windowDidFailToEnterFullScreen(_ window: NSWindow) { inFull = false; tell(["type": "full", "on": false]); placeLights() }
+  func windowWillExitFullScreen(_ notification: Notification) { inFull = false; tell(["type": "full", "on": false]); placeLights() }
+  func windowDidExitFullScreen(_ notification: Notification) { inFull = false; tell(["type": "full", "on": false]); placeLights() }
+  func windowDidFailToExitFullScreen(_ window: NSWindow) { inFull = true; showLights(true); tell(["type": "full", "on": true]) }
   var session: [String] { tabs.map { $0.address }.filter { $0.hasPrefix("http") || $0.hasPrefix("sleek://app/") } }
 }
