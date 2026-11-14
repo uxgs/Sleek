@@ -1,0 +1,53 @@
+# Sleek Docs for iPhone. `./make.sh` turns this into an Xcode project (with xcodegen) and builds it.
+# The app carries Sleek's own pages inside and shows them with native bars around them; it compiles the
+# shared pieces in ../ios-shared and three files of the Mac browser as they are.
+name: SleekDocs
+options:
+  bundleIdPrefix: com.sleek
+  deploymentTarget:
+    iOS: "17.0"
+targets:
+  SleekDocs:
+    type: application
+    platform: iOS
+    sources:
+      - path: Sources
+      - path: ../ios-shared/Kit.swift
+      - path: ../ios-shared/Host.swift
+      - path: ../browser/Sources/Sleek/Common.swift
+      - path: ../browser/Sources/Sleek/Work.swift
+      - path: ../browser/Sources/Sleek/Known.swift
+      - path: Assets.xcassets
+      - path: build/inside/app
+        type: folder
+      - path: build/inside/chrome
+        type: folder
+    info:
+      path: build/Info.plist
+      properties:
+        CFBundleDisplayName: Sleek Docs
+        CFBundleShortVersionString: "0.1.0"
+        CFBundleVersion: "1"
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        LSSupportsOpeningDocumentsInPlace: false
+        UTExportedTypeDeclarations:
+          - UTTypeIdentifier: com.sleek.file
+            UTTypeDescription: Sleek file
+            UTTypeConformsTo: [public.json]
+            UTTypeTagSpecification:
+              public.filename-extension: [sleek]
+        CFBundleDocumentTypes:
+          - CFBundleTypeName: Sleek file
+            LSHandlerRank: Alternate
+            LSItemContentTypes: [com.sleek.file]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.sleek.docs
+        PRODUCT_NAME: SleekDocs
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        SWIFT_VERSION: "5.0"
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGN_STYLE: Manual
+        DEVELOPMENT_TEAM: ""
+        TARGETED_DEVICE_FAMILY: "1"

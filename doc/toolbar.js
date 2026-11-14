@@ -128,6 +128,8 @@
     { n: 'Add a row below', i: 'plus', c: T.addRowAfter }, { n: 'Add a column to the right', i: 'plus', c: T.addColumnAfter },
     { n: 'Delete this row', i: 'minus', c: T.deleteRow }, { n: 'Delete this column', i: 'minus', c: T.deleteColumn }, { n: 'Delete the table', i: 'trash', c: T.deleteTable }
   ];
+  // for an app that puts its own bars around this page (Sleek Docs for iPhone): the same blocks and actions, to list and to run
+  A.blocks = function(){ return BLOCKS; }; A.sectionActions = sectionActions; A.tableActions = function(){ return TABLE; }; A.setType = setType;
   // list the blocks in a menu, narrowed to those whose name has q; first marks the top one as chosen (the / menu)
   function blockList(p, q, pick, first){
     var lastG = '', n = 0; q = (q || '').toLowerCase().trim();

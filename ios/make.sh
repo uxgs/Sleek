@@ -13,7 +13,7 @@ cd "$(dirname "$0")"
 SITE=..
 if [ ! -s "$SITE/browser/build/lists/ads.txt" ]; then echo "Run ../browser/make.sh once first: it fetches the block lists this app carries."; exit 1; fi
 mkdir -p build/inside/app build/inside/lists build/inside/chrome
-rsync -a --delete --exclude '.git' --exclude '.DS_Store' --exclude 'browser' --exclude 'ios' --exclude 'ios-tasks' --exclude 'tools' --exclude 'service' --exclude '__pycache__' --exclude 'node_modules' --exclude 'README.md' --exclude 'LICENSE' --exclude '.claude' --exclude 'data/backups' "$SITE/" build/inside/app/
+rsync -a --delete --exclude '.git' --exclude '.DS_Store' --exclude 'browser' --exclude 'ios' --exclude 'ios-*' --exclude 'tools' --exclude 'service' --exclude '__pycache__' --exclude 'node_modules' --exclude 'README.md' --exclude 'LICENSE' --exclude '.claude' --exclude 'data/backups' "$SITE/" build/inside/app/
 python3 "$SITE/browser/fonts.py" build/inside/app "$SITE/browser/build/fonts" || echo "fonts were not put inside the app"
 cp "$SITE"/browser/build/lists/*.txt build/inside/lists/
 cp "$SITE/browser/Resources/lists-credits.txt" build/inside/lists/CREDITS.txt

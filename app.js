@@ -4260,6 +4260,13 @@
     index: function(){ return i; },                 // where the deck is, and a way to go somewhere (features/viewers.js)
     go: function(k){ if(gridOpen) closeGrid(k); else show(k); },
     labels: function(){ return slides.map(function(s, k){ return s.getAttribute('data-label') || ('Slide ' + (k + 1)); }); },
+    // for an app that puts its own bars around the deck (Sleek Slides for iPhone): the same things the bars here do
+    count: function(){ return slides.length; },
+    setNote: function(html){ var s = slides[i]; if(s) saveNoteFor(s, html); },      // the notes of the slide showing
+    act: function(kind, k){ slideAction(kind, k == null ? i : k); },                 // 'dup' or 'del' a slide: the deck is saved and the page loads again
+    openGrid: function(){ openGrid(); }, closeGrid: function(){ closeGrid(); },      // All slides
+    edit: function(on){ if(on == null || !!on !== editing) toggleEdit(); },
+    step: function(dir){ stepDeck(dir); },                                           // undo (-1) or redo (1)
     onGrid: [],                                     // fn(tilesEl) each time All slides is drawn
     tileSrc: function(m){ return tileSrc(m); },     // the image a tile shows (device edit or seed)
     templates: function(){ return TEMPLATES.map(function(t){ return { key: t.key, name: t.name, desc: t.desc }; }); },

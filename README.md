@@ -177,11 +177,21 @@ A Mac app that browses the web with Slides, Docs and Tasks inside it is being bu
 [browser](browser/README.md) folder. It is not a public download yet. Sleek for iPhone, the same browser
 for the phone, is in the [ios](ios/README.md) folder; it is not in the App Store yet.
 
-## Sleek Tasks for iPhone
+## Sleek for iPhone: Tasks, Docs and Slides
 
-Tasks as an app of its own for the iPhone, made for the phone rather than shrunk to it, is in the
-[ios-tasks](ios-tasks/README.md) folder. It keeps its tasks in the same file Sleek Tasks saves here
-("Save a copy of them all"), so a copy moves between the two. It is not in the App Store yet.
+Each is an app of its own for the iPhone, made for the phone rather than shrunk to it. None is in the
+App Store yet; you build them with Xcode.
+
+- [ios-tasks](ios-tasks/README.md): **Sleek Tasks**, fully native. It keeps its tasks in the same file
+  Sleek Tasks saves here ("Save a copy of them all"), so a copy moves between the two.
+- [ios-docs](ios-docs/README.md): **Sleek Docs**. Your pages are a native list; a page is this very
+  editor inside the app, with native bars around it and its tools on the keyboard.
+- [ios-slides](ios-slides/README.md): **Sleek Slides**. Your decks are a native list; a slide is drawn
+  by this very deck page inside the app, and you change its words in fields beneath it and present
+  from your hand.
+
+Docs and Slides share [ios-shared](ios-shared); `.sleek` files move pages and decks between the
+phone and the web.
 
 ## The sample deck
 
