@@ -159,7 +159,7 @@ Sources/Sleek/
   Known.swift            site icons kept on this Mac, and the list of well-known sites
   Images.swift           a picture dragged in: open it, or search for it
   Store.swift            settings, bookmarks and history, as files on this Mac
-  Common.swift           what the Mac and iPhone apps share: Sleek's own pages (sleek://ui and sleek://app), where an address goes, search providers, reading a page for Save to Sleek
+  Common.swift           what the Mac and iPhone apps share: Sleek's own pages (sleek://ui and sleek://app), where an address goes, search providers, reading a page for Save to Sleek, the script that notices sign-in boxes
   Support.swift          where files are on the Mac, small helpers
   SelfTest.swift         the app checking itself
 Resources/

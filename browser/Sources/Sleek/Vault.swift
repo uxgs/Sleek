@@ -1,4 +1,4 @@
-// Passwords, kept on this Mac and nowhere else.
+// Passwords, kept on this Mac (or this iPhone: the same code runs in both apps) and nowhere else.
 //
 // Where they are: one file, ~/Library/Application Support/Sleek/passwords.sleekvault. The sign-ins in
 // it are encrypted (AES-GCM, 256-bit); the key is kept in the Mac's own Keychain ("Sleek Passwords"),
@@ -13,7 +13,11 @@
 //
 // Nothing here is ever sent anywhere, and nothing is ever written over that could not be read: if
 // the key is missing, the file is left exactly as it is.
+#if canImport(AppKit)
 import AppKit
+#else
+import UIKit
+#endif
 import CryptoKit
 import LocalAuthentication
 import Security
@@ -81,6 +85,9 @@ final class Vault {
     var bytes = [UInt8](repeating: 0, count: 32)
     guard SecRandomCopyBytes(kSecRandomDefault, 32, &bytes) == errSecSuccess else { return nil }
     var add = base; add[kSecValueData as String] = Data(bytes); add[kSecAttrLabel as String] = "Sleek Passwords"
+    #if os(iOS)
+    add[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly      // on the iPhone: only while it is unlocked, and never copied to another device
+    #endif
     add[kSecAttrDescription as String] = "The key to the passwords Sleek keeps on this Mac"
     guard SecItemAdd(add as CFDictionary, nil) == errSecSuccess else { return nil }
     key = SymmetricKey(data: Data(bytes)); return key
@@ -181,6 +188,7 @@ final class Vault {
   @discardableResult func remove(_ id: String) -> Bool { guard isOpen, var l = logins else { return false }; used(); l.removeAll { $0.id == id }; return keep(l) }
 
   // ---------- copying: gone from the clipboard a minute later ----------
+  #if canImport(AppKit)
   /// The clipboard used (a private one while the app checks itself, so yours is left alone).
   let board: NSPasteboard = Res.selfTest != nil ? NSPasteboard(name: NSPasteboard.Name("sleek-selftest-clip")) : .general
   func copy(_ text: String, forgetAfter seconds: Double = 60) {
@@ -189,6 +197,14 @@ final class Vault {
     let mine = board.changeCount
     DispatchQueue.main.asyncAfter(deadline: .now() + seconds) { [weak self] in if let b = self?.board, b.changeCount == mine { b.clearContents() } }
   }
+  #else
+  /// What was last copied (for the app's own checks, which leave your clipboard alone).
+  private(set) var copied = ""
+  func copy(_ text: String, forgetAfter seconds: Double = 60) {
+    copied = text; if Res.selfTest != nil { return }
+    UIPasteboard.general.setItems([["public.utf8-plain-text": text]], options: [.expirationDate: Date().addingTimeInterval(seconds), .localOnly: true])      // gone by itself, and not handed to your other devices
+  }
+  #endif
 
   // ---------- how good a password is ----------
   static let common: Set<String> = ["password", "passw0rd", "password1", "123456", "1234567", "12345678", "123456789", "1234567890", "qwerty", "qwertyuiop", "abc123", "111111", "000000", "letmein", "iloveyou", "admin", "welcome", "monkey", "dragon", "sunshine", "princess", "trustno1", "changeme", "secret"]
@@ -213,7 +229,8 @@ final class Vault {
 
   // ---------- making one ----------
   private static var wordList: [String] = {
-    let all = (try? String(contentsOfFile: "/usr/share/dict/words", encoding: .utf8)) ?? ""
+    let inside = Res.root.appendingPathComponent("words.txt").path      // the iPhone app carries its own list; the Mac has one
+    let all = (try? String(contentsOfFile: inside, encoding: .utf8)) ?? (try? String(contentsOfFile: "/usr/share/dict/words", encoding: .utf8)) ?? ""
     let w = all.split(separator: "\n").map(String.init).filter { $0.count >= 4 && $0.count <= 7 && $0.allSatisfy { $0.isASCII && $0.isLowercase } }
     return w.count > 2000 ? w : ["amber", "birch", "cedar", "delta", "ember", "fable", "glade", "harbor", "indigo", "jasper", "kettle", "lantern", "meadow", "nectar", "orchid", "pebble", "quartz", "river", "saffron", "thistle", "umber", "velvet", "willow", "yonder", "zephyr"]
   }()

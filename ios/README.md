@@ -24,6 +24,16 @@ yet; you build it yourself with Xcode.
   on stays as it was. A site with no app opens in Sleek as usual. Links within the site you are
   already browsing, addresses you type, and private tabs stay in Sleek, and Open in App in the ⋯ menu
   sends the page showing to its app. Settings can switch this off.
+- **Passwords.** Sign in to a site and Sleek offers to keep the name and password; next time, with
+  the cursor in a sign-in box, the saved name appears beside the bar, and Face ID (or the passcode)
+  fills it. Joining a site, Sleek offers a strong password and keeps it once the site has taken it.
+  They are kept on the iPhone only: one encrypted file, its key in the iPhone's Keychain (for this
+  device only), opened with Face ID or the passcode, and closed again when you leave the app or five
+  minutes after it was last used. A password is only ever filled into the site it was saved for, never
+  on a page whose connection others can read, and a private tab is never asked to keep one. Passwords,
+  in Settings, lists them: show, copy (gone from the clipboard in a minute), change, remove, the ones
+  worth changing, a stronger one made for you, and bringing them in from, or saving them to, the file
+  other browsers use. It is the Mac app's vault, the same code.
 - **Blocking.** The same lists and the same code as the Mac app: adverts, trackers and cookie
   notices. The shield beside an address switches blocking off for a site that does not work, and
   Sleek remembers that. Settings lists those sites.
@@ -41,7 +51,8 @@ yet; you build it yourself with Xcode.
 
 ## What is not here yet
 
-- Passwords (the Mac app's vault), saving files, a count of what was blocked, reader view, iPad.
+- Saving files, a count of what was blocked, reader view, iPad, passkeys, and filling the iPhone's
+  own saved passwords (Sleek fills the ones it keeps).
 - It cannot be set as the iPhone's browser for links from other apps until Apple grants that to a
   released app.
 - Work does not travel between this app and Sleek anywhere else by itself; move it with the apps'
@@ -60,7 +71,7 @@ have run `../browser/make.sh` once (it fetches the block lists and fonts both ap
 
 `./make.sh check` starts the app with `--prove`: it drives the same model the screens draw, through
 tabs, Private Browsing, blocking, bookmarks, history, handing links to apps (with a stand-in for the
-phone's answer), your Sleek work, Save to Sleek and the bar, on real pages, says what it finds, and quits. Nothing of yours is touched while it does.
+phone's answer), passwords (with a throwaway key and a stand-in for Face ID), your Sleek work, Save to Sleek and the bar, on real pages, says what it finds, and quits. Nothing of yours is touched while it does.
 
 ## How it is made
 
@@ -73,11 +84,12 @@ Sources/
   Views.swift        the screen: the page, the bar and its tile, the menu
   Start.swift        a new tab: your day; and a private tab's first page
   Sheets.swift       searching, all your tabs, tasks, bookmarks and history, settings, the shield, Save to Sleek, the first-time question
+  Passwords.swift    the Passwords screen: the list, one sign-in, adding and changing, files in and out
   Check.swift        the app checking itself
   Support.swift      where the app's files are, Sleek's mark and colours, small pieces the screens share
 ```
 
-Five files are compiled straight from the Mac app, so the two never drift apart
+Six files are compiled straight from the Mac app, so the two never drift apart
 (`../browser/Sources/Sleek/`): `Common.swift` (Sleek's own pages, where an address goes, search
-providers), `Blocker.swift`, `Store.swift` (settings, bookmarks, history), `Known.swift` (site icons,
+providers, the script that notices sign-in boxes), `Vault.swift` (passwords), `Blocker.swift`, `Store.swift` (settings, bookmarks, history), `Known.swift` (site icons,
 well-known sites) and `Work.swift` (your Sleek work, through `bridge.html`).

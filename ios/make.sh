@@ -27,6 +27,8 @@ for l in sorted(open(sys.argv[2]).read().split("\n")):
     if len(p) == 2 and p[0].isdigit(): base.insert(min(int(p[0]), len(base)), p[1])
 open(sys.argv[1], "w").write("\n".join(base) + "\n")' build/inside/sites.txt "$SITE/browser/build/sites-more.txt"
 fi
+# words for the passwords Sleek makes (the Mac's own word list: short, plain, lower-case words)
+grep -E '^[a-z]{4,7}$' /usr/share/dict/words > build/inside/words.txt
 xcodegen generate --quiet
 if [ "${1:-}" = "phone" ]; then
   TEAM="${2:?Give your Apple development team, as in: ./make.sh phone ABCDE12345}"

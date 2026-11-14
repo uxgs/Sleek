@@ -1,6 +1,6 @@
 # Sleek for iPhone. `./make.sh` turns this into an Xcode project (with xcodegen) and builds it.
-# The app compiles five files of the Mac browser as they are (blocking, settings and history, known
-# sites and icons, your Sleek work, and what both apps share), so the two never drift apart.
+# The app compiles six files of the Mac browser as they are (blocking, settings and history, known
+# sites and icons, your Sleek work, passwords, and what both apps share), so the two never drift apart.
 name: Sleek
 options:
   bundleIdPrefix: com.sleek
@@ -17,6 +17,7 @@ targets:
       - path: ../browser/Sources/Sleek/Store.swift
       - path: ../browser/Sources/Sleek/Known.swift
       - path: ../browser/Sources/Sleek/Work.swift
+      - path: ../browser/Sources/Sleek/Vault.swift
       - path: Assets.xcassets
       - path: build/inside/app
         type: folder
@@ -25,6 +26,7 @@ targets:
       - path: build/inside/chrome
         type: folder
       - path: build/inside/sites.txt
+      - path: build/inside/words.txt
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.sleek.browser

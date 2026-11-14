@@ -8,7 +8,7 @@
 import SwiftUI
 import WebKit
 
-enum Sheet: String, Identifiable { case search, tabs, tasks, library, settings, shield, save; var id: String { rawValue } }
+enum Sheet: String, Identifiable { case search, tabs, tasks, library, settings, shield, save, passwords; var id: String { rawValue } }
 
 struct BrowserView: View {
   @StateObject private var b = Browser()
@@ -31,13 +31,14 @@ struct BrowserView: View {
         case .settings: SettingsView(b: b).presentationDetents([.large])
         case .shield: ShieldView(b: b, tab: b.tab).presentationDetents([.height(250)]).presentationBackground(.regularMaterial)
         case .save: SaveView(b: b).presentationDetents([.height(430)]).presentationBackground(.regularMaterial)
+        case .passwords: NavigationStack { PasswordsScreen(b: b, sheet: true) }.presentationDetents([.large])
         }
       }.presentationCornerRadius(28).preferredColorScheme(b.scheme).tint(.sleekB)
     }
     .fullScreenCover(isPresented: Binding(get: { b.asking }, set: { _ in })) { WelcomeView(b: b).preferredColorScheme(b.scheme) }
     .preferredColorScheme(b.scheme)
     .tint(.sleekB)
-    .onChange(of: phase) { _, now in if now != .active { b.leaving() } }
+    .onChange(of: phase) { _, now in if now != .active { b.leaving() }; if now == .background { Vault.shared.lock() } }      // passwords close when you leave the app
   }
 }
 
@@ -86,7 +87,9 @@ struct BarView: View {
     GeometryReader { g in
       ZStack(alignment: b.compact ? b.corner.alignment : (b.corner.isTop ? .top : .bottom)) {
         Color.clear
-        if b.compact { tile(in: g.size) } else { bar }
+        if b.compact { tile(in: g.size) } else {
+          VStack(spacing: 8) { if !b.barAtTop { extras }; bar; if b.barAtTop { extras } }
+        }
       }
       .padding(.horizontal, b.compact ? 14 : 10).padding(.bottom, b.compact ? 10 : 4).padding(.top, 6)
     }
@@ -106,6 +109,41 @@ struct BarView: View {
     .modifier(Glass(shape: RoundedRectangle(cornerRadius: 27, style: .continuous)))
     .matchedGeometryEffect(id: "bar", in: ns)
     .transition(.scale(scale: 0.9).combined(with: .opacity))
+  }
+  /// What sits beside the bar while you sign in: the offer to fill (or to use a strong password), or the question after.
+  @ViewBuilder private var extras: some View {
+    if let a = b.keepAsk { askCard(a).transition(.move(edge: b.barAtTop ? .top : .bottom).combined(with: .opacity)) }
+    else if let o = b.offer, o.tab == tab.id { offerRow(o).transition(.move(edge: b.barAtTop ? .top : .bottom).combined(with: .opacity)) }
+  }
+  private func chip(_ icon: String, _ text: String, _ act: @escaping () -> Void) -> some View {
+    Button(action: act) {
+      HStack(spacing: 7) { Image(systemName: icon).font(.system(size: 13, weight: .semibold)).foregroundStyle(sleekRun); Text(text).font(.system(size: 15, weight: .medium)).lineLimit(1) }
+        .padding(.horizontal, 14).frame(height: 40).modifier(Glass(shape: Capsule()))
+    }.buttonStyle(Press()).foregroundStyle(.primary)
+  }
+  private func offerRow(_ o: SignInOffer) -> some View {
+    ScrollView(.horizontal, showsIndicators: false) {
+      HStack(spacing: 8) {
+        ForEach(o.users) { u in chip("key.fill", u.user.isEmpty ? "Fill saved password" : u.user) { b.fillSignIn(u.id) } }
+        if !o.strong.isEmpty { chip("wand.and.stars", "Use a strong password") { b.fillSignIn(nil) } }
+      }.padding(.horizontal, 4).padding(.vertical, 10)
+    }.padding(.vertical, -10).scrollClipDisabled()
+  }
+  private func askCard(_ a: SignInAsk) -> some View {
+    VStack(alignment: .leading, spacing: 10) {
+      HStack(spacing: 10) {
+        Image(systemName: "key.fill").font(.system(size: 15, weight: .semibold)).foregroundStyle(.white).frame(width: 34, height: 34).background(sleekRun, in: Circle())
+        VStack(alignment: .leading, spacing: 1) { Text(a.update ? "Update this password?" : "Save this password?").font(.system(size: 16, weight: .semibold)); Text((a.user.isEmpty ? "" : a.user + " · ") + a.site).font(.system(size: 13)).foregroundStyle(.secondary).lineLimit(1) }
+        Spacer(minLength: 0)
+      }
+      HStack(spacing: 8) {
+        Button { b.answerSignIn("never") } label: { Text("Never here").font(.system(size: 14, weight: .medium)).padding(.horizontal, 12).frame(height: 38) }.foregroundStyle(.secondary)
+        Spacer(minLength: 0)
+        Button { b.answerSignIn("later") } label: { Text("Not Now").font(.system(size: 15, weight: .medium)).padding(.horizontal, 14).frame(height: 38).background(Color.primary.opacity(0.08), in: Capsule()) }.foregroundStyle(.primary)
+        Button { b.answerSignIn("save") } label: { Text(a.update ? "Update" : "Save").font(.system(size: 15, weight: .semibold)).padding(.horizontal, 18).frame(height: 38).foregroundStyle(Color(.systemBackground)).background(Color.primary, in: Capsule()) }
+      }.buttonStyle(Press())
+    }
+    .padding(14).modifier(Glass(shape: RoundedRectangle(cornerRadius: 24, style: .continuous)))
   }
   private var barProgress: some View {
     GeometryReader { g in Capsule().fill(sleekRun).frame(width: max(20, (g.size.width - 48) * tab.progress), height: 2.5).padding(.horizontal, 24).animation(.easeOut(duration: 0.25), value: tab.progress) }.frame(height: 2.5).padding(.bottom, 3)
@@ -146,7 +184,6 @@ struct BarView: View {
     Button { sheet = .library } label: { Label("Bookmarks and History", systemImage: "book") }
     if !tab.isPrivate { Button { sheet = .tasks } label: { Label("Tasks", systemImage: "checklist") } }
     Divider()
-    Picker(selection: $b.look) { Text("Match the iPhone").tag("auto"); Text("Light").tag("light"); Text("Dark").tag("dark") } label: { Label("Look", systemImage: "circle.lefthalf.filled") }.pickerStyle(.menu)
     Button { sheet = .settings } label: { Label("Settings", systemImage: "gearshape") }
   }
   /// What stands before the address: a looking glass on a new tab, Sleek's mark on Sleek's own pages, and on the web

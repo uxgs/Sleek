@@ -86,3 +86,50 @@ let readPageScript = """
   });
   return out; })()
 """
+
+/// Signing in, on the Mac and on the iPhone. This script runs apart from the page's own scripts (they cannot see or
+/// change it). It notices the boxes of a sign-in form, tells the browser when the cursor goes into one (so it can offer
+/// a saved name, or a strong password when signing up) and what name and password the page was sent (so it can offer
+/// to keep them), and fills the boxes when the browser says to. It never asks for, or holds, a saved password itself.
+@MainActor let signInWorld = WKContentWorld.world(name: "sleek")
+let sharedSignInScript = """
+(function(){ if(window.top !== window) return; var post = function(m){ try { webkit.messageHandlers.sleekPw.postMessage(m); } catch(e){} };
+  function vis(e){ var r = e.getBoundingClientRect(), s = getComputedStyle(e); return r.width > 20 && r.height > 8 && s.visibility !== 'hidden' && s.display !== 'none' && !e.disabled && !e.readOnly; }
+  function passes(root){ return [].filter.call((root && root.querySelectorAll ? root : document).querySelectorAll('input[type=password]'), vis); }
+  function scope(el){ return el.form || (el.closest && el.closest('form, [role=form], [role=dialog], section, main')) || document.body; }
+  function userFor(pw){
+    var s = scope(pw), named = s.querySelector('input[autocomplete~=username], input[autocomplete~=email], input[type=email], input[name*=user i], input[name*=email i], input[name*=login i], input[id*=user i], input[id*=email i], input[id*=login i]');
+    if(named && named.type !== 'password' && vis(named)) return named;
+    var best = null; [].forEach.call(s.querySelectorAll('input'), function(i){ if(/^(text|email|tel|)$/.test(i.type) && vis(i) && (i.compareDocumentPosition(pw) & Node.DOCUMENT_POSITION_FOLLOWING)) best = i; });
+    return best;
+  }
+  function fresh(pw){ return /new-password/.test(pw.getAttribute('autocomplete') || '') || passes(scope(pw)).length >= 2; }
+  function rect(e){ var r = e.getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; }
+  var cur = null, last = '';
+  document.addEventListener('focusin', function(e){
+    var t = e.target; if(!t || t.tagName !== 'INPUT') return;
+    var pw = null; if(t.type === 'password') pw = t; else { var ps = passes(scope(t)); if(ps.length && userFor(ps[0]) === t) pw = ps[0]; }
+    if(!pw) return;
+    cur = { user: userFor(pw), pass: pw, all: passes(scope(pw)) };
+    post({ focus: rect(t), on: t === pw ? 'pass' : 'user', fresh: fresh(pw) });
+  }, true);
+  document.addEventListener('focusout', function(e){ if(cur && (e.target === cur.pass || e.target === cur.user)) setTimeout(function(){ var a = document.activeElement; if(!cur || (a !== cur.pass && a !== cur.user)) post({ blur: 1 }); }, 200); }, true);
+  window.addEventListener('scroll', function(){ if(cur) post({ blur: 1, scrolled: 1 }); }, { passive: true, capture: true });
+  function set(el, v){ if(!el) return; var d = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value'); d.set.call(el, v); el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); }
+  window.__sleekFill = function(user, pass, both){
+    if(!cur || !cur.pass.isConnected){ var ps = passes(); if(!ps.length) return false; cur = { user: userFor(ps[0]), pass: ps[0], all: passes(scope(ps[0])) }; }
+    if(user && cur.user) set(cur.user, user);
+    (both ? cur.all : [cur.pass]).forEach(function(p){ set(p, pass); });
+    return true;
+  };
+  // what the page was sent when you signed in or signed up: once for each name and password
+  function sent(from){
+    var ps = passes(from).filter(function(p){ return p.value; }); if(!ps.length) return;
+    var pw = ps[0], u = userFor(pw), k = (u ? u.value : '') + ' / ' + pw.value; if(k === last) return; last = k;
+    post({ sent: { user: u ? u.value : '', pass: pw.value } });
+  }
+  document.addEventListener('submit', function(e){ sent(e.target); }, true);
+  document.addEventListener('click', function(e){ var b = e.target.closest && e.target.closest('button, input[type=submit], [role=button]'); if(b && passes(scope(b)).length) sent(scope(b)); }, true);
+  document.addEventListener('keydown', function(e){ if(e.key === 'Enter' && e.target && e.target.tagName === 'INPUT') sent(scope(e.target)); }, true);
+})();
+"""

@@ -154,6 +154,76 @@ final class Checker: ObservableObject {
     say(offered.last == first.address && first.address?.host == "example.com", "Open in App sends the page showing to its app")
     b.show(1)
 
+    // ---------- passwords ----------
+    let V = Vault.shared, who = "sam@sleek-check.example", secret = "Pw-" + UUID().uuidString.prefix(14), secret2 = "Pw2-" + UUID().uuidString.prefix(14)
+    let g = b.newTab(isPrivate: false); g.atStart = false
+    func signInPage(_ t: PhoneTab, _ host: String, signUp: Bool = false, scheme: String = "https") async {
+      let boxes = signUp ? "<input id=u type=email autocomplete=username><input id=p type=password autocomplete=new-password><input id=p2 type=password autocomplete=new-password>" : "<input id=u type=text name=username><input id=p type=password>"
+      let html = "<!doctype html><meta charset=utf-8><meta name=viewport content='width=device-width'><title>Sign in</title><style>body{font:16px system-ui;margin:60px 24px}input{display:block;width:100%;height:40px;margin:10px 0;font:inherit}</style><h1>\(signUp ? "Join" : "Sign in")</h1><form id=f onsubmit=\"event.preventDefault()\">\(boxes)<button id=go type=submit>Go</button></form>"
+      t.atStart = false; t.web.loadSimulatedRequest(URLRequest(url: URL(string: "\(scheme)://\(host)/login")!), responseHTML: html)
+      _ = await until(8) { (await self.js(t, "return !!document.getElementById('f') && document.readyState === 'complete' && location.host === '\(host)'")) as? Bool == true }; await nap(0.4)
+    }
+    func typeAndSend(_ t: PhoneTab, _ user: String, _ pass: String) async { _ = await self.js(t, "document.getElementById('u').value = '\(user)'; document.getElementById('p').value = '\(pass)'; document.getElementById('f').requestSubmit(); return 1"); await nap(0.6) }
+    func focusBox(_ t: PhoneTab, _ id: String) async { _ = await self.js(t, "var e = document.getElementById('\(id)'); e.focus(); e.dispatchEvent(new FocusEvent('focusin', { bubbles: true })); return 1"); await nap(0.5) }
+    func boxes(_ t: PhoneTab) async -> [String] { (await self.js(t, "return [].map.call(document.querySelectorAll('input'), function(i){ return i.value; })")) as? [String] ?? [] }
+    await signInPage(g, "signin-test.example"); await typeAndSend(g, who, String(secret))
+    say(b.keepAsk == SignInAsk(site: "signin-test.example", user: who, update: false) && V.count == 0, "signing in to a site, Sleek offers to keep the name and password")
+    b.answerSignIn("save")
+    let onDisk = (try? String(contentsOf: b.store.dir.appendingPathComponent("passwords.sleekvault"), encoding: .utf8)) ?? ""
+    say(V.count == 1 && V.sites.contains("signin-test.example") && b.keepAsk == nil && onDisk.contains("\"sealed\"") && !onDisk.contains(String(secret)) && !onDisk.contains(who), "Save keeps it, and in the file neither the name nor the password can be read")
+    await typeAndSend(g, who, String(secret))
+    say(b.keepAsk == nil, "signing in again with the same password asks nothing")
+    await signInPage(g, "signin-test.example"); await focusBox(g, "u")
+    let offered1 = b.offer, login = offered1?.users.first?.id ?? ""
+    say(offered1?.users.map(\.user) == [who] && offered1?.strong == "" && offered1?.tab == g.id, "with the cursor in a sign-in box, Sleek offers the saved name")
+    V.testApproves = false; V.lock(); b.fillSignIn(login); await nap(0.8)
+    var typed = await boxes(g)
+    say(typed == ["", ""], "without Face ID, nothing is filled")
+    V.testApproves = true; await focusBox(g, "p"); b.fillSignIn(login)
+    let filled = await until(6) { await boxes(g) == [who, String(secret)] }
+    say(filled && b.offer == nil, "with it, the name and the password go into their boxes")
+    await typeAndSend(g, who, String(secret2))
+    say(b.keepAsk == SignInAsk(site: "signin-test.example", user: who, update: true), "a different password for a saved name: Sleek offers to update it")
+    b.answerSignIn("save")
+    var updated = false; if case .same = V.have(site: "signin-test.example", user: who, password: String(secret2)) { updated = true }
+    say(updated && V.count == 1, "and Update replaces it")
+    await signInPage(g, "never-test.example"); await typeAndSend(g, "sam", "S-" + UUID().uuidString.prefix(12)); b.answerSignIn("never")
+    await typeAndSend(g, "sam", "T-" + UUID().uuidString.prefix(12))
+    say(b.keepAsk == nil && V.never.contains("never-test.example") && V.count == 1, "Never here: Sleek does not ask for that site again")
+    await signInPage(g, "join-test.example", signUp: true); await focusBox(g, "p")
+    let strong = b.offer?.strong ?? ""
+    say(strong.count == 20 && Vault.strength(strong).verdict == "strong" && b.offer?.users.isEmpty == true, "joining a site, Sleek offers a strong password")
+    b.fillSignIn(nil); _ = await until(5) { (await boxes(g)).suffix(2) == [strong, strong] }; typed = await boxes(g)
+    _ = await js(g, "document.getElementById('u').value = 'new@sleek-check.example'; document.getElementById('f').requestSubmit(); return 1"); await nap(0.6)
+    var keptNew = false; if case .same = V.have(site: "join-test.example", user: "new@sleek-check.example", password: strong) { keptNew = true }
+    say(Array(typed.suffix(2)) == [strong, strong] && keptNew && b.keepAsk == nil && g.suggested == nil, "it goes into both password boxes, and is kept without asking once the site is sent it")
+    await signInPage(g, "other-test.example"); b.fillSignIn(login); await nap(0.8); typed = await boxes(g)
+    say(typed == ["", ""], "a saved password is never filled into another site")
+    await signInPage(g, "plain-test.example", scheme: "http"); await focusBox(g, "p"); await typeAndSend(g, "sam", "U-" + UUID().uuidString.prefix(12))
+    say(b.keepAsk == nil && b.offer == nil, "on a page whose connection others can read, Sleek neither offers nor keeps")
+    b.store.set("savePasswords", false); await signInPage(g, "quiet-test.example"); await typeAndSend(g, "sam", "V-" + UUID().uuidString.prefix(12))
+    say(b.keepAsk == nil, "with the offer switched off, Sleek does not ask")
+    b.store.set("savePasswords", true)
+    let pp = b.newTab(isPrivate: true); await signInPage(pp, "signin-test.example"); await focusBox(pp, "p")
+    let privateOffer = b.offer?.users.map(\.user) == [who]
+    await typeAndSend(pp, "someone-else", "W-" + UUID().uuidString.prefix(12))
+    say(privateOffer && b.keepAsk == nil && V.count == 2, "a private tab can fill a saved sign-in, and is never asked to keep one")
+    b.close(pp); b.close(g)
+    V.ageOut()
+    say(!V.isOpen && V.list() == nil && V.reveal(login) == nil, "the vault closes by itself when it has not been used, and then shows nothing")
+    let reopened = await V.unlock("show your passwords"), listed = V.list() ?? []
+    say(reopened && listed.count == 2 && V.reveal(login) == String(secret2), "the Passwords screen opens with Face ID, and lists what is kept")
+    V.copy(String(secret2))
+    let wasAdded = V.add(site: "https://www.weak-test.example/login", user: "sam", password: "password"), weak = V.list()?.first { ($0["site"] as? String) == "weak-test.example" }
+    say(V.copied == String(secret2) && wasAdded && (weak?["verdict"] as? String) == "weak", "a password can be copied, one can be added by hand, and a weak one is marked")
+    let changed = V.change(weak?["id"] as? String ?? "", user: "sam2", password: Vault.generate(words: true, length: 24)), after = V.list()?.first { ($0["site"] as? String) == "weak-test.example" }
+    let wordy = Vault.generate(words: true, length: 24)
+    say(changed && (after?["user"] as? String) == "sam2" && (after?["verdict"] as? String) == "strong" && wordy.split(separator: "-").count >= 5 && FileManager.default.fileExists(atPath: Res.root.appendingPathComponent("words.txt").path), "it can be changed for one Sleek makes of words, from the list inside the app")
+    let came = V.bring(csv: "name,url,username,password\n\"Shop, the\",https://shop-test.example/login,\"a \"\"quoted\"\" name\",p1-long-enough\r\nplain,https://plain-shop.example,bob,p2-long-enough\nagain,https://signin-test.example,\(who),whatever\n")
+    let gone = V.remove(after?["id"] as? String ?? "")
+    say(came?.added == 2 && came?.here == 1 && gone && V.count == 4, "passwords come in from another browser's file, and one can be removed")
+    if let i = b.tabs.firstIndex(where: { $0 === s }) { b.show(i) }
+
     // ---------- the bar ----------
     b.placeBar(top: true)
     say(b.barAtTop && s.web.scrollView.contentInset.top == 62 && s.web.scrollView.contentInset.bottom == 0 && (b.store.settings["corner"] as? String) == "topTrailing", "the bar moves to the top, pages make room for it there, and the choice is kept")

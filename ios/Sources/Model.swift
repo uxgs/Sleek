@@ -13,6 +13,9 @@ struct WorkItem: Identifiable { let id: String, title: String, url: String, kind
 struct Board: Identifiable, Equatable { let id: String, name: String, color: String, open: Int }
 struct Day { var late: [TaskRow] = [], today: [TaskRow] = [], soon: [TaskRow] = [], done: [TaskRow] = [], recent: [WorkItem] = [], boards: [Board] = [], loaded = false
   var due: Int { late.count + today.count } }
+struct SavedName: Identifiable, Equatable { let id: String, user: String }
+struct SignInOffer: Equatable { let tab: String, site: String, users: [SavedName], strong: String }
+struct SignInAsk: Equatable { let site: String, user: String, update: Bool }
 struct Suggestion: Identifiable { let kind: String, title: String, hint: String, url: String; var id: String { kind + "|" + title + "|" + url } }
 
 enum Corner: String, CaseIterable { case topLeading, topTrailing, bottomLeading, bottomTrailing
@@ -21,7 +24,7 @@ enum Corner: String, CaseIterable { case topLeading, topTrailing, bottomLeading,
   var alignment: Alignment { switch self { case .topLeading: return .topLeading; case .topTrailing: return .topTrailing; case .bottomLeading: return .bottomLeading; case .bottomTrailing: return .bottomTrailing } } }
 
 @MainActor
-final class PhoneTab: NSObject, ObservableObject, Identifiable, WKNavigationDelegate, WKUIDelegate {
+final class PhoneTab: NSObject, ObservableObject, Identifiable, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler {
   let id = UUID().uuidString
   let web: WKWebView
   let isPrivate: Bool
@@ -47,6 +50,9 @@ final class PhoneTab: NSObject, ObservableObject, Identifiable, WKNavigationDele
     web = WKWebView(frame: .zero, configuration: c); self.browser = browser
     super.init()
     web.navigationDelegate = self; web.uiDelegate = self; web.allowsBackForwardNavigationGestures = true; web.isFindInteractionEnabled = true
+    // signing in: a script apart from the page's own (the same one the Mac app uses) says where the sign-in boxes are and what was sent
+    c.userContentController.addUserScript(WKUserScript(source: sharedSignInScript, injectionTime: .atDocumentEnd, forMainFrameOnly: true, in: signInWorld))
+    c.userContentController.add(Weak(self), contentWorld: signInWorld, name: "sleekPw")
     let pull = UIRefreshControl(); pull.addTarget(self, action: #selector(pulled(_:)), for: .valueChanged); web.scrollView.refreshControl = pull
     let sync: (WKWebView, Any) -> Void = { [weak self] _, _ in Task { @MainActor in self?.sync() } }
     watch = [web.observe(\.title, changeHandler: sync), web.observe(\.url, changeHandler: sync), web.observe(\.isLoading, changeHandler: sync), web.observe(\.estimatedProgress, changeHandler: sync),
@@ -87,6 +93,21 @@ final class PhoneTab: NSObject, ObservableObject, Identifiable, WKNavigationDele
     let c = web.configuration.userContentController; c.removeAllContentRuleLists()
     if on { Blocker.shared.lists.values.forEach { c.add($0) } }
     blocking = on; objectWillChange.send()
+  }
+
+  // ---------- signing in ----------
+  /// A password Sleek made for this page (signing up). Once the page sends it, it is kept without asking.
+  var suggested: String?
+  func userContentController(_ c: WKUserContentController, didReceive message: WKScriptMessage) {
+    guard message.name == "sleekPw", let m = message.body as? [String: Any], let u = web.url, u.scheme == "https", let host = u.host else { return }      // never over a connection others can read
+    let site = Vault.site(host)
+    if m["focus"] != nil { browser?.signInField(self, site: site, fresh: m["fresh"] as? Bool ?? false, on: m["on"] as? String ?? "pass") }
+    if m["blur"] != nil, m["scrolled"] == nil { browser?.signInLeft(self) }      // on a phone the page scrolls as the keyboard comes up: that is not leaving the box
+    if let s = m["sent"] as? [String: Any], let pass = s["pass"] as? String, !pass.isEmpty { browser?.signedIn(self, site: site, address: u.absoluteString, user: s["user"] as? String ?? "", password: pass) }
+  }
+  /// Put a name and password into the page's sign-in boxes (both password boxes, when signing up).
+  func fill(user: String, password: String, both: Bool) {
+    web.callAsyncJavaScript("return window.__sleekFill ? window.__sleekFill(user, pass, both) : false", arguments: ["user": user, "pass": password, "both": both], in: nil, in: signInWorld) { _ in }
   }
 
   // ---------- going places ----------
@@ -198,6 +219,10 @@ final class Browser: ObservableObject {
   @Published var day = Day()
   @Published var blockerReady = false
   @Published var toast: String?
+  @Published var offer: SignInOffer?             // the cursor is in a sign-in box: saved names to fill, or a strong password to use
+  @Published var keepAsk: SignInAsk?             // a sign-in was sent: keep it?
+  private var pendingLogin: (site: String, address: String, user: String, password: String, replacing: String?)?
+  private var offerN = 0
   /// Where the bar lives is yours to choose: along the bottom or along the top (asked the first time, then in Settings and the
   /// ⋯ menu, or by dragging its tile to a top or bottom corner). The corner also says which side the tile rests on.
   @Published var corner: Corner { didSet { store.set("corner", corner.rawValue); fit() } }
@@ -229,6 +254,8 @@ final class Browser: ObservableObject {
     Work.shared.folder = base.appendingPathComponent("Work")
     Work.shared.onNote = { [weak self] text in self?.say(text) }
     Work.shared.onChange.append { [weak self] in self?.readDay() }
+    Vault.shared.onChange.append { [weak self] in self?.objectWillChange.send() }
+    Vault.shared.start(dir: base)
     Work.shared.start()
     Timer.scheduledTimer(withTimeInterval: 180, repeats: true) { _ in Task { @MainActor in await Work.shared.keepCopy() } }
     // the tabs you had open come back; `--open <address>` (for looking at the app) starts on those pages instead
@@ -277,7 +304,7 @@ final class Browser: ObservableObject {
     let j = k + step; return j >= 0 && j < mine.count ? mine[j] : nil
   }
   func open(_ typed: String) { if let u = destination(for: typed, search: store.search) { tab.go(u); setCompact(false) } }
-  func pageLoaded(_ t: PhoneTab) { saveSession(); if t.isSleek { Work.shared.refresh() } }
+  func pageLoaded(_ t: PhoneTab) { saveSession(); if t.isSleek { Work.shared.refresh() }; if offer?.tab == t.id { offer = nil } }
   /// The tabs to bring back next time (never private ones).
   func saveSession() {
     let keep = tabs.filter { !$0.isPrivate && !$0.atStart }
@@ -287,6 +314,64 @@ final class Browser: ObservableObject {
 
   /// Leaving the app: everything is written down now, not a moment later.
   func leaving() { saveSession(); store.flush(); Task { @MainActor in await Work.shared.keepCopy() } }
+
+  // ---------- passwords (the vault is the Mac app's own: Vault.swift) ----------
+  var savePasswords: Bool { store.settings["savePasswords"] as? Bool ?? true }
+  /// The cursor went into a sign-in box. Offer the names saved for this site; or, where a new password is being chosen, a strong one.
+  func signInField(_ t: PhoneTab, site: String, fresh: Bool, on field: String) {
+    guard t === current else { return }
+    let users = fresh ? [] : Vault.shared.users(for: site).map { SavedName(id: $0["id"] ?? "", user: $0["user"] ?? "") }, strong = fresh && field == "pass" && !t.isPrivate
+    offerN += 1
+    if users.isEmpty && !strong { if offer != nil { withAnimation(.easeOut(duration: 0.2)) { offer = nil } }; return }
+    if strong, t.suggested == nil { t.suggested = Vault.generate(words: false, length: 20) }
+    withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) { offer = SignInOffer(tab: t.id, site: site, users: users, strong: strong ? (t.suggested ?? "") : ""); compact = false }
+  }
+  /// The cursor left the sign-in boxes: the offer goes, a moment later (so a press on it still lands).
+  func signInLeft(_ t: PhoneTab) {
+    let n = offerN
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in if let s = self, s.offerN == n, s.offer?.tab == t.id { withAnimation(.easeOut(duration: 0.2)) { s.offer = nil } } }
+  }
+  /// Fill a saved sign-in, once Face ID (or the passcode) has said yes; or, with no sign-in named, use the strong password offered.
+  func fillSignIn(_ login: String?) {
+    let t = tab, site = Vault.site(t.web.url?.host); tap(.medium)
+    guard let login = login else { if let s = t.suggested { t.fill(user: "", password: s, both: true); say("Sleek keeps it once you have joined") }; withAnimation { offer = nil }; return }
+    Task { @MainActor in
+      guard await Vault.shared.unlock("fill your password for " + site) else { return }
+      // only ever into the site it was saved for
+      guard let l = Vault.shared.password(for: login), l.site == Vault.site(t.web.url?.host), t.web.url?.scheme == "https" else { say("That password could not be filled here"); return }
+      t.fill(user: l.user, password: l.password, both: false); withAnimation { offer = nil }
+    }
+  }
+  /// A page was sent a name and password. Unless they are kept already, offer to keep them (or keep them at once, when the password is one Sleek made).
+  func signedIn(_ t: PhoneTab, site: String, address: String, user: String, password: String) {
+    if t.isPrivate || !savePasswords || Vault.shared.never.contains(site) { return }
+    let ours = t.suggested == password || Vault.shared.awaited[site] == password
+    var replacing: String?
+    switch Vault.shared.have(site: site, user: user, password: password) {
+    case .same, .unknown: return
+    case .changed(let id): replacing = id
+    case .new: replacing = nil
+    }
+    if ours {
+      if Vault.shared.save(site: site, url: address, user: user, password: password, replacing: replacing) { say("Your new password for " + site + " is saved") }
+      t.suggested = nil; Vault.shared.awaited[site] = nil; return
+    }
+    pendingLogin = (site, address, user, password, replacing)
+    withAnimation(.spring(response: 0.45, dampingFraction: 0.8)) { offer = nil; keepAsk = SignInAsk(site: site, user: user, update: replacing != nil); compact = false }
+  }
+  /// Keep the sign-in that is waiting ("save"), never ask for this site again ("never"), or leave it.
+  func answerSignIn(_ how: String) {
+    withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) { keepAsk = nil }
+    guard let p = pendingLogin else { return }; pendingLogin = nil
+    if how == "save" { tap(.medium); say(Vault.shared.save(site: p.site, url: p.address, user: p.user, password: p.password, replacing: p.replacing) ? (p.replacing == nil ? "Password saved" : "Password updated") : "That could not be saved") }
+    else if how == "never" { Vault.shared.neverSave(for: p.site, true); say("Sleek won’t offer to save passwords for " + p.site) }
+  }
+  /// A stronger password for a saved sign-in: onto the clipboard, the site's change-password page opened, and kept once the site has taken it.
+  func useNew(_ password: String, for site: String) {
+    Vault.shared.copy(password); Vault.shared.awaited[site] = password
+    if let u = URL(string: "https://" + site + "/.well-known/change-password") { newTab(u, isPrivate: false) }
+    say("The new password is copied. Sleek keeps it once " + site + " has taken it.")
+  }
   func clearHistory() { store.clearHistory(); store.flush(); objectWillChange.send(); say("History cleared") }
   func forget(_ url: String) { store.history.removeAll { ($0["u"] as? String) == url }; store.flush(); objectWillChange.send() }
   /// Sign out of sites and empty what they kept to load faster. Your Sleek work is kept apart from these and stays.
