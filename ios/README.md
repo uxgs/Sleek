@@ -19,6 +19,11 @@ yet; you build it yourself with Xcode.
   sign-ins apart from your ordinary tabs, and forgets them when you close the last private tab. A link
   opened from a private tab opens in another private tab. Private tabs do not come back the next time
   you open Sleek; ordinary tabs do.
+- **Links open in their apps.** Tap a link to a site whose app is on the phone (a video, a post, a
+  map) and it opens in that app, with the phone's own way back to Sleek at the top; the page you were
+  on stays as it was. A site with no app opens in Sleek as usual. Links within the site you are
+  already browsing, addresses you type, and private tabs stay in Sleek, and Open in App in the ⋯ menu
+  sends the page showing to its app. Settings can switch this off.
 - **Blocking.** The same lists and the same code as the Mac app: adverts, trackers and cookie
   notices. The shield beside an address switches blocking off for a site that does not work, and
   Sleek remembers that. Settings lists those sites.
@@ -54,8 +59,8 @@ have run `../browser/make.sh` once (it fetches the block lists and fonts both ap
 ```
 
 `./make.sh check` starts the app with `--prove`: it drives the same model the screens draw, through
-tabs, Private Browsing, blocking, bookmarks, history, your Sleek work, Save to Sleek and the bar, on
-real pages, says what it finds, and quits. Nothing of yours is touched while it does.
+tabs, Private Browsing, blocking, bookmarks, history, handing links to apps (with a stand-in for the
+phone's answer), your Sleek work, Save to Sleek and the bar, on real pages, says what it finds, and quits. Nothing of yours is touched while it does.
 
 ## How it is made
 
@@ -64,7 +69,7 @@ project.yml          what the app is made of (xcodegen turns it into an Xcode pr
 make.sh              gathers what goes inside the app (build/inside), then builds
 Assets.xcassets      the app's icon
 Sources/
-  Model.swift        tabs (ordinary and private), the bar's place, blocking for each site, bookmarks, history, your Sleek work
+  Model.swift        tabs (ordinary and private), the bar's place, blocking for each site, links handed to apps, bookmarks, history, your Sleek work
   Views.swift        the screen: the page, the bar and its tile, the menu
   Start.swift        a new tab: your day; and a private tab's first page
   Sheets.swift       searching, all your tabs, tasks, bookmarks and history, settings, the shield, Save to Sleek, the first-time question

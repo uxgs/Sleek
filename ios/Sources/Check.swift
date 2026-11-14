@@ -116,6 +116,44 @@ final class Checker: ObservableObject {
     }
     say(!b.store.history.contains { ($0["u"] as? String ?? "").hasPrefix("sleek:") }, "Sleek's own pages are not written in your history")
 
+    // ---------- handing links to their apps ----------
+    // (a stand-in plays the phone here: it says an app opens has-an-app.example and example.com, and nothing else)
+    var offered: [URL] = []
+    b.handOff = { url, done in offered.append(url); let site = PhoneTab.site(url.host); done(site == "has-an-app.example" || site == "example.com") }
+    func click(_ t: PhoneTab, _ address: String, blank: Bool = false) async { _ = await self.js(t, "var a = document.createElement('a'); a.href = '\(address)'; \(blank ? "a.target = '_blank'; " : "")document.body.appendChild(a); a.click(); return 1") }
+    _ = await visit(first, "https://example.org/")
+    say(offered.isEmpty, "an address you go to yourself is not offered to an app")
+    await click(first, "https://www.has-an-app.example/watch?v=abc"); await nap(1.2)
+    say(offered.last?.host == "www.has-an-app.example" && first.web.url?.host == "example.org" && !first.web.isLoading, "a tapped link to a site that has an app opens in the app, and the page stays as it was")
+    offered = []; await click(first, "https://www.iana.org/help/example-domains")
+    let noApp = await until(20) { first.web.url?.host == "www.iana.org" && !first.web.isLoading }
+    say(noApp && offered.first?.host == "www.iana.org", "a tapped link to a site with no app is offered, then opens in Sleek")
+    _ = await visit(first, "https://example.com/"); offered = []
+    await click(first, "https://www.example.com/")
+    let sameSite = await until(20) { first.web.url?.host == "www.example.com" && !first.web.isLoading }
+    say(sameSite && offered.isEmpty, "a link within the site you are browsing stays in Sleek, though an app could open it")
+    let hop = b.newTab(isPrivate: false); hop.atStart = false; hop.tapAt = Date(); hop.tapSite = "links.example"
+    hop.web.loadSimulatedRequest(URLRequest(url: URL(string: "https://short.example/x")!), responseHTML: "<!doctype html><title>On the way</title><script>setTimeout(function(){ location.href = 'https://www.has-an-app.example/watch?v=abc'; }, 300);</script>")
+    let hopped = await until(6) { offered.last?.host == "www.has-an-app.example" }; await nap(0.5)
+    say(hopped && hop.web.url?.host == "short.example", "where a tapped link leads a moment later (a short link) is handed to the app too")
+    b.close(hop); offered = []
+    let tabsBefore = b.tabs.count
+    await click(first, "https://www.has-an-app.example/watch?v=new", blank: true); await nap(1.2)
+    say(offered.last?.host == "www.has-an-app.example" && b.tabs.count == tabsBefore, "a link that would open a new tab goes to its app without leaving an empty tab behind")
+    let hidden = b.newTab(isPrivate: true); _ = await visit(hidden, "https://example.org/"); offered = []
+    await click(hidden, "https://example.com/")
+    let keptIn = await until(20) { hidden.web.url?.host == "example.com" && !hidden.web.isLoading }
+    say(keptIn && offered.isEmpty, "a private tab hands nothing to apps")
+    b.close(hidden)
+    b.store.set("apps", false); _ = await visit(first, "https://example.org/"); offered = []
+    await click(first, "https://example.com/")
+    let off = await until(20) { first.web.url?.host == "example.com" && !first.web.isLoading }
+    say(off && offered.isEmpty, "with the setting off, links stay in Sleek")
+    b.store.set("apps", true)
+    b.show(0); b.openInApp(); await nap(0.3)
+    say(offered.last == first.address && first.address?.host == "example.com", "Open in App sends the page showing to its app")
+    b.show(1)
+
     // ---------- the bar ----------
     b.placeBar(top: true)
     say(b.barAtTop && s.web.scrollView.contentInset.top == 62 && s.web.scrollView.contentInset.bottom == 0 && (b.store.settings["corner"] as? String) == "topTrailing", "the bar moves to the top, pages make room for it there, and the choice is kept")

@@ -77,7 +77,7 @@ final class PhoneTab: NSObject, ObservableObject, Identifiable, WKNavigationDele
     return host
   }
   var shownTitle: String { atStart ? (isPrivate ? "Private Tab" : "New Tab") : (title.isEmpty ? shownName : title) }
-  func go(_ url: URL) { atStart = false; web.load(URLRequest(url: url)) }
+  func go(_ url: URL) { atStart = false; tapAt = .distantPast; web.load(URLRequest(url: url)) }
   func back() { if web.canGoBack { web.goBack() } else { atStart = true; browser?.setCompact(false) } }
   func find() { web.findInteraction?.presentFindNavigator(showingReplace: false) }
   /// Keep a picture of the page for the grid of tabs.
@@ -90,14 +90,50 @@ final class PhoneTab: NSObject, ObservableObject, Identifiable, WKNavigationDele
   }
 
   // ---------- going places ----------
+  /// A link you tapped, and where you were when you tapped it. For a few seconds afterwards, wherever that tap leads
+  /// (a short link, a "you are leaving" page) is still that tap, and may be handed to an app.
+  var tapAt = Date.distantPast, tapSite = ""
+  /// An address this tab is to load itself, whatever app might want it.
+  private var passing: URL?
+  /// The site a host belongs to: example.com for www.example.com and m.example.com.
+  static func site(_ host: String?) -> String {
+    let parts = (host ?? "").lowercased().split(separator: ".").map(String.init); guard parts.count > 2 else { return parts.joined(separator: ".") }
+    let two = parts.suffix(2), wide = two.last!.count == 2 && ["co", "com", "org", "net", "gov", "ac", "edu"].contains(two.first!)
+    return parts.suffix(wide ? 3 : 2).joined(separator: ".")
+  }
+  /// Load an address here in Sleek, without offering it to an app.
+  func stay(_ request: URLRequest) { passing = request.url; atStart = false; web.load(request) }
   func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction, preferences: WKWebpagePreferences, decisionHandler: @escaping (WKNavigationActionPolicy, WKWebpagePreferences) -> Void) {
     guard let u = action.request.url, let scheme = u.scheme else { decisionHandler(.allow, preferences); return }
+    let whole = action.targetFrame == nil || action.targetFrame?.isMainFrame == true      // the page itself (or a new one), not a frame inside it
     if !["http", "https", "sleek", "about", "blob", "data"].contains(scheme) {      // phone numbers, mail, other apps: they belong to the phone
-      UIApplication.shared.open(u); decisionHandler(.cancel, preferences); return
+      if whole { UIApplication.shared.open(u) }; decisionHandler(.cancel, preferences); return
     }
     if action.shouldPerformDownload { browser?.say("Saving files is not in Sleek for iPhone yet"); decisionHandler(.cancel, preferences); return }
-    if action.targetFrame?.isMainFrame == true { let want = browser?.blockingWanted(for: u) ?? false; if want != blocking { applyBlocking(want) } }
-    decisionHandler(.allow, preferences)
+    let allow = { [weak self] in
+      if let s = self, action.targetFrame?.isMainFrame == true { let want = s.browser?.blockingWanted(for: u) ?? false; if want != s.blocking { s.applyBlocking(want) } }
+      decisionHandler(.allow, preferences)
+    }
+    guard whole, scheme == "http" || scheme == "https", let b = browser else { allow(); return }
+    if u == passing { passing = nil; allow(); return }
+    // Handing a link to its app (any app on the phone that opens its own site's links):
+    //   a link you tap that leads to another site is offered to the phone first; if an app on this iPhone opens that
+    //   site's links, it opens there and this page stays as it was. Links within the site you are browsing, addresses
+    //   you type, and private tabs stay in Sleek.
+    let tapped = action.navigationType == .linkActivated, here = PhoneTab.site(webView.url?.host)
+    if tapped { tapAt = Date(); tapSite = here }
+    let fromTap = tapped || (action.navigationType == .other && Date().timeIntervalSince(tapAt) < 4)
+    let away = PhoneTab.site(u.host) != (tapped ? here : tapSite)
+    if fromTap && away && b.appLinks && !isPrivate {
+      b.handOff(u) { [weak self] opened in
+        if opened { self?.tapAt = .distantPast; decisionHandler(.cancel, preferences) } else { allow() }
+      }
+      return
+    }
+    // The engine would itself hand a tapped link on another host to an app. Where Sleek has decided the link stays
+    // (a private tab, the same site, the setting off), it loads the address itself instead.
+    if tapped && action.targetFrame?.isMainFrame == true && u.host != webView.url?.host { decisionHandler(.cancel, preferences); stay(action.request); return }
+    allow()
   }
   func webView(_ webView: WKWebView, decidePolicyFor response: WKNavigationResponse, decisionHandler: @escaping (WKNavigationResponsePolicy) -> Void) {
     if !response.canShowMIMEType { browser?.say("Saving files is not in Sleek for iPhone yet") }
@@ -125,7 +161,8 @@ final class PhoneTab: NSObject, ObservableObject, Identifiable, WKNavigationDele
 
   // ---------- what a page may ask for ----------
   func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration, for action: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
-    if let u = action.request.url { browser?.newTab(u, isPrivate: isPrivate) }; return nil      // a link that opens a new window opens a new tab
+    if action.request.url != nil, let t = browser?.newTab(nil, isPrivate: isPrivate) { t.tapAt = tapAt; t.tapSite = tapSite; t.stay(action.request) }      // a link that opens a new window opens a new tab
+    return nil
   }
   private func ask(_ title: String, _ text: String, field: String? = nil, cancel: Bool, done: @escaping (Bool, String?) -> Void) {
     let a = UIAlertController(title: title, message: text, preferredStyle: .alert)
@@ -168,6 +205,15 @@ final class Browser: ObservableObject {
   @Published var asking: Bool
   let store: Store
   var privateData = WKWebsiteDataStore.nonPersistent()
+  /// Whether a tapped link may open in its own app. On unless you switch it off in Settings.
+  var appLinks: Bool { store.settings["apps"] as? Bool ?? true }
+  /// Offers an address to the phone: true when an app on this iPhone opened it. (The app's own check puts a stand-in here.)
+  var handOff: (URL, @escaping (Bool) -> Void) -> Void = { url, done in UIApplication.shared.open(url, options: [.universalLinksOnly: true]) { ok in done(ok) } }
+  /// Open the page showing in its app, if there is one.
+  func openInApp() {
+    guard tab.isWeb, let u = tab.address else { return }
+    handOff(u) { [weak self] opened in if !opened { self?.say("No app on this iPhone opens this page") } }
+  }
   private var toastN = 0
 
   init() {

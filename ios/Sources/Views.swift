@@ -133,10 +133,12 @@ struct BarView: View {
       Button { tab.web.reload() } label: { Label("Reload", systemImage: "arrow.clockwise") }.disabled(tab.atStart)
       if let u = tab.address, tab.isWeb { ShareLink(item: u) { Label("Share", systemImage: "square.and.arrow.up") } }
     }
-    Button { b.newTab(isPrivate: false) } label: { Label("New Tab", systemImage: "plus") }
-    Button { b.newTab(isPrivate: true) } label: { Label("New Private Tab", systemImage: "eyeglasses") }
-    Divider()
+    ControlGroup {
+      Button { b.newTab(isPrivate: false) } label: { Label("New Tab", systemImage: "plus") }
+      Button { b.newTab(isPrivate: true) } label: { Label("Private Tab", systemImage: "eyeglasses") }
+    }
     if tab.isWeb {
+      if !tab.isPrivate { Button { b.openInApp() } label: { Label("Open in App", systemImage: "arrow.up.forward.app") } }
       Button { b.toggleBookmark() } label: { Label(b.isBookmarked(tab) ? "Remove Bookmark" : "Add Bookmark", systemImage: b.isBookmarked(tab) ? "bookmark.fill" : "bookmark") }
       if !tab.isPrivate { Button { sheet = .save } label: { Label("Save to Sleek…", systemImage: "tray.and.arrow.down") } }
     }
