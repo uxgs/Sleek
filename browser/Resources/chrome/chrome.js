@@ -25,6 +25,9 @@
     split: '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M12 4v16"/>', more: '<circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/>', search: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.500-3.500"/>',
     clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>', star: '<path d="M12 4l2.500 5 5.500.800-4 3.900.900 5.500-4.900-2.600-4.900 2.600.900-5.500-4-3.900 5.500-.800z"/>', tab: '<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/>', up: '<path d="M6 14l6-6 6 6"/>', down: '<path d="M6 10l6 6 6-6"/>', look: '<circle cx="12" cy="12" r="8.500"/><path d="M12 3.500a8.500 8.500 0 0 1 0 17z" fill="currentColor" stroke="none"/>', globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.200 3 14.800 0 18M12 3c-3 3.200-3 14.800 0 18"/>' };
   function ico(n){ return '<svg class="i" viewBox="0 0 24 24" aria-hidden="true">' + ICON[n] + '</svg>'; }
+  // who answers a search typed in the address box: one of these, or an address of your own (with %s where the words go)
+  var SEARCH = [['DuckDuckGo', 'https://duckduckgo.com/'], ['Google', 'https://www.google.com/search'], ['Bing', 'https://www.bing.com/search'], ['Brave Search', 'https://search.brave.com/search'], ['Ecosia', 'https://www.ecosia.org/search'], ['Startpage', 'https://www.startpage.com/sp/search?query=%s'], ['Kagi', 'https://kagi.com/search']];
+  function engine(){ var u = S.settings.search || SEARCH[0][1]; return SEARCH.filter(function(e){ return e[1] === u; })[0] || null; }
   var THEMES = [['graphite', 'Graphite', '#6E6E73', '#7C5CFF'], ['violet', 'Violet', '#7C5CFF', '#7C5CFF'], ['ocean', 'Ocean', '#0A84FF', '#0A84FF'], ['forest', 'Forest', '#12A36A', '#12A36A'], ['rose', 'Rose', '#E0457B', '#E0457B'], ['sand', 'Sand', '#C08A2D', '#B0791F']];
   var APPS = { slides: ['Sleek Slides', 'slides.html'], docs: ['Sleek Docs', 'docs.html'], tasks: ['Sleek Tasks', 'tasks.html'] };
   var S = { tabs: [], panes: [], at: 0, n: 1, settings: { look: 'auto', theme: 'graphite', barAt: 'top', imm: false, bar: false }, bookmarks: [], private: false, downloads: [], blocker: { ready: false, rules: 0, updated: '' } };
@@ -53,7 +56,7 @@
     var q = (L.typed || '').trim(), out = [], lo = q.toLowerCase(); if(!q) return out;
     S.tabs.forEach(function(t){ if(t !== cur() && t.kind !== 'start' && (t.title + ' ' + t.url).toLowerCase().indexOf(lo) >= 0 && out.length < 3) out.push({ kind: 'tab', id: t.id, title: t.title, hint: 'Switch to tab' }); });
     if(L.native.q === q) L.native.items.forEach(function(x){ out.push({ kind: x.kind, url: x.url, title: x.title || pretty(x.url), hint: pretty(x.url) }); });
-    out.push({ kind: 'search', text: q, title: 'Search the web for “' + q + '”', hint: '' });
+    var eng = engine(); out.push({ kind: 'search', text: q, title: 'Search ' + (eng ? eng[0] : 'the web') + ' for “' + q + '”', hint: '' });
     return out;
   }
 
@@ -65,7 +68,7 @@
     win.setAttribute('data-mode', mode); win.classList.toggle('bottom', bottom); win.classList.toggle('imm', imm); win.classList.toggle('right', imm && set.immSide === 'right'); win.classList.toggle('private', !!S.private); win.classList.toggle('full', L.full); win.classList.toggle('still', L.still);
     if(!imm) win.classList.remove('show');
     win.style.setProperty('--tint', th[2]); win.style.setProperty('--tp', tinted ? '20%' : '0%'); win.style.setProperty('--tp2', tinted ? '10%' : '0%'); win.style.setProperty('--tp3', tinted ? '14%' : '0%'); win.style.setProperty('--k-accent', th[3]);
-    var act = document.activeElement, keep = act && act.id && /^(url|find|bmname)$/.test(act.id) ? act.id : null, a0 = keep ? act.selectionStart : 0, a1 = keep ? act.selectionEnd : 0;
+    var act = document.activeElement, keep = act && act.id && /^(url|find|bmname|engineurl)$/.test(act.id) ? act.id : null, a0 = keep ? act.selectionStart : 0, a1 = keep ? act.selectionEnd : 0;
 
     var h = (bottom && !imm ? '<div class="titlestrip"></div>' : '') + '<button type="button" class="peek" data-do="peek" aria-label="Show the bar"></button><div class="chrome" id="bar"><img class="isle" src="sleek://app/icons/logo.svg" alt=""><div class="tabs" id="tabs"><span class="pins">' +
       ['slides', 'docs', 'tasks'].map(function(k){ return '<button type="button" class="pin' + (t && t.kind === k ? ' on' : '') + '" data-pin="' + k + '" title="' + APPS[k][0] + '" aria-label="' + APPS[k][0] + '"><img src="sleek://app/icons/' + k + '.svg" alt=""></button>'; }).join('') + '</span>' +
@@ -91,7 +94,7 @@
 
     // what floats
     if(L.pop === 'menu') h += '<div class="pop menu" id="pop" data-anchor="#b-menu" data-side="right">' + [['newtab', 'New tab', '⌘T'], ['window', 'New window', '⌘N'], ['private', 'Private Browsing', '⇧⌘N'], ['-'], ['history', 'History', '⌘Y'], ['allmarks', 'Bookmarks', '⌥⌘B'], ['bar', set.bar ? 'Hide the bookmarks bar' : 'Show the bookmarks bar', '⇧⌘B'], ['downloads', 'Downloads', '⌥⌘L'], ['-'],
-        ['find', 'Find on this page', '⌘F'], ['zoom'], ['print', 'Print…', '⌘P'], ['-'], ['default', 'Make Sleek the default browser', '']].map(function(m){
+        ['find', 'Find on this page', '⌘F'], ['zoom'], ['print', 'Print…', '⌘P'], ['-'], ['search', 'Search with ' + (engine() ? engine()[0] : 'your own choice'), ''],['default', 'Make Sleek the default browser', '']].map(function(m){
           return m[0] === '-' ? '<div class="line" style="margin:4px"></div>' : m[0] === 'zoom' ? '<div class="zoomrow"><span>Zoom</span><span><button type="button" data-zoom="-1" aria-label="Smaller">−</button><b>' + (t ? t.zoom : 100) + '%</b><button type="button" data-zoom="1" aria-label="Larger">+</button><button type="button" data-zoom="0" style="width:auto;padding:0 8px">Reset</button></span></div>'
             : '<button type="button" class="mi" data-menu="' + m[0] + '"><span>' + m[1] + '</span><small>' + m[2] + '</small></button>'; }).join('') + '</div>';
     if(L.pop === 'shield' && t){ var bl = t.blocked || {}, total = blockedTotal(t), off = !t.blockOn;
@@ -110,6 +113,9 @@
     if(L.pop === 'allmarks') h += '<div class="pop menu" id="pop" data-anchor="' + (set.bar && !imm ? '#b-all' : '#b-menu') + '" data-side="right" style="width:300px"><h4 style="padding:6px 9px 2px">All bookmarks</h4>' + (S.bookmarks.map(function(b, i){ return '<button type="button" class="mi" data-bm="' + i + '"><span class="two"><b>' + esc(b.title) + '</b><i>' + esc(pretty(b.url)) + '</i></span></button>'; }).join('') || '<p style="padding:6px 9px">None yet. Press the star in the address box to keep a page.</p>') + '</div>';
     if(L.pop === 'history') h += '<div class="pop menu" id="pop" data-anchor="#b-menu" data-side="right" style="width:340px"><h4 style="padding:6px 9px 2px">History</h4>' + (S.private ? '<p style="padding:6px 9px">A private window keeps no history.</p>' : !L.history ? '<p style="padding:6px 9px">…</p>' : (L.history.map(function(x){ return '<button type="button" class="mi" data-hist="' + esc(x.u) + '"><span class="two"><b>' + esc(x.t || pretty(x.u)) + '</b><i>' + esc(pretty(x.u)) + '</i></span><small>' + when(x.at) + '</small></button>'; }).join('') || '<p style="padding:6px 9px">Nothing yet.</p>') +
       (L.history.length ? '<div class="line" style="margin:4px"></div><button type="button" class="mi" data-menu="clearhistory"><span style="color:var(--k-warn)">Clear history</span><small></small></button>' : '')) + '</div>';
+    if(L.pop === 'search'){ var en = engine(), own = en ? '' : (set.search || '');
+      h += '<div class="pop menu" id="pop" data-anchor="#b-menu" data-side="right" style="width:300px"><h4 style="padding:6px 9px 2px">Search with</h4>' + SEARCH.map(function(e, i){ return '<button type="button" class="mi" data-engine="' + i + '" role="menuitemradio" aria-checked="' + (en === e) + '"><span>' + e[0] + '</span><small>' + (en === e ? '✓' : '') + '</small></button>'; }).join('') +
+        '<div class="line" style="margin:4px"></div><div style="padding:4px 9px 8px;display:flex;flex-direction:column;gap:6px"><span style="font-size:12px;color:var(--k-muted)">Or another: its search address, with %s where the words go' + (en ? '' : ' (in use now)') + '</span><div class="frow" style="flex-wrap:nowrap"><input type="text" id="engineurl" value="' + esc(own) + '" placeholder="https://example.com/search?q=%s" aria-label="Another search address" spellcheck="false" autocomplete="off"><button type="button" class="go" data-do="engineown">Use</button></div></div></div>'; }
     if(L.pop === 'image' && L.image) h += '<div class="pop mid" id="pop" style="width:340px"><div class="imgq">' + (L.image.thumb ? '<img src="' + esc(L.image.thumb) + '" alt="" onerror="this.remove()">' : '') + '<span class="two"><b>' + esc(L.image.name) + '</b><i>What would you like to do with this picture?</i></span></div>' +
       '<div class="frow" style="justify-content:stretch"><button type="button" class="go" style="flex:1" data-do="imgopen">Open it</button><button type="button" class="go ghost" style="flex:1" data-do="imgsearch">Search Google for it</button></div><p>Searching sends the picture to Google. Opening it does not.</p></div>';
     if(L.pop === 'downloads') h += '<div class="pop" id="pop" data-anchor="#b-menu" data-side="right" style="width:340px"><h4>Downloads</h4>' + (S.downloads.map(function(d){ return '<div class="dl"><span class="two"><b>' + esc(d.name) + '</b>' + (d.done ? '<i>In your Downloads folder</i>' : d.failed ? '<i style="color:var(--k-warn)">Didn’t finish</i>' : '<span class="bar"><u style="width:' + Math.round(d.part * 100) + '%"></u></span>') + '</span>' + (d.done ? '<button type="button" class="go ghost" data-dl="' + d.id + '">Show</button>' : '') + '</div>'; }).join('') || '<p>Nothing downloaded since Sleek opened.</p>') + '</div>';
@@ -245,6 +251,7 @@
     if((x = t.closest('[data-look]'))){ post({ do: 'set', k: 'look', v: x.getAttribute('data-look') }); return; }
     if((x = t.closest('[data-theme]'))){ post({ do: 'set', k: 'theme', v: x.getAttribute('data-theme') }); return; }
     if((x = t.closest('[data-corner]'))){ var cn = x.getAttribute('data-corner').split(' '); post({ do: 'corner', side: cn[0], at: cn[1] }); return; }
+    if((x = t.closest('[data-engine]'))){ var se = SEARCH[+x.getAttribute('data-engine')]; post({ do: 'set', k: 'search', v: se[1] }); L.pop = null; paint(); toast('Searching with ' + se[0]); return; }
     if((x = t.closest('[data-barat]'))){ post({ do: 'set', k: 'barAt', v: x.getAttribute('data-barat') }); return; }
     if((x = t.closest('[data-lay]'))){ L.pop = null; post({ do: 'split', n: +x.getAttribute('data-lay') }); paint(); return; }
     if((x = t.closest('[data-menu]'))){
@@ -264,6 +271,7 @@
       else if(what === 'unstar'){ if(c) post({ do: 'mark', how: 'remove', url: c.url }); closePop(); }
       else if(what === 'closepop'){ var name = $('#bmname'); if(name && c) post({ do: 'mark', how: 'rename', url: c.url, title: name.value.trim() }); closePop(); }
       else if(what === 'imm') post({ do: 'set', k: 'imm', v: !S.settings.imm });
+      else if(what === 'engineown'){ var eu = ($('#engineurl').value || '').trim(); if(!/^https?:\/\/[^\s]+\.[^\s]+/i.test(eu)){ toast('That needs a web address, starting with https://'); return; } post({ do: 'set', k: 'search', v: eu }); L.pop = null; paint(); toast('Searching with ' + hostOf(eu)); }
       else if(what === 'imgopen' || what === 'imgsearch'){ post({ do: 'image', how: what === 'imgopen' ? 'open' : 'search' }); L.image = null; L.pop = null; paint(); }
       else if(what === 'peek') showBar();
       else if(what === 'findnext') find(false); else if(what === 'findprev') find(true);

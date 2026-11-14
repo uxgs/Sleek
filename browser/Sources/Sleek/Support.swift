@@ -69,6 +69,9 @@ func destination(for typed: String, search: String) -> URL? {
   if t.range(of: "^[a-zA-Z][a-zA-Z0-9+.-]*://", options: .regularExpression) != nil || t.hasPrefix("about:") { return URL(string: t) }
   let looksLikeAddress = !t.contains(" ") && (t.range(of: "^[^/\\s]+\\.[a-zA-Z]{2,}(:\\d+)?(/.*)?$", options: .regularExpression) != nil || t.hasPrefix("localhost") || t.range(of: "^\\d+\\.\\d+\\.\\d+\\.\\d+", options: .regularExpression) != nil)
   if looksLikeAddress { return URL(string: (t.hasPrefix("localhost") || t.first!.isNumber ? "http://" : "https://") + t) }
-  var c = URLComponents(string: search)!; c.queryItems = [URLQueryItem(name: "q", value: t)]
+  // the search address either says where the words go (%s), or takes them as q=…
+  if search.contains("%s") { var ok = CharacterSet.urlQueryAllowed; ok.remove(charactersIn: "&+=?#"); return URL(string: search.replacingOccurrences(of: "%s", with: t.addingPercentEncoding(withAllowedCharacters: ok) ?? "")) }
+  guard var c = URLComponents(string: search) else { return nil }
+  c.queryItems = (c.queryItems ?? []) + [URLQueryItem(name: "q", value: t)]
   return c.url
 }

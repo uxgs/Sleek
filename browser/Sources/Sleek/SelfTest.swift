@@ -146,7 +146,22 @@ enum SelfTest {
     print("where the bar sits")
     w.store.set("barAt", "bottom"); await nap(0.6); s = await see(w)
     check("at the bottom the page is on top and the whole bar under it", (s["barBottom"] as? Int) == 860 && w.chrome.slots.first.map { abs($0.minY - 28) <= 1 && abs($0.maxY - CGFloat(s["barTop"] as? Int ?? 0)) <= 1 } == true, [s["barTop"] ?? "", w.chrome.slots])
+    let rowsAt = (await bar(w, "return [document.getElementById('tabs').getBoundingClientRect().top, document.querySelector('.tool').getBoundingClientRect().top]")) as? [Double] ?? []
+    check("and it is the same way up there: the tabs over the address row", rowsAt.count == 2 && rowsAt[0] < rowsAt[1], rowsAt)
     await shot(w, "6-bar-at-bottom", to: out)
+    print("the search provider")
+    await press(w, "#b-menu"); await press(w, "[data-menu=search]"); s = await see(w)
+    let offered = (await bar(w, "return [].map.call(document.querySelectorAll('[data-engine]'), function(e){ return e.querySelector('span').textContent + (e.getAttribute('aria-checked') === 'true' ? '*' : ''); })")) as? [String] ?? []
+    check("the menu offers who to search with, DuckDuckGo to begin with", (s["pop"] as? String) == "search" && offered.first == "DuckDuckGo*" && offered.contains("Google"), offered)
+    await shot(w, "6b-search-provider", to: out)
+    await press(w, "[data-engine='1']"); await nap(0.3)
+    let viaGoogle = destination(for: "two words", search: w.store.search)?.absoluteString ?? ""
+    check("choosing one sends searches there", w.store.search == "https://www.google.com/search" && viaGoogle == "https://www.google.com/search?q=two%20words", viaGoogle)
+    await press(w, "#b-menu"); await press(w, "[data-menu=search]")
+    _ = await bar(w, "document.getElementById('engineurl').value = 'https://search.example/find?words=%s&lang=en'; return Sleek.test.click('[data-do=engineown]')"); await nap(0.4)
+    let viaOwn = destination(for: "a&b c", search: w.store.search)?.absoluteString ?? ""
+    check("or an address of your own, with %s where the words go", viaOwn == "https://search.example/find?words=a%26b%20c&lang=en", viaOwn)
+    w.store.set("search", "https://duckduckgo.com/"); await nap(0.3)
     w.store.set("barAt", "top"); w.store.set("imm", true); await nap(0.7); s = await see(w)
     check("immersive: the page takes the whole window and the bar floats over it", (s["floating"] as? Bool) == true && w.chrome.slots.first == NSRect(x: 0, y: 0, width: 1280, height: 860) && ((s["cls"] as? String) ?? "").contains("show"), [s["cls"] ?? "", w.chrome.slots])
     let inCard = (await bar(w, "var b = document.getElementById('bar'); return [b.offsetLeft, b.offsetTop, b.offsetWidth, b.offsetHeight]")) as? [Int] ?? []
