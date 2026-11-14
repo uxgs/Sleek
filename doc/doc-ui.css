@@ -19,7 +19,16 @@ button { font: inherit; color: inherit; }
 
 /* ---------- the list of pages ---------- */
 .side { width: 272px; flex: none; display: flex; flex-direction: column; gap: 10px; padding: 12px 10px calc(10px + env(safe-area-inset-bottom, 0px)) max(10px, env(safe-area-inset-left, 0px)); border-right: 1px solid var(--d-line); background: var(--d-app); min-height: 0; }
-.app.no-side .side { display: none; }
+/* hidden, the list slides away to the left and the page takes its room; shown, it slides back */
+.app.no-side .side { margin-left: -272px; visibility: hidden; pointer-events: none; }
+.app.live .side { transition: margin-left .34s cubic-bezier(.2, .8, .2, 1), transform .3s cubic-bezier(.2, .8, .2, 1), visibility 0s; }
+.app.live.no-side .side { transition: margin-left .34s cubic-bezier(.2, .8, .2, 1), transform .3s cubic-bezier(.2, .8, .2, 1), visibility 0s .34s; }
+/* a page opened in place of another: the old page fades as the new one rises (doc/editor.js: open) */
+.pagebox { view-transition-name: dpage; }
+html[data-shift="page"]::view-transition-old(dpage) { animation: .16s ease both sk-page-out; }
+html[data-shift="page"]::view-transition-new(dpage) { animation: .42s cubic-bezier(.2, .8, .2, 1) .04s both sk-page-in; }
+html[data-shift="page"]::view-transition-old(root) { animation: .2s ease both sk-page-out; } html[data-shift="page"]::view-transition-new(root) { animation: none; }
+@media (prefers-reduced-motion: reduce) { .app.live .side, .app.live.no-side .side { transition: none; } }
 .brand { display: flex; align-items: center; gap: 9px; padding: 3px 6px; font-weight: 700; font-size: 16px; letter-spacing: -0.03em; color: var(--d-fg); text-decoration: none; border-radius: 8px; }
 .brand img { display: block; width: 22px; height: auto; }
 .brand a { display: inline-flex; align-items: center; gap: 9px; color: var(--d-muted); text-decoration: none; border-radius: 6px; transition: color .15s ease; } .brand a:last-child { color: var(--d-fg); } .brand a:hover, .brand a:focus-visible { color: var(--d-fg); }
@@ -193,6 +202,7 @@ button { font: inherit; color: inherit; }
 /* ---------- a phone: the list slides over the page ---------- */
 @media (max-width: 760px) {
   .side { position: fixed; z-index: 40; top: 0; bottom: 0; left: 0; width: min(300px, 86%); padding-top: calc(12px + env(safe-area-inset-top, 0px)); box-shadow: 20px 0 50px -20px rgba(0,0,0,.5); }
+  .app.no-side .side { margin-left: 0; transform: translateX(-106%); box-shadow: none; }
   .saved { display: none; }
   .crumb em { display: none; }
   .pagebox { padding: 20px max(16px, env(safe-area-inset-right, 0px)) 40vh max(16px, env(safe-area-inset-left, 0px)); }

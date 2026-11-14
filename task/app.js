@@ -72,40 +72,63 @@
   var VIEWS = [['board', 'Board'], ['grid', 'Grid'], ['list', 'List'], ['cal', 'Calendar']];
   function lastView(pid){ try { var v = localStorage.getItem('sleek-tasks-view:' + pid); return VIEWS.some(function(x){ return x[0] === v; }) ? v : 'board'; } catch(e){ return 'board'; } }
   function go(view, pid){
-    if(view !== 'today'){ try { localStorage.setItem('sleek-tasks-view:' + pid, view); } catch(e){} }
-    var h = view === 'today' ? '#today' : '#/' + pid + '/' + view;
+    var board = view !== 'today' && view !== 'home';
+    if(board){ try { localStorage.setItem('sleek-tasks-view:' + pid, view); } catch(e){} }
+    var h = board ? '#/' + pid + '/' + view : '#' + view;
     if(location.hash !== h){ try { history.pushState(null, '', h); } catch(e){ location.hash = h; } }
     route();
   }
+  // The address decides what shows: nothing or #home is your boards, #today is Today, #/<board>/<view> is a board.
+  var shown = null;
   function route(){
     var m = /^#\/([^/]+)\/(board|grid|list|cal)$/.exec(location.hash), p = m && T.project(m[1]);
-    if(p){ state.view = m[2]; state.proj = p.id; } else { state.view = 'today'; if(!T.project(state.proj)) state.proj = (T.projects()[0] || {}).id || null; }
+    if(p){ state.view = m[2]; state.proj = p.id; } else { state.view = location.hash === '#today' ? 'today' : 'home'; if(!T.project(state.proj)) state.proj = (T.projects()[0] || {}).id || null; }
     if(A.closeTask && !state.keepSheet) A.closeTask(true);
-    closePop(); paint();
+    closePop();
+    var now = state.view + ':' + (state.view === 'home' || state.view === 'today' ? '' : state.proj), was = shown; shown = now;
+    if(was && was !== now) shift(was, now); else paint();
   }
   window.addEventListener('popstate', route); window.addEventListener('hashchange', route);
-  A.go = go;
+  A.go = go; A.lastView = lastView;
+
+  // ---------- motion between views ----------
+  // Going from one view to another is one movement, not a cut. Into a board from home, the board opens out of
+  // its tile, and going back it draws into the tile again; between a board's views the old one slides away as
+  // the new one comes in, in the direction of the tabs; everything else passes through a soft fade. This uses
+  // the browser's view transitions where it has them; where it does not, the new view rises into place.
+  var ORDER = { home: 0, today: 1, board: 2, grid: 3, list: 4, cal: 5 };
+  function shift(was, now){
+    var a = was.split(':'), b = now.split(':');
+    var kind = a[0] === 'home' || b[0] === 'home' ? 'zoom' : a[1] === b[1] && a[1] ? (ORDER[b[0]] > ORDER[a[0]] ? 'fwd' : 'back') : 'fade';
+    if(still){ paint(); return; }
+    if(!document.startViewTransition){ paint(); body.classList.remove('enter'); void body.offsetWidth; body.classList.add('enter'); return; }
+    de.setAttribute('data-shift', kind);
+    var t = document.startViewTransition(function(){ paint(); });
+    var end = function(){ de.removeAttribute('data-shift'); }, quiet = function(){};      // a browser may skip the movement (a hidden tab); the view has still changed
+    t.finished.then(end, end); t.ready.catch(quiet); t.updateCallbackDone.catch(quiet);
+  }
 
   // ---------- the column of Today and projects, and the bar ----------
   var naming = false;
   function shell(){
-    var due = T.tasks().filter(function(t){ return !T.isDone(t) && t.due && away(t) <= 0; }).length, isToday = state.view === 'today';
-    var h = '<nav class="brand" aria-label="Where you are"><a href="index.html" title="Back to Sleek, to pick another app"><img src="icons/tasks.svg" alt="" width="22" height="20">Sleek</a><i aria-hidden="true">/</i><b>Tasks</b></nav>' +
-      '<button type="button" class="nav' + (isToday ? ' on' : '') + '" data-go="today"' + (isToday ? ' aria-current="page"' : '') + '><i class="dot"></i><span>Today</span><em>' + (due || '') + '</em></button><h4>Projects</h4>';
+    var due = T.tasks().filter(function(t){ return !T.isDone(t) && t.due && away(t) <= 0; }).length, isToday = state.view === 'today', isHome = state.view === 'home';
+    $('#app').classList.toggle('at-home', isHome);
+    var h = '<nav class="brand" aria-label="Where you are"><a href="index.html" title="Back to Sleek, to pick another app"><img src="icons/tasks.svg" alt="" width="22" height="20">Sleek</a><i aria-hidden="true">/</i><a class="crumb" href="#home" title="All your boards">Tasks</a></nav>' +
+      '<button type="button" class="nav' + (isToday ? ' on' : '') + '" data-go="today"' + (isToday ? ' aria-current="page"' : '') + '><i class="dot"></i><span>Today</span><em>' + (due || '') + '</em></button><h4>Boards</h4>';
     T.projects().forEach(function(p){
       var on = !isToday && p.id === state.proj, n = T.tasks(p.id).filter(function(t){ return !T.isDone(t); }).length;
       h += '<div class="nav' + (on ? ' on' : '') + '" role="button" tabindex="0" data-proj="' + p.id + '"' + (on ? ' aria-current="page"' : '') + '><i style="--c:' + p.color + '"></i><span>' + esc(p.name) + '</span><em>' + (n || '') + '</em>' +
         '<span class="more" role="button" tabindex="0" data-pmore="' + p.id + '" aria-label="More for ' + esc(p.name) + '" aria-haspopup="true">⋯</span></div>';
     });
-    h += '<button type="button" class="nav new" data-do="newproject"><i></i><span>New project</span></button>' +
+    h += '<button type="button" class="nav new" data-do="newproject"><i></i><span>New board</span></button>' +
       '<div class="side-foot"><span class="grow"></span>' +
       '<button type="button" data-do="news" class="hide-s" aria-haspopup="true">' + (window.SLEEK_TASK_CHANGES ? 'v' + window.SLEEK_TASK_CHANGES[0].v : '') + '</button><button type="button" data-do="look" title="Light or dark" aria-label="Light or dark">◐</button></div>';
     if(!naming) side.innerHTML = h;
     var p = T.project(state.proj);
-    top.innerHTML = '<h1>' + (isToday ? 'Today' : esc(p ? p.name : '')) + '</h1>' +
+    top.innerHTML = isHome ? '' : '<h1>' + (isToday ? 'Today' : esc(p ? p.name : '')) + '</h1>' +
       (isToday || !p ? '' : '<div class="tabs2" role="tablist" aria-label="View">' + VIEWS.map(function(v){ return '<button type="button" role="tab" aria-selected="' + (state.view === v[0]) + '" class="' + (state.view === v[0] ? 'on' : '') + '" data-view="' + v[0] + '">' + v[1] + '</button>'; }).join('') + '</div>') +
       (state.view === 'board' && p ? '<button type="button" class="gbtn" data-do="custom" aria-haspopup="true">Customize</button>' : '');
-    document.title = (isToday ? 'Today' : p ? p.name : 'Tasks') + ' · Sleek Tasks';
+    document.title = isHome ? 'Sleek Tasks' : (isToday ? 'Today' : p ? p.name : 'Tasks') + ' · Sleek Tasks';
   }
 
   // draw everything again; with move, each task glides from where it was to where it now is
@@ -140,7 +163,7 @@
 
   // ---------- pressing things in the column and the bar ----------
   function nameProject(el, p){      // type a project's name in place: a new one (p null) or an existing one
-    naming = true; var s = el.querySelector('span:not(.more)'), inp = document.createElement('input'); inp.value = p ? p.name : ''; inp.placeholder = 'Project name'; inp.setAttribute('aria-label', 'Project name');
+    naming = true; var s = el.querySelector('span:not(.more)'), inp = document.createElement('input'); inp.value = p ? p.name : ''; inp.placeholder = 'Board name'; inp.setAttribute('aria-label', 'Board name');
     s.replaceWith(inp); inp.focus(); inp.select();
     var done = false, end = function(keep){ if(done) return; done = true; naming = false; var v = inp.value.trim();
       if(keep && v){ if(p) T.setProject(p.id, { name: v.slice(0, 80) }); else { var np = T.addProject({ name: v.slice(0, 80) }); go('board', np.id); return; } }
@@ -156,7 +179,7 @@
       var sw = document.createElement('div'); sw.className = 'sws'; T.COLORS.forEach(function(c){ var b = document.createElement('button'); b.type = 'button'; b.style.setProperty('--c', c); b.className = c === p.color ? 'on' : ''; b.setAttribute('aria-label', 'Colour ' + c); b.addEventListener('click', function(){ closePop(); T.setProject(p.id, { color: c }); }); sw.appendChild(b); }); m.appendChild(sw);
       var l = document.createElement('div'); l.className = 'line'; m.appendChild(l);
       var n = T.tasks(p.id).length;
-      danger(m, n ? 'Delete project and its ' + n + (n === 1 ? ' task' : ' tasks') : 'Delete project', function(){ T.removeProject(p.id); toast('Deleted “' + p.name + '”'); });
+      danger(m, n ? 'Delete board and its ' + n + (n === 1 ? ' task' : ' tasks') : 'Delete board', function(){ T.removeProject(p.id); toast('Deleted “' + p.name + '”'); });
     });
   }
   function news(btn){
@@ -166,6 +189,7 @@
     });
   }
   function look(){ var dark = de.getAttribute('data-mode') !== 'dark'; if(dark) de.setAttribute('data-mode', 'dark'); else de.removeAttribute('data-mode'); try { localStorage.setItem('sleek-tasks-look', dark ? 'dark' : 'light'); } catch(e){} var m = $('meta[name="theme-color"]'); if(m) m.setAttribute('content', dark ? '#0E0E11' : '#FFFFFF'); }
+  A.look = look; A.news = news;
   side.addEventListener('click', function(e){
     var t = e.target, x;
     if((x = t.closest('[data-pmore]'))){ e.stopPropagation(); projectMenu(x, T.project(x.getAttribute('data-pmore'))); return; }
@@ -186,7 +210,7 @@
     var p = T.addProject({ name: 'Getting started' }), d = dayKey;
     T.addPerson('You');
     [['Drag this card to Doing', 'todo', d(0), 'You', ['Try it']], ['Tick me off', 'todo', d(0), '', ['Try it']], ['Open me: tasks have notes, subtasks and a due date', 'todo', d(1), '', []],
-     ['Make your own project (New project, on the left)', 'todo', d(2), '', []], ['Read this card', 'done', '', '', []]].forEach(function(x){ T.addTask({ project: p.id, title: x[0], status: x[1], due: x[2], who: x[3], tags: x[4] }); });
+     ['Make your own board (Tasks, at the top left, then New board)', 'todo', d(2), '', []], ['Read this card', 'done', '', '', []]].forEach(function(x){ T.addTask({ project: p.id, title: x[0], status: x[1], due: x[2], who: x[3], tags: x[4] }); });
     var t = T.tasks(p.id)[2]; T.setTask(t.id, { subs: [{ id: T.uid(), t: 'Add a subtask', done: true }, { id: T.uid(), t: 'Tick a subtask', done: false }] });
     return p;
   }

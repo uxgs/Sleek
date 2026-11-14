@@ -6,7 +6,7 @@ Three apps that run in your browser, with no account and nothing to install, and
   preview, and share it as a file or a web page.
 - **Sleek Docs**, a writing app. Write pages with rich formatting, pictures and tables, keep them in
   folders, and save them as PDF or Markdown. [More below](#sleek-docs).
-- **Sleek Tasks**, a planning app. Projects, a board you drag, a list, and everything due today in
+- **Sleek Tasks**, a planning app. Boards you drag cards across, a list, and everything due today in
   one place. [More below](#sleek-tasks).
 
 Your work stays in your browser; the one thing Sleek can send anywhere is
@@ -131,11 +131,15 @@ and the seed is `{ "kind": "doc", "v": 1, "theme", "doc" }`, where `doc` is the 
 
 ## Sleek Tasks
 
-Open **Tasks** from the front page. It opens on **Today**: what is overdue, due today and due in the
-next seven days, across every project, with a box to add a task.
+Open **Tasks** from the front page. It opens on its home page: a tile for each of your boards
+(Personal, Work, whatever you make), each a small picture of the board. Press one to go into it;
+"Tasks" at the top left brings you back. **Today**, one press from home, gathers what is overdue, due
+today and due in the next seven days, across every board, with a box to add a task.
 
-- **Projects.** Each has its own tasks and its own columns. New project is in the list on the left;
-  a project's ⋯ menu renames it, changes its colour or deletes it.
+- **Boards.** Each has its own tasks and its own columns. New board is on the home page (and in the
+  list on the left inside a board); a board's ⋯ menu renames it, changes its colour or deletes it.
+- **Motion.** Going into a board, it opens out of its tile; a board's views slide from one to the
+  next. (All of Sleek's pages hand over to each other the same way; `core/motion.css`.)
 - **Board.** A column for each status. Drag a card to another column, or up and down within one,
   with a mouse or a finger (hold a moment, then drag). Add a column, press a column's name to rename
   it, and use its ⋯ menu for its colour, to delete it, or to say that ticked tasks go there.

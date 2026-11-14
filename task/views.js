@@ -19,10 +19,10 @@
     var over = open.filter(A.late), now = open.filter(function(t){ return A.away(t) === 0; }), soon = open.filter(function(t){ var n = A.away(t); return n > 0 && n <= 7; });
     var hour = new Date().getHours(), hi = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
     function sec(name, ts, cls){ return ts.length ? '<h4 class="' + (cls || '') + '">' + name + ' <em>' + ts.length + '</em></h4>' + ts.map(function(t){ return A.row(t, true); }).join('') : ''; }
-    var ps = T.projects(), pick = ps.length > 1 ? '<select id="today-proj" aria-label="Project for the new task">' + ps.map(function(p){ return '<option value="' + p.id + '"' + (p.id === state.proj ? ' selected' : '') + '>' + esc(p.name) + '</option>'; }).join('') + '</select>' : '';
+    var ps = T.projects(), pick = ps.length > 1 ? '<select id="today-proj" aria-label="Board for the new task">' + ps.map(function(p){ return '<option value="' + p.id + '"' + (p.id === state.proj ? ' selected' : '') + '>' + esc(p.name) + '</option>'; }).join('') + '</select>' : '';
     return '<div class="hello"><b>' + hi + '.</b><span>' + (now.length ? now.length + (now.length === 1 ? ' task' : ' tasks') + ' for today' : 'Nothing due today') + (over.length ? ', and ' + over.length + ' overdue' : '') + '.</span></div>' +
       '<div class="list"><div class="quick"><input placeholder="Add a task for today and press Enter" data-add="today" aria-label="Add a task for today" maxlength="300">' + pick + '</div>' + sec('Overdue', over, 'late') + sec('Today', now) + sec('Next 7 days', soon) +
-      (over.length + now.length + soon.length ? '' : '<div class="empty"><b>Nothing due this week.</b>Tasks with a due date show up here, from every project.</div>') + '</div>';
+      (over.length + now.length + soon.length ? '' : '<div class="empty"><b>Nothing due this week.</b>Tasks with a due date show up here, from every board.</div>') + '</div>';
   };
 
   // ---------- list ----------
@@ -90,10 +90,10 @@
       var sw = document.createElement('div'); sw.className = 'sws'; T.COLORS.forEach(function(c){ var b = document.createElement('button'); b.type = 'button'; b.style.setProperty('--c', c); b.className = c === s.color ? 'on' : ''; b.setAttribute('aria-label', 'Colour ' + c);
         b.addEventListener('click', function(){ A.closePop(); T.setProject(p.id, { statuses: p.statuses.map(function(x){ return x.id === sid ? Object.assign({}, x, { color: c }) : x; }) }); }); sw.appendChild(b); }); m.appendChild(sw);
       var l = document.createElement('label'); l.innerHTML = '<input type="checkbox"' + (s.done ? ' checked' : '') + '>Ticked tasks go here'; m.appendChild(l);
-      l.querySelector('input').addEventListener('change', function(e){ var on = e.target.checked; if(!on && p.statuses.filter(function(x){ return x.done; }).length < 2){ e.target.checked = true; A.toast('A project needs one column for done tasks'); return; }
+      l.querySelector('input').addEventListener('change', function(e){ var on = e.target.checked; if(!on && p.statuses.filter(function(x){ return x.done; }).length < 2){ e.target.checked = true; A.toast('A board needs one column for done tasks'); return; }
         T.setProject(p.id, { statuses: p.statuses.map(function(x){ return x.id === sid ? Object.assign({}, x, { done: on }) : x; }) }); });
       var ln = document.createElement('div'); ln.className = 'line'; m.appendChild(ln);
-      if(p.statuses.length > 1) A.danger(m, 'Delete this column', function(){ if(s.done && p.statuses.filter(function(x){ return x.done; }).length < 2){ A.toast('A project needs one column for done tasks'); return; } T.removeStatus(p.id, sid); A.toast('Column deleted. Its tasks moved to ' + T.project(p.id).statuses[0].name + '.'); });
+      if(p.statuses.length > 1) A.danger(m, 'Delete this column', function(){ if(s.done && p.statuses.filter(function(x){ return x.done; }).length < 2){ A.toast('A board needs one column for done tasks'); return; } T.removeStatus(p.id, sid); A.toast('Column deleted. Its tasks moved to ' + T.project(p.id).statuses[0].name + '.'); });
     });
   }
 

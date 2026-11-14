@@ -113,6 +113,7 @@
   function hide(on){ app.classList.toggle('no-side', on); if(!narrow()){ try { localStorage.setItem('sleek-docs-side', on ? 'off' : 'on'); } catch(e){} } }
   var start = narrow(); try { if(!start) start = localStorage.getItem('sleek-docs-side') === 'off'; } catch(e){}
   app.classList.toggle('no-side', start);
+  setTimeout(function(){ app.classList.add('live'); }, 400);      // from now on the list slides when it comes and goes (not while the page is first being laid out)
   document.getElementById('b-side').addEventListener('click', function(){ hide(!app.classList.contains('no-side')); });
   document.addEventListener('keydown', function(e){ if((e.metaKey || e.ctrlKey) && e.key === '\\'){ e.preventDefault(); hide(!app.classList.contains('no-side')); } });
   document.getElementById('main').addEventListener('pointerdown', function(e){ if(narrow() && !app.classList.contains('no-side') && !e.target.closest('#b-side')) hide(true); });

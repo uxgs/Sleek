@@ -221,13 +221,23 @@
         var t = seed.theme || {}, l = last(), fresh = !t.mode && !t.accent && !t.font;
         ['mode', 'accent', 'font'].forEach(function(k){ var v = fresh ? l[k] : t[k]; if(v) theme[k] = v; });
         cur = d; dirty = false; clearTimeout(saveT);
-        if(view) view.updateState(state); else make(state);
-        note.hidden = !locked; note.textContent = locked ? 'This page was made with a newer Sleek Docs. Reload this page to update, then open it again. Nothing here has been changed.' : '';
-        paint(); document.title = d.title + ' · Sleek Docs'; status(locked ? '' : 'Saved · ' + count() + (count() === 1 ? ' word' : ' words'));
-        $('#scroll').scrollTop = 0;
-        if(!opts || opts.url !== false){ try { history[opts && opts.replace ? 'replaceState' : 'pushState'](null, '', location.pathname + '?d=' + d.id); } catch(e){} }
-        each(api.onOpen, d);
-        return d;
+        var showIt = function(){
+          if(view) view.updateState(state); else make(state);
+          note.hidden = !locked; note.textContent = locked ? 'This page was made with a newer Sleek Docs. Reload this page to update, then open it again. Nothing here has been changed.' : '';
+          paint(); document.title = d.title + ' · Sleek Docs'; status(locked ? '' : 'Saved · ' + count() + (count() === 1 ? ' word' : ' words'));
+          $('#scroll').scrollTop = 0;
+        };
+        // a page opened in place of another arrives as one movement: the old page fades as the new one rises (doc/doc-ui.css)
+        var moved = Promise.resolve(), de = document.documentElement;
+        if(view && document.startViewTransition && !(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)){
+          de.setAttribute('data-shift', 'page'); var vt = document.startViewTransition(showIt), done = function(){ de.removeAttribute('data-shift'); };
+          vt.finished.then(done, done); vt.ready.catch(function(){}); moved = vt.updateCallbackDone.catch(function(){});
+        } else showIt();
+        return moved.then(function(){
+          if(!opts || opts.url !== false){ try { history[opts && opts.replace ? 'replaceState' : 'pushState'](null, '', location.pathname + '?d=' + d.id); } catch(e){} }
+          each(api.onOpen, d);
+          return d;
+        });
       });
     });
   }

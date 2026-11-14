@@ -19,6 +19,7 @@
 <link rel="stylesheet" href="features/setup.css">
 <link rel="stylesheet" href="features/library.css">
 <link rel="stylesheet" href="features/film.css">
+<link rel="stylesheet" href="core/motion.css">
 <!-- a first visit opens on the film (features/film.js): mark it before anything is drawn, so the start screen never flashes first -->
 <script>try{var d=document.documentElement;if(!localStorage.getItem('sleek-sample-added')&&!localStorage.getItem('sleek-film')&&navigator.onLine!==false&&!matchMedia('(prefers-reduced-motion: reduce)').matches&&location.hash!=='#setup'){d.classList.add('film-first');setTimeout(function(){if(!window.SleekFilm)d.classList.remove('film-first')},4000)}}catch(e){}</script>
 <!-- the storage, the sample deck, publishing, and the page's look before paint -->

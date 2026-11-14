@@ -92,7 +92,7 @@
       var h = document.createElement('h4'); h.textContent = 'A new field'; m.appendChild(h);
       T.FIELD_TYPES.forEach(function(type){ two(m, A.KINDS[type], A.HINTS[type], function(){
         A.closePop(); var f = T.addField(p.id, { type: type, name: A.KINDS[type] === 'Picture or clip' ? 'File' : A.KINDS[type] });
-        if(!f){ A.toast('A project can have 30 fields of its own.'); return; }
+        if(!f){ A.toast('A board can have 30 fields of its own.'); return; }
         // name it straight away, once it has been drawn
         setTimeout(function(){ var th = body.querySelector('[data-fcol="' + f.id + '"]'); if(th && th.scrollIntoView) th.scrollIntoView({ block: 'nearest', inline: 'nearest' }); rename(f.id); }, 0);
       }); });

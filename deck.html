@@ -29,6 +29,7 @@
 <link rel="stylesheet" href="features/data.css">
 <link rel="stylesheet" href="features/tasks.css">
 <link rel="stylesheet" href="features/viewers.css">
+<link rel="stylesheet" href="core/motion.css">
 <!-- the storage, the sample deck, then the loader: it opens the deck and starts the engine on it -->
 <script src="core/store.js"></script>
 <script src="core/online.js"></script>
@@ -185,7 +186,7 @@
     <span class="sep"></span>
   </span>
   <span class="eb-group" id="eb-tasks" hidden>
-    <button id="tks-edit" class="eb-ico" type="button" title="Which project this slide shows, as a board or a list" aria-haspopup="true" aria-expanded="false">
+    <button id="tks-edit" class="eb-ico" type="button" title="Which board this slide shows, as cards or as a list" aria-haspopup="true" aria-expanded="false">
       <svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="4" width="4" height="12" rx="1.2"/><rect x="8" y="4" width="4" height="7.5" rx="1.2"/><rect x="13" y="4" width="4" height="10" rx="1.2"/></svg><span class="lbl">Choose tasks</span></button>
     <span class="sep"></span>
   </span>
@@ -570,8 +571,8 @@
 
     <!-- Tasks: a project's board or list from Sleek Tasks, as it stands (features/tasks-layout.js draws it) -->
     <section class="slide s-tasks" data-label="Tasks" data-note="tasks">
-      <template class="slide-notes"><p>A project’s board or list from Sleek Tasks, as it stands when the slide is shown.</p>
-<ul><li>In Edit mode, Choose tasks picks the project, a board or a list, and whether done tasks show.</li><li>It follows Sleek Tasks while you edit and present: move a card there and it moves here. A published deck shows the tasks as they were when you published.</li></ul></template>
+      <template class="slide-notes"><p>One of your boards from Sleek Tasks, as cards or as a list, as it stands when the slide is shown.</p>
+<ul><li>In Edit mode, Choose tasks picks the board, cards or a list, and whether done tasks show.</li><li>It follows Sleek Tasks while you edit and present: move a card there and it moves here. A published deck shows the tasks as they were when you published.</li></ul></template>
       <div class="overline"><span class="tick">This week ·</span> The plan</div>
       <h2 class="display">Where things stand.</h2>
       <div class="tks-host" data-view="board"></div>

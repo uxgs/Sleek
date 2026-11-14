@@ -189,7 +189,7 @@
     A.pop(atCursor(), function(p){
       var h = document.createElement('h4'); h.textContent = title; p.appendChild(h);
       T.projects().forEach(function(pr){ var n = T.tasks(pr.id).filter(function(t){ return !T.isDone(t); }).length; A.item(p, null, pr.name, n + (n === 1 ? ' open task' : ' open tasks'), function(){ A.closePop(); A.view.focus(); act(pr); }); });
-      var note = document.createElement('p'); note.textContent = 'Projects are made in Sleek Tasks.'; p.appendChild(note);
+      var note = document.createElement('p'); note.textContent = 'Boards are made in Sleek Tasks.'; p.appendChild(note);
     });
   }
   // find a task by typing, or make a new one, then run act(task)
@@ -227,7 +227,7 @@
     inp.focus();
   }
   K.insertTask = function(){ pickTask(function(t){ var v = A.view; v.dispatch(v.state.tr.replaceSelectionWith(N.task_ref.create({ task: t.id, snap: snapTask(t) })).insertText(' ').scrollIntoView()); v.focus(); }); };
-  K.insertTasks = function(kind){ pickProject(kind === 'board' ? 'Which project’s board?' : 'Which project’s tasks?', function(pr){ var a = { project: pr.id, view: kind === 'board' ? 'board' : 'list', show: 'open', ids: null }; a.snap = snapBlock(a); A.insertBlock(N.tasks.create(a)); }); };
+  K.insertTasks = function(kind){ pickProject(kind === 'board' ? 'Which board?' : 'Which board’s tasks?', function(pr){ var a = { project: pr.id, view: kind === 'board' ? 'board' : 'list', show: 'open', ids: null }; a.snap = snapBlock(a); A.insertBlock(N.tasks.create(a)); }); };
 
   // ---------- a plain checklist becomes real tasks ----------
   function checklistAt(){ var $f = A.view.state.selection.$from; for(var d = $f.depth; d > 0; d--) if($f.node(d).type === N.task_list) return { node: $f.node(d), pos: $f.before(d) }; return null; }

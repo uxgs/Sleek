@@ -19,6 +19,7 @@
 <link rel="stylesheet" href="vendor/prosemirror.css">
 <link rel="stylesheet" href="doc/doc.css">
 <link rel="stylesheet" href="task/tasks.css">
+<link rel="stylesheet" href="core/motion.css">
 <!-- light or dark, as last chosen here, before anything is drawn -->
 <script>try{ if(localStorage.getItem('sleek-tasks-look') === 'dark') document.documentElement.setAttribute('data-mode', 'dark'); }catch(e){} document.documentElement.classList.add('booting');</script>
 <!-- the storage: tasks in their own database; pictures in notes go in the decks' picture store, like every picture in Sleek -->
@@ -27,8 +28,8 @@
 </head>
 <body>
 <div class="tk" id="app">
-  <!-- Today and your projects (task/app.js) -->
-  <aside class="side" id="side" aria-label="Today and your projects"></aside>
+  <!-- Today and your boards (task/app.js); on the home page (task/home.js) this column is away and the boards are tiles -->
+  <aside class="side" id="side" aria-label="Today and your boards"></aside>
   <div class="main" id="main">
     <div class="top" id="top"></div>
     <!-- the view: Today, or a project's board, grid, list or calendar (task/views.js, grid.js, cal.js) -->
@@ -42,6 +43,7 @@
 <script src="task/grid.js"></script>
 <script src="task/cal.js"></script>
 <script src="task/sheet.js"></script>
+<script src="task/home.js"></script>
 <script src="core/short.js"></script>
 </body>
 </html>

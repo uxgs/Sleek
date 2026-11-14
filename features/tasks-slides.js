@@ -36,8 +36,8 @@
   function fill(){
     var c = cur(); if(!ed || !c) return; var T = K.tasks(), ps = T ? T.projects() : [], tk = c.tk;
     ed.innerHTML = '<div class="tks-ed-h"><b>The tasks on this slide</b><button type="button" class="tks-ed-x" aria-label="Close">×</button></div>' +
-      (!T ? '<p>Opening your tasks…</p>' : !ps.length ? '<p>You have no projects yet. Make one in Sleek Tasks, then choose it here.</p>' :
-        '<label for="tks-p">Project</label><select id="tks-p">' + (tk.project && ps.some(function(p){ return p.id === tk.project; }) ? '' : '<option value="">' + (tk.project ? 'Not in this browser' : 'Choose a project') + '</option>') +
+      (!T ? '<p>Opening your tasks…</p>' : !ps.length ? '<p>You have no boards yet. Make one in Sleek Tasks, then choose it here.</p>' :
+        '<label for="tks-p">Board</label><select id="tks-p">' + (tk.project && ps.some(function(p){ return p.id === tk.project; }) ? '' : '<option value="">' + (tk.project ? 'Not in this browser' : 'Choose a project') + '</option>') +
           ps.map(function(p){ return '<option value="' + esc(p.id) + '"' + (p.id === tk.project ? ' selected' : '') + '>' + esc(p.name) + '</option>'; }).join('') + '</select>' +
         '<span class="tks-ed-l">Shown as</span><span class="tks-ed-seg" role="group" aria-label="Shown as">' + [['board', 'Board'], ['list', 'List']].map(function(v){ var on = (tk.view === 'list' ? 'list' : 'board') === v[0]; return '<button type="button" data-view="' + v[0] + '" aria-pressed="' + on + '" class="' + (on ? 'on' : '') + '">' + v[1] + '</button>'; }).join('') + '</span>' +
         '<label class="tks-ed-c"><input type="checkbox" id="tks-d"' + (tk.done !== false ? ' checked' : '') + '> Show done tasks</label>') +

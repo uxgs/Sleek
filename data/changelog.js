@@ -7,11 +7,11 @@
    Slides half of sw.js's VERSION to match, so the offline cache and the version you see always
    match. Keep each line to a few words, and each day to four lines at most. */
 window.SLEEK_CHANGES = [
-  { v: '1.0.52', date: '2026-11-13',
+  { v: '1.0.53', date: '2026-11-13',
     items: [
-      'Now Sleek Slides, with its own logo; “Sleek” goes back to the other apps',
+      'Now Sleek Slides, with its own logo; pages change with motion',
       'See who\'s viewing a deck you published: a switch in Share',
-      'A Tasks slide: a project’s board or list from Sleek Tasks, live',
+      'A Tasks slide: one of your boards from Sleek Tasks, live',
       'The Sleek film shows charts; the saving clip shows the new Edit bar'
     ] },
   { v: '1.0.44', date: '2026-11-12',

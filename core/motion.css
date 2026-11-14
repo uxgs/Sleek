@@ -1,0 +1,23 @@
+/* Sleek's movement from page to page, shared by the front page, Slides, Docs and Tasks.
+
+   Going from one of Sleek's pages to another (the front page to an app, a start screen into a deck or a
+   page, and back again) is a hand-over, not a cut: the old page fades as the new one rises into
+   place. A browser that cannot do this changes page as it always did, and anyone who has asked their
+   computer for less motion gets the plain change too.
+
+   Each app has its own motion inside the page (Tasks: task/tasks.css; Docs: doc/doc-ui.css). */
+@view-transition { navigation: auto; }
+@keyframes sk-page-out { to { opacity: 0; } }
+@keyframes sk-page-in { from { opacity: 0; transform: translateY(12px); } }
+::view-transition-old(root) { animation: .16s ease both sk-page-out; }
+::view-transition-new(root) { animation: .4s cubic-bezier(.2, .8, .2, 1) both sk-page-in; }
+
+/* Slides: the Edit bar comes up from under the slide when Edit mode starts, and panels that open settle into place */
+@keyframes sk-bar-up { from { opacity: 0; translate: 0 16px; scale: .97; } }      /* translate and scale on their own, so the bar's own placing (which differs on a phone) is left alone */
+.editbar:not([hidden]) { animation: sk-bar-up .34s cubic-bezier(.2, .8, .2, 1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  @view-transition { navigation: none; }
+  ::view-transition-old(root), ::view-transition-new(root) { animation: none; }
+  .editbar:not([hidden]) { animation: none; }
+}
