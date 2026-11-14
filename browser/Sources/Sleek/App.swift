@@ -23,6 +23,8 @@ final class App: NSObject, NSApplicationDelegate {
     Icons.dir = dir.appendingPathComponent("icons")
     Icons.onNew = { [weak self] in self?.windows.forEach { $0.iconsChanged() } }
     Work.shared.onChange.append { [weak self] in self?.windows.forEach { $0.workChanged() } }
+    Vault.shared.start(dir: dir)
+    Vault.shared.onChange.append { [weak self] in self?.windows.forEach { $0.passwordsChanged() } }
     Work.shared.folder = dir.appendingPathComponent("Work")
     Work.shared.onNote = { [weak self] text in self?.front?.tell(["type": "toast", "text": text]) }
     if !Res.args.contains("--lists") { Work.shared.start() }
@@ -83,7 +85,7 @@ final class App: NSObject, NSApplicationDelegate {
     main.addItem(menu("History", [item("Back", "[", [.command], #selector(back)), item("Forward", "]", [.command], #selector(forward)), sep(), item("Show History", "y", [.command], #selector(history))]))
     main.addItem(menu("Bookmarks", [item("Bookmark This Page", "d", [.command], #selector(bookmark)), item("All Bookmarks", "b", [.command, .option], #selector(bookmarks))]))
     main.addItem(menu("Tab", [item("Next Tab", "\t", [.control], #selector(nextTab)), item("Previous Tab", "\t", [.control, .shift], #selector(prevTab))]))
-    let win = menu("Window", [item("Minimize", "m", [.command], #selector(NSWindow.performMiniaturize(_:))), item("Zoom", "", [], #selector(NSWindow.performZoom(_:))), sep(), item("Downloads", "l", [.command, .option], #selector(downloads))])
+    let win = menu("Window", [item("Minimize", "m", [.command], #selector(NSWindow.performMiniaturize(_:))), item("Zoom", "", [], #selector(NSWindow.performZoom(_:))), sep(), item("Downloads", "l", [.command, .option], #selector(downloads)), item("Passwords", "p", [.command, .option], #selector(passwords))])
     main.addItem(win); NSApp.windowsMenu = win.submenu
     NSApp.mainMenu = main
   }
@@ -113,6 +115,7 @@ final class App: NSObject, NSApplicationDelegate {
   @objc func bookmark() { front?.show("star") }
   @objc func bookmarks() { front?.show("allmarks") }
   @objc func downloads() { front?.show("downloads") }
+  @objc func passwords() { front?.showPasswords() }
   @objc func look() { front?.show("look") }
   @objc func makeDefaultMenu() { makeDefault() }
   private func step(_ by: Int) { guard let w = front, let c = w.current, let i = w.tabs.firstIndex(where: { $0 === c }) else { return }; w.select(w.tabs[(i + by + w.tabs.count) % w.tabs.count].id) }

@@ -424,6 +424,98 @@ enum SelfTest {
     await press(w, "#b-panel"); await nap(0.4); s = await see(w)
     check("the panel closes again, and the page takes the room back", s["panel"] is NSNull || s["panel"] == nil, s["panel"])
 
+    print("passwords")
+    // The names and passwords here are made up by this check, for pages that exist only inside it; nothing is sent anywhere.
+    let V = Vault.shared, who = "maya@example.com", secret = "T-" + UUID().uuidString.prefix(18), secret2 = "N-" + UUID().uuidString.prefix(18)
+    let fair = Vault.strength("Harbor2019x"), made = Vault.generate(words: false, length: 20), madeWords = Vault.generate(words: true, length: 24)
+    check("a password is judged: a common one weak, a long random one strong", Vault.strength("password").verdict == "weak" && Vault.strength("aaaaaaaaaaaa").verdict == "weak" && fair.verdict != "strong" && Vault.strength(made).verdict == "strong", [fair.verdict, Vault.strength(made).bits])
+    check("Sleek makes strong passwords: letters and symbols, or words", made.count == 20 && made != Vault.generate(words: false, length: 20) && madeWords.split(separator: "-").count >= 5 && Vault.strength(madeWords).verdict == "strong", [made.count, madeWords.split(separator: "-").count])
+    let csvRows = Vault.rows(csv: "name,url,username,password\n\"Shop, the\",https://shop.example/login,\"a \"\"quoted\"\" name\",p1\r\nplain,https://plain.example,bob,p2\n")
+    check("a file of comma-separated values is read, quotes and all", csvRows.count == 3 && csvRows[1] == ["Shop, the", "https://shop.example/login", "a \"quoted\" name", "p1"] && csvRows[2][2] == "bob", csvRows)
+    func signInPage(_ host: String, signUp: Bool = false) async {
+      let boxes = signUp ? "<input id=u type=email autocomplete=username><input id=p type=password autocomplete=new-password><input id=p2 type=password autocomplete=new-password>" : "<input id=u type=text name=username><input id=p type=password>"
+      let html = "<!doctype html><meta charset=utf-8><title>\(signUp ? "Join" : "Sign in")</title><style>body{font:16px system-ui;margin:80px auto;max-width:360px}input{display:block;width:100%;height:36px;margin:10px 0;font:inherit}</style><h1>\(signUp ? "Join" : "Sign in")</h1><form id=f onsubmit=\"event.preventDefault(); window.__sent = (window.__sent || 0) + 1\">\(boxes)<button id=go type=submit>\(signUp ? "Create account" : "Sign in")</button></form>"
+      w.current?.web.loadSimulatedRequest(URLRequest(url: URL(string: "https://\(host)/login")!), responseHTML: html)
+      _ = await until(8) { (await page(w.current, "return !!document.getElementById('f') && document.readyState === 'complete'")) as? Bool == true && (w.current?.address ?? "").contains(host) }; await nap(0.4)
+    }
+    func typeAndSend(_ user: String, _ pass: String) async { _ = await page(w.current, "document.getElementById('u').value = '\(user)'; document.getElementById('p').value = '\(pass)'; document.getElementById('f').requestSubmit(); return 1"); await nap(0.5) }
+    func focusBox(_ id: String) async { _ = await page(w.current, "var e = document.getElementById('\(id)'); e.focus(); e.dispatchEvent(new FocusEvent('focusin', { bubbles: true })); return 1"); await nap(0.5) }
+    func boxes() async -> [String] { (await page(w.current, "return [].map.call(document.querySelectorAll('input'), function(i){ return i.value; })")) as? [String] ?? [] }
+    await signInPage("signin-test.example"); await typeAndSend(who, String(secret)); s = await see(w)
+    check("signing in to a site, Sleek offers to keep the name and password", (s["ask"] as? String) == "save:\(who)@signin-test.example" && V.count == 0, s["ask"])
+    await shot(w, "22-save-password", to: out)
+    await press(w, "[data-pwans=save]"); s = await see(w)
+    let onDisk = (try? String(contentsOf: w.store.dir.appendingPathComponent("passwords.sleekvault"), encoding: .utf8)) ?? ""
+    check("Save keeps it, and on disk neither the name nor the password can be read", V.count == 1 && V.sites.contains("signin-test.example") && (s["ask"] as? String) == "" && onDisk.contains("\"sealed\"") && !onDisk.contains(String(secret)) && !onDisk.contains(who), [V.count, onDisk.count])
+    await typeAndSend(who, String(secret)); s = await see(w)
+    check("signing in again with the same password asks nothing", (s["ask"] as? String) == "", s["ask"])
+    await signInPage("signin-test.example"); await focusBox("u"); s = await see(w)
+    var offer = s["pwfill"] as? [String: Any]
+    let boxAt = (await page(w.current, "var r = document.getElementById('u').getBoundingClientRect(); return [r.left, r.bottom]")) as? [Double] ?? [0, 0], offerAt = offer?["box"] as? [String: Any] ?? [:]
+    check("with the cursor in a sign-in box, Sleek offers the saved name, just under the box", (offer?["users"] as? [String]) == [who] && abs(((offerAt["x"] as? Double) ?? -99) - (Double(w.chrome.slots[0].minX) + boxAt[0])) <= 2 && abs(((offerAt["y"] as? Double) ?? -99) - (Double(w.chrome.slots[0].minY) + boxAt[1] + 6)) <= 2, [offer ?? [:], boxAt])
+    await shot(w, "23-fill-offer", to: out)
+    V.testApproves = false; V.lock()
+    _ = await bar(w, "document.querySelector('[data-pwuse]').dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true })); return 1"); await nap(0.8)
+    var typed = await boxes()
+    check("without Touch ID, nothing is filled", typed == ["", ""], typed)
+    V.testApproves = true; await focusBox("p")
+    _ = await bar(w, "document.querySelector('[data-pwuse]').dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true })); return 1")
+    ok = await until(6) { await boxes() == [who, String(secret)] }; typed = await boxes()
+    check("with it, the name and the password go into their boxes", ok, typed.map { $0.count })
+    await typeAndSend(who, String(secret2)); s = await see(w)
+    check("a different password for a saved name: Sleek offers to update it", (s["ask"] as? String) == "update:\(who)@signin-test.example", s["ask"])
+    await press(w, "[data-pwans=save]")
+    var updatedNow = false; if case .same = V.have(site: "signin-test.example", user: who, password: String(secret2)) { updatedNow = true }
+    check("and Update replaces it", updatedNow && V.count == 1, V.count)
+    await signInPage("never-test.example"); await typeAndSend("sam", "S-" + UUID().uuidString.prefix(12)); await press(w, "[data-pwans=never]")
+    await typeAndSend("sam", "S-" + UUID().uuidString.prefix(12)); s = await see(w)
+    check("Never for this site: it is not offered there again", V.never.contains("never-test.example") && (s["ask"] as? String) == "" && V.count == 1, [s["ask"] ?? "", V.never.sorted()])
+    await signInPage("join-test.example", signUp: true); await focusBox("p"); s = await see(w); offer = s["pwfill"] as? [String: Any]
+    let strong = (offer?["strong"] as? String) ?? ""
+    check("signing up, Sleek offers a strong password of its own", strong.count == 20 && Vault.strength(strong).verdict == "strong", strong.count)
+    _ = await bar(w, "document.querySelector('[data-pwuse]').dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true })); return 1")
+    ok = await until(6) { let b = await boxes(); return b.count == 3 && b[1] == strong && b[2] == strong }
+    _ = await page(w.current, "document.getElementById('u').value = 'new@example.com'; document.getElementById('f').requestSubmit(); return 1"); await nap(0.6); s = await see(w)
+    var keptNew = false; if case .same = V.have(site: "join-test.example", user: "new@example.com", password: strong) { keptNew = true }
+    check("it goes into both password boxes, and is kept without asking once the page is sent", ok && keptNew && (s["ask"] as? String) == "" && V.count == 2, [ok, keptNew, V.count])
+    // the Passwords page
+    V.lock(); w.showPasswords()
+    func pwPage(_ js: String) async -> Any? { await page(w.current, js) }
+    ok = await until(8) { let there = (await pwPage("return !!document.querySelector('.locked')")) as? Bool == true; return there && w.current?.kind == "passwords" }
+    s = await see(w)
+    let lockedText = (await pwPage("return document.querySelector('.locked').textContent")) as? String ?? ""
+    check("the Passwords page opens locked, saying only how many are saved", ok && lockedText.contains("Your passwords are locked") && lockedText.contains("2 saved") && !lockedText.contains("example.com") && (s["url"] as? String) == "Passwords", lockedText.prefix(120))
+    await shot(w, "24-passwords-locked", to: out)
+    _ = await pwPage("document.getElementById('unlock').click(); return 1")
+    ok = await until(8) { (await pwPage("return document.querySelectorAll('.vrow').length")) as? Int == 2 }
+    check("Touch ID opens it: every sign-in, by site", ok, await pwPage("return document.body.textContent.slice(0, 200)"))
+    V.add(site: "weak-test.example", user: "pat", password: "password"); V.add(site: "twin-a.example", user: "pat", password: strong); await nap(0.5)
+    let health = (await pwPage("return [].map.call(document.querySelectorAll('.hc b'), function(b){ return +b.textContent; })")) as? [Int] ?? []
+    check("it counts what needs attention: used on more than one site, and easy to guess", health == [4, 2, 1], health)
+    _ = await pwPage("[].filter.call(document.querySelectorAll('.vrow'), function(r){ return r.querySelector('b').textContent === 'signin-test.example'; })[0].click(); return 1"); await nap(0.3)
+    let dots = (await pwPage("return document.getElementById('pw').textContent")) as? String ?? ""
+    _ = await pwPage("document.querySelector('[data-v=show]').click(); return 1"); await nap(0.4)
+    let shownPw = (await pwPage("return document.getElementById('pw').textContent")) as? String ?? ""
+    check("a password stays behind dots until you ask to see it", !dots.isEmpty && dots.allSatisfy { $0 == "•" } && shownPw == String(secret2), [dots.count, shownPw.count])
+    _ = await pwPage("document.querySelector('[data-v=copyp]').click(); return 1"); await nap(0.4)
+    check("Copy puts it on the clipboard (to be cleared a minute later)", V.board.string(forType: .string) == String(secret2), V.board.string(forType: .string)?.count)
+    _ = await pwPage("document.querySelector('[data-v=gen]').click(); return 1"); _ = await until(5) { ((await pwPage("return (document.getElementById('made') || {}).textContent || ''")) as? String ?? "").count >= 12 }
+    let chars = (await pwPage("return document.getElementById('made').textContent")) as? String ?? ""
+    _ = await pwPage("document.querySelector('[data-vk=words]').click(); return 1"); await nap(0.5)
+    let wordy = (await pwPage("return document.getElementById('made').textContent")) as? String ?? ""
+    check("it suggests a stronger one, as letters and symbols or as words", chars.count == 20 && wordy.contains("-") && wordy != chars, [chars.count, wordy.split(separator: "-").count])
+    await nap(0.3); await shot(w, "25-passwords", to: out)
+    _ = await pwPage("document.querySelector('[data-v=nogen]').click(); [].filter.call(document.querySelectorAll('.vrow'), function(r){ return r.querySelector('b').textContent === 'weak-test.example'; })[0].click(); return 1"); await nap(0.3)
+    _ = await pwPage("document.querySelector('[data-v=delete]').click(); return 1"); await nap(0.3); let afterOne = V.count
+    _ = await pwPage("document.querySelector('[data-v=delete]').click(); return 1"); await nap(0.5)
+    check("Delete asks to be pressed twice", afterOne == 4 && V.count == 3 && !V.sites.contains("weak-test.example"), [afterOne, V.count])
+    let brought = V.bring(csv: "name,url,username,password,note\nShop,https://www.shop-test.example/login,lee,imp-\(UUID().uuidString.prefix(8)),\nTwin,https://twin-a.example/,pat,whatever,\nBad,,x,,\n")
+    check("the passwords file another browser exports is brought in; what is here already is left", brought?.added == 1 && brought?.here == 1 && brought?.unread == 1 && V.sites.contains("shop-test.example"), [brought?.added ?? -1, brought?.here ?? -1, brought?.unread ?? -1])
+    V.ageOut(); _ = await pwPage("window.webkit.messageHandlers.sleekPage.postMessage({ vault: 'state' }); return 1")
+    ok = await until(5) { (await pwPage("return !!document.querySelector('.locked')")) as? Bool == true }
+    check("five minutes after it was last used, it locks itself again", ok && !V.isOpen && V.reveal(V.users(for: "signin-test.example").first?["id"] ?? "") == nil)
+    if let t = w.current, t.kind == "passwords" { w.closeTab(t.id) }; await nap(0.3)
+
     print("closing, and a private window")
     let before = w.tabs.count; if let t = w.current { w.closeTab(t.id) }; await nap(0.4)
     check("closing a tab shows another", w.tabs.count == before - 1 && w.current != nil && !(w.current!.web.isHidden), w.tabs.count)

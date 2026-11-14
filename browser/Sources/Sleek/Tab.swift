@@ -69,6 +69,53 @@ final class Tab: NSObject, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegat
   })();
   """
 
+  /// Signing in. This script runs apart from the page's own scripts (they cannot see or change it). It notices the
+  /// boxes of a sign-in form, tells the browser when the cursor goes into one (so it can offer a saved name, or a strong
+  /// password when signing up) and what name and password the page was sent (so it can offer to keep them), and fills
+  /// the boxes when the browser says to. It never asks for, or holds, a saved password itself.
+  static let world = WKContentWorld.world(name: "sleek")
+  static let signInScript = """
+  (function(){ if(window.top !== window) return; var post = function(m){ try { webkit.messageHandlers.sleekPw.postMessage(m); } catch(e){} };
+    function vis(e){ var r = e.getBoundingClientRect(), s = getComputedStyle(e); return r.width > 20 && r.height > 8 && s.visibility !== 'hidden' && s.display !== 'none' && !e.disabled && !e.readOnly; }
+    function passes(root){ return [].filter.call((root && root.querySelectorAll ? root : document).querySelectorAll('input[type=password]'), vis); }
+    function scope(el){ return el.form || (el.closest && el.closest('form, [role=form], [role=dialog], section, main')) || document.body; }
+    function userFor(pw){
+      var s = scope(pw), named = s.querySelector('input[autocomplete~=username], input[autocomplete~=email], input[type=email], input[name*=user i], input[name*=email i], input[name*=login i], input[id*=user i], input[id*=email i], input[id*=login i]');
+      if(named && named.type !== 'password' && vis(named)) return named;
+      var best = null; [].forEach.call(s.querySelectorAll('input'), function(i){ if(/^(text|email|tel|)$/.test(i.type) && vis(i) && (i.compareDocumentPosition(pw) & Node.DOCUMENT_POSITION_FOLLOWING)) best = i; });
+      return best;
+    }
+    function fresh(pw){ return /new-password/.test(pw.getAttribute('autocomplete') || '') || passes(scope(pw)).length >= 2; }
+    function rect(e){ var r = e.getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; }
+    var cur = null, last = '';
+    document.addEventListener('focusin', function(e){
+      var t = e.target; if(!t || t.tagName !== 'INPUT') return;
+      var pw = null; if(t.type === 'password') pw = t; else { var ps = passes(scope(t)); if(ps.length && userFor(ps[0]) === t) pw = ps[0]; }
+      if(!pw) return;
+      cur = { user: userFor(pw), pass: pw, all: passes(scope(pw)) };
+      post({ focus: rect(t), on: t === pw ? 'pass' : 'user', fresh: fresh(pw) });
+    }, true);
+    document.addEventListener('focusout', function(e){ if(cur && (e.target === cur.pass || e.target === cur.user)) setTimeout(function(){ var a = document.activeElement; if(!cur || (a !== cur.pass && a !== cur.user)) post({ blur: 1 }); }, 200); }, true);
+    window.addEventListener('scroll', function(){ if(cur) post({ blur: 1 }); }, { passive: true, capture: true });
+    function set(el, v){ if(!el) return; var d = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value'); d.set.call(el, v); el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); }
+    window.__sleekFill = function(user, pass, both){
+      if(!cur || !cur.pass.isConnected){ var ps = passes(); if(!ps.length) return false; cur = { user: userFor(ps[0]), pass: ps[0], all: passes(scope(ps[0])) }; }
+      if(user && cur.user) set(cur.user, user);
+      (both ? cur.all : [cur.pass]).forEach(function(p){ set(p, pass); });
+      return true;
+    };
+    // what the page was sent when you signed in or signed up: once for each name and password
+    function sent(from){
+      var ps = passes(from).filter(function(p){ return p.value; }); if(!ps.length) return;
+      var pw = ps[0], u = userFor(pw), k = (u ? u.value : '') + ' / ' + pw.value; if(k === last) return; last = k;
+      post({ sent: { user: u ? u.value : '', pass: pw.value } });
+    }
+    document.addEventListener('submit', function(e){ sent(e.target); }, true);
+    document.addEventListener('click', function(e){ var b = e.target.closest && e.target.closest('button, input[type=submit], [role=button]'); if(b && passes(scope(b)).length) sent(scope(b)); }, true);
+    document.addEventListener('keydown', function(e){ if(e.key === 'Enter' && e.target && e.target.tagName === 'INPUT') sent(scope(e.target)); }, true);
+  })();
+  """
+
   static func configuration(store: WKWebsiteDataStore) -> WKWebViewConfiguration {
     let c = WKWebViewConfiguration()
     c.websiteDataStore = store
@@ -85,6 +132,7 @@ final class Tab: NSObject, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegat
     super.init()
     view.onDrop = { [weak self] pb in if let s = self, let dir = s.owner?.store.dir.appendingPathComponent("dropped"), let image = DroppedImage.from(pb, keepIn: dir) { s.drop = (image, Date()) } }
     configuration.userContentController.add(Weak(self), name: "sleekPage")
+    configuration.userContentController.add(Weak(self), contentWorld: Tab.world, name: "sleekPw")
     applyBlocking(false)
     web.navigationDelegate = self; web.uiDelegate = self
     web.allowsBackForwardNavigationGestures = true
@@ -93,13 +141,18 @@ final class Tab: NSObject, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegat
     watching = [web.observe(\.title, changeHandler: tell), web.observe(\.url, changeHandler: tell), web.observe(\.isLoading, changeHandler: tell),
                 web.observe(\.estimatedProgress, changeHandler: tell), web.observe(\.canGoBack, changeHandler: tell), web.observe(\.canGoForward, changeHandler: tell)]
   }
-  func close() { watching = []; web.configuration.userContentController.removeScriptMessageHandler(forName: "sleekPage"); web.stopLoading(); web.removeFromSuperview() }
+  func close() {
+    watching = []; let c = web.configuration.userContentController
+    c.removeScriptMessageHandler(forName: "sleekPage"); c.removeScriptMessageHandler(forName: "sleekPw", contentWorld: Tab.world)
+    web.stopLoading(); web.removeFromSuperview()
+  }
 
   /// Put the block lists and the shield's script on this tab, or take them off. The next page it loads is under the new rule.
   func applyBlocking(_ on: Bool) {
     let c = web.configuration.userContentController
     c.removeAllContentRuleLists(); c.removeAllUserScripts()
     c.addUserScript(WKUserScript(source: Tab.pageScript, injectionTime: .atDocumentStart, forMainFrameOnly: true))
+    c.addUserScript(WKUserScript(source: Tab.signInScript, injectionTime: .atDocumentEnd, forMainFrameOnly: true, in: Tab.world))
     if on { Blocker.shared.lists.values.forEach { c.add($0) }; c.addUserScript(WKUserScript(source: Tab.shieldScript, injectionTime: .atDocumentStart, forMainFrameOnly: true)) }
     blocking = on
   }
@@ -147,7 +200,7 @@ final class Tab: NSObject, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegat
   /// What kind of page this is: the start page, one of Sleek's apps, or the web.
   var kind: String {
     guard let u = web.url, u.scheme == "sleek" else { return "web" }
-    if u.host == "ui" { return "start" }
+    if u.host == "ui" { return u.lastPathComponent == "passwords.html" ? "passwords" : "start" }
     let f = u.lastPathComponent
     return f.hasPrefix("slides") || f.hasPrefix("deck") ? "slides" : f.hasPrefix("doc") ? "docs" : f.hasPrefix("tasks") ? "tasks" : "sleek"
   }
@@ -164,6 +217,7 @@ final class Tab: NSObject, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegat
   // ---------- what the page tells the browser ----------
   func userContentController(_ c: WKUserContentController, didReceive message: WKScriptMessage) {
     guard message.frameInfo.isMainFrame, let m = message.body as? [String: Any] else { return }
+    if message.name == "sleekPw" { signIn(m); return }
     if let i = m["icon"] as? String, i != icon { icon = i; owner?.tabChanged(self); if owner?.isPrivate == false, let h = web.url?.host { Icons.keep(host: h, from: i) } }
     if let s = m["scroll"] as? String { owner?.pageScrolled(self, s) }
     if m["drop"] != nil, let d = drop, Date().timeIntervalSince(d.at) < 3 { drop = nil; owner?.imageDropped(d.image) }      // a dropped picture nothing on the page took
@@ -172,9 +226,26 @@ final class Tab: NSObject, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegat
     // Sleek's own start page asks for what to show, and says where to go
     if let from = message.frameInfo.request.url, from.scheme == "sleek", from.host == "ui" {
       if m["want"] as? String == "start" { owner?.fillStart(self) }; if let text = m["go"] as? String { owner?.navigate(text, in: self) }
+      // the Passwords page (and only it) asks about the vault
+      if from.path == "/passwords.html", let what = m["vault"] as? String { owner?.passwordsPage(self, what, m) }
       // your day, on a new tab: tick a task, add one for today
       if owner?.isPrivate == false { if let id = m["tick"] as? String { Work.shared.tick(id, m["on"] as? Bool ?? true) }; if let title = m["addTask"] as? String { owner?.addTask(title: title, board: m["board"] as? String ?? "", due: "today") } }
     }
+  }
+
+  // ---------- signing in ----------
+  /// A password Sleek made for this page (signing up). Once the page sends it, it is kept without asking.
+  var suggested: String?
+  private func signIn(_ m: [String: Any]) {
+    guard let u = web.url, u.scheme == "https", let host = u.host else { return }      // never over a connection others can read
+    let site = Vault.site(host)
+    if let f = m["focus"] as? [String: Any] { owner?.signInField(self, site: site, rect: f, fresh: m["fresh"] as? Bool ?? false, on: m["on"] as? String ?? "pass") }
+    if m["blur"] != nil { owner?.signInLeft(self) }
+    if let s = m["sent"] as? [String: Any], let pass = s["pass"] as? String, !pass.isEmpty { owner?.signedIn(self, site: site, address: u.absoluteString, user: s["user"] as? String ?? "", password: pass) }
+  }
+  /// Put a name and password into the page's sign-in boxes (both password boxes, when signing up).
+  func fill(user: String, password: String, both: Bool) {
+    web.callAsyncJavaScript("return window.__sleekFill ? window.__sleekFill(user, pass, both) : false", arguments: ["user": user, "pass": password, "both": both], in: nil, in: Tab.world) { _ in }
   }
 
   // ---------- going places ----------

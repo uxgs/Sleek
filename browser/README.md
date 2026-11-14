@@ -4,7 +4,7 @@ A Mac app that browses the web and has Sleek Slides, Docs and Tasks inside it. I
 engine every Mac already has, so the app itself is small and opens quickly, and Apple keeps the
 engine patched.
 
-This is Stage 3: the browser itself, blocking, and Sleek inside. It is not yet a public download.
+This is Stage 4: the browser itself, blocking, Sleek inside, and passwords. It is not yet a public download.
 
 ## What works
 
@@ -85,9 +85,43 @@ What to know:
 - The numbers in the shield come from a part of the engine Apple does not promise to keep. If it
   goes, blocking carries on and the shield stops counting.
 
+## Passwords
+
+Sleek keeps your passwords on this Mac and nowhere else.
+
+- **Saving.** Sign in to a site and Sleek offers to keep the name and password (Save, Not now, or
+  Never for this site). Change the password later and it offers to update it.
+- **Filling.** Put the cursor in a sign-in box on a site you have a password for, and the names saved
+  for it appear just under the box. Choose one, give Touch ID (or the Mac's password), and both boxes
+  are filled. A password is only ever filled into the site it was saved for, and only over https.
+- **Signing up.** Where a new password is being chosen, Sleek offers a strong one of its own, fills it
+  in, and keeps it when the page is sent.
+- **The Passwords page** (⌥⌘P, or the ⋯ menu). Locked, it shows only how many are saved. Unlocked, it
+  lists every sign-in, counts the ones used on more than one site and the ones that are easy to
+  guess, and shows one in full: its password behind dots until you ask, how strong it is, and a
+  stronger one if you want it (letters and symbols, or words that are easier to type). Add, edit and
+  delete; Import takes the passwords file that Chrome, Safari, Firefox or Edge exports; Export
+  writes one. It locks itself five minutes after it was last used.
+- **Copying** a password clears it from the clipboard a minute later.
+
+Where they are: one file, `~/Library/Application Support/Sleek/passwords.sleekvault`. The sign-ins in
+it are encrypted (AES-GCM, 256-bit) with a key kept in the Mac's Keychain ("Sleek Passwords"). The
+file lists in the clear only which sites have a sign-in and which you said never to save for; no name
+or password is readable on disk. If the key is ever missing, the file is left exactly as it is.
+
+What to know:
+
+- Touch ID is asked for before a password is shown, copied or filled. Until the app is signed for
+  release it is a gate the app keeps, not a lock on the key itself; release signing lets the key be
+  bound to Touch ID.
+- Each new build of the app is a stranger to the Keychain, which asks for your Mac password once
+  ("Always Allow") the first time that build opens the vault. A signed release does not have this.
+- Sign-in boxes inside a frame from another site are not offered a fill yet, and there are no
+  passkeys (those need a permission from Apple that comes with release signing).
+
 ## What is still to come
 
-Passwords; and the public release with automatic updates. Also not here yet: folders on the bookmarks bar, dragging tabs and bookmarks
+The public release with automatic updates. Also not here yet: folders on the bookmarks bar, dragging tabs and bookmarks
 to reorder them, and dragging the lines of a split view to resize it.
 
 ## Building it
@@ -119,6 +153,8 @@ Sources/Sleek/
   BrowserWindow.swift    one window: its tabs, which are showing, and doing what the bar asks
   Tab.swift              one tab: a page, and what a page may ask of the browser; downloads
   Blocker.swift          blocking: turns the lists into the engine's rules and keeps them fresh
+  Vault.swift            passwords: the encrypted file, its key, Touch ID, strength, making one, import and export
+  Passwords.swift        passwords in a window: offering to fill, offering to keep, the Passwords page
   Work.swift             your Sleek work as the browser sees it: your day, tasks, Save to Sleek, the copy on this Mac
   Known.swift            site icons kept on this Mac, and the list of well-known sites
   Images.swift           a picture dragged in: open it, or search for it
@@ -126,7 +162,7 @@ Sources/Sleek/
   Support.swift          where files are, Sleek's own pages (sleek://ui and sleek://app), small helpers
   SelfTest.swift         the app checking itself
 Resources/
-  chrome/                the bar: chrome.html, chrome.css, chrome.js; start.html, a new tab's page; bridge.html, the door to your work
+  chrome/                the bar: chrome.html, chrome.css, chrome.js; start.html, a new tab’s page; bridge.html, the door to your work; passwords.html, the Passwords page
   lists-credits.txt      whose block lists these are, and their licences
   sites.txt              well-known sites, for finishing and suggesting addresses
   fonts-credits.txt      whose fonts are inside the app, and their licence

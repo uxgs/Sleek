@@ -41,11 +41,11 @@
   function marked(u){ return S.bookmarks.filter(function(b){ return b.url === u; })[0] || null; }
   function hostOf(u){ try { return new URL(u).hostname.replace(/^www\./, ''); } catch(e){ return ''; } }
   function pretty(u){ return String(u || '').replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, ''); }
-  function shown(t){ return !t || t.kind === 'start' ? '' : APPS[t.kind] ? APPS[t.kind][0] : t.kind === 'sleek' ? 'Sleek' : pretty(t.url); }
+  function shown(t){ return !t || t.kind === 'start' ? '' : APPS[t.kind] ? APPS[t.kind][0] : t.kind === 'passwords' ? 'Passwords' : t.kind === 'sleek' ? 'Sleek' : pretty(t.url); }
   function letter(s){ return esc((String(s || '?').replace(/^the /i, '').charAt(0) || '?').toUpperCase()); }
   function icon(t){
     if(APPS[t.kind]) return '<span class="ic mk"><img src="sleek://app/icons/' + t.kind + '.svg" alt=""></span>';
-    if(t.kind === 'start' || t.kind === 'sleek') return '<span class="ic mk"><img src="sleek://app/icons/logo.svg" alt=""></span>';
+    if(t.kind === 'start' || t.kind === 'sleek' || t.kind === 'passwords') return '<span class="ic mk"><img src="sleek://app/icons/logo.svg" alt=""></span>';
     return '<span class="ic">' + letter(hostOf(t.url) || t.title) + (t.icon ? '<img src="' + esc(t.icon) + '" alt="" onerror="this.remove()">' : '') + '</span>';
   }
   function bmIcon(b){ var h = hostOf(b.url); return '<span class="ic">' + letter(h || b.title) + (/^https?:/.test(b.url) ? '<img src="sleek://ui/_icon/' + esc(h) + '" data-web="' + esc(new URL(b.url).origin) + '/favicon.ico" alt="" onerror="if(this.dataset.web){ this.src = this.dataset.web; delete this.dataset.web; } else this.remove()">' : '') + '</span>'; }
@@ -128,7 +128,7 @@
     if(L.pop === 'save' && t && web) h += savePop(t);
 
     // what floats
-    if(L.pop === 'menu') h += '<div class="pop menu" id="pop" data-anchor="#b-menu" data-side="right">' + [['newtab', 'New tab', '⌘T'], ['window', 'New window', '⌘N'], ['private', 'Private Browsing', '⇧⌘N'], ['-'], ['history', 'History', '⌘Y'], ['allmarks', 'Bookmarks', '⌥⌘B'], ['bar', set.bar ? 'Hide the bookmarks bar' : 'Show the bookmarks bar', '⇧⌘B'], ['downloads', 'Downloads', '⌥⌘L'], ['-'],
+    if(L.pop === 'menu') h += '<div class="pop menu" id="pop" data-anchor="#b-menu" data-side="right">' + [['newtab', 'New tab', '⌘T'], ['window', 'New window', '⌘N'], ['private', 'Private Browsing', '⇧⌘N'], ['-'], ['passwords', 'Passwords', '⌥⌘P'], ['history', 'History', '⌘Y'], ['allmarks', 'Bookmarks', '⌥⌘B'], ['bar', set.bar ? 'Hide the bookmarks bar' : 'Show the bookmarks bar', '⇧⌘B'], ['downloads', 'Downloads', '⌥⌘L'], ['-'],
         ['find', 'Find on this page', '⌘F'], ['zoom'], ['print', 'Print…', '⌘P'], ['-'], ['search', 'Search with ' + (engine() ? engine()[0] : 'your own choice'), ''],['default', 'Make Sleek the default browser', '']].map(function(m){
           return m[0] === '-' ? '<div class="line" style="margin:4px"></div>' : m[0] === 'zoom' ? '<div class="zoomrow"><span>Zoom</span><span><button type="button" data-zoom="-1" aria-label="Smaller">−</button><b>' + (t ? t.zoom : 100) + '%</b><button type="button" data-zoom="1" aria-label="Larger">+</button><button type="button" data-zoom="0" style="width:auto;padding:0 8px">Reset</button></span></div>'
             : '<button type="button" class="mi" data-menu="' + m[0] + '"><span>' + m[1] + '</span><small>' + m[2] + '</small></button>'; }).join('') + '</div>';
@@ -151,6 +151,12 @@
     if(L.pop === 'search'){ var en = engine(), own = en ? '' : (set.search || '');
       h += '<div class="pop menu" id="pop" data-anchor="#b-menu" data-side="right" style="width:300px"><h4 style="padding:6px 9px 2px">Search with</h4>' + SEARCH.map(function(e, i){ return '<button type="button" class="mi" data-engine="' + i + '" role="menuitemradio" aria-checked="' + (en === e) + '"><span>' + e[0] + '</span><small>' + (en === e ? '✓' : '') + '</small></button>'; }).join('') +
         '<div class="line" style="margin:4px"></div><div style="padding:4px 9px 8px;display:flex;flex-direction:column;gap:6px"><span style="font-size:12px;color:var(--k-muted)">Or another: its search address, with %s where the words go' + (en ? '' : ' (in use now)') + '</span><div class="frow" style="flex-wrap:nowrap"><input type="text" id="engineurl" value="' + esc(own) + '" placeholder="https://example.com/search?q=%s" aria-label="Another search address" spellcheck="false" autocomplete="off"><button type="button" class="go" data-do="engineown">Use</button></div></div></div>'; }
+    // passwords: the offer under a sign-in box (the names saved for the site, or a strong password when signing up), and the question after signing in
+    if(L.pop === 'pwfill' && L.pw && S.panes.indexOf(L.pw.tab) >= 0) h += '<div class="pop menu pwfill" id="pop" style="width:' + Math.max(260, Math.min(360, Math.round(L.pw.rect.w))) + 'px"><h4 style="padding:6px 9px 2px">' + (L.pw.strong ? 'A strong password' : 'Fill for ' + esc(L.pw.site)) + '</h4>' +
+      (L.pw.strong ? '<button type="button" class="mi" data-pwuse="strong"><span class="two"><b class="mono">' + esc(L.pw.strong) + '</b><i>Use it; Sleek saves it when you sign up</i></span></button>'
+                   : L.pw.users.map(function(u){ return '<button type="button" class="mi" data-pwuse="' + esc(u.id) + '"><span class="two"><b>' + esc(u.user || 'Saved password') + '</b><i>Fill with Touch ID</i></span><small>' + ico('lock') + '</small></button>'; }).join('')) + '</div>';
+    if(L.ask) h += '<div class="askbar" role="dialog" aria-label="' + (L.ask.update ? 'Update the saved password?' : 'Save this password?') + '"><b>' + (L.ask.update ? 'Update the saved password?' : 'Save this password?') + '</b><span>' + esc(L.ask.user ? L.ask.user + ' for ' + L.ask.site : 'For ' + L.ask.site) + '. It is kept on this Mac only, and filled with Touch ID.</span>' +
+      '<div class="frow" style="justify-content:flex-end"><button type="button" class="go ghost" data-pwans="never">Never for this site</button><button type="button" class="go ghost" data-pwans="no">Not now</button><button type="button" class="go" data-pwans="save">' + (L.ask.update ? 'Update' : 'Save') + '</button></div></div>';
     if(L.pop === 'image' && L.image) h += '<div class="pop mid" id="pop" style="width:340px"><div class="imgq">' + (L.image.thumb ? '<img src="' + esc(L.image.thumb) + '" alt="" onerror="this.remove()">' : '') + '<span class="two"><b>' + esc(L.image.name) + '</b><i>What would you like to do with this picture?</i></span></div>' +
       '<div class="frow" style="justify-content:stretch"><button type="button" class="go" style="flex:1" data-do="imgopen">Open it</button><button type="button" class="go ghost" style="flex:1" data-do="imgsearch">Search Google for it</button></div><p>Searching sends the picture to Google. Opening it does not.</p></div>';
     if(L.pop === 'downloads') h += '<div class="pop" id="pop" data-anchor="#b-menu" data-side="right" style="width:340px"><h4>Downloads</h4>' + (S.downloads.map(function(d){ return '<div class="dl"><span class="two"><b>' + esc(d.name) + '</b>' + (d.done ? '<i>In your Downloads folder</i>' : d.failed ? '<i style="color:var(--k-warn)">Didn’t finish</i>' : '<span class="bar"><u style="width:' + Math.round(d.part * 100) + '%"></u></span>') + '</span>' + (d.done ? '<button type="button" class="go ghost" data-dl="' + d.id + '">Show</button>' : '') + '</div>'; }).join('') || '<p>Nothing downloaded since Sleek opened.</p>') + '</div>';
@@ -176,7 +182,7 @@
     var here = {}, p = $('#pop'), s = $('#sugg'), f = $('#findbox'), t = $('.toast');
     if(p) arrive(p, 'pop:' + L.pop, 260, here); if(s) arrive(s, 'sugg', 220, here); if(f) arrive(f, 'find', 240, here); if(t) arrive(t, 'toast:' + L.toastN, 280, here);
     $$('.tab').forEach(function(e){ arrive(e, 'tab:' + e.getAttribute('data-tab'), 300, here); });
-    $$('.pane').forEach(function(e, i){ arrive(e, 'pane:' + S.n + ':' + i, 320, here); }); var pn = $('.panel'); if(pn) arrive(pn, 'panel', 340, here);
+    $$('.pane').forEach(function(e, i){ arrive(e, 'pane:' + S.n + ':' + i, 320, here); }); var pn = $('.panel'); if(pn) arrive(pn, 'panel', 340, here); var ak = $('.askbar'); if(ak) arrive(ak, 'ask', 320, here);
     Object.keys(born).forEach(function(k){ if(!here[k]) delete born[k]; });
   }
   // ---------- pull down to refresh: an arrow that comes down from the top of the page being pulled ----------
@@ -209,7 +215,13 @@
       var r = a.getBoundingClientRect(), w = el.offsetWidth, left = side === 'right' ? r.right - w : r.left; el.style.left = Math.max(8, Math.min(left, W - w - 8)) + 'px';
       if(bottom) el.style.bottom = (H - r.top + 8) + 'px'; else el.style.top = (r.bottom + 8) + 'px';
     }
-    var p = $('#pop'); if(p && p.classList.contains('mid')){ p.style.left = Math.round((W - p.offsetWidth) / 2) + 'px'; p.style.top = Math.round(Math.max(60, (H - p.offsetHeight) * 0.38)) + 'px'; }      // a question, in the middle of the window
+    var ab = $('.askbar'); if(ab){ if(bottom) ab.style.bottom = (H - bar.top + 10) + 'px'; else ab.style.top = (Math.max(bar.bottom, 0) + 10) + 'px'; }
+    var p = $('#pop'); if(p && p.classList.contains('pwfill') && L.pw){      // under the sign-in box it is for (or over it, when there is no room below)
+      var sl = $$('.slot')[S.panes.indexOf(L.pw.tab)], sr = sl ? sl.getBoundingClientRect() : { left: 0, top: 0 }, fx = sr.left + L.pw.rect.x, fy = sr.top + L.pw.rect.y + L.pw.rect.h + 6;
+      if(fy + p.offsetHeight > H - 8) fy = sr.top + L.pw.rect.y - p.offsetHeight - 6;
+      p.style.left = Math.max(8, Math.min(fx, W - p.offsetWidth - 8)) + 'px'; p.style.top = Math.max(8, fy) + 'px';
+    }
+    else if(p && p.classList.contains('mid')){ p.style.left = Math.round((W - p.offsetWidth) / 2) + 'px'; p.style.top = Math.round(Math.max(60, (H - p.offsetHeight) * 0.38)) + 'px'; }      // a question, in the middle of the window
     else if(p){ var a = $(p.getAttribute('data-anchor')) || $('#b-menu'); under(p, a, p.getAttribute('data-side')); }
     var s = $('#sugg'); if(s){ var ad = $('#addr').getBoundingClientRect(); s.style.left = ad.left + 'px'; s.style.width = ad.width + 'px'; if(bottom) s.style.bottom = (H - ad.top + 6) + 'px'; else s.style.top = (ad.bottom + 6) + 'px'; }
     var f = $('#findbox'); if(f){ if(bottom) f.style.bottom = (H - bar.top + 10) + 'px'; else f.style.top = (S.settings.imm ? 10 : bar.bottom + 10) + 'px'; }
@@ -224,7 +236,7 @@
     var imm = !!S.settings.imm, up = !imm || win.classList.contains('show'), solid = [], drag = [];
     if(imm){ solid.push(up ? rest($('#bar')) : box($('.peek'))); }
     else { $$('.tool, .bbar, .tab, .pins, .plus').forEach(function(e){ solid.push(box(e)); }); drag.push(box($('#tabs'))); var ts = $('.titlestrip'); if(ts) drag.push(box(ts)); }
-    $$('.pane-h, .pop, .sugg, .findbox, .toast, .panel').forEach(function(e){ solid.push(box(e)); });
+    $$('.pane-h, .pop, .sugg, .findbox, .toast, .panel, .askbar').forEach(function(e){ solid.push(box(e)); });
     // the window's red, yellow and green buttons: in the tab row (so inside the floating bar, in immersive), or on the thin strip when the bar is at the bottom
     var bottom = S.settings.barAt === 'bottom', at = null, b = $('#bar'), strip = $('.titlestrip');
     if(!bottom) at = imm ? [IMM.gap + 14, IMM.gap + 13] : [13, 12]; else if(strip) at = [13, 6];
@@ -261,7 +273,8 @@
     if(e.target.closest && e.target.closest('.peek')){ if(!L.grab && !peekT) peekT = setTimeout(function(){ peekT = 0; if(!L.grab) showBar(); }, 260); return; }      // resting on the tile opens the bar
     clearTimeout(peekT); peekT = 0;
     var on = !!(e.target.closest && e.target.closest('#bar')); if(on !== L.over){ L.over = on; if(on) showBar(); else { clearTimeout(immT); immT = setTimeout(hideBar, 1400); } } });
-  win.addEventListener('mouseleave', function(){ if(L.over){ L.over = false; clearTimeout(immT); immT = setTimeout(hideBar, 1400); } });
+  win.addEventListener('mouseover', function(e){ L.overPop = !!(e.target.closest && e.target.closest('.pwfill')); });      // with the pointer on the offer to fill, the page losing the cursor does not take the offer away
+  win.addEventListener('mouseleave', function(){ L.overPop = false; if(L.over){ L.over = false; clearTimeout(immT); immT = setTimeout(hideBar, 1400); } });
 
   // ---------- pressing things ----------
   function closePop(){ if(L.pop){ L.pop = null; paint(); } }
@@ -272,7 +285,10 @@
     $('#url').blur(); paint();
   }
   function find(back){ if(L.findText) post({ do: 'find', text: L.findText, back: !!back }); }
-  win.addEventListener('mousedown', function(e){ if(e.target.closest('.sugg, .pop .mi, .ib, .star, .pin, .tab, .plus, .bm')) e.preventDefault(); });      // pressing these doesn't take the cursor out of the box you are typing in
+  win.addEventListener('mousedown', function(e){
+    // the offer to fill is taken on the press itself: by the time the button came up, the page would have lost the cursor and the offer gone
+    var use = e.target.closest('[data-pwuse]'); if(use && L.pw){ e.preventDefault(); var uid = use.getAttribute('data-pwuse'); post({ do: 'pw-fill', tab: L.pw.tab, login: uid === 'strong' ? null : uid }); L.pop = null; L.pw = null; paint(); return; }
+    if(e.target.closest('.sugg, .pop .mi, .ib, .star, .pin, .tab, .plus, .bm')) e.preventDefault(); });      // pressing these doesn't take the cursor out of the box you are typing in
   win.addEventListener('click', function(e){
     var t = e.target, x, c = cur();
     if((x = t.closest('[data-close]'))){ e.stopPropagation(); post({ do: 'close', id: x.getAttribute('data-close') }); return; }
@@ -292,13 +308,14 @@
     if((x = t.closest('[data-lay]'))){ L.pop = null; post({ do: 'split', n: +x.getAttribute('data-lay') }); paint(); return; }
     if((x = t.closest('[data-menu]'))){
       var m = x.getAttribute('data-menu'); L.pop = null;
-      if(m === 'newtab') post({ do: 'newTab' }); else if(m === 'window' || m === 'private' || m === 'print' || m === 'default') post({ do: m });
+      if(m === 'newtab') post({ do: 'newTab' }); else if(m === 'passwords') post({ do: 'passwords' }); else if(m === 'window' || m === 'private' || m === 'print' || m === 'default') post({ do: m });
       else if(m === 'bar') post({ do: 'set', k: 'bar', v: !S.settings.bar }); else if(m === 'find'){ L.find = true; paint(); $('#find').focus(); return; }
       else if(m === 'clearhistory') post({ do: 'clearHistory' }); else { openPop(m); return; }
       paint(); return;
     }
     // Sleek inside: tick a task in the panel; choose how a page is saved
     if((x = t.closest('.panel [data-tick]'))){ var onNow = !x.classList.contains('on'); x.classList.toggle('on', onNow); x.closest('.trow').classList.toggle('done', onNow); post({ do: 'task-tick', id: x.getAttribute('data-tick'), on: onNow }); return; }
+    if((x = t.closest('[data-pwans]'))){ post({ do: 'pw-answer', how: x.getAttribute('data-pwans') }); L.ask = null; paint(); return; }
     if((x = t.closest('[data-as]'))){ L.saving.as = x.getAttribute('data-as'); paint(); return; }
     if((x = t.closest('[data-due]'))){ L.saving.due = x.getAttribute('data-due'); paint(); return; }
     if((x = t.closest('[data-do]'))){
@@ -386,6 +403,9 @@
       else if(m.type === 'image'){ L.image = { name: m.name || 'Picture', thumb: m.thumb || '' }; L.pop = 'image'; L.typed = null; var ui = $('#url'); if(ui) ui.blur(); if(S.settings.imm) showBar(); paint(); }      // a picture was dragged in: ask what to do with it
       else if(m.type === 'work'){ S.work = m.day && m.day.boards ? m.day : S.work; if(S.settings.panel || L.pop === 'save') paint(); }      // your tasks changed, here or in any tab
       else if(m.type === 'saved'){ if(m.url) toast(m.text, 'Open', function(){ post({ do: 'open', url: m.url, new: true }); L.toast = null; paint(); }); else toast(m.text, S.settings.panel ? '' : 'Show', function(){ post({ do: 'set', k: 'panel', v: true }); post({ do: 'work' }); L.toast = null; paint(); }); }
+      else if(m.type === 'pw-offer'){ L.pw = { tab: m.tab, site: m.site, rect: m.rect, users: m.users || [], strong: m.strong || '' }; L.pop = 'pwfill'; L.typed = null; paint(); }      // the cursor is in a sign-in box
+      else if(m.type === 'pw-hide'){ if(L.pop === 'pwfill' && !L.overPop){ L.pop = null; L.pw = null; paint(); } }
+      else if(m.type === 'pw-ask'){ L.ask = { site: m.site, user: m.user, update: !!m.update }; paint(); }
       else if(m.type === 'pull'){ L.pull = { id: m.id, by: +m.by || 0, going: !!m.going }; pullDraw(); }
     },
     // for the app's own checks: press something, type in the address box, and say what is showing
@@ -395,7 +415,7 @@
       type: function(text){ $('#url').focus(); var u = $('#url'); u.focus(); u.value = text; u.dispatchEvent(new Event('input', { bubbles: true })); return true; },      // focusing draws the bar again, so the box is found a second time
       enter: function(){ var u = document.activeElement; if(!u) return false; u.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })); return true; },
       see: function(){ var b = $('#bar').getBoundingClientRect(); return { tabs: $$('.tab .tt').map(function(e){ return e.textContent; }), on: ($('.tab.on .tt') || {}).textContent || '', url: $('#url').value, pop: L.pop, rows: (L.rows || []).map(function(r){ return r.kind + ':' + r.title; }), marks: $$('.bbar .bm[data-bm] span:last-child').map(function(e){ return e.textContent; }), star: !!$('.star.on'), shield: String(cur() && cur().blockOn ? blockedTotal(cur()) || '' : ''), shieldText: ($('.shield') || {}).textContent || '', fill: L.fill || '', sel: (function(){ var u = $('#url'); return u ? [u.selectionStart, u.selectionEnd] : []; })(), shieldOff: !!$('.shield.off'), blockerReady: S.blocker.ready, pull: ptr && !ptr.hidden ? { cls: ptr.firstChild.className, y: Math.round(ptr.firstChild.getBoundingClientRect().top - ptr.getBoundingClientRect().top), left: Math.round(ptr.getBoundingClientRect().left), top: Math.round(ptr.getBoundingClientRect().top), width: Math.round(ptr.getBoundingClientRect().width) } : null,
-        panes: $$('.pane').length, ring: $$('.pane.on').length, barTop: Math.round(b.top), barBottom: Math.round(b.bottom), height: win.clientHeight, cls: win.className, mode: win.getAttribute('data-mode'), find: !!$('#findbox'), panel: $('.panel') ? { view: panelView(), rows: $$('.panel .trow').map(function(e){ return (e.classList.contains('done') ? '✓ ' : '') + e.querySelector('b').textContent; }), heads: $$('.panel h5.sec').map(function(e){ return e.textContent; }), box: box($('.panel')) } : null, save: !!$('.savebtn'), work: !!S.work, miss: L.miss, toast: L.toast ? L.toast.text : '', floating: getComputedStyle($('#bar')).position === 'absolute' }; }
+        panes: $$('.pane').length, ring: $$('.pane.on').length, barTop: Math.round(b.top), barBottom: Math.round(b.bottom), height: win.clientHeight, cls: win.className, mode: win.getAttribute('data-mode'), find: !!$('#findbox'), ask: L.ask ? (L.ask.update ? 'update:' : 'save:') + L.ask.user + '@' + L.ask.site : '', pwfill: L.pop === 'pwfill' && L.pw ? { users: L.pw.users.map(function(u){ return u.user; }), strong: L.pw.strong, box: $('#pop') ? box($('#pop')) : null } : null, panel: $('.panel') ? { view: panelView(), rows: $$('.panel .trow').map(function(e){ return (e.classList.contains('done') ? '✓ ' : '') + e.querySelector('b').textContent; }), heads: $$('.panel h5.sec').map(function(e){ return e.textContent; }), box: box($('.panel')) } : null, save: !!$('.savebtn'), work: !!S.work, miss: L.miss, toast: L.toast ? L.toast.text : '', floating: getComputedStyle($('#bar')).position === 'absolute' }; }
     }
   };
   paint();

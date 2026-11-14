@@ -137,7 +137,9 @@ final class BrowserWindow: NSObject, NSWindowDelegate, WKScriptMessageHandler, W
 
   // ---------- tabs ----------
   var current: Tab? { tabs.first { $0.id == (at < panes.count ? panes[at] : "") } ?? tabs.first }
-  private func tab(_ id: String) -> Tab? { tabs.first { $0.id == id } }
+  func tab(_ id: String) -> Tab? { tabs.first { $0.id == id } }
+  /// A name and password a page was sent, waiting for you to say whether to keep them (Passwords.swift).
+  var pendingLogin: (site: String, address: String, user: String, password: String, replacing: String?)?
   static let start = URL(string: "sleek://ui/start.html")!
   @discardableResult func newTab(_ url: URL? = nil, select: Bool = true) -> Tab {
     let t = Tab(configuration: Tab.configuration(store: dataStore), owner: self); tabs.append(t)
@@ -310,6 +312,9 @@ final class BrowserWindow: NSObject, NSWindowDelegate, WKScriptMessageHandler, W
       if !isPrivate { items = Work.shared.suggest(q, limit: 3) + items }      // your own decks, pages, boards and tasks come first
       tell(["type": "suggest", "q": q, "items": items, "fill": store.finish(q, known: !isPrivate)])
     case "image": imageChosen(m["how"] as? String ?? "")
+    case "pw-fill": fillSignIn(tab: m["tab"] as? String ?? "", login: m["login"] as? String)
+    case "pw-answer": answerSignIn(m["how"] as? String ?? "")
+    case "passwords": showPasswords()
     case "task-add": addTask(title: m["title"] as? String ?? "", board: m["board"] as? String ?? "", due: m["due"] as? String ?? "")
     case "task-tick": Work.shared.tick(id, m["on"] as? Bool ?? true)
     case "save": saveToSleek(as: m["as"] as? String ?? "task", board: m["board"] as? String ?? "", due: m["due"] as? String ?? "")

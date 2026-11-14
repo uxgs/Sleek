@@ -199,3 +199,10 @@ h5.sec { margin: 10px 6px 3px; font-size: 11px; letter-spacing: .13em; text-tran
 .choice span { display: flex; flex-direction: column; min-width: 0; } .choice b { font-weight: 600; } .choice small { color: var(--k-muted); font-size: 12px; }
 .pop select { height: 28px; border-radius: 8px; border: 1px solid var(--k-line2); background: var(--k-bg); padding: 0 6px; max-width: 150px; }
 .sg img.i { width: 15px; height: auto; flex: none; }
+
+/* ---------- passwords: the offer under a sign-in box, and the question after signing in ---------- */
+.pwfill .mi small svg.i { width: 14px; height: 14px; } .pwfill b.mono { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12.5px; font-weight: 500; letter-spacing: .01em; }
+.askbar { position: absolute; z-index: 18; left: 50%; transform: translateX(-50%); width: min(440px, calc(100% - 24px)); padding: 12px 14px; border-radius: 14px; background: var(--k-raise); border: 1px solid var(--k-line2); box-shadow: var(--k-shadow); display: flex; flex-direction: column; gap: 8px; }
+.askbar.in { animation: askIn .3s cubic-bezier(.2, .8, .2, 1) both; }
+@keyframes askIn { from { opacity: 0; transform: translateX(-50%) translateY(-10px) scale(.97); } }
+.askbar b { font-weight: 600; } .askbar span { color: var(--k-muted); font-size: 13px; overflow-wrap: anywhere; }
