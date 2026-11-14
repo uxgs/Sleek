@@ -6,6 +6,12 @@
    the top), and set the Docs half of sw.js's VERSION to match. Keep each line to a few words,
    and each day to four lines at most. */
 window.SLEEK_DOC_CHANGES = [
+  { v: '1.0.10', date: '2026-11-14',
+    items: [
+      'Your pages are tiles now, each with a thumbnail you can choose',
+      'Checklists sit cleanly, with ticks level with their words',
+      'Menus use the room the window has before they scroll'
+    ] },
   { v: '1.0.9', date: '2026-11-13',
     items: [
       'Sleek Docs is here, with its own logo; pages change with motion',

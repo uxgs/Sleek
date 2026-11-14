@@ -5,7 +5,7 @@
 
    (A "board" here is what the code calls a project: a set of tasks with its own columns and fields.) */
 (function(){
-  var T = window.SleekTasks, A = window.SleekTaskApp; if(!T || !A) return;
+  var T = window.SleekTasks, A = window.SleekTaskApp, TH = window.SleekThumb; if(!T || !A) return;
   var esc = A.esc, body = document.getElementById('body'), state = A.state;
   var fresh = null, naming = null;      // fresh: a board just made, shown with a ring; naming: the board being renamed (or 'new')
 
@@ -22,7 +22,7 @@
     var sub = !ts.length ? 'Nothing in it yet' : (open.length ? open.length + ' open' : 'All done') + (due ? ' · ' + due + ' due' : '');
     var name = naming === p.id ? '<input class="bd-rename" value="' + esc(p.name) + '" data-k="rename-' + p.id + '" aria-label="Board name" maxlength="80">' : '<b class="bd-name">' + esc(p.name) + '</b>';
     return '<article class="bd' + (fresh === p.id ? ' fresh' : '') + '" style="--c:' + p.color + ';--i:' + i + '" data-flip="bd-' + p.id + '"><span class="bd-bloom" aria-hidden="true"></span>' +
-      '<a class="bd-thumb" href="#/' + p.id + '/' + A.lastView(p.id) + '" data-board="' + p.id + '" aria-label="Open ' + esc(p.name) + '"' + (state.proj === p.id ? ' style="view-transition-name:stage"' : '') + '>' + mini(p) + '</a>' +
+      '<a class="bd-thumb" href="#/' + p.id + '/' + A.lastView(p.id) + '" data-board="' + p.id + '" aria-label="Open ' + esc(p.name) + '"' + (state.proj === p.id ? ' style="view-transition-name:stage"' : '') + '>' + (TH && TH.is(p.thumb) ? '<img class="bd-pic" alt="" src="' + p.thumb + '">' : mini(p)) + '</a>' +
       '<div class="bd-meta"><div>' + name + '<span>' + sub + '</span></div><button type="button" class="bd-more" data-bmore="' + p.id + '" aria-label="More for ' + esc(p.name) + '" aria-haspopup="true">⋯</button></div></article>';
   }
   A.views.home = function(){
@@ -61,6 +61,12 @@
     A.menu(btn, function(m){
       A.item(m, 'Open', function(){ A.closePop(); A.go(A.lastView(p.id), p.id); });
       A.item(m, 'Rename', function(){ A.closePop(); startNaming(p.id); });
+      // a picture of your own for the board's tile (core/thumb.js), in place of the small picture of its columns
+      if(TH){
+        var has = TH.is(p.thumb);
+        A.item(m, has ? 'Change thumbnail…' : 'Choose thumbnail…', function(){ A.closePop(); TH.choose(function(f){ TH.shrink(f).then(function(u){ T.setProject(p.id, { thumb: u }); A.toast('New thumbnail for “' + p.name + '”.'); }, function(){ A.toast('That picture couldn’t be used. Try a JPEG or PNG.'); }); }); });
+        if(has) A.item(m, 'Use the board picture', function(){ A.closePop(); T.setProject(p.id, { thumb: '' }); });
+      }
       var h = document.createElement('h4'); h.textContent = 'Colour'; m.appendChild(h);
       var sw = document.createElement('div'); sw.className = 'sws';
       T.COLORS.forEach(function(c){ var b = document.createElement('button'); b.type = 'button'; b.style.setProperty('--c', c); b.className = c === p.color ? 'on' : ''; b.setAttribute('aria-label', 'Colour ' + c); b.addEventListener('click', function(){ A.closePop(); T.setProject(p.id, { color: c }); }); sw.appendChild(b); });

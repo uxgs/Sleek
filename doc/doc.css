@@ -49,7 +49,7 @@
 .dk-doc ul.dk-tasks { list-style: none; padding-left: 2px; }
 .dk-task { display: flex; gap: 10px; align-items: flex-start; }
 .dk-task > div { flex: 1; min-width: 0; }
-.dk-check { flex: none; width: 19px; height: 19px; margin-top: 4px; border-radius: 6px; border: 1.6px solid var(--d-line2); background: none; padding: 0; cursor: pointer; display: inline-grid; place-items: center; transition: background .15s ease, border-color .15s ease; }
+.dk-check { flex: none; width: 19px; height: 19px; font: inherit; margin-top: 4px; margin-top: calc((1lh - 19px) / 2);      /* level with the middle of its first line, whatever the page's type */ border-radius: 6px; border: 1.6px solid var(--d-line2); background: none; padding: 0; cursor: pointer; display: inline-grid; place-items: center; transition: background .15s ease, border-color .15s ease; }
 .dk-check::after { content: ""; width: 9px; height: 5px; border-left: 2px solid var(--d-on-accent); border-bottom: 2px solid var(--d-on-accent); transform: rotate(-45deg) scale(0); transition: transform .18s cubic-bezier(.3,1.6,.5,1); margin-top: -2px; }
 .dk-task.done > .dk-check { background: var(--d-accent); border-color: var(--d-accent); }
 .dk-task.done > .dk-check::after { transform: rotate(-45deg) scale(1); }
@@ -164,8 +164,8 @@ button.tk-ck { cursor: pointer; } button.tk-ck:hover { border-color: var(--d-liv
 .tc-s { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--d-muted); }
 .tc-s::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--c, #8E8E93); }
 .tc-d { flex: none; font-size: 12px; color: var(--d-muted); white-space: nowrap; } .tc-d.late { color: var(--d-warn); font-weight: 600; }
-.dk-tasks { margin: 20px 0; padding: 14px 16px 12px; border-radius: 16px; border: 1px solid var(--d-line); background: var(--d-raise); font-family: var(--d-ff); font-size: 15px; line-height: 1.45; }
-.dk-doc > .dk-tasks[data-view="board"] { margin-inline: calc(-1 * var(--bleed)); }
+div.dk-tasks { margin: 20px 0; padding: 14px 16px 12px; border-radius: 16px; border: 1px solid var(--d-line); background: var(--d-raise); font-family: var(--d-ff); font-size: 15px; line-height: 1.45; }
+.dk-doc > div.dk-tasks[data-view="board"] { margin-inline: calc(-1 * var(--bleed)); }
 .tk-h { display: flex; align-items: center; gap: 8px; min-height: 26px; margin-bottom: 8px; }
 .tk-h > i, .tk-colh > i { flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--c, #8E8E93); }
 .tk-h > b { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -182,7 +182,7 @@ button.tk-ck { cursor: pointer; } button.tk-ck:hover { border-color: var(--d-liv
 .tk-card { padding: 8px 10px; border-radius: 9px; background: var(--d-bg); border: 1px solid var(--d-line); font-size: 14px; line-height: 1.35; overflow-wrap: anywhere; }
 .tk-card.done { color: var(--d-faint); text-decoration: line-through; }
 @media print {
-  .dk-tasks { break-inside: avoid; margin-inline: 0 !important; border-color: #CCC; } .tk-board { overflow: visible; grid-auto-columns: 1fr; }
+  div.dk-tasks { break-inside: avoid; margin-inline: 0 !important; border-color: #CCC; } .tk-board { overflow: visible; grid-auto-columns: 1fr; }
   .tk-ck, .tk-col, .tk-av, .tc-s::before, .tk-h > i, .tk-colh > i { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
 }
 

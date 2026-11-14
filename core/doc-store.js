@@ -1,7 +1,7 @@
 /* Sleek Docs' storage: every page lives in this browser (IndexedDB), and saves as you go.
 
    Database "sleek-docs" (its own, beside the decks' "sleek-app", which is never changed by Docs):
-     docs     { id, title, created, updated, folder, text, peek, viewers? }   what the lists of pages need, and no more:
+     docs     { id, title, created, updated, folder, text, peek, viewers?, thumb? }   what the lists of pages need, and no more:
                                                               folder is a folder's id or null; text is the
                                                               page's words in lower case, for search; peek
                                                               is how it starts, for its card on the start screen
@@ -95,13 +95,16 @@
       return write(m, s);
     });
   }
-  function duplicate(id){ return get(id).then(function(d){ return d ? create({ seed: d.seed, folder: d.folder }) : null; }); }
+  function duplicate(id){ return get(id).then(function(d){ return d ? create({ seed: d.seed, folder: d.folder }).then(function(n){ return d.thumb ? setThumb(n.id, d.thumb) : n; }) : null; }); }
   function remove(id){
     return tx(['docs', 'bodies', 'history'], 'readwrite', function(t){ t.objectStore('docs').delete(id); t.objectStore('bodies').delete(id); t.objectStore('history').delete(id); });
   }
   // Viewers (core/online.js): the page's two codes and whether it is on, as for decks. It lives on the
   // record, beside the page and never in it, so it stays out of .sleek files, copies and published pages.
   function setViewers(id, v){ return meta(id).then(function(m){ if(!m) return null; if(v) m.viewers = v; else delete m.viewers; return write(m); }); }
+  // A picture of your own for the page's tile on the start screen (core/thumb.js), or none again. It too lives on the
+  // record, beside the page: it goes with a .sleek copy, and never into the page or a published one.
+  function setThumb(id, url){ return meta(id).then(function(m){ if(!m) return null; if(url) m.thumb = url; else delete m.thumb; return write(m); }); }
   // put a page in a folder (null: in no folder). Not an edit, so it keeps its place in the list.
   function move(id, folder){ return meta(id).then(function(m){ if(!m) return null; m.folder = folder || null; return write(m); }); }
   // every word of q must be in the title or the page; pages whose title matches come first
@@ -161,7 +164,7 @@
     return get(id).then(function(d){
       if(!d) return null;
       return S().inline(d.seed, false).then(function(seed){
-        return JSON.stringify({ format: FORMAT, version: FILE_VERSION, kind: 'doc', id: d.id, title: d.title, exported: new Date().toISOString(), updated: d.updated, seed: seed });
+        return JSON.stringify({ format: FORMAT, version: FILE_VERSION, kind: 'doc', id: d.id, title: d.title, exported: new Date().toISOString(), updated: d.updated, thumb: d.thumb || undefined, seed: seed });
       });
     });
   }
@@ -175,12 +178,13 @@
   // a file keeps its page's id when this browser doesn't have that page yet
   function importDoc(text, folder){
     var o = parseFile(text), id = typeof o.id === 'string' && /^[a-z0-9]{4,24}$/.test(o.id) ? o.id : null;
-    return (id ? meta(id) : Promise.resolve(null)).then(function(have){ return create({ id: have ? null : id, seed: o.seed, folder: folder || null }); });
+    var pic = typeof o.thumb === 'string' && /^data:image\/(jpeg|png|webp);base64,/.test(o.thumb) && o.thumb.length < 900000 ? o.thumb : null;
+    return (id ? meta(id) : Promise.resolve(null)).then(function(have){ return create({ id: have ? null : id, seed: o.seed, folder: folder || null }); }).then(function(n){ return pic && n ? setThumb(n.id, pic) : n; });
   }
 
   window.SleekDocs = {
     open: open, uid: uid, blank: blank, titleOf: titleOf, words: words,
-    list: list, get: get, create: create, save: save, duplicate: duplicate, remove: remove, move: move, search: search, setViewers: setViewers,
+    list: list, get: get, create: create, save: save, duplicate: duplicate, remove: remove, move: move, search: search, setViewers: setViewers, setThumb: setThumb,
     folders: folders, addFolder: addFolder, setFolder: setFolder, removeFolder: removeFolder,
     snapshot: snapshot, exportDoc: exportDoc, importDoc: importDoc, parseFile: parseFile
   };

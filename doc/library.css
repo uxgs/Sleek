@@ -1,23 +1,37 @@
-/* The Docs start screen's cards (doc/library.js): each page as a small sheet of paper showing how
-   it starts, with its name, its folder and when it was last changed. The rest of the start screen's
-   look (the head, the grid, the ⋯ menu, the drop target) is shared with Slides: features/library.css. */
-.dl-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr)); }
-.dl-card { position: relative; display: flex; flex-direction: column; gap: 12px; min-width: 0; animation: dl-in .4s cubic-bezier(.16, 1, .3, 1) both; }
+/* The Docs start screen's cards (doc/library.js): each page as a tile the shape of the decks' tiles,
+   showing a picture of your own (Choose thumbnail…, or drop a picture on it) or, until it has one, a
+   small picture of a page; under it the page's name, its folder and when it was last changed. The
+   rest of the start screen's look (the head, the grid, the ⋯ menu, the drop target) is shared with
+   Slides: features/library.css. */
+.dl-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr)); }
+.dl-card { position: relative; display: flex; flex-direction: column; gap: 12px; min-width: 0; animation: dl-in .4s cubic-bezier(.16, 1, .3, 1) both; --a: #0A84FF; }
 @keyframes dl-in { from { opacity: 0; transform: translateY(8px); } }
 .dl-card.gone { transition: opacity .25s ease, transform .25s ease; opacity: 0; transform: scale(.96); }
-.dl-sheet { display: flex; flex-direction: column; gap: 8px; aspect-ratio: 4 / 5; padding: 18px 16px; border-radius: 14px; overflow: hidden; text-decoration: none;
-  background: var(--paper, #FFFFFF); color: var(--ink, #1D1D1F); border: 1px solid var(--line-strong); box-shadow: 0 18px 40px -26px rgba(0,0,0,0.7);
-  transition: transform .25s cubic-bezier(.16, 1, .3, 1), box-shadow .25s ease, border-color .2s ease; position: relative; }
-.dl-sheet::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--a, #7C5CFF); }
-.dl-sheet:hover, .dl-sheet:focus-visible { transform: translateY(-4px); box-shadow: 0 26px 50px -24px rgba(0,0,0,0.75); outline: none; }
-.dl-sheet:focus-visible { box-shadow: 0 0 0 2px var(--a, #7C5CFF), 0 0 0 7px color-mix(in srgb, var(--a, #7C5CFF) 22%, transparent); }
-.dl-sheet b { font-size: 16px; line-height: 1.2; letter-spacing: -0.02em; font-weight: 650; text-wrap: balance; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-.dl-sheet.serif b { font-family: "Instrument Serif", "Iowan Old Style", Georgia, serif; font-weight: 400; font-size: 20px; letter-spacing: -0.01em; }
-.dl-sheet p { margin: 0; font-size: 11.5px; line-height: 1.5; opacity: .62; overflow: hidden; flex: 1; -webkit-mask-image: linear-gradient(#000 60%, transparent); mask-image: linear-gradient(#000 60%, transparent); }
-.dl-card.fresh .dl-sheet { box-shadow: 0 0 0 2px var(--a, #7C5CFF), 0 0 0 7px color-mix(in srgb, var(--a, #7C5CFF) 22%, transparent); }
-.dl-meta { display: flex; align-items: flex-start; gap: 8px; min-width: 0; }
+.dl-card.busy .dl-sheet { animation: dl-pulse 1s ease-in-out infinite; } @keyframes dl-pulse { 50% { opacity: .55; } }
+.dl-sheet { position: relative; display: block; aspect-ratio: 16 / 9; border-radius: 14px; overflow: hidden; text-decoration: none; isolation: isolate;
+  background: radial-gradient(80% 90% at 12% 120%, color-mix(in srgb, var(--a) 46%, transparent), transparent 70%), radial-gradient(60% 70% at 100% -10%, color-mix(in srgb, #B48CFF 40%, transparent), transparent 70%), color-mix(in srgb, var(--a) 10%, var(--card, #17171C));
+  border: 1px solid var(--line-strong); box-shadow: 0 18px 40px -26px rgba(0,0,0,0.7);
+  transition: transform .25s cubic-bezier(.16, 1, .3, 1), box-shadow .25s ease, border-color .2s ease; }
+.dl-sheet:hover, .dl-sheet:focus-visible { transform: translateY(-4px); box-shadow: 0 0 0 1px color-mix(in srgb, var(--a) 55%, transparent), 0 26px 50px -24px rgba(0,0,0,0.75); outline: none; }
+.dl-sheet:focus-visible { box-shadow: 0 0 0 2px var(--a), 0 0 0 7px color-mix(in srgb, var(--a) 22%, transparent); }
+.dl-card.fresh .dl-sheet { box-shadow: 0 0 0 2px var(--a), 0 0 0 7px color-mix(in srgb, var(--a) 22%, transparent); }
+.dl-pic { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+/* the picture of a page: a sheet with a heading and a few lines, standing a little out of the tile's lower edge */
+.dl-page { position: absolute; left: 50%; top: 16%; width: 44%; aspect-ratio: 3 / 4; transform: translateX(-50%) rotate(-3deg); transform-origin: 50% 100%; border-radius: 8px 8px 0 0; padding: 11% 9% 0;
+  display: flex; flex-direction: column; gap: 7%; background: #FFFFFF; box-shadow: 0 14px 30px -12px rgba(0,0,0,0.55), 0 0 0 1px rgba(0,0,0,0.06);
+  transition: transform .35s cubic-bezier(.16, 1, .3, 1); }
+.dl-sheet:hover .dl-page, .dl-sheet:focus-visible .dl-page { transform: translateX(-50%) translateY(-4%) rotate(-1deg); }
+.dl-page b { display: block; height: 9%; width: 62%; border-radius: 99px; background: var(--a); }
+.dl-page i { display: block; height: 5%; border-radius: 99px; background: #D9DAE0; } .dl-page i:nth-of-type(2) { width: 88%; } .dl-page i:nth-of-type(4) { width: 72%; } .dl-page i:nth-of-type(5) { width: 46%; }
+/* the bloom: the tile's own light (or its picture), blurred out behind it, that comes up as you point at the page.
+   will-change keeps it on a layer of its own, so it is not cut off at the grid's edges once it has arrived */
+.dl-bloom { position: absolute; left: 6%; right: 6%; top: 8px; aspect-ratio: 16 / 9; z-index: -1; border-radius: 14px; overflow: hidden; pointer-events: none; opacity: 0; filter: blur(22px) saturate(1.6); transform: scale(.94); will-change: opacity, transform;
+  transition: opacity .35s ease, transform .5s cubic-bezier(.2, .7, .2, 1); background: linear-gradient(90deg, var(--a), #B48CFF); }
+.dl-bloom img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.dl-card:has(.dl-sheet:hover) .dl-bloom, .dl-card:has(.dl-sheet:focus-visible) .dl-bloom { opacity: .6; transform: translateY(10px) scale(1.06); }
+.dl-meta { position: relative; display: flex; align-items: flex-start; gap: 8px; min-width: 0; }      /* the ⋯ menu hangs from this row, under its button (not from the top of the tile) */
 .dl-meta > div { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .dl-name { font-weight: 600; color: var(--fg); text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dl-meta span { font-size: 13px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dl-card.menu-open { z-index: 20; }
-@media (prefers-reduced-motion: reduce) { .dl-card { animation: none; } .dl-sheet { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .dl-card { animation: none; } .dl-sheet, .dl-page, .dl-bloom { transition: none; } .dl-card.busy .dl-sheet { animation: none; } }

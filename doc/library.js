@@ -23,6 +23,13 @@
   function save(name, text){ var a = document.createElement('a'), u = URL.createObjectURL(new Blob([text], { type: 'application/json' })); a.href = u; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function(){ URL.revokeObjectURL(u); }, 4000); }
   function fileName(t){ return String(t || 'Untitled').replace(/[\\/:*?"<>|\u0000-\u001f]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 80) || 'Untitled'; }
 
+  // a picture of your own for a page's tile (core/thumb.js): chosen from its ⋯ menu, or dropped on the tile
+  var TH = window.SleekThumb;
+  function setThumb(d, f){
+    var c = grid.querySelector('.dl-card[data-id="' + d.id + '"]'); if(c) c.classList.add('busy');
+    TH.shrink(f).then(function(u){ return D.setThumb(d.id, u); }).then(function(){ return render(d.id); }).then(function(){ toast('New thumbnail for “' + d.title + '”.'); },
+      function(e){ console.error(e); if(c) c.classList.remove('busy'); toast('That picture couldn’t be used. Try a JPEG or PNG.'); });
+  }
   var openMenu = null;
   function closeMenu(){ if(openMenu){ openMenu.card.classList.remove('menu-open'); openMenu.btn.setAttribute('aria-expanded', 'false'); openMenu.menu.remove(); openMenu = null; } }
   document.addEventListener('pointerdown', function(e){ if(openMenu && !openMenu.menu.contains(e.target) && !openMenu.btn.contains(e.target)) closeMenu(); });
@@ -30,8 +37,12 @@
 
   function card(d, folders, fresh){
     var c = el('article', 'lib-card dl-card' + (fresh ? ' fresh' : '')), href = 'doc.html?d=' + encodeURIComponent(d.id);
-    var sheet = el('a', 'dl-sheet'); sheet.href = href; sheet.setAttribute('aria-label', 'Open ' + d.title);
-    sheet.appendChild(el('b', '', d.title)); sheet.appendChild(el('p', '', d.peek || ''));
+    // the tile: a picture of your own if the page has one, and otherwise a small picture of a page
+    var pic = TH && TH.is(d.thumb), sheet = el('a', 'dl-sheet' + (pic ? ' has-pic' : '')); sheet.href = href; sheet.setAttribute('aria-label', 'Open ' + d.title);
+    c.dataset.id = d.id;
+    var bloom = el('span', 'dl-bloom'); bloom.setAttribute('aria-hidden', 'true'); c.appendChild(bloom);
+    if(pic){ var im = el('img', 'dl-pic'); im.alt = ''; im.src = d.thumb; sheet.appendChild(im); var bi = el('img'); bi.alt = ''; bi.src = d.thumb; bloom.appendChild(bi); }
+    else { var page = el('span', 'dl-page'); page.setAttribute('aria-hidden', 'true'); page.innerHTML = '<b></b><i></i><i></i><i></i><i></i><i></i>'; sheet.appendChild(page); }
     var f = folders.filter(function(x){ return x.id === d.folder; })[0];
     var meta = el('div', 'dl-meta'), txt = el('div'), name = el('a', 'dl-name', d.title); name.href = href; name.tabIndex = -1;
     var when = el('span', '', (f ? f.name + ' · ' : '') + 'Edited ' + ago(d.updated));
@@ -45,6 +56,10 @@
       var m = el('div', 'lib-menu'); m.setAttribute('role', 'menu');
       function item(label, act, cls){ var b = el('button', cls || '', label); b.type = 'button'; b.setAttribute('role', 'menuitem'); b.addEventListener('click', function(){ act(b); }); m.appendChild(b); return b; }
       item('Open', function(){ location.href = href; });
+      if(TH){
+        item(pic ? 'Change thumbnail…' : 'Choose thumbnail…', function(){ closeMenu(); TH.choose(function(f){ setThumb(d, f); }); });
+        if(pic) item('Use the page picture', function(){ closeMenu(); D.setThumb(d.id, null).then(function(){ render(); toast('“' + d.title + '” shows the page picture again.'); }); });
+      }
       item('Duplicate', function(){ closeMenu(); D.duplicate(d.id).then(function(n){ render(n && n.id); }); });
       item('Download a copy', function(){ closeMenu(); D.exportDoc(d.id).then(function(t){ if(t) save(fileName(d.title) + '.sleek', t); }); });
       m.appendChild(document.createElement('hr'));
@@ -103,7 +118,13 @@
   window.addEventListener('dragenter', function(e){ if(!hasFiles(e)) return; e.preventDefault(); depth++; drop.classList.add('on'); });
   window.addEventListener('dragover', function(e){ if(hasFiles(e)) e.preventDefault(); });
   window.addEventListener('dragleave', function(e){ if(!hasFiles(e)) return; depth = Math.max(0, depth - 1); if(!depth) drop.classList.remove('on'); });
-  window.addEventListener('drop', function(e){ if(!hasFiles(e)) return; e.preventDefault(); depth = 0; drop.classList.remove('on'); bring(e.dataTransfer.files); });
+  window.addEventListener('drop', function(e){
+    if(!hasFiles(e)) return; e.preventDefault(); depth = 0; drop.classList.remove('on');
+    // a picture dropped on a page's tile becomes its thumbnail
+    var on = e.target.closest && e.target.closest('.dl-card'), f0 = e.dataTransfer.files[0];
+    if(TH && on && f0 && /^image\//.test(f0.type)){ D.list().then(function(l){ var d = l.filter(function(x){ return x.id === on.dataset.id; })[0]; if(d) setThumb(d, f0); }); return; }
+    bring(e.dataTransfer.files);
+  });
   // installed as an app: a file opened with Sleek Docs arrives here
   if('launchQueue' in window) window.launchQueue.setConsumer(function(p){ Promise.all((p.files || []).map(function(h){ return h.getFile(); })).then(bring); });
 
