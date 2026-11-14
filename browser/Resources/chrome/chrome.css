@@ -44,6 +44,11 @@ svg.i { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-widt
 .addr input { flex: 1; min-width: 0; height: 100%; border: 0; background: none; outline: none; font-size: 13px; -webkit-user-select: text; user-select: text; cursor: text; }
 .addr input::placeholder { color: var(--k-faint); }
 .sec { flex: none; display: inline-flex; align-items: center; gap: 5px; color: var(--k-muted); font-size: 12px; } .sec img { width: 16px; height: auto; display: block; } .sec.warn { color: var(--k-warn); font-weight: 600; } .sec svg.i { width: 14px; height: 14px; }
+.shield { flex: none; height: 24px; padding: 0 7px 0 5px; border: 0; border-radius: 8px; background: none; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; color: var(--k-good) !important; font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.shield:hover, .shield[aria-expanded="true"] { background: var(--k-hover); } .shield.off { color: var(--k-faint) !important; } .shield svg.i { width: 16px; height: 16px; }
+.pop .big { font-size: 28px; font-weight: 600; line-height: 1.1; letter-spacing: -0.02em; color: var(--k-good); font-variant-numeric: tabular-nums; }
+.pop .rows { display: grid; grid-template-columns: 1fr auto; gap: 3px 12px; font-size: 13px; } .pop .rows span:nth-child(even) { font-variant-numeric: tabular-nums; color: var(--k-muted); text-align: right; }
+.sw button:disabled { opacity: .4; }
 .star { flex: none; width: 28px; height: 26px; border: 0; border-radius: 8px; background: none; cursor: pointer; color: var(--k-muted) !important; font-size: 15px; line-height: 1; } .star:hover, .star[aria-expanded="true"] { background: var(--k-hover); color: var(--k-fg) !important; } .star.on { color: #F0A52D !important; }
 .prog { position: absolute; left: 0; bottom: -1px; height: 2px; width: 0; background: var(--k-accent); transition: width .2s ease, opacity .3s ease .2s; opacity: 0; } .prog.on { opacity: 1; transition: width .2s ease; }
 .win.bottom .prog { bottom: auto; top: -1px; }

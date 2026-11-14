@@ -19,7 +19,7 @@ enum Res {
   }()
   static let args = CommandLine.arguments
   static func arg(_ name: String) -> String? { if let i = args.firstIndex(of: name), i + 1 < args.count { return args[i + 1] }; return nil }
-  static let selfTest = arg("--selftest")
+  static let selfTest = arg("--selftest") ?? (args.contains("--lists") ? "" : nil)
 }
 
 /// sleek://ui/<file> is the bar and the start page; sleek://app/<file> is Slides, Docs and Tasks.

@@ -1,0 +1,10 @@
+The block lists in this folder are the work of others, used with thanks and unchanged:
+
+  ads.txt       EasyList                  https://easylist.to
+  privacy.txt   EasyPrivacy               https://easylist.to
+  cookies.txt   EasyList Cookie List      https://easylist.to (Fanboy)
+
+EasyList and EasyPrivacy are offered under the GNU General Public License version 3 or later, or the
+Creative Commons Attribution-ShareAlike 3.0 Unported licence. The EasyList Cookie List names the
+Creative Commons Attribution 3.0 licence. Each file carries its own header with its version and terms.
+Sleek reads these lists to decide what to block; it fetches fresh copies from the addresses above.

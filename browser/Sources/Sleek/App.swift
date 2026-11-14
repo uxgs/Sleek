@@ -18,7 +18,15 @@ final class App: NSObject, NSApplicationDelegate {
     store = Store(dir: dir)
     store.onChange.append { [weak self] in self?.windows.forEach { $0.settingsChanged() } }
     Downloads.shared.onChange.append { [weak self] in self?.windows.forEach { $0.push() } }
+    Blocker.shared.onChange.append { [weak self] in self?.windows.forEach { $0.blockerChanged() } }
+    Blocker.shared.start(dir: dir.appendingPathComponent("lists"))
     buildMenu()
+    // `--lists`: only make the block lists ready, say what came of it, and quit (for whoever is working on the lists)
+    if Res.args.contains("--lists") {
+      let t0 = Date(); Blocker.shared.onChange.append { for s in Blocker.sources { print(s.id, Blocker.shared.facts[s.id].map { f in "rules \(f["rules"] ?? 0), left out \(f["left"] ?? 0), dropped \(f["dropped"] ?? 0), pop-up sites \((f["popups"] as? [String])?.count ?? 0), dated \(f["dated"] ?? "")" } ?? "not ready") }
+        print("ready:", Blocker.shared.ready, "in", (Date().timeIntervalSince(t0) * 10).rounded() / 10, "s"); exit(0) }
+      Blocker.shared.start(dir: FileManager.default.temporaryDirectory.appendingPathComponent("sleek-lists-\(ProcessInfo.processInfo.processIdentifier)")); return
+    }
     let w = newWindow(isPrivate: false, empty: true)
     let asked = (Res.arg("--url").flatMap { URL(string: $0) }.map { [$0] } ?? []) + pendingURLs
     let again = Res.selfTest == nil ? (store.settings["session"] as? [String] ?? []).compactMap { URL(string: $0) } : []

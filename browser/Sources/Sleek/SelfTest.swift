@@ -167,6 +167,56 @@ enum SelfTest {
     check("a download lands in the Downloads folder, and the bar says so", ok && got == "Hello from Sleek" && ((s["toast"] as? String) ?? "").contains("hello.txt"), [got, s["toast"] ?? ""])
     try? FileManager.default.removeItem(at: Downloads.folder)
 
+    print("blocking")
+    let listsReady = await until(90) { Blocker.shared.ready }
+    check("the block lists are ready: adverts, trackers and cookie banners, with their rules", listsReady && (Blocker.shared.summary["rules"] as? Int ?? 0) > 100_000 && !Blocker.shared.popupHosts.isEmpty, Blocker.shared.facts.mapValues { [$0["rules"] ?? 0, $0["left"] ?? 0, $0["dropped"] ?? 0] })
+    let good = "{\"trigger\":{\"url-filter\":\"^https?://ads\\\\.example[/:]\"},\"action\":{\"type\":\"block\"}}", bad = "{\"trigger\":{\"url-filter\":\"(a|b)\"},\"action\":{\"type\":\"block\"}}"
+    let kept = await Blocker.shared.soundCount([good, good, bad, good, bad, good, good])
+    check("a rule the engine refuses is found and left out, and the rest are kept", kept.kept == 5 && kept.dropped == 2, [kept.kept, kept.dropped])
+    let lines = ListConverter.convert("||ads.example^\n@@||ok.example^$script\n##.promo\nsite.example##.box\n||pop.example^$popup\n/track.js$third-party,script\n||x.example^$csp=default-src\n", frames: true)
+    check("list lines become the engine's rules: block, except, hide, pop-up sites; what it can't say is left out", lines.rules.count == 5 && lines.exceptions.count == 1 && lines.popupHosts == ["pop.example"] && lines.left == 1, [lines.rules.count, lines.exceptions.count, Array(lines.popupHosts), lines.left])
+    let extras = """
+    <!doctype html><title>A page with the usual extras</title><h1>News</h1><div class="ad-slot" id="ad">ADVERTISEMENT</div><p id="words">The article itself.</p>
+    <button id="onetrust-reject-all-handler" onclick="window.__declined = true">Reject all</button>
+    <script>window.__r = {};
+    function probe(name, url){ return new Promise(function(ok){ var s = document.createElement('script'); s.src = url; s.onload = function(){ window.__r[name] = 'loaded'; ok(); }; s.onerror = function(){ window.__r[name] = 'blocked'; ok(); }; document.head.appendChild(s); setTimeout(function(){ if(!window.__r[name]){ window.__r[name] = 'timeout'; ok(); } }, 9000); }); }
+    window.__done = Promise.all([probe('tagmanager', 'https://www.googletagmanager.com/gtag/js?id=G-PROOF00000'), probe('analytics', 'https://www.google-analytics.com/analytics.js'), probe('doubleclick', 'https://securepubads.g.doubleclick.net/tag/js/gpt.js'), probe('ordinary', 'https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js')]);
+    </script>
+    """
+    let look = "await window.__done; await new Promise(function(ok){ setTimeout(ok, 900); }); var note = window.Notification ? await Notification.requestPermission() : 'none'; return { requests: window.__r, adShown: getComputedStyle(document.getElementById('ad')).display !== 'none', wordsShown: getComputedStyle(document.getElementById('words')).display !== 'none', declined: !!window.__declined, note: note }"
+    var visit = 0      // each load of the test page has its own address, so the check waits for the new page and not the one before it
+    func loadExtras() async { visit += 1; let mark = "?visit=\(visit)"; w.current?.web.loadSimulatedRequest(URLRequest(url: URL(string: "https://blocking-test.example/news" + mark)!), responseHTML: extras); _ = await until(10) { (await page(w.current, "return location.search === '\(mark)' && !!window.__done")) as? Bool == true } }
+    await loadExtras()
+    var seen = (await page(w.current, look)) as? [String: Any] ?? [:]
+    var reqs = seen["requests"] as? [String: String] ?? [:]
+    check("on a page with the usual extras: tracker and advert scripts are stopped, an ordinary script still loads", reqs["tagmanager"] == "blocked" && reqs["analytics"] == "blocked" && reqs["doubleclick"] == "blocked" && reqs["ordinary"] == "loaded", reqs)
+    check("the advert is hidden and the article is not", (seen["adShown"] as? Bool) == false && (seen["wordsShown"] as? Bool) == true, seen)
+    check("the cookie banner's Reject is pressed for you, and a request to send notifications is refused", (seen["declined"] as? Bool) == true && (seen["note"] as? String) == "denied", seen)
+    await nap(0.4); var counts = w.current?.blocked ?? [:]; s = await see(w)
+    check("the shield counts them: adverts, trackers, the cookie banner, the notification request", (counts["ads"] ?? 0) >= 1 && (counts["trackers"] ?? 0) >= 2 && (counts["cookies"] ?? 0) >= 1 && (counts["notes"] ?? 0) == 1 && (Int((s["shield"] as? String) ?? "") ?? 0) >= 5, [counts, s["shield"] ?? ""])
+    let popSite = Blocker.shared.popupHosts.sorted().first ?? "", tabsBefore = w.tabs.count
+    let opened = (await page(w.current, "var a = window.open('https://\(popSite)/'); return !!a")) as? Bool ?? true
+    await nap(0.4); counts = w.current?.blocked ?? [:]
+    check("a pop-up to a site that only serves pop-up adverts is refused, and counted", !opened && w.tabs.count == tabsBefore && (counts["popups"] ?? 0) == 1, [opened, w.tabs.count - tabsBefore, counts])
+    _ = await page(w.current, "location.href = 'https://\(popSite)/'; return 1"); await nap(1.0); counts = w.current?.blocked ?? [:]
+    check("so is being sent off to one", (w.current?.address ?? "").contains("blocking-test.example") && (counts["popups"] ?? 0) == 2, [w.current?.address ?? "", counts])
+    await press(w, ".shield"); s = await see(w)
+    check("the shield opens with what was blocked", (s["pop"] as? String) == "shield", s["pop"])
+    await shot(w, "12-shield", to: out)
+    _ = await page(w.current, "var a = window.open('https://example.org/'); return !!a"); ok = await until(8) { w.tabs.count == tabsBefore + 1 }
+    check("an ordinary link that opens a new tab still does", ok, w.tabs.count - tabsBefore)
+    if ok, let t = w.current { w.closeTab(t.id) }; await nap(0.4)
+    w.store.set("blockOff", ["blocking-test.example"]); await nap(0.2); await loadExtras()
+    seen = (await page(w.current, look)) as? [String: Any] ?? [:]; reqs = seen["requests"] as? [String: String] ?? [:]; s = await see(w)
+    check("switched off for a site, nothing is blocked there, and the shield says Off", reqs["tagmanager"] == "loaded" && reqs["doubleclick"] == "loaded" && (seen["adShown"] as? Bool) == true && (seen["declined"] as? Bool) == false && (w.current?.blocked ?? [:]).isEmpty && (s["shieldOff"] as? Bool) == true, [reqs, seen, s["shield"] ?? ""])
+    w.store.set("blockOff", [String]()); await nap(0.2); await loadExtras()
+    seen = (await page(w.current, look)) as? [String: Any] ?? [:]; reqs = seen["requests"] as? [String: String] ?? [:]
+    check("and switched back on, it is blocked again", reqs["tagmanager"] == "blocked" && (seen["adShown"] as? Bool) == false, reqs)
+    // a real, busy site: not a pass or a fail, just what the shield found
+    _ = await bar(w, "Sleek.test.type('https://www.nytimes.com'); return Sleek.test.enter()"); _ = await loaded(w, "nytimes.com"); await nap(4)
+    print("   on nytimes.com the shield counted:", w.current?.blocked ?? [:])
+    await shot(w, "13-real-site", to: out)
+
     print("Sleek's own apps")
     await press(w, "[data-pin=tasks]"); ok = await until(15) { (await page(w.current, "return !!(window.SleekTasks && window.SleekTaskApp && SleekTasks.projects().length)")) as? Bool == true }
     s = await see(w)

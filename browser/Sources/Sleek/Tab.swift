@@ -9,6 +9,9 @@ final class Tab: NSObject, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegat
   let web: WKWebView
   weak var owner: BrowserWindow?
   var icon = ""
+  var blocking = false                    // whether the block lists are on this tab now (they are off on Sleek's own pages, and on sites you switched them off for)
+  var blocked: [String: Int] = [:]        // what was blocked on the page showing: ads, trackers, cookies, notes (notification requests), popups
+  var mine = false                        // the load now starting is your own (typed, a bookmark), not one the page started
   private var watching: [NSKeyValueObservation] = []
   private var downloads: [ObjectIdentifier: (id: String, to: URL, watch: NSKeyValueObservation?)] = [:]
 
@@ -23,6 +26,27 @@ final class Tab: NSObject, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegat
   })();
   """
 
+  /// What a page gets on top of that while blocking is on: requests to send notifications are refused
+  /// quietly, and the "reject" button of the common cookie-consent tools is pressed for you, once.
+  static let shieldScript = """
+  (function(){ if(window.top !== window) return; var post = function(m){ try { webkit.messageHandlers.sleekPage.postMessage(m); } catch(e){} };
+    try { if(window.Notification){ var N = window.Notification; N.requestPermission = function(cb){ post({ blocked: 'notification' }); if(typeof cb === 'function') try { cb('denied'); } catch(e){} return Promise.resolve('denied'); };
+      try { Object.defineProperty(N, 'permission', { get: function(){ return 'denied'; }, configurable: true }); } catch(e){} } } catch(e){}
+    var REJECT = ['#onetrust-reject-all-handler', '#CybotCookiebotDialogBodyButtonDecline', '#CybotCookiebotDialogBodyLevelButtonLevelOptinDeclineAll', '#didomi-notice-disagree-button', '.cky-btn-reject', '.cmplz-deny', '.osano-cm-denyAll', '.osano-cm-deny',
+      '.iubenda-cs-reject-btn', '.qc-cmp2-summary-buttons button[mode="secondary"]', 'button[data-testid="uc-deny-all-button"]', '.wt-cli-reject-btn', 'button[class*="-cta-do-not-consent"]', '#axeptio_btn_dismiss', '.cc-deny', '#truste-consent-required', '.klaro .cn-decline',
+      '#cookiescript_reject', '.cookie-notice-container #cn-refuse-cookie', '#wt-cli-reject-btn', '[data-cookiefirst-action="reject"]', '#cmpbntnotxt', '.cmpboxbtnno', '#hs-eu-decline-button', '.termly-styles-root button[data-tid="banner-decline"]'];
+    var tries = 0, done = false;
+    function decline(){
+      if(done) return; var b = null;
+      for(var i = 0; i < REJECT.length && !b; i++){ try { b = document.querySelector(REJECT[i]); } catch(e){} }
+      if(!b){ var uc = document.querySelector('#usercentrics-root'); if(uc && uc.shadowRoot) b = uc.shadowRoot.querySelector('[data-testid="uc-deny-all-button"]'); }
+      if(b){ done = true; try { b.click(); } catch(e){} post({ blocked: 'cookie' }); return; }
+      if(++tries < 20) setTimeout(decline, 500);
+    }
+    if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', decline); else decline();
+  })();
+  """
+
   static func configuration(store: WKWebsiteDataStore) -> WKWebViewConfiguration {
     let c = WKWebViewConfiguration()
     c.websiteDataStore = store
@@ -30,7 +54,6 @@ final class Tab: NSObject, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegat
     c.applicationNameForUserAgent = "Version/26.0 Safari/605.1.15"      // sites treat Sleek as they treat Safari, whose engine it is
     c.preferences.isElementFullscreenEnabled = true
     c.preferences.javaScriptCanOpenWindowsAutomatically = false        // a page opens a new tab only when you pressed something
-    c.userContentController.addUserScript(WKUserScript(source: pageScript, injectionTime: .atDocumentStart, forMainFrameOnly: true))
     return c
   }
 
@@ -39,6 +62,7 @@ final class Tab: NSObject, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegat
     self.owner = owner
     super.init()
     configuration.userContentController.add(Weak(self), name: "sleekPage")
+    applyBlocking(false)
     web.navigationDelegate = self; web.uiDelegate = self
     web.allowsBackForwardNavigationGestures = true
     web.allowsMagnification = true
@@ -47,6 +71,22 @@ final class Tab: NSObject, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegat
                 web.observe(\.estimatedProgress, changeHandler: tell), web.observe(\.canGoBack, changeHandler: tell), web.observe(\.canGoForward, changeHandler: tell)]
   }
   func close() { watching = []; web.configuration.userContentController.removeScriptMessageHandler(forName: "sleekPage"); web.stopLoading(); web.removeFromSuperview() }
+
+  /// Put the block lists and the shield's script on this tab, or take them off. The next page it loads is under the new rule.
+  func applyBlocking(_ on: Bool) {
+    let c = web.configuration.userContentController
+    c.removeAllContentRuleLists(); c.removeAllUserScripts()
+    c.addUserScript(WKUserScript(source: Tab.pageScript, injectionTime: .atDocumentStart, forMainFrameOnly: true))
+    if on { Blocker.shared.lists.values.forEach { c.add($0) }; c.addUserScript(WKUserScript(source: Tab.shieldScript, injectionTime: .atDocumentStart, forMainFrameOnly: true)) }
+    blocking = on
+  }
+  /// The engine says a rule from one of the lists stopped a request. (This is a part of the engine Apple doesn't
+  /// promise to keep; without it everything is still blocked, and only the counts on the shield stay at nothing.)
+  @objc(_webView:contentRuleListWithIdentifier:performedAction:forURL:)
+  func rule(_ webView: WKWebView, list identifier: String, did action: NSObject, for url: URL) {
+    guard action.responds(to: Selector(("blockedLoad"))), (action.value(forKey: "blockedLoad") as? Bool) == true else { return }
+    blocked[identifier.contains("-ads-") ? "ads" : identifier.contains("-privacy-") ? "trackers" : "cookies", default: 0] += 1; owner?.tabChanged(self)
+  }
 
   var address: String { web.url?.absoluteString ?? "" }
   /// What kind of page this is: the start page, one of Sleek's apps, or the web.
@@ -59,15 +99,16 @@ final class Tab: NSObject, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegat
   var state: [String: Any] {
     let k = kind, t = web.title ?? ""
     return ["id": id, "url": address, "kind": k, "title": t.isEmpty ? (k == "start" ? "New tab" : web.url?.host ?? "New tab") : t, "loading": web.isLoading, "progress": web.estimatedProgress,
-            "back": web.canGoBack, "fwd": web.canGoForward, "icon": icon, "zoom": Int((web.pageZoom * 100).rounded())]
+            "back": web.canGoBack, "fwd": web.canGoForward, "icon": icon, "zoom": Int((web.pageZoom * 100).rounded()), "blockOn": blocking, "blocked": blocked, "host": web.url?.host ?? ""]
   }
-  func go(_ url: URL) { icon = ""; web.load(URLRequest(url: url)) }
+  func go(_ url: URL) { icon = ""; mine = true; web.load(URLRequest(url: url)) }
 
   // ---------- what the page tells the browser ----------
   func userContentController(_ c: WKUserContentController, didReceive message: WKScriptMessage) {
     guard message.frameInfo.isMainFrame, let m = message.body as? [String: Any] else { return }
     if let i = m["icon"] as? String, i != icon { icon = i; owner?.tabChanged(self) }
     if let s = m["scroll"] as? String { owner?.pageScrolled(self, s) }
+    if let b = m["blocked"] as? String { blocked[b == "notification" ? "notes" : "cookies", default: 0] += 1; owner?.tabChanged(self) }
     // Sleek's own start page asks for what to show, and says where to go
     if message.frameInfo.request.url?.scheme == "sleek" { if m["want"] as? String == "start" { owner?.fillStart(self) }; if let text = m["go"] as? String { owner?.navigate(text, in: self) } }
   }
@@ -80,12 +121,18 @@ final class Tab: NSObject, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegat
     }
     // ⌘-click opens the link in a new tab behind this one
     if action.navigationType == .linkActivated, action.modifierFlags.contains(.command), let u = action.request.url { owner?.newTab(u, select: false); decisionHandler(.cancel, preferences); return }
+    if action.targetFrame?.isMainFrame == true, let u = action.request.url {
+      // a page that sends you off to a site that only ever serves pop-up adverts: no
+      if blocking, !mine, action.navigationType == .other, Blocker.shared.isPopupHost(u.host) { blocked["popups", default: 0] += 1; owner?.tabChanged(self); decisionHandler(.cancel, preferences); return }
+      let want = owner?.blockingWanted(for: u) ?? false
+      if want != blocking { applyBlocking(want) }
+    }
     decisionHandler(.allow, preferences)
   }
   func webView(_ webView: WKWebView, decidePolicyFor response: WKNavigationResponse, decisionHandler: @escaping (WKNavigationResponsePolicy) -> Void) {
     decisionHandler(response.canShowMIMEType ? .allow : .download)
   }
-  func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) { icon = ""; owner?.tabChanged(self) }      // a new page: the old one's icon goes, and the page says its own
+  func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) { icon = ""; blocked = [:]; mine = false; owner?.tabChanged(self) }      // a new page: the old one's icon goes, and the page says its own
   func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) { owner?.visited(self) }
   func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) { failed(error) }
   func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) { failed(error) }
@@ -117,6 +164,7 @@ final class Tab: NSObject, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegat
   // ---------- what a page may ask for ----------
   func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration, for action: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
     guard let owner = owner else { return nil }
+    if blocking, Blocker.shared.isPopupHost(action.request.url?.host) { blocked["popups", default: 0] += 1; owner.tabChanged(self); return nil }      // a pop-up advert
     return owner.newTab(configuration: configuration).web      // a link that opens a new window opens a new tab
   }
   func webViewDidClose(_ webView: WKWebView) { owner?.closeTab(id) }

@@ -82,7 +82,7 @@ final class BrowserWindow: NSObject, NSWindowDelegate, WKScriptMessageHandler, W
   }
   /// A tab a page asked for (a link that opens a new window): it must use the settings the page hands over.
   func newTab(configuration: WKWebViewConfiguration) -> Tab {
-    configuration.userContentController.addUserScript(WKUserScript(source: Tab.pageScript, injectionTime: .atDocumentStart, forMainFrameOnly: true))
+    configuration.userContentController = WKUserContentController()      // its own, not the one of the page that asked
     let t = Tab(configuration: configuration, owner: self); tabs.append(t); select(t.id); return t
   }
   func select(_ id: String) {
@@ -108,6 +108,12 @@ final class BrowserWindow: NSObject, NSWindowDelegate, WKScriptMessageHandler, W
     while panes.count < n { if let free = tabs.first(where: { !panes.contains($0.id) }) { panes.append(free.id) } else { panes.append(newTab(select: false).id) } }
     at = min(at, n - 1); arrange(); push()
   }
+  // ---------- blocking ----------
+  private var blockOff: [String] { store.settings["blockOff"] as? [String] ?? [] }
+  /// Blocking is on for the web, once the lists are ready, except on sites you switched it off for.
+  func blockingWanted(for url: URL) -> Bool { guard Blocker.shared.ready, let s = url.scheme, s == "http" || s == "https", let h = url.host else { return false }; return !blockOff.contains(h) }
+  /// The lists became ready, or newer ones arrived: tabs showing the web take them on from their next page.
+  func blockerChanged() { for t in tabs { if let u = t.web.url, blockingWanted(for: u) || t.blocking { t.applyBlocking(blockingWanted(for: u)) } }; push() }
   func navigate(_ text: String, in t: Tab? = nil) { if let u = destination(for: text, search: store.search), let tab = t ?? current { tab.go(u); focusPage() } }
 
   // ---------- where the pages sit ----------
@@ -128,7 +134,7 @@ final class BrowserWindow: NSObject, NSWindowDelegate, WKScriptMessageHandler, W
     if pushQueued { return }; pushQueued = true
     DispatchQueue.main.asyncAfter(deadline: .now() + 0.03) { [weak self] in guard let s = self else { return }; s.pushQueued = false
       s.window.title = s.current?.web.title ?? "Sleek"
-      s.tell(["type": "state", "tabs": s.tabs.map { $0.state }, "panes": s.panes, "at": s.at, "n": s.n, "settings": s.store.settings, "bookmarks": s.store.bookmarks, "private": s.isPrivate, "downloads": Downloads.shared.list]) }
+      s.tell(["type": "state", "tabs": s.tabs.map { $0.state }, "panes": s.panes, "at": s.at, "n": s.n, "settings": s.store.settings, "bookmarks": s.store.bookmarks, "private": s.isPrivate, "downloads": Downloads.shared.list, "blocker": Blocker.shared.summary]) }
   }
   func tabChanged(_ t: Tab?) { push() }
   func visited(_ t: Tab) { if !isPrivate, t.kind == "web" { store.visit(url: t.address, title: t.web.title ?? "") }; push() }
@@ -171,6 +177,10 @@ final class BrowserWindow: NSObject, NSWindowDelegate, WKScriptMessageHandler, W
     case "mark":
       let url = m["url"] as? String ?? current?.address ?? ""
       switch m["how"] as? String ?? "" { case "add": store.addBookmark(title: m["title"] as? String ?? current?.web.title ?? "", url: url); case "remove": store.removeBookmark(url: url); default: store.renameBookmark(url: url, title: m["title"] as? String ?? "") }
+    case "shield":      // the switch on the shield: blocking on or off for the site you are on; the page loads again under the new rule
+      guard let t = current, let h = t.web.url?.host else { return }
+      var off = blockOff.filter { $0 != h }; if m["on"] as? Bool == false { off.append(h) }
+      store.set("blockOff", off); t.mine = true; t.web.reload()
     case "suggest": let q = m["q"] as? String ?? ""; tell(["type": "suggest", "q": q, "items": isPrivate ? store.suggest(q).filter { ($0["kind"] as? String) == "bookmark" } : store.suggest(q)])
     case "history": tell(["type": "history", "items": Array(store.history.prefix(60))])
     case "clearHistory": store.clearHistory(); tell(["type": "history", "items": []])

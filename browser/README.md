@@ -4,7 +4,7 @@ A Mac app that browses the web and has Sleek Slides, Docs and Tasks inside it. I
 engine every Mac already has, so the app itself is small and opens quickly, and Apple keeps the
 engine patched.
 
-This is Stage 1: the browser itself. It is not yet a public download.
+This is Stage 2: the browser itself, and blocking. It is not yet a public download.
 
 ## What works
 
@@ -22,13 +22,36 @@ This is Stage 1: the browser itself. It is not yet a public download.
 - **History, downloads, find on the page, zoom, print, a private window**, and the usual menu bar
   with its shortcuts.
 - Pages may ask to open a new tab, upload a file, or use the camera or microphone (Sleek asks you).
+- **Blocking**, on everywhere from the start: adverts, trackers, pop-ups and redirects to advert
+  sites, requests to send notifications, and cookie banners. The shield in the address box shows
+  what was stopped on the page, and has a switch to turn blocking off for a site that needs it.
+
+## Blocking
+
+Sleek blocks with three lists kept by others: EasyList (adverts), EasyPrivacy (trackers) and the
+EasyList Cookie List (cookie banners). `make.sh` fetches them into `build/lists` and puts a copy in
+the app, with their credits and licences (`Resources/lists-credits.txt`); they are not kept in this
+repository. The app fetches fresh copies every five days.
+
+The lists are turned into the rules the web engine understands and handed to the engine, which does
+the blocking itself, so no page is slowed by Sleek reading its traffic. The first start takes a few
+seconds to prepare about 170,000 rules; after that they are ready at once.
+
+What to know:
+
+- The engine takes a simpler kind of rule than the lists are written in. About one line in a
+  hundred has no equivalent and is left out, so the odd advert gets through, video adverts most of all.
+- Some sites leave an empty gap where an advert was.
+- Cookie banners from the common consent tools are answered with "reject"; others are hidden.
+- Requests to send notifications are refused. Allowing them for a chosen site is not possible yet.
+- The numbers in the shield come from a part of the engine Apple does not promise to keep. If it
+  goes, blocking carries on and the shield stops counting.
 
 ## What is still to come
 
-Blocking of ads, trackers, pop-ups, notification requests and cookie banners; your day on a new tab,
-Tasks beside any page and Save to Sleek; passwords; and the public release with automatic updates.
-Also not here yet: folders on the bookmarks bar, dragging tabs and bookmarks to reorder them, and
-dragging the lines of a split view to resize it.
+Your day on a new tab, Tasks beside any page and Save to Sleek; passwords; and the public release
+with automatic updates. Also not here yet: folders on the bookmarks bar, dragging tabs and bookmarks
+to reorder them, and dragging the lines of a split view to resize it.
 
 ## Building it
 
@@ -52,17 +75,19 @@ comes with the public release.
 
 ```
 Package.swift            how the program is built
-make.sh                  builds Sleek.app: the program, the bar, a copy of Slides, Docs and Tasks, the icon
+make.sh                  builds Sleek.app: the program, the bar, a copy of Slides, Docs and Tasks, the block lists, the icon
 Sources/Sleek/
   main.swift             starts the app
   App.swift              the windows, the menu bar, links handed over by other apps
   BrowserWindow.swift    one window: its tabs, which are showing, and doing what the bar asks
   Tab.swift              one tab: a page, and what a page may ask of the browser; downloads
+  Blocker.swift          blocking: turns the lists into the engine's rules and keeps them fresh
   Store.swift            settings, bookmarks and history, as files on this Mac
   Support.swift          where files are, Sleek's own pages (sleek://ui and sleek://app), small helpers
   SelfTest.swift         the app checking itself
 Resources/
   chrome/                the bar: chrome.html, chrome.css, chrome.js; and start.html, a new tab's page
+  lists-credits.txt      whose block lists these are, and their licences
   Info.plist, Sleek.icns what a Mac needs to know about the app, and its icon
 ```
 

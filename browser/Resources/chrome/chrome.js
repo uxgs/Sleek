@@ -21,12 +21,17 @@
   function $(s, r){ return (r || document).querySelector(s); }
   function $$(s, r){ return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
   var ICON = { back: '<path d="M14 5l-7 7 7 7"/>', fwd: '<path d="M10 5l7 7-7 7"/>', reload: '<path d="M19 12a7 7 0 1 1-2.1-5M19 5v4h-4"/>', stop: '<path d="M6 6l12 12M18 6L6 18"/>', lock: '<rect x="6" y="11" width="12" height="9" rx="2"/><path d="M9 11V8a3 3 0 0 1 6 0v3"/>',
+    shield: '<path d="M12 3l7 3v5c0 4.500-3 8-7 10-4-2-7-5.500-7-10V6z"/><path d="M9 12l2 2 4-4"/>', shieldoff: '<path d="M12 3l7 3v5c0 4.500-3 8-7 10-4-2-7-5.500-7-10V6z"/>',
     split: '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M12 4v16"/>', more: '<circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/>', search: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.500-3.500"/>',
     clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>', star: '<path d="M12 4l2.500 5 5.500.800-4 3.900.900 5.500-4.900-2.600-4.900 2.600.900-5.500-4-3.900 5.500-.800z"/>', tab: '<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/>', up: '<path d="M6 14l6-6 6 6"/>', down: '<path d="M6 10l6 6 6-6"/>' };
   function ico(n){ return '<svg class="i" viewBox="0 0 24 24" aria-hidden="true">' + ICON[n] + '</svg>'; }
   var THEMES = [['graphite', 'Graphite', '#6E6E73', '#7C5CFF'], ['violet', 'Violet', '#7C5CFF', '#7C5CFF'], ['ocean', 'Ocean', '#0A84FF', '#0A84FF'], ['forest', 'Forest', '#12A36A', '#12A36A'], ['rose', 'Rose', '#E0457B', '#E0457B'], ['sand', 'Sand', '#C08A2D', '#B0791F']];
   var APPS = { slides: ['Sleek Slides', 'slides.html'], docs: ['Sleek Docs', 'docs.html'], tasks: ['Sleek Tasks', 'tasks.html'] };
-  var S = { tabs: [], panes: [], at: 0, n: 1, settings: { look: 'auto', theme: 'graphite', barAt: 'top', imm: false, bar: true }, bookmarks: [], private: false, downloads: [] };
+  var S = { tabs: [], panes: [], at: 0, n: 1, settings: { look: 'auto', theme: 'graphite', barAt: 'top', imm: false, bar: true }, bookmarks: [], private: false, downloads: [], blocker: { ready: false, rules: 0, updated: '' } };
+  // what the shield counts, in the order it lists them
+  var BLOCKED = [['ads', 'Ads'], ['trackers', 'Trackers'], ['cookies', 'Cookie banners'], ['notes', 'Notification requests'], ['popups', 'Pop-ups and redirects']];
+  function blockedTotal(t){ var n = 0, b = (t && t.blocked) || {}; BLOCKED.forEach(function(k){ n += b[k[0]] || 0; }); return n; }
+  function listDate(s){ return String(s || '').replace(/^(\d{4})(\d\d)(\d\d)\d*$/, '$1-$2-$3').replace(/ \d\d:\d\d UTC$/, ''); }
   var L = { pop: null, typed: null, sel: -1, native: { q: '', items: [] }, rows: [], toast: null, toastN: 0, find: false, findText: '', miss: false, history: null, over: false, reach: false, full: false, still: false };
 
   function cur(){ var id = S.panes[S.at]; return S.tabs.filter(function(t){ return t.id === id; })[0] || S.tabs[0] || null; }
@@ -70,7 +75,7 @@
     var web = t && t.kind === 'web', value = L.typed != null ? L.typed : shown(t), bm = t ? marked(t.url) : null;
     h += '<div class="tool"><button type="button" class="ib" data-do="back"' + (t && t.back ? '' : ' disabled') + ' aria-label="Back">' + ico('back') + '</button><button type="button" class="ib" data-do="fwd"' + (t && t.fwd ? '' : ' disabled') + ' aria-label="Forward">' + ico('fwd') + '</button>' +
       '<button type="button" class="ib" data-do="' + (t && t.loading ? 'stop' : 'reload') + '" aria-label="' + (t && t.loading ? 'Stop' : 'Reload') + '">' + ico(t && t.loading ? 'stop' : 'reload') + '</button>' +
-      '<div class="addr" id="addr">' + (t && APPS[t.kind] ? '<span class="sec"><img src="sleek://app/icons/' + t.kind + '.svg" alt=""></span>' : web && /^http:/.test(t.url) ? '<span class="sec warn">Not secure</span>' : web ? '<span class="sec" title="The connection to this site is private">' + ico('lock') + '</span>' : '<span class="sec">' + ico('search') + '</span>') +
+      '<div class="addr" id="addr">' + (t && APPS[t.kind] ? '<span class="sec"><img src="sleek://app/icons/' + t.kind + '.svg" alt=""></span>' : web ? '<button type="button" class="shield' + (t.blockOn ? '' : ' off') + '" data-do="shield" aria-expanded="' + (L.pop === 'shield') + '" title="What Sleek blocked on this page" aria-label="Blocking on this page">' + ico(t.blockOn ? 'shield' : 'shieldoff') + (t.blockOn ? (blockedTotal(t) || '') : S.blocker.ready ? 'Off' : '') + '</button>' + (/^http:/.test(t.url) ? '<span class="sec warn">Not secure</span>' : '') : '<span class="sec">' + ico('search') + '</span>') +
       '<input id="url" value="' + esc(value) + '" placeholder="Search the web, or type an address" aria-label="Address and search" autocomplete="off" autocapitalize="off" spellcheck="false">' +
       (web ? '<button type="button" class="star' + (bm ? ' on' : '') + '" data-do="star" aria-expanded="' + (L.pop === 'star') + '" title="' + (bm ? 'Bookmarked' : 'Bookmark this page') + '" aria-label="Bookmark this page">' + (bm ? '★' : '☆') + '</button>' : '') + '</div>' +
       '<button type="button" class="ib' + (S.n > 1 ? ' on' : '') + '" data-do="split" id="b-split" aria-expanded="' + (L.pop === 'split') + '" title="Show pages side by side">' + ico('split') + 'Split</button>' +
@@ -87,7 +92,13 @@
         ['find', 'Find on this page', '⌘F'], ['zoom'], ['print', 'Print…', '⌘P'], ['-'], ['look', 'Look: themes, dark, where the bar sits', '⌘,'], ['default', 'Make Sleek the default browser', '']].map(function(m){
           return m[0] === '-' ? '<div class="line" style="margin:4px"></div>' : m[0] === 'zoom' ? '<div class="zoomrow"><span>Zoom</span><span><button type="button" data-zoom="-1" aria-label="Smaller">−</button><b>' + (t ? t.zoom : 100) + '%</b><button type="button" data-zoom="1" aria-label="Larger">+</button><button type="button" data-zoom="0" style="width:auto;padding:0 8px">Reset</button></span></div>'
             : '<button type="button" class="mi" data-menu="' + m[0] + '"><span>' + m[1] + '</span><small>' + m[2] + '</small></button>'; }).join('') + '</div>';
-    if(L.pop === 'look') h += '<div class="pop" id="pop" data-anchor="#b-menu" data-side="right" style="width:330px"><h4>Look</h4><div class="looks">' + [['light', 'Light', '#FFFFFF'], ['dark', 'Dark', '#0E0E11'], ['auto', 'Match the Mac', 'linear-gradient(90deg,#FFFFFF 50%,#0E0E11 50%)']].map(function(l){ return '<button type="button" class="lookb' + (set.look === l[0] ? ' on' : '') + '" data-look="' + l[0] + '"><i style="--p:' + l[2] + '"></i>' + l[1] + '</button>'; }).join('') + '</div>' +
+    if(L.pop === 'shield' && t){ var bl = t.blocked || {}, total = blockedTotal(t), off = !t.blockOn;
+      h += '<div class="pop" id="pop" data-anchor=".shield" data-side="left"><h4>' + esc(t.host || hostOf(t.url)) + '</h4>' +
+        (!S.blocker.ready ? '<p>Sleek is getting its block lists ready. This takes a few seconds the first time.</p>' : off ? '<p>Blocking is off for this site. Its adverts, banners and requests are showing.</p>' :
+          '<div class="big">' + total + ' blocked</div><div class="rows">' + BLOCKED.map(function(k){ return '<span>' + k[1] + '</span><span>' + (bl[k[0]] || 0) + '</span>'; }).join('') + '</div>') +
+        '<div class="line"></div><div class="sw"><span>Block on this site</span><button type="button" role="switch" aria-checked="' + !off + '" data-do="shieldswitch" aria-label="Block on this site"' + (S.blocker.ready ? '' : ' disabled') + '></button></div>' +
+        '<p>On everywhere unless you switch a site off. Some video adverts may still get through.' + (S.blocker.ready ? ' ' + S.blocker.rules.toLocaleString() + ' rules from EasyList, EasyPrivacy and the EasyList Cookie List' + (S.blocker.updated ? ', dated ' + esc(listDate(S.blocker.updated)) : '') + '.' : '') + '</p></div>'; }
+    if(L.pop === 'look') h +='<div class="pop" id="pop" data-anchor="#b-menu" data-side="right" style="width:330px"><h4>Look</h4><div class="looks">' + [['light', 'Light', '#FFFFFF'], ['dark', 'Dark', '#0E0E11'], ['auto', 'Match the Mac', 'linear-gradient(90deg,#FFFFFF 50%,#0E0E11 50%)']].map(function(l){ return '<button type="button" class="lookb' + (set.look === l[0] ? ' on' : '') + '" data-look="' + l[0] + '"><i style="--p:' + l[2] + '"></i>' + l[1] + '</button>'; }).join('') + '</div>' +
       '<h4 style="margin-top:4px">Theme</h4><div class="swatches">' + THEMES.map(function(x){ return '<button type="button" class="swb' + (set.theme === x[0] ? ' on' : '') + '" data-theme="' + x[0] + '"><i style="--c:' + x[2] + '"></i>' + x[1] + '</button>'; }).join('') + '</div>' +
       '<h4 style="margin-top:4px">The bar</h4><span class="seg">' + [['top', 'At the top'], ['bottom', 'At the bottom']].map(function(o){ return '<button type="button" data-barat="' + o[0] + '" class="' + (set.barAt === o[0] ? 'on' : '') + '">' + o[1] + '</button>'; }).join('') + '</span>' +
       '<div class="sw"><span>Immersive<small>The bar fades away and floats back when you need it</small></span><button type="button" role="switch" aria-checked="' + imm + '" data-do="imm" aria-label="Immersive"></button></div></div>';
@@ -178,7 +189,8 @@
       var what = x.getAttribute('data-do');
       if(what === 'newtab') post({ do: 'newTab' });
       else if(what === 'back' || what === 'fwd' || what === 'reload' || what === 'stop') post({ do: what });
-      else if(what === 'menu' || what === 'split' || what === 'allmarks') openPop(what);
+      else if(what === 'menu' || what === 'split' || what === 'allmarks' || what === 'shield') openPop(what);
+      else if(what === 'shieldswitch'){ if(c) post({ do: 'shield', on: !c.blockOn }); L.pop = null; paint(); }
       else if(what === 'star'){ var was = c && marked(c.url); L.justMarked = !was; if(c && !was) post({ do: 'mark', how: 'add', url: c.url, title: c.title }); if(L.pop === 'star' && was) closePop(); else { L.pop = 'star'; L.typed = null; paint(); var nm = $('#bmname'); if(nm){ nm.focus(); nm.select(); } } }
       else if(what === 'unstar'){ if(c) post({ do: 'mark', how: 'remove', url: c.url }); closePop(); }
       else if(what === 'closepop'){ var name = $('#bmname'); if(name && c) post({ do: 'mark', how: 'rename', url: c.url, title: name.value.trim() }); closePop(); }
@@ -218,7 +230,7 @@
   window.Sleek = {
     on: function(m){
       if(m.type === 'state'){
-        var hadImm = !!S.settings.imm; S.tabs = m.tabs; S.panes = m.panes; S.at = m.at; S.n = m.n; S.settings = m.settings; S.bookmarks = m.bookmarks; S.private = m.private; S.downloads = m.downloads || [];
+        var hadImm = !!S.settings.imm; S.tabs = m.tabs; S.panes = m.panes; S.at = m.at; S.n = m.n; S.settings = m.settings; S.bookmarks = m.bookmarks; S.private = m.private; S.downloads = m.downloads || []; S.blocker = m.blocker || S.blocker;
         var done = S.downloads.filter(function(d){ return d.done; }).length;
         if(S.downloads.length > before.downloads){ L.toast = { text: 'Downloading ' + S.downloads[0].name, act: 'Show', fn: function(){ openPop('downloads'); } }; var n1 = ++L.toastN; setTimeout(function(){ if(L.toastN === n1){ L.toast = null; paint(); } }, 3200); }
         else if(done > before.done){ var d = S.downloads.filter(function(x){ return x.done; })[0]; L.toast = { text: 'Downloaded ' + d.name, act: 'Show in Finder', fn: function(){ post({ do: 'reveal', id: d.id }); L.toast = null; paint(); } }; var n2 = ++L.toastN; setTimeout(function(){ if(L.toastN === n2){ L.toast = null; paint(); } }, 4200); }
@@ -241,7 +253,7 @@
       click: function(sel){ var e = $(sel); if(!e) return false; e.click(); return true; },
       type: function(text){ $('#url').focus(); var u = $('#url'); u.focus(); u.value = text; u.dispatchEvent(new Event('input', { bubbles: true })); return true; },      // focusing draws the bar again, so the box is found a second time
       enter: function(){ var u = document.activeElement; if(!u) return false; u.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })); return true; },
-      see: function(){ var b = $('#bar').getBoundingClientRect(); return { tabs: $$('.tab .tt').map(function(e){ return e.textContent; }), on: ($('.tab.on .tt') || {}).textContent || '', url: $('#url').value, pop: L.pop, rows: (L.rows || []).map(function(r){ return r.kind + ':' + r.title; }), marks: $$('.bbar .bm[data-bm] span:last-child').map(function(e){ return e.textContent; }), star: !!$('.star.on'),
+      see: function(){ var b = $('#bar').getBoundingClientRect(); return { tabs: $$('.tab .tt').map(function(e){ return e.textContent; }), on: ($('.tab.on .tt') || {}).textContent || '', url: $('#url').value, pop: L.pop, rows: (L.rows || []).map(function(r){ return r.kind + ':' + r.title; }), marks: $$('.bbar .bm[data-bm] span:last-child').map(function(e){ return e.textContent; }), star: !!$('.star.on'), shield: ($('.shield') || {}).textContent || '', shieldOff: !!$('.shield.off'), blockerReady: S.blocker.ready,
         panes: $$('.pane').length, ring: $$('.pane.on').length, barTop: Math.round(b.top), barBottom: Math.round(b.bottom), height: win.clientHeight, cls: win.className, mode: win.getAttribute('data-mode'), find: !!$('#findbox'), miss: L.miss, toast: L.toast ? L.toast.text : '', floating: getComputedStyle($('#bar')).position === 'absolute' }; }
     }
   };
