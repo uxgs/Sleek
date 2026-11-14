@@ -71,17 +71,34 @@ enum SelfTest {
     check("with the cursor in the address box, the box itself is lit, and there is no second, square ring inside it", (ring["bad"] as? String) == "" && (ring["lit"] as? Bool) == true, ring)
     await press(w, "#b-menu")
     let menu = (await bar(w, "var p = document.getElementById('pop'); if(!p) return {}; return { groups: [].map.call(p.querySelectorAll('h5'), function(h){ return h.textContent; }).join('|'), rows: [].map.call(p.querySelectorAll('.grp'), function(g){ return [].map.call(g.children, function(r){ return r.querySelector('span').textContent.trim(); }).join('|'); }).join(' / '), fits: p.getBoundingClientRect().bottom <= innerHeight + 1 }")) as? [String: Any] ?? [:]
-    check("the ⋯ menu is in named groups: New, Appearance, Manage, Defaults, and this page", (menu["groups"] as? String) == "New|Appearance|Manage|Defaults|This page" && (menu["rows"] as? String) == "Tab|Window|Private Window / Zoom|Theme|Bar Placement|Bookmarks Bar / Bookmarks|History|Passwords|Downloads / Search Provider|Make Sleek Default Browser / Find on This Page|Print…" && (menu["fits"] as? Bool) == true, menu)
+    check("the ⋯ menu is in named groups: New, Appearance, Manage, Defaults, and this page", (menu["groups"] as? String) == "New|Appearance|Manage|Defaults|This page" && (menu["rows"] as? String) == "Tab|Window|Private Window / Zoom|Theme|Bar Placement|" + (GlassView.available ? "Glass|" : "") + "Bookmarks Bar / Bookmarks|History|Passwords|Downloads / Search Provider|Make Sleek Default Browser / Find on This Page|Print…" && (menu["fits"] as? Bool) == true, menu)
     let barWas = (w.store.settings["bar"] as? Bool) == true
-    await press(w, "[data-barswitch]")
-    let flipped = (w.store.settings["bar"] as? Bool) == !barWas, stillOpen = (await bar(w, "var p = document.getElementById('pop'); return !!p && p.classList.contains('sets') && p.querySelector('[data-barswitch]').getAttribute('aria-checked') === '" + String(!barWas) + "'")) as? Bool ?? false
-    await press(w, "[data-barswitch]")
+    await press(w, "[data-flip=bar]")
+    let flipped = (w.store.settings["bar"] as? Bool) == !barWas, stillOpen = (await bar(w, "var p = document.getElementById('pop'); return !!p && p.classList.contains('sets') && p.querySelector('[data-flip=bar]').getAttribute('aria-checked') === '" + String(!barWas) + "'")) as? Bool ?? false
+    await press(w, "[data-flip=bar]")
     let flippedBack = (w.store.settings["bar"] as? Bool) == barWas
     await shot(w, "05-menu", to: out)
     await press(w, "#b-menu"); await nap(0.8)
     let shut = (await bar(w, "return !document.getElementById('pop')")) as? Bool ?? false
     check("the bookmarks bar switches from the menu and back, and the menu stays open for it", flipped && stillOpen && flippedBack && shut, [flipped, stillOpen, flippedBack, shut])
     s = await see(w)
+    if GlassView.available {
+      let slot = w.chrome.slots.first ?? .zero
+      w.store.set("glass", true); await nap(0.9)
+      var covered: CGFloat = -1; if #available(macOS 26.0, *) { covered = w.current?.web.obscuredContentInsets.top ?? -1 }
+      let cls = (await see(w))["cls"] as? String ?? "", barGlass = w.glass.panes.first?.frame ?? .zero
+      check("with Glass on, the bar is the Mac's own glass, and the page runs on beneath it", cls.contains("glass") && w.glass.panes.count == 1 && barGlass == NSRect(x: 0, y: 0, width: slot.width, height: slot.minY) && w.current?.web.frame == NSRect(x: 0, y: 0, width: slot.width, height: slot.maxY) && covered == slot.minY, [cls, w.glass.panes.count, barGlass, w.current?.web.frame as Any, covered])
+      let tall = ((await page(w.current, "return window.innerHeight")) as? NSNumber)?.doubleValue ?? -1
+      check("the page keeps clear of the bar: what it counts as its own height leaves the bar out", abs(tall - Double(slot.height)) <= 1, [tall, slot.height, slot.maxY])
+      await press(w, "#b-menu"); await nap(0.4)
+      let menuGlass = w.glass.panes.count == 2 ? w.glass.panes[1].frame : .zero
+      check("an open menu is glass too", menuGlass.width > 250 && menuGlass.height > 300, [w.glass.panes.count, menuGlass])
+      await shot(w, "06-glass", to: out)
+      await press(w, "#b-menu"); await nap(0.4)
+      w.store.set("glass", false); await nap(0.9)
+      var back: CGFloat = -1; if #available(macOS 26.0, *) { back = w.current?.web.obscuredContentInsets.top ?? -1 }
+      check("with it off, the bar is solid again and the page sits under it", w.glass.panes.isEmpty && w.current?.web.frame == slot && back == 0, [w.glass.panes.count, w.current?.web.frame as Any, back])
+    }
     check("the page sits under the bar, filling the rest of the window", w.chrome.slots.count == 1 && abs(w.chrome.slots[0].minY - CGFloat(s["barBottom"] as? Int ?? -1)) <= 1 && abs(w.chrome.slots[0].maxY - 860) <= 1 && w.current?.web.frame == w.chrome.slots[0], w.chrome.slots)
     await shot(w, "1-start", to: out)
 

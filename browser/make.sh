@@ -8,6 +8,8 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 swift build -c release 2>&1 | grep -E "error|warning: unre|Build complete" || true
+# a build that failed must not pass for one that worked (the program from the last good build would still be lying there)
+if ! swift build -c release >/dev/null 2>&1; then echo "The program did not compile; nothing was built."; exit 1; fi
 APP=build/Sleek.app
 rm -rf "$APP"; mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp .build/release/Sleek "$APP/Contents/MacOS/Sleek"

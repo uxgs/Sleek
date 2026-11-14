@@ -44,6 +44,20 @@ final class ChromeView: WKWebView {
 }
 /// Holds the pages; a press that misses every page goes on to the bare window behind.
 final class PagesView: FlippedView { override func hitTest(_ point: NSPoint) -> NSView? { let v = super.hitTest(point); return v === self ? nil : v } }
+/// Glass: with the Glass look on, the bar and its menus are the Mac's own Liquid Glass (NSGlassEffectView), laid here between
+/// the pages and the bar's own drawing, and the pages run on beneath it. The bar says where each piece of glass goes
+/// (chrome.js: report). Nothing here takes a press: the bar, above, still does.
+final class GlassView: FlippedView {
+  private(set) var panes: [NSView] = []
+  override func hitTest(_ point: NSPoint) -> NSView? { nil }
+  static var available: Bool { if #available(macOS 26.0, *) { return true }; return false }
+  func place(_ rects: [(rect: NSRect, radius: CGFloat)]) {
+    guard #available(macOS 26.0, *) else { return }
+    while panes.count > rects.count { panes.removeLast().removeFromSuperview() }
+    while panes.count < rects.count { let g = NSGlassEffectView(); g.style = .regular; addSubview(g); panes.append(g) }
+    for (i, r) in rects.enumerated() { guard let g = panes[i] as? NSGlassEffectView else { continue }; if g.cornerRadius != r.radius { g.cornerRadius = r.radius }; if g.frame != r.rect { g.frame = r.rect } }
+  }
+}
 
 @MainActor
 final class BrowserWindow: NSObject, NSWindowDelegate, WKScriptMessageHandler, WKNavigationDelegate {
@@ -74,6 +88,7 @@ final class BrowserWindow: NSObject, NSWindowDelegate, WKScriptMessageHandler, W
     let content = FlippedView(frame: window.contentLayoutRect); content.autoresizingMask = [.width, .height]; window.contentView = content
     let drag = DragView(frame: content.bounds); drag.autoresizingMask = [.width, .height]; content.addSubview(drag)
     pages.frame = content.bounds; pages.autoresizingMask = [.width, .height]; content.addSubview(pages)
+    glass.frame = content.bounds; glass.autoresizingMask = [.width, .height]; content.addSubview(glass)
     chrome.frame = content.bounds; chrome.autoresizingMask = [.width, .height]; chrome.setValue(false, forKey: "drawsBackground"); chrome.unregisterDraggedTypes()
     c.userContentController.add(Weak(self), name: "sleek"); chrome.navigationDelegate = self; content.addSubview(chrome)
     chrome.load(URLRequest(url: URL(string: "sleek://ui/chrome.html")!))
@@ -186,12 +201,22 @@ final class BrowserWindow: NSObject, NSWindowDelegate, WKScriptMessageHandler, W
   // A page that changes place (a split view opening or closing, the bar moving) glides to its new place; a page
   // that comes into view (another tab, a new space in a split) fades in. Dragging the window's edge moves pages at once.
   private var arrangedFor = NSSize.zero
+  let glass = GlassView()
+  /// Where the bar is, when it is glass and the pages run beneath it (not in immersive, where the bar already floats over the page).
+  private(set) var glassBar: NSRect?
   private func arrange() {
     let resized = window.frame.size != arrangedFor; arrangedFor = window.frame.size
     let still = Res.selfTest != nil || resized || NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
     for t in tabs {
       guard let k = panes.firstIndex(of: t.id), k < chrome.slots.count else { t.web.isHidden = true; continue }
-      let to = chrome.slots[k], fresh = t.web.superview !== pages || t.web.isHidden
+      var to = chrome.slots[k]; let fresh = t.web.superview !== pages || t.web.isHidden
+      // under glass, a page beside the bar runs on beneath it, and is told how much of itself the bar covers (so it starts clear of the bar and scrolls under it)
+      var covered = NSEdgeInsets()
+      if let b = glassBar, !to.isEmpty {
+        if abs(to.minY - b.maxY) <= 1 { covered.top = b.height; to = NSRect(x: to.minX, y: b.minY, width: to.width, height: to.maxY - b.minY) }
+        else if abs(to.maxY - b.minY) <= 1 { covered.bottom = b.height; to = NSRect(x: to.minX, y: to.minY, width: to.width, height: b.maxY - to.minY) }
+      }
+      if #available(macOS 26.0, *) { let was = t.web.obscuredContentInsets; if was.top != covered.top || was.bottom != covered.bottom { t.web.obscuredContentInsets = covered } }
       if t.web.superview !== pages { pages.addSubview(t.web) }
       if still || fresh || t.web.frame.isEmpty || to.isEmpty { t.web.frame = to }
       else if t.web.frame != to { NSAnimationContext.runAnimationGroup { c in c.duration = 0.32; c.timingFunction = CAMediaTimingFunction(controlPoints: 0.2, 0.8, 0.2, 1); c.allowsImplicitAnimation = true; t.web.animator().frame = to } }
@@ -209,7 +234,7 @@ final class BrowserWindow: NSObject, NSWindowDelegate, WKScriptMessageHandler, W
     if pushQueued { return }; pushQueued = true
     DispatchQueue.main.asyncAfter(deadline: .now() + 0.03) { [weak self] in guard let s = self else { return }; s.pushQueued = false
       s.window.title = s.current?.web.title ?? "Sleek"
-      s.tell(["type": "state", "tabs": s.tabs.map { $0.state }, "panes": s.panes, "at": s.at, "n": s.n, "settings": s.store.settings, "bookmarks": s.store.bookmarks, "private": s.isPrivate, "downloads": Downloads.shared.list, "blocker": Blocker.shared.summary]) }
+      s.tell(["type": "state", "tabs": s.tabs.map { $0.state }, "panes": s.panes, "at": s.at, "n": s.n, "settings": s.store.settings, "glassOK": GlassView.available,"bookmarks": s.store.bookmarks, "private": s.isPrivate, "downloads": Downloads.shared.list, "blocker": Blocker.shared.summary]) }
   }
   func tabChanged(_ t: Tab?) { push() }
   func visited(_ t: Tab) {
@@ -267,6 +292,9 @@ final class BrowserWindow: NSObject, NSWindowDelegate, WKScriptMessageHandler, W
     case "ready": ready = true; if tabs.isEmpty { newTab() }; push(); if !isPrivate, Work.shared.ready { tell(["type": "work", "day": Work.shared.day]) }
     case "layout":
       chrome.slots = rects(m["slots"]); chrome.solid = rects(m["solid"]); chrome.drag = rects(m["drag"]); chrome.modal = m["modal"] as? Bool ?? false
+      let gl = (m["glass"] as? [[String: Any]]) ?? []
+      glassBar = gl.first { $0["bar"] != nil }.map { NSRect(x: $0["x"] as? Double ?? 0, y: $0["y"] as? Double ?? 0, width: $0["w"] as? Double ?? 0, height: $0["h"] as? Double ?? 0) }
+      glass.place(gl.map { (NSRect(x: $0["x"] as? Double ?? 0, y: $0["y"] as? Double ?? 0, width: $0["w"] as? Double ?? 0, height: $0["h"] as? Double ?? 0), CGFloat($0["r"] as? Double ?? 0)) })
       let p = (m["lightsAt"] as? [Any])?.compactMap { ($0 as? NSNumber)?.doubleValue }
       lightsAt = p?.count == 2 ? NSPoint(x: p![0], y: p![1]) : nil; placeLights()
       showLights(m["lights"] as? Bool ?? true)

@@ -217,3 +217,13 @@ h5.sec { margin: 10px 6px 3px; font-size: 11px; letter-spacing: .13em; text-tran
 .askbar.in { animation: askIn .3s cubic-bezier(.2, .8, .2, 1) both; }
 @keyframes askIn { from { opacity: 0; transform: translateX(-50%) translateY(-10px) scale(.97); } }
 .askbar b { font-weight: 600; } .askbar span { color: var(--k-muted); font-size: 13px; overflow-wrap: anywhere; }
+
+/* ---------- Glass: the bar and what hangs from it are the Mac's own Liquid Glass, laid behind this page by the app
+   (BrowserWindow.swift: GlassView). Here the bar's own grounds step aside so the glass shows, and what sits on it
+   (fields, the chosen tab, cards in a menu) becomes a light veil rather than a solid. ---------- */
+.sk.glass { --k-chrome: transparent; --k-bar: transparent; --k-raise: transparent; --k-shadow: none;
+  --k-field: color-mix(in srgb, var(--k-fg) 7%, transparent); --k-hover: color-mix(in srgb, var(--k-fg) 9%, transparent); --k-line: color-mix(in srgb, var(--k-fg) 12%, transparent); }
+.sk.glass .tab.on { background: color-mix(in srgb, var(--k-fg) 11%, transparent); box-shadow: none; }
+.sk.glass .pop, .sk.glass .sugg, .sk.glass .panel, .sk.glass .askbar, .sk.glass .findbox, .sk.glass .toast { background: transparent; border-color: transparent; box-shadow: none; }
+.sk.glass .addr:focus-within { background: color-mix(in srgb, var(--k-bg) 55%, transparent); }
+.sk.glass .tool, .sk.glass .bbar, .sk.glass #tabs { border-color: transparent; }

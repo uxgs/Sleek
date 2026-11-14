@@ -24,7 +24,7 @@
     shield: '<path d="M12 3l7 3v5c0 4.500-3 8-7 10-4-2-7-5.500-7-10V6z"/><path d="M9 12l2 2 4-4"/>', shieldoff: '<path d="M12 3l7 3v5c0 4.500-3 8-7 10-4-2-7-5.500-7-10V6z"/>',
     split: '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M12 4v16"/>', more: '<circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/>', win: '<rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 9.5h18"/>', glasses: '<circle cx="7" cy="14" r="3.2"/><circle cx="17" cy="14" r="3.2"/><path d="M10.2 14h3.6M3.9 13l1.5-5M20.1 13l-1.5-5"/>',
     print: '<path d="M7 8V4h10v4"/><rect x="4" y="8" width="16" height="8" rx="2"/><path d="M7 13h10v7H7z"/>', zoom: '<circle cx="11" cy="11" r="6"/><path d="M20 20l-4.2-4.2M8.5 11h5M11 8.5v5"/>', findp: '<circle cx="11" cy="11" r="6"/><path d="M20 20l-4.2-4.2"/>',
-    barpos: '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M7 8h10"/>', book: '<path d="M7 4h10v16l-5-3.6L7 20z"/>', search: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.500-3.500"/>',
+    barpos: '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M7 8h10"/>', book: '<path d="M7 4h10v16l-5-3.6L7 20z"/>', glass: '<rect x="4" y="4" width="16" height="16" rx="5"/><path d="M8 12.5c0-2.5 2-4.5 4.5-4.5"/>', search: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.500-3.500"/>',
     clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>', star: '<path d="M12 4l2.500 5 5.500.800-4 3.900.900 5.500-4.900-2.600-4.900 2.600.900-5.500-4-3.900 5.500-.800z"/>', tab: '<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/>', up: '<path d="M6 14l6-6 6 6"/>', down: '<path d="M6 10l6 6 6-6"/>', panel: '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M15 4v16"/>', look: '<circle cx="12" cy="12" r="8.500"/><path d="M12 3.500a8.500 8.500 0 0 1 0 17z" fill="currentColor" stroke="none"/>', globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.200 3 14.800 0 18M12 3c-3 3.200-3 14.800 0 18"/>' };
   function ico(n){ return '<svg class="i" viewBox="0 0 24 24" aria-hidden="true">' + ICON[n] + '</svg>'; }
   // who answers a search typed in the address box: one of these, or an address of your own (with %s where the words go)
@@ -98,7 +98,7 @@
     var t = cur(), set = S.settings, bottom = set.barAt === 'bottom', imm = !!set.imm;
     var mode = S.private ? 'dark' : set.look === 'auto' ? (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : set.look;
     var th = THEMES.filter(function(x){ return x[0] === set.theme; })[0] || THEMES[0], tinted = th[0] !== 'graphite' && !S.private;
-    win.setAttribute('data-mode', mode); win.classList.toggle('bottom', bottom); win.classList.toggle('imm', imm); win.classList.toggle('right', imm && set.immSide === 'right'); win.classList.toggle('private', !!S.private); win.classList.toggle('full', L.full); win.classList.toggle('still', L.still);
+    win.setAttribute('data-mode', mode); win.classList.toggle('bottom', bottom); win.classList.toggle('glass', !!set.glass && !!S.glassOK); win.classList.toggle('imm', imm); win.classList.toggle('right', imm && set.immSide === 'right'); win.classList.toggle('private', !!S.private); win.classList.toggle('full', L.full); win.classList.toggle('still', L.still);
     if(!imm) win.classList.remove('show');
     win.style.setProperty('--tint', th[2]); win.style.setProperty('--tp', tinted ? '20%' : '0%'); win.style.setProperty('--tp2', tinted ? '10%' : '0%'); win.style.setProperty('--tp3', tinted ? '14%' : '0%'); win.style.setProperty('--k-accent', th[3]);
     var act = document.activeElement, keep = act && act.id && /^(url|find|bmname|engineurl|padd)$/.test(act.id) ? act.id : null, a0 = keep ? act.selectionStart : 0, a1 = keep ? act.selectionEnd : 0;
@@ -140,7 +140,8 @@
           '<div class="row zoomrow">' + ico('zoom') + '<span class="lbl">Zoom</span><span><button type="button" data-zoom="-1" aria-label="Smaller">−</button><button type="button" class="pct" data-zoom="0" aria-label="Back to 100%">' + (t ? t.zoom : 100) + '%</button><button type="button" data-zoom="1" aria-label="Larger">+</button></span></div>' +
           row('look', 'look', 'Theme', esc(themeNow) + more) +
           '<div class="row">' + ico('barpos') + '<span class="lbl">Bar Placement</span><span class="seg">' + [['top', 'Top'], ['bottom', 'Bottom']].map(function(o){ return '<button type="button" data-barat="' + o[0] + '" class="' + (set.barAt === o[0] ? 'on' : '') + '">' + o[1] + '</button>'; }).join('') + '</span></div>' +
-          '<div class="row">' + ico('star') + '<span class="lbl">Bookmarks Bar</span><span class="sw"><button type="button" role="switch" aria-checked="' + !!set.bar + '" data-barswitch aria-label="Show the bookmarks bar"></button></span></div>' +
+          (S.glassOK ? '<div class="row">' + ico('glass') + '<span class="lbl">Glass</span><span class="sw"><button type="button" role="switch" aria-checked="' + !!set.glass + '" data-flip="glass" aria-label="Glass"></button></span></div>' : '') +
+          '<div class="row">' + ico('star') + '<span class="lbl">Bookmarks Bar</span><span class="sw"><button type="button" role="switch" aria-checked="' + !!set.bar + '" data-flip="bar" aria-label="Show the bookmarks bar"></button></span></div>' +
         '</div>' +
         '<h5>Manage</h5><div class="grp">' + row('allmarks', 'book', 'Bookmarks', more) + row('history', 'clock', 'History', more) + row('passwords', 'lock', 'Passwords', more) + row('downloads', 'down', 'Downloads', more) + '</div>' +
         '<h5>Defaults</h5><div class="grp">' + row('search', 'search', 'Search Provider', esc(engine() ? engine()[0] : 'Your own') + more) + row('default', 'globe', 'Make Sleek Default Browser', '') + '</div>' +
@@ -254,7 +255,13 @@
     // the window's red, yellow and green buttons: in the tab row (so inside the floating bar, in immersive), or on the thin strip when the bar is at the bottom
     var bottom = S.settings.barAt === 'bottom', at = null, b = $('#bar'), strip = $('.titlestrip');
     if(!bottom) at = imm ? [IMM.gap + 14, IMM.gap + 13] : [13, 12]; else if(strip) at = [13, 6];
-    var m = { do: 'layout', slots: $$('.slot').map(box), solid: solid, drag: drag, modal: false, lights: up && !L.full, lightsAt: at }, s = JSON.stringify(m);
+    // Glass: where the Mac's own glass goes, behind what is drawn here: the bar (the pages run on beneath it), and whatever hangs from it
+    var glass = [];
+    if(S.settings.glass && S.glassOK && !L.full){
+      var bg = imm ? (up ? rest() : box($('.peek'))) : box(b); bg.r = imm ? (parseFloat(getComputedStyle(up ? b : $('.peek')).borderTopLeftRadius) || 16) : 0; if(!imm) bg.bar = 1; glass.push(bg);
+      $$('.pop, .sugg, .panel, .askbar, .findbox, .toast').forEach(function(e){ var g = box(e); g.r = parseFloat(getComputedStyle(e).borderTopLeftRadius) || 12; glass.push(g); });
+    }
+    var m = { do: 'layout', slots: $$('.slot').map(box), solid: solid, drag: drag, modal: false, lights: up && !L.full, lightsAt: at, glass: glass }, s = JSON.stringify(m);
     if(s !== lastReport){ lastReport = s; post(m); }
   }
   window.addEventListener('resize', function(){ place(); report(); });
@@ -319,7 +326,7 @@
     if((x = t.closest('[data-corner]'))){ var cn = x.getAttribute('data-corner').split(' '); post({ do: 'corner', side: cn[0], at: cn[1] }); return; }
     if((x = t.closest('[data-engine]'))){ var se = SEARCH[+x.getAttribute('data-engine')]; post({ do: 'set', k: 'search', v: se[1] }); L.pop = null; paint(); toast('Searching with ' + se[0]); return; }
     if((x = t.closest('[data-barat]'))){ post({ do: 'set', k: 'barAt', v: x.getAttribute('data-barat') }); return; }
-    if((x = t.closest('[data-barswitch]'))){ post({ do: 'set', k: 'bar', v: !S.settings.bar }); return; }
+    if((x = t.closest('[data-flip]'))){ var fk = x.getAttribute('data-flip'); post({ do: 'set', k: fk, v: !S.settings[fk] }); return; }
     if((x = t.closest('[data-lay]'))){ L.pop = null; post({ do: 'split', n: +x.getAttribute('data-lay') }); paint(); return; }
     if((x = t.closest('[data-menu]'))){
       var m = x.getAttribute('data-menu'); L.pop = null;
@@ -394,7 +401,7 @@
   window.Sleek = {
     on: function(m){
       if(m.type === 'state'){
-        var hadImm = !!S.settings.imm; S.tabs = m.tabs; S.panes = m.panes; S.at = m.at; S.n = m.n; S.settings = m.settings; S.bookmarks = m.bookmarks; S.private = m.private; S.downloads = m.downloads || []; S.blocker = m.blocker || S.blocker;
+        var hadImm = !!S.settings.imm; S.tabs = m.tabs; S.panes = m.panes; S.at = m.at; S.n = m.n; S.settings = m.settings; S.glassOK = !!m.glassOK; S.bookmarks = m.bookmarks; S.private = m.private; S.downloads = m.downloads || []; S.blocker = m.blocker || S.blocker;
         var done = S.downloads.filter(function(d){ return d.done; }).length;
         if(S.downloads.length > before.downloads){ L.toast = { text: 'Downloading ' + S.downloads[0].name, act: 'Show', fn: function(){ openPop('downloads'); } }; var n1 = ++L.toastN; setTimeout(function(){ if(L.toastN === n1){ L.toast = null; paint(); } }, 3200); }
         else if(done > before.done){ var d = S.downloads.filter(function(x){ return x.done; })[0]; L.toast = { text: 'Downloaded ' + d.name, act: 'Show in Finder', fn: function(){ post({ do: 'reveal', id: d.id }); L.toast = null; paint(); } }; var n2 = ++L.toastN; setTimeout(function(){ if(L.toastN === n2){ L.toast = null; paint(); } }, 4200); }
