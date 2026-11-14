@@ -20,8 +20,8 @@ struct BoardsView: View {
   var body: some View {
     let found = s.found(query)
     ScrollView {
-      VStack(alignment: .leading, spacing: 14) {
-        HStack(alignment: .firstTextBaseline) {
+      VStack(alignment: .leading, spacing: 16) {
+        HStack(alignment: .center) {
           Text("Boards").font(.system(size: 40, weight: .bold)).tracking(-1.2)
           Spacer()
           Menu {
@@ -29,10 +29,10 @@ struct BoardsView: View {
             Divider()
             Button { file = TasksFile(text: s.text); saving = true } label: { Label("Save a Copy of Everything…", systemImage: "square.and.arrow.up") }
             Button { bringing = true } label: { Label("Bring In a Copy…", systemImage: "square.and.arrow.down") }
-          } label: { Image(systemName: "ellipsis").font(.system(size: 17, weight: .semibold)).frame(width: 40, height: 40).background(Color.primary.opacity(0.07), in: Circle()) }.foregroundStyle(.primary)
-        }
-        HStack(spacing: 8) { Image(systemName: "magnifyingglass").foregroundStyle(.secondary); TextField("Find a task", text: $query).autocorrectionDisabled(); if !query.isEmpty { Button { query = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(.tertiary) } } }
-          .padding(.horizontal, 14).frame(height: 46).background(Color(.secondarySystemBackground), in: Capsule())
+          } label: { Image(systemName: "ellipsis").font(.system(size: 17, weight: .semibold)).frame(width: 44, height: 44).background(Color.primary.opacity(0.07), in: Circle()) }.foregroundStyle(.primary)
+        }.padding(.top, 24)
+        HStack(spacing: 8) { Image(systemName: "magnifyingglass").foregroundStyle(.secondary); TextField("Find a task", text: $query).autocorrectionDisabled(); if !query.isEmpty { Button { query = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(.tertiary).frame(width: 44, height: 44).contentShape(Rectangle()) }.padding(-12) } }
+          .padding(.horizontal, 16).frame(height: 48).background(Color(.secondarySystemBackground), in: Capsule())
         if !query.trimmingCharacters(in: .whitespaces).isEmpty {
           if found.isEmpty { Text("No task has those words.").font(.system(size: 16)).foregroundStyle(.secondary).padding(.top, 8) }
           ForEach(found) { t in
@@ -40,14 +40,14 @@ struct BoardsView: View {
             Button { tap(); task = t } label: {
               HStack(spacing: 12) { Image(systemName: t.done ? "checkmark.circle.fill" : "circle").font(.system(size: 20)).foregroundStyle(t.done ? Color.tasks : Color.secondary.opacity(0.6))
                 VStack(alignment: .leading, spacing: 2) { Text(t.title).font(.system(size: 16, weight: .medium)).foregroundStyle(t.done ? .secondary : .primary).strikethrough(t.done, color: .secondary).lineLimit(2).multilineTextAlignment(.leading); Text((b?.name ?? "") + (t.due.isEmpty || t.done ? "" : " · " + Day.word(t.due))).font(.system(size: 13)).foregroundStyle(.secondary) }
-                Spacer(minLength: 0) }.padding(.vertical, 6).contentShape(Rectangle())
+                Spacer(minLength: 0) }.padding(.vertical, 4).contentShape(Rectangle())
             }.buttonStyle(.plain)
           }
         } else {
           ForEach(s.boards) { b in card(b) }
-          Button { tap(); name = ""; adding = true } label: { Label("New board", systemImage: "plus").font(.system(size: 16, weight: .semibold)).foregroundStyle(Color.tasks).frame(maxWidth: .infinity).frame(height: 54).background(Color.tasks.opacity(0.1), in: RoundedRectangle(cornerRadius: 22, style: .continuous)) }.buttonStyle(Press())
+          Button { tap(); name = ""; adding = true } label: { Label("New board", systemImage: "plus").font(.system(size: 16, weight: .semibold)).foregroundStyle(Color.tasks).frame(maxWidth: .infinity).frame(height: 56).background(Color.tasks.opacity(0.1), in: RoundedRectangle(cornerRadius: 24, style: .continuous)) }.buttonStyle(Press())
         }
-      }.padding(.horizontal, 22).padding(.bottom, 30).animation(.spring(response: 0.35, dampingFraction: 0.85), value: s.boards)
+      }.padding(.horizontal, 20).padding(.bottom, 32).animation(.spring(response: 0.35, dampingFraction: 0.85), value: s.boards)
     }
     .scrollDismissesKeyboard(.interactively)
     .background(alignment: .top) { Bloom() }
@@ -61,14 +61,14 @@ struct BoardsView: View {
   private func card(_ b: Board) -> some View {
     let mine = s.items.filter { $0.board == b.id }, left = mine.filter { !$0.done }.sorted { $0.order < $1.order }, c = Color(hex: b.color)
     return Button { tap(); open = b } label: {
-      VStack(alignment: .leading, spacing: 10) {
+      VStack(alignment: .leading, spacing: 12) {
         HStack { Circle().fill(c).frame(width: 12, height: 12); Text(b.name).font(.system(size: 21, weight: .bold)).lineLimit(1); Spacer(); Image(systemName: "chevron.right").font(.system(size: 13, weight: .semibold)).foregroundStyle(.tertiary) }
-        GeometryReader { g in ZStack(alignment: .leading) { Capsule().fill(c.opacity(0.16)); Capsule().fill(c).frame(width: mine.isEmpty ? 0 : g.size.width * CGFloat(mine.count - left.count) / CGFloat(mine.count)) } }.frame(height: 5)
+        GeometryReader { g in ZStack(alignment: .leading) { Capsule().fill(c.opacity(0.16)); Capsule().fill(c).frame(width: mine.isEmpty ? 0 : g.size.width * CGFloat(mine.count - left.count) / CGFloat(mine.count)) } }.frame(height: 4)
         if left.isEmpty { Text(mine.isEmpty ? "Nothing here yet" : "All done").font(.system(size: 15)).foregroundStyle(.secondary) }
-        ForEach(left.prefix(2)) { t in HStack(spacing: 8) { Circle().stroke(Color.secondary.opacity(0.5), lineWidth: 1.5).frame(width: 14, height: 14); Text(t.title).font(.system(size: 15)).foregroundStyle(.secondary).lineLimit(1) } }
+        ForEach(left.prefix(2)) { t in HStack(spacing: 8) { Circle().stroke(Color.secondary.opacity(0.5), lineWidth: 1.5).frame(width: 12, height: 12); Text(t.title).font(.system(size: 15)).foregroundStyle(.secondary).lineLimit(1) } }
       }
-      .padding(18).foregroundStyle(.primary)
-      .background { ZStack { RoundedRectangle(cornerRadius: 26, style: .continuous).fill(c.opacity(0.3)).blur(radius: 18).offset(y: 10).padding(10); RoundedRectangle(cornerRadius: 26, style: .continuous).fill(Color(.secondarySystemBackground)) } }
+      .padding(20).foregroundStyle(.primary)
+      .background { ZStack { RoundedRectangle(cornerRadius: 24, style: .continuous).fill(c.opacity(0.3)).blur(radius: 18).offset(y: 10).padding(10); RoundedRectangle(cornerRadius: 24, style: .continuous).fill(Color(.secondarySystemBackground)) } }
     }.buttonStyle(Press())
   }
 }
@@ -88,8 +88,8 @@ struct BoardView: View {
       VStack(spacing: 12) {
         ScrollView(.horizontal, showsIndicators: false) {
           HStack(spacing: 8) { ForEach(board.columns) { col in
-            Button { tap(); withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) { at = col.id } } label: { Text(col.name).font(.system(size: 14, weight: .semibold)).padding(.horizontal, 14).frame(height: 34).foregroundStyle(here == col.id ? .white : .primary).background(here == col.id ? AnyShapeStyle(c) : AnyShapeStyle(Color.primary.opacity(0.07)), in: Capsule()) }.buttonStyle(Press()) } }.padding(.horizontal, 20)
-        }.animation(.spring(response: 0.35, dampingFraction: 0.8), value: at)
+            Button { tap(); withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) { at = col.id } } label: { Text(col.name).font(.system(size: 14, weight: .semibold)).padding(.horizontal, 16).frame(height: 36).foregroundStyle(here == col.id ? .white : .primary).background(here == col.id ? AnyShapeStyle(c) : AnyShapeStyle(Color.primary.opacity(0.07)), in: Capsule()).frame(minHeight: 44).contentShape(Rectangle()) }.buttonStyle(Press()) } }.padding(.horizontal, 20)
+        }.padding(.vertical, -4).animation(.spring(response: 0.35, dampingFraction: 0.8), value: at)
         ScrollView(.horizontal, showsIndicators: false) {
           LazyHStack(alignment: .top, spacing: 12) { ForEach(Array(board.columns.enumerated()), id: \.element.id) { i, col in column(board, col, i, c).containerRelativeFrame(.horizontal) { w, _ in w * 0.86 }.id(col.id) } }.scrollTargetLayout()
         }
@@ -119,18 +119,18 @@ struct BoardView: View {
   private func column(_ board: Board, _ col: Column, _ i: Int, _ c: Color) -> some View {
     let cards = s.cards(board.id, col.id), next = i + 1 < board.columns.count ? board.columns[i + 1] : nil
     return ScrollView {
-      VStack(alignment: .leading, spacing: 10) {
+      VStack(alignment: .leading, spacing: 12) {
         ForEach(cards) { t in
-          HStack(alignment: .top, spacing: 10) {
+          HStack(alignment: .top, spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
               Text(t.title).font(.system(size: 16, weight: .medium)).strikethrough(t.done, color: .secondary).foregroundStyle(t.done ? .secondary : .primary).multilineTextAlignment(.leading)
               if !t.due.isEmpty && !t.done { Text(Day.word(t.due)).font(.system(size: 13)).foregroundStyle(t.due < Day.today ? .red : .secondary) }
             }
             Spacer(minLength: 0)
-            if let n = next { Button { tap(.medium); withAnimation(.spring(response: 0.45, dampingFraction: 0.82)) { s.move(t.id, to: n.id) } } label: { Image(systemName: n.done ? "checkmark" : "arrow.right").font(.system(size: 13, weight: .bold)).foregroundStyle(c).frame(width: 34, height: 34).background(c.opacity(0.14), in: Circle()) }.buttonStyle(Press()) }
+            if let n = next { Button { tap(.medium); withAnimation(.spring(response: 0.45, dampingFraction: 0.82)) { s.move(t.id, to: n.id) } } label: { Image(systemName: n.done ? "checkmark" : "arrow.right").font(.system(size: 13, weight: .bold)).foregroundStyle(c).frame(width: 36, height: 36).background(c.opacity(0.14), in: Circle()).frame(width: 44, height: 44).contentShape(Rectangle()) }.buttonStyle(Press()).padding(-4) }
           }
-          .padding(14).background(Color(.systemBackground), in: RoundedRectangle(cornerRadius: 18, style: .continuous)).shadow(color: .black.opacity(0.07), radius: 8, y: 3)
-          .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous)).onTapGesture { tap(); open = t }
+          .padding(16).background(Color(.systemBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous)).shadow(color: .black.opacity(0.07), radius: 8, y: 3)
+          .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous)).onTapGesture { tap(); open = t }
           .contextMenu { ForEach(board.columns) { x in if x.id != col.id { Button { withAnimation(.spring(response: 0.45, dampingFraction: 0.82)) { s.move(t.id, to: x.id) } } label: { Label("Move to " + x.name, systemImage: "arrow.right") } } }; Button(role: .destructive) { withAnimation { s.removeTask(t.id) } } label: { Label("Delete", systemImage: "trash") } }
           .transition(.scale(scale: 0.9).combined(with: .opacity))
         }
@@ -138,7 +138,7 @@ struct BoardView: View {
       }.padding(12)
     }
     .scrollDismissesKeyboard(.interactively)
-    .background(Color(.secondarySystemBackground).opacity(0.8), in: RoundedRectangle(cornerRadius: 26, style: .continuous))
+    .background(Color(.secondarySystemBackground).opacity(0.8), in: RoundedRectangle(cornerRadius: 28, style: .continuous))
     .padding(.bottom, 12)
   }
 }
@@ -149,6 +149,6 @@ struct NewCard: View {
   var body: some View {
     HStack(spacing: 8) { Image(systemName: "plus").font(.system(size: 14, weight: .semibold)).foregroundStyle(c)
       TextField("Add a card", text: $text).focused($typing).submitLabel(.done).onSubmit { let had = !text.trimmingCharacters(in: .whitespaces).isEmpty; if had { tap(.medium); withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) { _ = s.addTask(text, board: board, column: column) } }; text = ""; typing = had } }
-      .padding(.horizontal, 14).frame(height: 46).background(Color(.systemBackground).opacity(typing ? 1 : 0.5), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+      .padding(.horizontal, 16).frame(height: 48).background(Color(.systemBackground).opacity(typing ? 1 : 0.5), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
   }
 }

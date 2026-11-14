@@ -185,27 +185,27 @@ struct LibraryView: View {
   @State private var sharing: URL?
   var body: some View {
     ScrollView {
-      VStack(alignment: .leading, spacing: 22) {
-        HStack(alignment: .firstTextBaseline) {
+      VStack(alignment: .leading, spacing: 24) {
+        HStack(alignment: .center) {
           Text("Slides").font(.system(size: 40, weight: .bold)).tracking(-1.2)
           Spacer()
           Menu {
             Button { making = true } label: { Label("New Deck", systemImage: "plus") }
             Button { Task { if let id = await lib.addSample() { open = id } } } label: { Label("Add the Sample Deck", systemImage: "sparkles.rectangle.stack") }
             Button { bringing = true } label: { Label("Bring In a Deck…", systemImage: "square.and.arrow.down") }
-          } label: { Image(systemName: "ellipsis").font(.system(size: 17, weight: .semibold)).frame(width: 40, height: 40).background(Color.primary.opacity(0.07), in: Circle()) }.foregroundStyle(.primary)
-        }
+          } label: { Image(systemName: "ellipsis").font(.system(size: 17, weight: .semibold)).frame(width: 44, height: 44).background(Color.primary.opacity(0.07), in: Circle()) }.foregroundStyle(.primary)
+        }.padding(.top, 8).padding(.bottom, -8)
         if lib.ready && lib.decks.isEmpty {
-          VStack(spacing: 10) {
+          VStack(spacing: 12) {
             Image(systemName: "rectangle.on.rectangle").font(.system(size: 30)).foregroundStyle(.secondary)
             Text("No decks yet").font(.system(size: 19, weight: .semibold))
             Text("Start one of your own, or look around the sample deck first.").font(.system(size: 15)).foregroundStyle(.secondary).multilineTextAlignment(.center)
-            Button { Task { if let id = await lib.addSample() { open = id } } } label: { Text("Open the sample deck").font(.system(size: 16, weight: .semibold)).padding(.horizontal, 20).frame(height: 46).background(Color.slides.opacity(0.12), in: Capsule()) }.buttonStyle(Press()).padding(.top, 6)
-          }.frame(maxWidth: .infinity).padding(.top, 60)
+            Button { Task { if let id = await lib.addSample() { open = id } } } label: { Text("Open the sample deck").font(.system(size: 16, weight: .semibold)).padding(.horizontal, 20).frame(height: 48).background(Color.slides.opacity(0.12), in: Capsule()) }.buttonStyle(Press()).padding(.top, 4)
+          }.frame(maxWidth: .infinity).padding(.top, 56)
         }
         ForEach(lib.decks) { d in
           Button { tap(); open = d.id } label: {
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 12) {
               Cover(d: d).shadow(color: Color(hex: d.accent).opacity(0.35), radius: 18, y: 10)
               HStack { Text(d.title).font(.system(size: 18, weight: .bold)).foregroundStyle(.primary).lineLimit(1); Spacer(); Text(ago(d.updated)).font(.system(size: 13)).foregroundStyle(.tertiary) }.padding(.horizontal, 4)
             }
@@ -217,14 +217,14 @@ struct LibraryView: View {
             Button(role: .destructive) { Task { await lib.remove(d.id); shell.say("Deck deleted") } } label: { Label("Delete", systemImage: "trash") }
           }
         }
-      }.padding(.horizontal, 22).padding(.bottom, 110)
+      }.padding(.horizontal, 20).padding(.bottom, 112)
     }
     .background(alignment: .top) { Bloom(c: .slides) }
     .overlay(alignment: .bottomTrailing) {
-      Button { tap(.medium); making = true } label: { Image(systemName: "plus").font(.system(size: 24, weight: .semibold)).foregroundStyle(.white).frame(width: 62, height: 62).background(Color.slides, in: Circle()).shadow(color: Color.slides.opacity(0.5), radius: 16, y: 8) }.buttonStyle(Press()).padding(22)
+      Button { tap(.medium); making = true } label: { Image(systemName: "plus").font(.system(size: 24, weight: .semibold)).foregroundStyle(.white).frame(width: 64, height: 64).background(Color.slides, in: Circle()).shadow(color: Color.slides.opacity(0.5), radius: 16, y: 8) }.buttonStyle(Press()).padding(20)
     }
     .navigationDestination(item: $open) { id in DeckScreen(deck: deck, lib: lib, shell: shell, id: id) }
-    .sheet(isPresented: $making) { NewDeck { title, mode, accent in making = false; Task { if let id = await lib.create(title: title, mode: mode, accent: accent) { open = id } } }.presentationDetents([.height(420)]).presentationCornerRadius(30).presentationBackground(.regularMaterial) }
+    .sheet(isPresented: $making) { NewDeck { title, mode, accent in making = false; Task { if let id = await lib.create(title: title, mode: mode, accent: accent) { open = id } } }.presentationDetents([.height(388)]).presentationCornerRadius(30).presentationBackground(.regularMaterial) }
     .alert("Rename deck", isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } })) { TextField("Its name", text: $name); Button("Cancel", role: .cancel) {}; Button("Save") { if let d = renaming { Task { await lib.rename(d.id, name) } } } }
     .fileImporter(isPresented: $bringing, allowedContentTypes: [.sleek, .json, .data]) { r in if case .success(let u) = r { Task { shell.say(await lib.bring(u)) } } }
     .sheet(item: $sharing) { u in ShareItems(items: [u]).presentationDetents([.medium, .large]) }
@@ -250,15 +250,15 @@ struct NewDeck: View {
     VStack(alignment: .leading, spacing: 16) {
       Text("New deck").font(.system(size: 26, weight: .bold)).tracking(-0.6)
       Cover(d: DeckRec(id: "", title: title.isEmpty ? "Your title" : title, updated: 0, slides: 2, mode: mode, accent: accent, over: "", head: "", thumb: "")).frame(height: 120).frame(maxWidth: .infinity).animation(.spring(response: 0.4, dampingFraction: 0.8), value: accent + mode)
-      TextField("What is it called?", text: $title).font(.system(size: 18, weight: .medium)).focused($typing).submitLabel(.done).padding(.horizontal, 16).frame(height: 50).background(Color(.systemBackground).opacity(0.8), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+      TextField("What is it called?", text: $title).font(.system(size: 18, weight: .medium)).focused($typing).submitLabel(.done).padding(.horizontal, 16).frame(height: 48).background(Color(.systemBackground).opacity(0.8), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
       HStack(spacing: 12) {
-        Picker("", selection: $mode) { Text("Dark").tag("dark"); Text("Light").tag("light") }.pickerStyle(.segmented).frame(width: 150)
-        Spacer()
-        ForEach(accents, id: \.0) { a in Button { tap(); accent = a.0 } label: { Circle().fill(Color(hex: a.0)).frame(width: 26, height: 26).overlay(Circle().stroke(Color.primary, lineWidth: accent == a.0 ? 2 : 0).padding(-3)) }.buttonStyle(Press()) }
+        Picker("", selection: $mode) { Text("Dark").tag("dark"); Text("Light").tag("light") }.pickerStyle(.segmented).frame(maxWidth: 150)
+        Spacer(minLength: 0)
+        HStack(spacing: 8) { ForEach(accents, id: \.0) { a in Button { tap(); accent = a.0 } label: { Circle().fill(Color(hex: a.0)).frame(width: 24, height: 24).overlay(Circle().stroke(Color.primary, lineWidth: accent == a.0 ? 2 : 0).padding(-4)).contentShape(Rectangle().inset(by: -10)) }.buttonStyle(Press()) } }.padding(.trailing, 4)
       }
       Button { tap(.medium); make(title, mode, accent) } label: { Text("Make it").font(.system(size: 17, weight: .semibold)).foregroundStyle(.white).frame(maxWidth: .infinity).frame(height: 52).background(Color(hex: accent), in: Capsule()).shadow(color: Color(hex: accent).opacity(0.4), radius: 14, y: 6) }.buttonStyle(Press())
       Spacer(minLength: 0)
-    }.padding(.horizontal, 22).padding(.top, 26).onAppear { typing = true }
+    }.padding(.horizontal, 20).padding(.top, 24).onAppear { typing = true }
   }
 }
 
@@ -279,12 +279,12 @@ struct DeckScreen: View {
       VStack(spacing: 0) {
         if presenting && !big { presenterTop }
         HostView(host: deck.host).opacity(deck.ready ? 1 : 0)
-          .frame(height: big ? nil : (g.size.width - (presenting ? 24 : 0)) * 9 / 16).frame(maxHeight: big ? .infinity : nil)
-          .clipShape(RoundedRectangle(cornerRadius: big ? 0 : 14, style: .continuous)).padding(.horizontal, big || !presenting ? 0 : 12)
+          .frame(height: big ? nil : (g.size.width - (presenting ? 40 : 0)) * 9 / 16).frame(maxHeight: big ? .infinity : nil)
+          .clipShape(RoundedRectangle(cornerRadius: big ? 0 : 12, style: .continuous)).padding(.horizontal, big || !presenting ? 0 : 20)
           .overlay { if !deck.ready { ProgressView() } }
           .overlay { if presenting && wide { HStack(spacing: 0) { Color.clear.contentShape(Rectangle()).onTapGesture { deck.go(deck.at - 1) }; Color.clear.contentShape(Rectangle()).onTapGesture { deck.go(deck.at + 1) } } } }
-          .overlay(alignment: .topLeading) { if presenting && wide { Button { stop() } label: { Image(systemName: "xmark").font(.system(size: 13, weight: .bold)).foregroundStyle(.white).frame(width: 34, height: 34).background(Color.black.opacity(0.4), in: Circle()) }.padding(14) } }
-          .overlay(alignment: .top) { if deck.full && !wide { Button { deck.onSlide(false) } label: { Label("Done editing on the slide", systemImage: "checkmark").font(.system(size: 15, weight: .semibold)).padding(.horizontal, 16).frame(height: 40).modifier(Glass(shape: Capsule())) }.foregroundStyle(.primary).padding(.top, 8) } }
+          .overlay(alignment: .topLeading) { if presenting && wide { Button { stop() } label: { Image(systemName: "xmark").font(.system(size: 13, weight: .bold)).foregroundStyle(.white).frame(width: 36, height: 36).background(Color.black.opacity(0.4), in: Circle()).frame(width: 44, height: 44).contentShape(Rectangle()) }.padding(12) } }
+          .overlay(alignment: .top) { if deck.full && !wide { Button { deck.onSlide(false) } label: { Label("Done editing on the slide", systemImage: "checkmark").font(.system(size: 15, weight: .semibold)).padding(.horizontal, 16).frame(height: 44).modifier(Glass(shape: Capsule())) }.foregroundStyle(.primary).padding(.top, 8) } }
         if !big { if presenting { presenterBottom(c) } else { editor(c) } }
       }
       .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -314,10 +314,10 @@ struct DeckScreen: View {
       }
     }
     .sheet(item: Binding(get: { adding.map { Layouts(list: $0) } }, set: { if $0 == nil { adding = nil } })) { l in
-      ScrollView { VStack(alignment: .leading, spacing: 10) {
-        Text("Add a slide").font(.system(size: 22, weight: .bold)).tracking(-0.4).padding(.bottom, 4)
-        ForEach(l.list) { x in Button { adding = nil; deck.add(x.id) } label: { VStack(alignment: .leading, spacing: 2) { Text(x.name).font(.system(size: 17, weight: .semibold)).foregroundStyle(.primary); if !x.about.isEmpty { Text(x.about).font(.system(size: 13)).foregroundStyle(.secondary).multilineTextAlignment(.leading) } }.padding(14).frame(maxWidth: .infinity, alignment: .leading).background(Color(.systemBackground).opacity(0.8), in: RoundedRectangle(cornerRadius: 16, style: .continuous)) }.buttonStyle(Press()) }
-      }.padding(.horizontal, 22).padding(.top, 26).padding(.bottom, 30) }.presentationDetents([.medium, .large]).presentationCornerRadius(30).presentationBackground(.regularMaterial)
+      ScrollView { VStack(alignment: .leading, spacing: 8) {
+        Text("Add a slide").font(.system(size: 22, weight: .bold)).tracking(-0.4).padding(.bottom, 8)
+        ForEach(l.list) { x in Button { adding = nil; deck.add(x.id) } label: { VStack(alignment: .leading, spacing: 2) { Text(x.name).font(.system(size: 17, weight: .semibold)).foregroundStyle(.primary); if !x.about.isEmpty { Text(x.about).font(.system(size: 13)).foregroundStyle(.secondary).multilineTextAlignment(.leading) } }.padding(16).frame(maxWidth: .infinity, alignment: .leading).background(Color(.systemBackground).opacity(0.8), in: RoundedRectangle(cornerRadius: 16, style: .continuous)) }.buttonStyle(Press()) }
+      }.padding(.horizontal, 20).padding(.top, 24).padding(.bottom, 32) }.presentationDetents([.medium, .large]).presentationCornerRadius(30).presentationBackground(.regularMaterial)
     }
     .sheet(item: $sharing) { u in ShareItems(items: [u]).presentationDetents([.medium, .large]) }
     .confirmationDialog("Delete this slide?", isPresented: $sure, titleVisibility: .visible) { Button("Delete Slide", role: .destructive) { deck.delete() } }
@@ -332,39 +332,39 @@ struct DeckScreen: View {
   private func editor(_ c: Color) -> some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 16) {
-        HStack(spacing: 6) {
-          Button { deck.go(deck.at - 1) } label: { Image(systemName: "chevron.left").font(.system(size: 15, weight: .bold)).frame(width: 40, height: 40).background(Color.primary.opacity(0.07), in: Circle()) }.opacity(deck.at == 0 ? 0.35 : 1)
-          VStack(spacing: 1) { Text(label(deck.at)).font(.system(size: 15, weight: .semibold)).lineLimit(1); Text("\(deck.at + 1) of \(deck.count)").font(.system(size: 12, design: .rounded)).foregroundStyle(.secondary) }.frame(maxWidth: .infinity)
-          Button { deck.go(deck.at + 1) } label: { Image(systemName: "chevron.right").font(.system(size: 15, weight: .bold)).frame(width: 40, height: 40).background(Color.primary.opacity(0.07), in: Circle()) }.opacity(deck.at + 1 >= deck.count ? 0.35 : 1)
+        HStack(spacing: 8) {
+          Button { deck.go(deck.at - 1) } label: { Image(systemName: "chevron.left").font(.system(size: 15, weight: .bold)).frame(width: 44, height: 44).background(Color.primary.opacity(0.07), in: Circle()) }.opacity(deck.at == 0 ? 0.35 : 1)
+          VStack(spacing: 2) { Text(label(deck.at)).font(.system(size: 15, weight: .semibold)).lineLimit(1); Text("\(deck.at + 1) of \(deck.count)").font(.system(size: 12, design: .rounded)).foregroundStyle(.secondary) }.frame(maxWidth: .infinity)
+          Button { deck.go(deck.at + 1) } label: { Image(systemName: "chevron.right").font(.system(size: 15, weight: .bold)).frame(width: 44, height: 44).background(Color.primary.opacity(0.07), in: Circle()) }.opacity(deck.at + 1 >= deck.count ? 0.35 : 1)
         }.foregroundStyle(.primary).padding(.horizontal, 20)
         let shown = deck.fields.filter { $0.shown }
         if !shown.isEmpty {
           group("Words on this slide") {
             ForEach(Array(shown.enumerated()), id: \.element.id) { n, f in
-              VStack(alignment: .leading, spacing: 3) {
+              VStack(alignment: .leading, spacing: 4) {
                 Text(f.role).font(.system(size: 12, weight: .medium)).foregroundStyle(c)
                 TextField(f.role, text: Binding(get: { deck.fields.first { $0.id == f.id }?.text ?? "" }, set: { deck.set(f.id, $0) }), axis: .vertical).font(.system(size: f.role == "Title" || f.role == "Statement" ? 18 : 16, weight: f.role == "Title" || f.role == "Statement" ? .semibold : .regular)).focused($typing, equals: f.id)
               }
               if n < shown.count - 1 { Divider() }
             }
           }
-        } else if deck.ready { Text("This slide has no words to change here. Its pictures and the rest change with Edit on the Slide, in the ⋯ menu.").font(.system(size: 14)).foregroundStyle(.secondary).padding(.horizontal, 26) }
+        } else if deck.ready { Text("This slide has no words to change here. Its pictures and the rest change with Edit on the Slide, in the ⋯ menu.").font(.system(size: 14)).foregroundStyle(.secondary).padding(.horizontal, 36) }
         group("Speaker notes") { TextField("What you will say", text: Binding(get: { deck.notes }, set: { deck.setNotes($0) }), axis: .vertical).lineLimit(3...).font(.system(size: 16)).focused($typing, equals: "notes") }
-        Color.clear.frame(height: 90)
-      }.padding(.top, 12)
+        Color.clear.frame(height: 88)
+      }.padding(.top, 16)
     }
     .scrollDismissesKeyboard(.interactively)
     .safeAreaInset(edge: .bottom) {
-      HStack(spacing: 10) {
-        Button { Task { adding = await deck.layouts() } } label: { Image(systemName: "plus").font(.system(size: 19, weight: .semibold)).frame(width: 54, height: 54).modifier(Glass(shape: Circle())) }.foregroundStyle(.primary)
-        Button { tap(.medium); typing = nil; began = Date(); withAnimation(.spring(response: 0.5, dampingFraction: 0.86)) { presenting = true } } label: { HStack(spacing: 8) { Image(systemName: "play.fill"); Text("Present") }.font(.system(size: 17, weight: .semibold)).foregroundStyle(.white).frame(maxWidth: .infinity).frame(height: 54).background(c, in: Capsule()).shadow(color: c.opacity(0.45), radius: 16, y: 8) }.buttonStyle(Press())
-        Button { deck.allSlides(true) } label: { Image(systemName: "square.grid.2x2").font(.system(size: 18, weight: .semibold)).frame(width: 54, height: 54).modifier(Glass(shape: Circle())) }.foregroundStyle(.primary)
+      HStack(spacing: 12) {
+        Button { Task { adding = await deck.layouts() } } label: { Image(systemName: "plus").font(.system(size: 19, weight: .semibold)).frame(width: 56, height: 56).modifier(Glass(shape: Circle())) }.foregroundStyle(.primary)
+        Button { tap(.medium); typing = nil; began = Date(); withAnimation(.spring(response: 0.5, dampingFraction: 0.86)) { presenting = true } } label: { HStack(spacing: 8) { Image(systemName: "play.fill"); Text("Present") }.font(.system(size: 17, weight: .semibold)).foregroundStyle(.white).frame(maxWidth: .infinity).frame(height: 56).background(c, in: Capsule()).shadow(color: c.opacity(0.45), radius: 16, y: 8) }.buttonStyle(Press())
+        Button { deck.allSlides(true) } label: { Image(systemName: "square.grid.2x2").font(.system(size: 18, weight: .semibold)).frame(width: 56, height: 56).modifier(Glass(shape: Circle())) }.foregroundStyle(.primary)
       }.padding(.horizontal, 16).padding(.bottom, 8)
     }
   }
   private func group<V: View>(_ name: String, @ViewBuilder _ v: () -> V) -> some View {
     VStack(alignment: .leading, spacing: 8) {
-      Text(name.uppercased()).font(.system(size: 12, weight: .semibold)).tracking(1.4).foregroundStyle(.secondary).padding(.horizontal, 6)
+      Text(name.uppercased()).font(.system(size: 12, weight: .semibold)).tracking(1.4).foregroundStyle(.secondary).padding(.horizontal, 16)
       VStack(alignment: .leading, spacing: 12) { v() }.padding(16).frame(maxWidth: .infinity, alignment: .leading).background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
     }.padding(.horizontal, 20)
   }
@@ -372,15 +372,15 @@ struct DeckScreen: View {
   // ---------- presenting, upright: the slide, what is next, your notes, a clock, and Next under your thumb ----------
   private var presenterTop: some View {
     HStack {
-      Button { stop() } label: { Image(systemName: "xmark").font(.system(size: 15, weight: .bold)).foregroundStyle(.white).frame(width: 40, height: 40).background(Color.white.opacity(0.14), in: Circle()) }
+      Button { stop() } label: { Image(systemName: "xmark").font(.system(size: 15, weight: .bold)).foregroundStyle(.white).frame(width: 44, height: 44).background(Color.white.opacity(0.14), in: Circle()) }
       Spacer()
       TimelineView(.periodic(from: began, by: 1)) { t in let s = max(0, Int(t.date.timeIntervalSince(began))); Text(String(format: "%d:%02d", s / 60, s % 60)).font(.system(size: 20, weight: .semibold, design: .rounded)).monospacedDigit().foregroundStyle(.white) }
       Spacer()
       Text("\(deck.at + 1) of \(deck.count)").font(.system(size: 15, weight: .medium, design: .rounded)).foregroundStyle(.white.opacity(0.6)).frame(width: 64, alignment: .trailing)
-    }.padding(.horizontal, 18).padding(.vertical, 10)
+    }.padding(.horizontal, 20).padding(.vertical, 8)
   }
   private func presenterBottom(_ c: Color) -> some View {
-    VStack(alignment: .leading, spacing: 14) {
+    VStack(alignment: .leading, spacing: 16) {
       HStack(spacing: 8) { Text("NEXT").font(.system(size: 11, weight: .semibold)).tracking(1.4).foregroundStyle(.white.opacity(0.5)); Text(deck.at + 1 < deck.count ? label(deck.at + 1) : "The end").font(.system(size: 15, weight: .semibold)).foregroundStyle(.white.opacity(0.85)).lineLimit(1) }
       ScrollView { Text(deck.notes.isEmpty ? "No notes for this slide." : deck.notes).font(.system(size: 22, weight: .medium)).lineSpacing(5).foregroundStyle(.white.opacity(deck.notes.isEmpty ? 0.4 : 0.92)).frame(maxWidth: .infinity, alignment: .leading) }.frame(maxHeight: .infinity)
       HStack(spacing: 12) {
@@ -388,6 +388,6 @@ struct DeckScreen: View {
         Button { deck.go(deck.at + 1) } label: { HStack(spacing: 8) { Text(deck.at + 1 < deck.count ? "Next" : "Last slide"); Image(systemName: "chevron.right") }.font(.system(size: 20, weight: .bold)).foregroundStyle(.white).frame(maxWidth: .infinity).frame(height: 72).background(c, in: RoundedRectangle(cornerRadius: 24, style: .continuous)).shadow(color: c.opacity(0.5), radius: 18, y: 8) }
       }.buttonStyle(Press())
       Text("Turn the phone on its side to fill the screen with the slide.").font(.system(size: 13)).foregroundStyle(.white.opacity(0.4)).frame(maxWidth: .infinity)
-    }.padding(.horizontal, 18).padding(.top, 16).padding(.bottom, 8)
+    }.padding(.horizontal, 20).padding(.top, 16).padding(.bottom, 8)
   }
 }

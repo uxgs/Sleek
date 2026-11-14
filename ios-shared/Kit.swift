@@ -49,7 +49,7 @@ final class Shell: ObservableObject {
 struct Toast: ViewModifier {
   @ObservedObject var shell: Shell
   func body(content: Content) -> some View {
-    content.overlay(alignment: .top) { if let t = shell.toast { Text(t).font(.system(size: 15, weight: .medium)).multilineTextAlignment(.center).padding(.horizontal, 16).padding(.vertical, 10).modifier(Glass(shape: Capsule())).padding(.top, 6).padding(.horizontal, 20).transition(.move(edge: .top).combined(with: .opacity)).id(t) } }
+    content.overlay(alignment: .top) { if let t = shell.toast { Text(t).font(.system(size: 15, weight: .medium)).multilineTextAlignment(.center).padding(.horizontal, 16).padding(.vertical, 12).modifier(Glass(shape: Capsule())).padding(.top, 8).padding(.horizontal, 20).transition(.move(edge: .top).combined(with: .opacity)).id(t) } }
   }
 }
 

@@ -29,8 +29,8 @@ struct BrowserView: View {
         case .tasks: TasksView(b: b).presentationDetents([.medium, .large]).presentationBackground(.regularMaterial)
         case .library: LibraryView(b: b).presentationDetents([.large])
         case .settings: SettingsView(b: b).presentationDetents([.large])
-        case .shield: ShieldView(b: b, tab: b.tab).presentationDetents([.height(250)]).presentationBackground(.regularMaterial)
-        case .save: SaveView(b: b).presentationDetents([.height(430)]).presentationBackground(.regularMaterial)
+        case .shield: ShieldView(b: b, tab: b.tab).presentationDetents([.height(224)]).presentationBackground(.regularMaterial)
+        case .save: SaveView(b: b).presentationDetents([.height(436)]).presentationBackground(.regularMaterial)
         case .passwords: NavigationStack { PasswordsScreen(b: b, sheet: true) }.presentationDetents([.large])
         }
       }.presentationCornerRadius(28).preferredColorScheme(b.scheme).tint(.sleekB)
@@ -47,12 +47,12 @@ struct ToastView: View {
   @ObservedObject var b: Browser
   var body: some View {
     VStack {
-      if b.barAtTop { Spacer().frame(height: 74) } else { Spacer() }
+      if b.barAtTop { Spacer().frame(height: 72) } else { Spacer() }
       if let t = b.toast {
         Text(t).font(.system(size: 15, weight: .medium)).padding(.horizontal, 16).frame(height: 40).modifier(Glass(shape: Capsule()))
           .transition(.move(edge: b.barAtTop ? .top : .bottom).combined(with: .opacity)).id(t)
       }
-      if b.barAtTop { Spacer() } else { Spacer().frame(height: 74) }
+      if b.barAtTop { Spacer() } else { Spacer().frame(height: 72) }
     }.allowsHitTesting(false)
   }
 }
@@ -91,22 +91,22 @@ struct BarView: View {
           VStack(spacing: 8) { if !b.barAtTop { extras }; bar; if b.barAtTop { extras } }
         }
       }
-      .padding(.horizontal, b.compact ? 14 : 10).padding(.bottom, b.compact ? 10 : 4).padding(.top, 6)
+      .padding(.horizontal, b.compact ? 16 : 12).padding(.bottom, b.compact ? 12 : 4).padding(.top, 8)
     }
     .environment(\.colorScheme, tab.isPrivate ? .dark : scheme)
   }
   private var bar: some View {
-    HStack(spacing: 6) {
+    HStack(spacing: 4) {
       round("chevron.left", dim: tab.atStart) { tap(); tab.back() }
       address
       tabsButton
       Menu { menu } label: { Image(systemName: "ellipsis").font(.system(size: 17, weight: .semibold)).frame(width: 44, height: 44) }.foregroundStyle(.primary)
     }
-    .padding(.horizontal, 4).frame(height: 54)
+    .padding(.horizontal, 4).frame(height: 52)
     // with the bar at the top, a page's progress runs along the bar's own lower edge
     .overlay(alignment: .bottom) { if tab.loading && b.barAtTop && !tab.atStart { barProgress } }
-    .background { if tab.isPrivate { RoundedRectangle(cornerRadius: 27, style: .continuous).fill(Color.black.opacity(0.55)) } }
-    .modifier(Glass(shape: RoundedRectangle(cornerRadius: 27, style: .continuous)))
+    .background { if tab.isPrivate { RoundedRectangle(cornerRadius: 26, style: .continuous).fill(Color.black.opacity(0.55)) } }
+    .modifier(Glass(shape: RoundedRectangle(cornerRadius: 26, style: .continuous)))
     .matchedGeometryEffect(id: "bar", in: ns)
     .transition(.scale(scale: 0.9).combined(with: .opacity))
   }
@@ -117,8 +117,8 @@ struct BarView: View {
   }
   private func chip(_ icon: String, _ text: String, _ act: @escaping () -> Void) -> some View {
     Button(action: act) {
-      HStack(spacing: 7) { Image(systemName: icon).font(.system(size: 13, weight: .semibold)).foregroundStyle(sleekRun); Text(text).font(.system(size: 15, weight: .medium)).lineLimit(1) }
-        .padding(.horizontal, 14).frame(height: 40).modifier(Glass(shape: Capsule()))
+      HStack(spacing: 8) { Image(systemName: icon).font(.system(size: 13, weight: .semibold)).foregroundStyle(sleekRun); Text(text).font(.system(size: 15, weight: .medium)).lineLimit(1) }
+        .padding(.horizontal, 16).frame(height: 44).modifier(Glass(shape: Capsule()))
     }.buttonStyle(Press()).foregroundStyle(.primary)
   }
   private func offerRow(_ o: SignInOffer) -> some View {
@@ -130,23 +130,23 @@ struct BarView: View {
     }.padding(.vertical, -10).scrollClipDisabled()
   }
   private func askCard(_ a: SignInAsk) -> some View {
-    VStack(alignment: .leading, spacing: 10) {
-      HStack(spacing: 10) {
-        Image(systemName: "key.fill").font(.system(size: 15, weight: .semibold)).foregroundStyle(.white).frame(width: 34, height: 34).background(sleekRun, in: Circle())
-        VStack(alignment: .leading, spacing: 1) { Text(a.update ? "Update this password?" : "Save this password?").font(.system(size: 16, weight: .semibold)); Text((a.user.isEmpty ? "" : a.user + " · ") + a.site).font(.system(size: 13)).foregroundStyle(.secondary).lineLimit(1) }
+    VStack(alignment: .leading, spacing: 12) {
+      HStack(spacing: 12) {
+        Image(systemName: "key.fill").font(.system(size: 15, weight: .semibold)).foregroundStyle(.white).frame(width: 36, height: 36).background(sleekRun, in: Circle())
+        VStack(alignment: .leading, spacing: 2) { Text(a.update ? "Update this password?" : "Save this password?").font(.system(size: 16, weight: .semibold)); Text((a.user.isEmpty ? "" : a.user + " · ") + a.site).font(.system(size: 13)).foregroundStyle(.secondary).lineLimit(1) }
         Spacer(minLength: 0)
       }
       HStack(spacing: 8) {
-        Button { b.answerSignIn("never") } label: { Text("Never here").font(.system(size: 14, weight: .medium)).padding(.horizontal, 12).frame(height: 38) }.foregroundStyle(.secondary)
+        Button { b.answerSignIn("never") } label: { Text("Never here").font(.system(size: 14, weight: .medium)).padding(.horizontal, 12).frame(height: 44).contentShape(Rectangle()) }.foregroundStyle(.secondary)
         Spacer(minLength: 0)
-        Button { b.answerSignIn("later") } label: { Text("Not Now").font(.system(size: 15, weight: .medium)).padding(.horizontal, 14).frame(height: 38).background(Color.primary.opacity(0.08), in: Capsule()) }.foregroundStyle(.primary)
-        Button { b.answerSignIn("save") } label: { Text(a.update ? "Update" : "Save").font(.system(size: 15, weight: .semibold)).padding(.horizontal, 18).frame(height: 38).foregroundStyle(Color(.systemBackground)).background(Color.primary, in: Capsule()) }
+        Button { b.answerSignIn("later") } label: { Text("Not Now").font(.system(size: 15, weight: .medium)).padding(.horizontal, 16).frame(height: 44).background(Color.primary.opacity(0.08), in: Capsule()) }.foregroundStyle(.primary)
+        Button { b.answerSignIn("save") } label: { Text(a.update ? "Update" : "Save").font(.system(size: 15, weight: .semibold)).padding(.horizontal, 20).frame(height: 44).foregroundStyle(Color(.systemBackground)).background(Color.primary, in: Capsule()) }
       }.buttonStyle(Press())
     }
-    .padding(14).modifier(Glass(shape: RoundedRectangle(cornerRadius: 24, style: .continuous)))
+    .padding(16).modifier(Glass(shape: RoundedRectangle(cornerRadius: 24, style: .continuous)))
   }
   private var barProgress: some View {
-    GeometryReader { g in Capsule().fill(sleekRun).frame(width: max(20, (g.size.width - 48) * tab.progress), height: 2.5).padding(.horizontal, 24).animation(.easeOut(duration: 0.25), value: tab.progress) }.frame(height: 2.5).padding(.bottom, 3)
+    GeometryReader { g in Capsule().fill(sleekRun).frame(width: max(20, (g.size.width - 48) * tab.progress), height: 2.5).padding(.horizontal, 24).animation(.easeOut(duration: 0.25), value: tab.progress) }.frame(height: 2.5).padding(.bottom, 4)
   }
   private func round(_ icon: String, dim: Bool = false, _ act: @escaping () -> Void) -> some View {
     Button(action: act) { Image(systemName: icon).font(.system(size: 17, weight: .semibold)).frame(width: 44, height: 44) }.foregroundStyle(.primary).opacity(dim ? 0.3 : 1).disabled(dim)
@@ -193,8 +193,8 @@ struct BarView: View {
     else if tab.isSleek { Mark(size: 15) }
     else {
       Button { tap(); sheet = .shield } label: {
-        Image(systemName: tab.blocking ? "checkmark.shield.fill" : (b.blockerReady ? "shield.slash" : "shield")).font(.system(size: 14)).foregroundStyle(tab.blocking ? Color.tasks : .secondary).frame(width: 26, height: 40).contentShape(Rectangle())
-      }.padding(.horizontal, -6)
+        Image(systemName: tab.blocking ? "checkmark.shield.fill" : (b.blockerReady ? "shield.slash" : "shield")).font(.system(size: 14)).foregroundStyle(tab.blocking ? Color.tasks : .secondary).frame(width: 44, height: 44).contentShape(Rectangle())
+      }.padding(.horizontal, -15).padding(.vertical, -2)
     }
   }
   /// The address: press it to search or type an address. Slide it sideways for the next or last tab, up for all of them.
@@ -204,7 +204,7 @@ struct BarView: View {
       Text(tab.atStart ? (tab.isPrivate ? "Search privately" : "Search or enter address") : tab.shownName).font(.system(size: 15, weight: tab.atStart ? .regular : .medium)).foregroundStyle(tab.atStart ? .secondary : .primary).lineLimit(1)
       Spacer(minLength: 0)
       if tab.isPrivate && !tab.atStart { Image(systemName: "eyeglasses").font(.system(size: 13, weight: .medium)).foregroundStyle(.secondary) }
-      if !tab.atStart { Button { tap(); if tab.loading { tab.web.stopLoading() } else { tab.web.reload() } } label: { Image(systemName: tab.loading ? "xmark" : "arrow.clockwise").font(.system(size: 13, weight: .semibold)).frame(width: 30, height: 34) }.foregroundStyle(.secondary) }
+      if !tab.atStart { Button { tap(); if tab.loading { tab.web.stopLoading() } else { tab.web.reload() } } label: { Image(systemName: tab.loading ? "xmark" : "arrow.clockwise").font(.system(size: 13, weight: .semibold)).frame(width: 44, height: 44).contentShape(Rectangle()) }.foregroundStyle(.secondary).padding(.horizontal, -7).padding(.vertical, -2) }
     }
     .padding(.leading, 12).padding(.trailing, 4).frame(height: 40).frame(maxWidth: .infinity)
     .background(Color.primary.opacity(tab.isPrivate ? 0.12 : 0.06), in: Capsule())

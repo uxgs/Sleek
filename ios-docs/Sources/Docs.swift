@@ -181,32 +181,32 @@ struct LibraryView: View {
     let shown = found ?? lib.pages.filter { folder.isEmpty || $0.folder == folder }
     ScrollView {
       VStack(alignment: .leading, spacing: 16) {
-        HStack(alignment: .firstTextBaseline) {
+        HStack(alignment: .center) {
           Text("Docs").font(.system(size: 40, weight: .bold)).tracking(-1.2)
           Spacer()
           Menu {
             Button { name = ""; naming = true } label: { Label("New Folder", systemImage: "folder.badge.plus") }
             Button { bringing = true } label: { Label("Bring In a Page…", systemImage: "square.and.arrow.down") }
             if let f = lib.folders.first(where: { $0.id == folder }) { Divider(); Button(role: .destructive) { Task { await lib.removeFolder(f.id); folder = "" } } label: { Label("Remove the Folder “\(f.name)”", systemImage: "folder.badge.minus") } }
-          } label: { Image(systemName: "ellipsis").font(.system(size: 17, weight: .semibold)).frame(width: 40, height: 40).background(Color.primary.opacity(0.07), in: Circle()) }.foregroundStyle(.primary)
-        }.padding(.horizontal, 22)
-        HStack(spacing: 8) { Image(systemName: "magnifyingglass").foregroundStyle(.secondary); TextField("Search your pages", text: $query).autocorrectionDisabled(); if !query.isEmpty { Button { query = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(.tertiary) } } }
-          .padding(.horizontal, 14).frame(height: 46).background(Color(.secondarySystemBackground), in: Capsule()).padding(.horizontal, 22)
+          } label: { Image(systemName: "ellipsis").font(.system(size: 17, weight: .semibold)).frame(width: 44, height: 44).background(Color.primary.opacity(0.07), in: Circle()) }.foregroundStyle(.primary)
+        }.padding(.horizontal, 16).padding(.top, 8)
+        HStack(spacing: 8) { Image(systemName: "magnifyingglass").foregroundStyle(.secondary); TextField("Search your pages", text: $query).autocorrectionDisabled(); if !query.isEmpty { Button { query = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(.tertiary).frame(width: 44, height: 44).contentShape(Rectangle()) }.padding(-12) } }
+          .padding(.horizontal, 16).frame(height: 48).background(Color(.secondarySystemBackground), in: Capsule()).padding(.horizontal, 16)
         if !lib.folders.isEmpty && found == nil {
           ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) { chip("All", ""); ForEach(lib.folders) { chip($0.name, $0.id) } }.padding(.horizontal, 22)
-          }
+            HStack(spacing: 8) { chip("All", ""); ForEach(lib.folders) { chip($0.name, $0.id) } }.padding(.horizontal, 16)
+          }.padding(.vertical, -4)
         }
         if lib.ready && shown.isEmpty {
-          VStack(spacing: 8) { Image(systemName: found == nil ? "doc.text" : "magnifyingglass").font(.system(size: 30)).foregroundStyle(.secondary); Text(found != nil ? "No page has those words" : folder.isEmpty ? "No pages yet" : "Nothing in this folder").font(.system(size: 19, weight: .semibold)); if found == nil { Text("Press the pencil to start one.").font(.system(size: 15)).foregroundStyle(.secondary) } }.frame(maxWidth: .infinity).padding(.top, 70)
+          VStack(spacing: 12) { Image(systemName: found == nil ? "doc.text" : "magnifyingglass").font(.system(size: 30)).foregroundStyle(.secondary); Text(found != nil ? "No page has those words" : folder.isEmpty ? "No pages yet" : "Nothing in this folder").font(.system(size: 19, weight: .semibold)); if found == nil { Text("Press the pencil to start one.").font(.system(size: 15)).foregroundStyle(.secondary) } }.frame(maxWidth: .infinity).padding(.top, 72)
         }
         LazyVStack(spacing: 0) { ForEach(shown) { p in row(p) } }
-      }.padding(.bottom, 110)
+      }.padding(.bottom, 112)
     }
     .scrollDismissesKeyboard(.interactively)
     .background(alignment: .top) { Bloom(c: .docs) }
     .overlay(alignment: .bottomTrailing) {
-      Button { tap(.medium); open = "new" } label: { Image(systemName: "square.and.pencil").font(.system(size: 22, weight: .semibold)).foregroundStyle(.white).frame(width: 62, height: 62).background(Color.docs, in: Circle()).shadow(color: Color.docs.opacity(0.5), radius: 16, y: 8) }.buttonStyle(Press()).padding(22)
+      Button { tap(.medium); open = "new" } label: { Image(systemName: "square.and.pencil").font(.system(size: 22, weight: .semibold)).foregroundStyle(.white).frame(width: 64, height: 64).background(Color.docs, in: Circle()).shadow(color: Color.docs.opacity(0.5), radius: 16, y: 8) }.buttonStyle(Press()).padding(16)
     }
     .navigationDestination(item: $open) { which in PageScreen(page: page, lib: lib, shell: shell, id: which == "new" ? nil : which, folder: folder) }
     .onChange(of: query) { _, q in let words = q.trimmingCharacters(in: .whitespaces); if words.isEmpty { found = nil } else { Task { let r = await lib.search(words); if query.trimmingCharacters(in: .whitespaces) == words { withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) { found = r } } } } }
@@ -216,15 +216,15 @@ struct LibraryView: View {
     .onAppear { Task { await lib.refresh() }; if Res.arg("--open") == "new", open == nil { open = "new" } else if Res.arg("--open") == "first", open == nil, let f = lib.pages.first { open = f.id } }
   }
   private func chip(_ name: String, _ id: String) -> some View {
-    Button { tap(); withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) { folder = id } } label: { Text(name).font(.system(size: 14, weight: .semibold)).lineLimit(1).padding(.horizontal, 14).frame(height: 34).foregroundStyle(folder == id ? .white : .primary).background(folder == id ? AnyShapeStyle(Color.docs) : AnyShapeStyle(Color.primary.opacity(0.07)), in: Capsule()) }.buttonStyle(Press())
+    Button { tap(); withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) { folder = id } } label: { Text(name).font(.system(size: 14, weight: .semibold)).lineLimit(1).padding(.horizontal, 16).frame(height: 36).foregroundStyle(folder == id ? .white : .primary).background(folder == id ? AnyShapeStyle(Color.docs) : AnyShapeStyle(Color.primary.opacity(0.07)), in: Capsule()).frame(minHeight: 44).contentShape(Rectangle()) }.buttonStyle(Press())
   }
   private func row(_ p: PageRec) -> some View {
     VStack(spacing: 0) {
       Button { tap(); open = p.id } label: {
-        VStack(alignment: .leading, spacing: 3) {
+        VStack(alignment: .leading, spacing: 4) {
           HStack { Text(p.title).font(.system(size: 17, weight: .semibold)).foregroundStyle(.primary).lineLimit(1); Spacer(); Text(ago(p.updated)).font(.system(size: 13)).foregroundStyle(.tertiary) }
           Text(p.peek.isEmpty || p.peek.lowercased() == p.title.lowercased() ? "Only its title so far" : p.peek).font(.system(size: 15)).foregroundStyle(.secondary).lineLimit(2).multilineTextAlignment(.leading)
-        }.padding(.vertical, 12).padding(.horizontal, 22).frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
+        }.padding(.vertical, 12).padding(.horizontal, 16).frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
       }.buttonStyle(.plain)
       .contextMenu {
         Button { Task { await lib.duplicate(p.id) } } label: { Label("Duplicate", systemImage: "plus.square.on.square") }
@@ -232,7 +232,7 @@ struct LibraryView: View {
         if !lib.folders.isEmpty { Menu { Button("No folder") { Task { await lib.move(p.id, to: "") } }; ForEach(lib.folders) { f in Button(f.name) { Task { await lib.move(p.id, to: f.id) } } } } label: { Label("Move to a Folder", systemImage: "folder") } }
         Button(role: .destructive) { Task { await lib.remove(p.id); shell.say("Page deleted") } } label: { Label("Delete", systemImage: "trash") }
       }
-      Divider().padding(.leading, 22)
+      Divider().padding(.horizontal, 16)
     }.transition(.opacity)
   }
 }
@@ -302,7 +302,7 @@ struct KeyboardBar: View {
     let a = page.at
     HStack(spacing: 8) {
       ScrollView(.horizontal, showsIndicators: false) {
-        HStack(spacing: 2) {
+        HStack(spacing: 0) {
           Menu {
             Button { page.text() } label: { Label("Text", systemImage: a.block == "paragraph" ? "checkmark" : "text.alignleft") }
             Button { page.heading(1) } label: { Label("Heading", systemImage: a.block == "heading" && a.level == 1 ? "checkmark" : "textformat.size.larger") }
@@ -334,15 +334,15 @@ struct KeyboardBar: View {
           }
           Button { page.undo() } label: { key("arrow.uturn.backward", on: false) }
           Button { page.redo() } label: { key("arrow.uturn.forward", on: false) }
-        }.padding(.horizontal, 6)
+        }.padding(.horizontal, 4)
       }
       .frame(height: 48).modifier(Glass(shape: Capsule()))
       Button { tap(); insert() } label: { Image(systemName: "plus").font(.system(size: 19, weight: .semibold)).foregroundStyle(.white).frame(width: 48, height: 48).background(Color.docs, in: Circle()).shadow(color: Color.docs.opacity(0.4), radius: 10, y: 4) }
       Button { tap(); page.done() } label: { Image(systemName: "keyboard.chevron.compact.down").font(.system(size: 17, weight: .semibold)).frame(width: 48, height: 48).modifier(Glass(shape: Circle())) }.foregroundStyle(.primary)
     }
-    .padding(.horizontal, 10).padding(.bottom, 6).tint(.docs)
+    .padding(.horizontal, 12).padding(.bottom, 8).tint(.docs)
   }
-  private func key(_ icon: String, on: Bool) -> some View { Image(systemName: icon).font(.system(size: 17, weight: .medium)).foregroundStyle(on ? Color.white : Color.primary).frame(width: 40, height: 36).background(on ? Color.docs : Color.clear, in: RoundedRectangle(cornerRadius: 11, style: .continuous)).frame(width: 44, height: 44) }
+  private func key(_ icon: String, on: Bool) -> some View { Image(systemName: icon).font(.system(size: 17, weight: .medium)).foregroundStyle(on ? Color.white : Color.primary).frame(width: 40, height: 36).background(on ? Color.docs : Color.clear, in: RoundedRectangle(cornerRadius: 18, style: .continuous)).frame(width: 44, height: 44).contentShape(Rectangle()) }
 }
 
 /// + on the keyboard: what can go into a page, big enough for a thumb. The list is the page's own.
@@ -352,19 +352,19 @@ struct InsertSheet: View {
   var body: some View {
     let groups = list.reduce(into: [String]()) { if !$0.contains($1.group) { $0.append($1.group) } }
     ScrollView {
-      VStack(alignment: .leading, spacing: 16) {
-        Text("Add to the page").font(.system(size: 22, weight: .bold)).tracking(-0.4)
+      VStack(alignment: .leading, spacing: 24) {
+        Text("Add to the page").font(.system(size: 22, weight: .bold)).tracking(-0.4).padding(.bottom, -8)
         ForEach(groups, id: \.self) { g in
           VStack(alignment: .leading, spacing: 8) {
             Text(g.uppercased()).font(.system(size: 12, weight: .semibold)).tracking(1.4).foregroundStyle(.secondary)
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 2), spacing: 10) { ForEach(list.filter { $0.group == g }) { it in
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 2), spacing: 8) { ForEach(list.filter { $0.group == g }) { it in
               Button { tap(.medium); pick(it) } label: {
-                HStack(spacing: 10) { Image(systemName: InsertSheet.icons[it.kind] ?? "plus").font(.system(size: 18)).foregroundStyle(it.kind == "trash" ? Color.red : Color.docs).frame(width: 26); Text(it.name).font(.system(size: 15, weight: .medium)).foregroundStyle(.primary).lineLimit(2).multilineTextAlignment(.leading); Spacer(minLength: 0) }
-                  .padding(.horizontal, 12).frame(height: 54).background(Color(.systemBackground).opacity(0.8), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                HStack(spacing: 12) { Image(systemName: InsertSheet.icons[it.kind] ?? "plus").font(.system(size: 18)).foregroundStyle(it.kind == "trash" ? Color.red : Color.docs).frame(width: 24); Text(it.name).font(.system(size: 15, weight: .medium)).foregroundStyle(.primary).lineLimit(2).multilineTextAlignment(.leading); Spacer(minLength: 0) }
+                  .padding(.horizontal, 12).frame(height: 56).background(Color(.systemBackground).opacity(0.8), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
               }.buttonStyle(Press()) } }
           }
         }
-      }.padding(.horizontal, 22).padding(.top, 26).padding(.bottom, 30)
+      }.padding(.horizontal, 16).padding(.top, 24).padding(.bottom, 32)
     }
   }
 }
@@ -373,8 +373,8 @@ struct OutlineSheet: View {
   var body: some View {
     ScrollView { VStack(alignment: .leading, spacing: 4) {
       Text("Outline").font(.system(size: 22, weight: .bold)).tracking(-0.4).padding(.bottom, 8)
-      ForEach(Array(list.enumerated()), id: \.offset) { _, h in Button { tap(); go(h) } label: { Text(h.text).font(.system(size: h.level == 1 ? 18 : 16, weight: h.level == 1 ? .semibold : .regular)).foregroundStyle(h.level == 1 ? .primary : .secondary).lineLimit(2).multilineTextAlignment(.leading).padding(.leading, CGFloat(max(0, h.level - 1)) * 16).frame(maxWidth: .infinity, minHeight: 40, alignment: .leading).contentShape(Rectangle()) }.buttonStyle(.plain) }
+      ForEach(Array(list.enumerated()), id: \.offset) { _, h in Button { tap(); go(h) } label: { Text(h.text).font(.system(size: h.level == 1 ? 18 : 16, weight: h.level == 1 ? .semibold : .regular)).foregroundStyle(h.level == 1 ? .primary : .secondary).lineLimit(2).multilineTextAlignment(.leading).padding(.leading, CGFloat(max(0, h.level - 1)) * 16).frame(maxWidth: .infinity, minHeight: 44, alignment: .leading).contentShape(Rectangle()) }.buttonStyle(.plain) }
       if list.isEmpty { Text("Headings you add show here, to jump between.").foregroundStyle(.secondary) }
-    }.padding(.horizontal, 22).padding(.top, 26) }
+    }.padding(.horizontal, 16).padding(.top, 24).padding(.bottom, 32) }
   }
 }

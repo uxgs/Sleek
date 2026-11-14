@@ -28,11 +28,11 @@ struct Bloom: View {
 /// A small heading over a group of tasks.
 struct Head: View {
   let text: String; var c: Color = .secondary
-  var body: some View { Text(text.uppercased()).font(.system(size: 12, weight: .semibold)).tracking(1.4).foregroundStyle(c).padding(.top, 14).plainRow() }
+  var body: some View { Text(text.uppercased()).font(.system(size: 12, weight: .semibold)).tracking(1.4).foregroundStyle(c).padding(.top, 16).plainRow() }
 }
 extension View {
   /// A row of a list drawn as the page itself, with no lines and the page's own margins.
-  func plainRow() -> some View { listRowSeparator(.hidden).listRowBackground(Color.clear).listRowInsets(EdgeInsets(top: 0, leading: 22, bottom: 0, trailing: 22)) }
+  func plainRow() -> some View { listRowSeparator(.hidden).listRowBackground(Color.clear).listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20)) }
 }
 /// A copy of your tasks as a file.
 struct TasksFile: FileDocument {

@@ -13,20 +13,20 @@ struct SearchView: View {
   var body: some View {
     let rows = b.suggestions(text)
     VStack(spacing: 0) {
-      HStack(spacing: 10) {
+      HStack(spacing: 12) {
         HStack(spacing: 8) { Image(systemName: b.tab.isPrivate ? "eyeglasses" : "magnifyingglass").foregroundStyle(.secondary)
           TextField(b.tab.isPrivate ? "Search privately or enter an address" : "Search or enter an address", text: $text).focused($typing).keyboardType(.webSearch).textInputAutocapitalization(.never).autocorrectionDisabled().submitLabel(.go).onSubmit { go(text) }
-          if !text.isEmpty { Button { text = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(.tertiary) } } }
-          .padding(.horizontal, 14).frame(height: 48).background(Color(.secondarySystemBackground), in: Capsule())
+          if !text.isEmpty { Button { text = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(.tertiary).frame(width: 44, height: 44).contentShape(Rectangle()) }.padding(-12) } }
+          .padding(.horizontal, 16).frame(height: 48).background(Color(.secondarySystemBackground), in: Capsule())
           .overlay(Capsule().stroke(sleekRun, lineWidth: typing ? 1.6 : 0)).shadow(color: Color.sleekB.opacity(typing ? 0.4 : 0), radius: 16, y: 6).animation(.easeOut(duration: 0.25), value: typing)
-        Button("Cancel") { dismiss() }.font(.system(size: 16))
-      }.padding(.horizontal, 16).padding(.top, 18).padding(.bottom, 10)
+        Button { dismiss() } label: { Text("Cancel").font(.system(size: 16)).frame(minWidth: 44, minHeight: 44).contentShape(Rectangle()) }
+      }.padding(.horizontal, 20).padding(.top, 20).padding(.bottom, 12)
       List {
         // the page you are on, to change its address rather than start again
-        if text.isEmpty, b.tab.isWeb, let u = b.tab.address { Button { text = u.absoluteString } label: { HStack(spacing: 12) { Image(systemName: "pencil").frame(width: 28, height: 28).foregroundStyle(.secondary); VStack(alignment: .leading, spacing: 1) { Text("Edit this page’s address").font(.system(size: 16)).foregroundStyle(.primary); Text(u.absoluteString).font(.system(size: 13)).foregroundStyle(.secondary).lineLimit(1) } } } }
-        if text.isEmpty && !rows.isEmpty { Section("Lately") { ForEach(rows) { row($0) } } }
+        if text.isEmpty, b.tab.isWeb, let u = b.tab.address { Button { text = u.absoluteString } label: { HStack(spacing: 12) { Image(systemName: "pencil").frame(width: 28, height: 28).foregroundStyle(.secondary); VStack(alignment: .leading, spacing: 2) { Text("Edit this page’s address").font(.system(size: 16)).foregroundStyle(.primary); Text(u.absoluteString).font(.system(size: 13)).foregroundStyle(.secondary).lineLimit(1) } }.frame(maxWidth: .infinity, minHeight: 40, alignment: .leading) }.listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0)).alignmentGuide(.listRowSeparatorTrailing) { $0[.trailing] } }
+        if text.isEmpty && !rows.isEmpty { Section { ForEach(rows) { row($0) } } header: { Text("Lately").listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20)) } }
         else { ForEach(rows) { row($0) } }
-      }.listStyle(.plain).scrollDismissesKeyboard(.interactively).animation(.spring(response: 0.3, dampingFraction: 0.85), value: rows.map(\.id))
+      }.listStyle(.plain).contentMargins(.horizontal, 20, for: .scrollContent).scrollDismissesKeyboard(.interactively).animation(.spring(response: 0.3, dampingFraction: 0.85), value: rows.map(\.id))
     }
     .onAppear { typing = true }
   }
@@ -39,11 +39,11 @@ struct SearchView: View {
           else if r.kind == "search" { Image(systemName: "magnifyingglass").frame(width: 28, height: 28).foregroundStyle(.secondary) }
           else { SiteIcon(host: URL(string: r.url)?.host ?? "", size: 28) }
         }
-        VStack(alignment: .leading, spacing: 1) { Text(r.title.isEmpty ? r.hint : r.title).font(.system(size: 16)).foregroundStyle(.primary).lineLimit(1); if !r.hint.isEmpty { Text(r.hint).font(.system(size: 13)).foregroundStyle(.secondary).lineLimit(1) } }
+        VStack(alignment: .leading, spacing: 2) { Text(r.title.isEmpty ? r.hint : r.title).font(.system(size: 16)).foregroundStyle(.primary).lineLimit(1); if !r.hint.isEmpty { Text(r.hint).font(.system(size: 13)).foregroundStyle(.secondary).lineLimit(1) } }
         Spacer(minLength: 0)
         if r.kind == "bookmark" { Image(systemName: "bookmark.fill").font(.system(size: 11)).foregroundStyle(.tertiary) }
-      }
-    }
+      }.frame(maxWidth: .infinity, minHeight: 40, alignment: .leading)
+    }.listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0)).alignmentGuide(.listRowSeparatorTrailing) { $0[.trailing] }
   }
 }
 
@@ -59,28 +59,28 @@ struct TabsView: View {
     VStack(spacing: 0) {
       HStack {
         Picker("", selection: $hidden.animation(.spring(response: 0.4, dampingFraction: 0.85))) { Text("Tabs").tag(false); Label("Private", systemImage: "eyeglasses").tag(true) }.pickerStyle(.segmented).frame(width: 210)
-        Spacer(); Button("Done") { dismiss() }.font(.system(size: 17, weight: .semibold))
-      }.padding(.horizontal, 20).padding(.top, 22).padding(.bottom, 14)
+        Spacer(); Button { dismiss() } label: { Text("Done").font(.system(size: 17, weight: .semibold)).frame(minWidth: 44, minHeight: 44, alignment: .trailing).contentShape(Rectangle()) }
+      }.padding(.horizontal, 20).padding(.top, 20).padding(.bottom, 12)
       ScrollView {
         if hidden && shown.isEmpty { nothingPrivate }
-        LazyVGrid(columns: [GridItem(.flexible(), spacing: 14), GridItem(.flexible(), spacing: 14)], spacing: 16) {
+        LazyVGrid(columns: [GridItem(.flexible(), spacing: 16), GridItem(.flexible(), spacing: 16)], spacing: 24) {
           ForEach(shown, id: \.tab.id) { s in TabCard(t: s.tab, on: s.at == b.at) { b.show(s.at); dismiss() } close: { b.close(s.tab) }.transition(.scale(scale: 0.85).combined(with: .opacity)) }
-        }.padding(.horizontal, 18).padding(.bottom, 100)
+        }.padding(.horizontal, 20).padding(.top, 4).padding(.bottom, 96)
       }
     }
     .background(Color(.systemBackground).ignoresSafeArea())
     .overlay(alignment: .bottom) {
-      Button { tap(); b.newTab(isPrivate: hidden); dismiss() } label: { Label(hidden ? "New Private Tab" : "New Tab", systemImage: hidden ? "eyeglasses" : "plus").font(.system(size: 17, weight: .semibold)).padding(.horizontal, 22).frame(height: 52) }
-        .foregroundStyle(.primary).modifier(Glass(shape: Capsule())).padding(.bottom, 14)
+      Button { tap(); b.newTab(isPrivate: hidden); dismiss() } label: { Label(hidden ? "New Private Tab" : "New Tab", systemImage: hidden ? "eyeglasses" : "plus").font(.system(size: 17, weight: .semibold)).padding(.horizontal, 24).frame(height: 52) }
+        .foregroundStyle(.primary).modifier(Glass(shape: Capsule())).padding(.bottom, 16)
     }
     .environment(\.colorScheme, hidden ? .dark : scheme)
   }
   private var nothingPrivate: some View {
-    VStack(spacing: 10) {
+    VStack(spacing: 12) {
       Image(systemName: "eyeglasses").font(.system(size: 34, weight: .medium)).foregroundStyle(.secondary)
       Text("Private Browsing").font(.system(size: 22, weight: .bold))
       Text("Sleek keeps no history of private tabs, and forgets their cookies and sign-ins when you close the last one.").font(.system(size: 15)).foregroundStyle(.secondary).multilineTextAlignment(.center)
-    }.padding(.horizontal, 40).padding(.top, 90)
+    }.padding(.horizontal, 40).padding(.top, 72)
   }
 }
 struct TabCard: View {
@@ -94,12 +94,12 @@ struct TabCard: View {
             else if t.isPrivate { ZStack { Color(hex: "#15151B"); Image(systemName: "eyeglasses").font(.system(size: 34, weight: .medium)).foregroundStyle(.white.opacity(0.6)) } }
             else { ZStack { LinearGradient(colors: [Color.sleekA.opacity(0.35), Color.sleekC.opacity(0.3)], startPoint: .topLeading, endPoint: .bottomTrailing); Mark(size: 40) } }
           }.frame(maxWidth: .infinity).frame(height: 210, alignment: .top).clipped()
-          Button(action: { tap(); close() }) { Image(systemName: "xmark").font(.system(size: 11, weight: .bold)).frame(width: 26, height: 26).background(.ultraThinMaterial, in: Circle()) }.foregroundStyle(.primary).padding(8)
+          Button(action: { tap(); close() }) { Image(systemName: "xmark").font(.system(size: 11, weight: .bold)).frame(width: 28, height: 28).background(.ultraThinMaterial, in: Circle()).padding(8).frame(width: 44, height: 44, alignment: .topTrailing).contentShape(Rectangle()) }.foregroundStyle(.primary)
         }
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(on ? AnyShapeStyle(sleekRun) : AnyShapeStyle(Color.primary.opacity(0.1)), lineWidth: on ? 2.5 : 0.5))
         .shadow(color: on ? Color.sleekB.opacity(0.4) : .black.opacity(0.12), radius: on ? 16 : 10, y: 6)
-        HStack(spacing: 6) { if t.isPrivate && t.atStart { Image(systemName: "eyeglasses").font(.system(size: 11)) } else if t.atStart || t.isSleek { Mark(size: 13) } else { SiteIcon(host: t.host, size: 16) }; Text(t.shownTitle).font(.system(size: 13, weight: .medium)).lineLimit(1) }.foregroundStyle(.primary).padding(.horizontal, 4)
+        HStack(spacing: 8) { if t.isPrivate && t.atStart { Image(systemName: "eyeglasses").font(.system(size: 11)) } else if t.atStart || t.isSleek { Mark(size: 13) } else { SiteIcon(host: t.host, size: 16) }; Text(t.shownTitle).font(.system(size: 13, weight: .medium)).lineLimit(1) }.foregroundStyle(.primary).padding(.horizontal, 4)
       }
     }.buttonStyle(Press())
   }
@@ -113,17 +113,17 @@ struct TasksView: View {
   var body: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 8) {
-        HStack(spacing: 10) { AppIcon(app: "tasks", size: 30); Text("Today").font(.system(size: 28, weight: .bold)).tracking(-0.8); Spacer() }.padding(.top, 22)
+        HStack(spacing: 12) { AppIcon(app: "tasks", size: 30); Text("Today").font(.system(size: 28, weight: .bold)).tracking(-0.8); Spacer() }.padding(.top, 24).padding(.bottom, 8)
         HStack(spacing: 8) { Image(systemName: "plus.circle.fill").foregroundStyle(Color.tasks).font(.system(size: 20)); TextField("Add a task for today", text: $newTask).submitLabel(.done).onSubmit { b.addTask(newTask); newTask = "" } }
-          .padding(.horizontal, 12).frame(height: 46).background(Color(.systemBackground).opacity(0.8), in: RoundedRectangle(cornerRadius: 13, style: .continuous)).padding(.bottom, 4)
+          .padding(.horizontal, 12).frame(height: 44).background(Color(.systemBackground).opacity(0.8), in: RoundedRectangle(cornerRadius: 12, style: .continuous)).padding(.bottom, 4)
         if b.day.loaded && b.day.late.isEmpty && b.day.today.isEmpty && b.day.soon.isEmpty && b.day.done.isEmpty { Text("Nothing is due.").font(.system(size: 15)).foregroundStyle(.secondary).padding(.top, 8) }
         section("Overdue", b.day.late, .red); section("Today", b.day.today); section("Next 7 days", b.day.soon); section("Just done", b.day.done)
-        Button { b.open("sleek://app/tasks.html"); dismiss() } label: { Text("Open Sleek Tasks").font(.system(size: 15, weight: .semibold)) }.foregroundStyle(Color.tasks).padding(.top, 12)
-      }.padding(.horizontal, 20).padding(.bottom, 30)
+        Button { b.open("sleek://app/tasks.html"); dismiss() } label: { Text("Open Sleek Tasks").font(.system(size: 15, weight: .semibold)).frame(minHeight: 44).contentShape(Rectangle()) }.foregroundStyle(Color.tasks)
+      }.padding(.horizontal, 20).padding(.bottom, 32)
     }.onAppear { Work.shared.refresh() }
   }
   @ViewBuilder private func section(_ name: String, _ rows: [TaskRow], _ c: Color = .secondary) -> some View {
-    if !rows.isEmpty { Text(name.uppercased()).font(.system(size: 12, weight: .semibold)).tracking(1.4).foregroundStyle(c).padding(.top, 10); ForEach(rows) { TaskLine(t: $0, b: b) } }
+    if !rows.isEmpty { Text(name.uppercased()).font(.system(size: 12, weight: .semibold)).tracking(1.4).foregroundStyle(c).padding(.top, 12); ForEach(rows) { TaskLine(t: $0, b: b) } }
   }
 }
 
@@ -149,29 +149,30 @@ struct LibraryView: View {
     VStack(spacing: 0) {
       HStack {
         Picker("", selection: $history.animation(.spring(response: 0.35, dampingFraction: 0.85))) { Text("Bookmarks").tag(false); Text("History").tag(true) }.pickerStyle(.segmented).frame(width: 230)
-        Spacer(); Button("Done") { dismiss() }.font(.system(size: 17, weight: .semibold))
-      }.padding(.horizontal, 20).padding(.top, 22).padding(.bottom, 10)
+        Spacer(); Button { dismiss() } label: { Text("Done").font(.system(size: 17, weight: .semibold)).frame(minWidth: 44, minHeight: 44, alignment: .trailing).contentShape(Rectangle()) }
+      }.padding(.horizontal, 20).padding(.top, 20).padding(.bottom, 12)
       List {
         if history {
           if visits.isEmpty { empty("clock", "No history yet", "Pages you open are listed here. Private tabs never are.") }
-          ForEach(days, id: \.name) { day in Section(day.name) { ForEach(day.rows) { row($0) }.onDelete { at in at.map { day.rows[$0].url }.forEach(b.forget) } } }
-          if !visits.isEmpty { Button("Clear History…", role: .destructive) { sure = true } }
+          ForEach(days, id: \.name) { day in Section { ForEach(day.rows) { row($0) }.onDelete { at in at.map { day.rows[$0].url }.forEach(b.forget) } } header: { Text(day.name).listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20)) } }
+          if !visits.isEmpty { Button("Clear History…", role: .destructive) { sure = true }.frame(maxWidth: .infinity, minHeight: 40, alignment: .leading).listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0)).alignmentGuide(.listRowSeparatorTrailing) { $0[.trailing] } }
         } else {
           if marks.isEmpty { empty("bookmark", "No bookmarks yet", "Add one from the ⋯ menu on any page.") }
           ForEach(marks) { row($0) }.onDelete { at in at.map { marks[$0].url }.forEach { b.store.removeBookmark(url: $0) }; b.objectWillChange.send() }
         }
-      }.listStyle(.plain)
+      }.listStyle(.plain).contentMargins(.horizontal, 20, for: .scrollContent)
     }
     .confirmationDialog("Clear all of your history?", isPresented: $sure, titleVisibility: .visible) { Button("Clear History", role: .destructive) { b.clearHistory() } }
   }
   private func empty(_ icon: String, _ title: String, _ note: String) -> some View {
-    VStack(spacing: 8) { Image(systemName: icon).font(.system(size: 30)).foregroundStyle(.secondary); Text(title).font(.system(size: 19, weight: .semibold)); Text(note).font(.system(size: 15)).foregroundStyle(.secondary).multilineTextAlignment(.center) }.frame(maxWidth: .infinity).padding(.top, 70).listRowSeparator(.hidden)
+    VStack(spacing: 12) { Image(systemName: icon).font(.system(size: 30)).foregroundStyle(.secondary); Text(title).font(.system(size: 19, weight: .semibold)); Text(note).font(.system(size: 15)).foregroundStyle(.secondary).multilineTextAlignment(.center) }.frame(maxWidth: .infinity).padding(.top, 72).listRowSeparator(.hidden)
   }
   private func row(_ r: Row) -> some View {
     Button { tap(); b.open(r.url); dismiss() } label: {
-      HStack(spacing: 12) { SiteIcon(host: URL(string: r.url)?.host ?? "", size: 30)
-        VStack(alignment: .leading, spacing: 1) { Text(r.title.isEmpty ? r.url : r.title).font(.system(size: 16)).foregroundStyle(.primary).lineLimit(1); Text(URL(string: r.url)?.host ?? r.url).font(.system(size: 13)).foregroundStyle(.secondary).lineLimit(1) } }
+      HStack(spacing: 12) { SiteIcon(host: URL(string: r.url)?.host ?? "", size: 28)
+        VStack(alignment: .leading, spacing: 2) { Text(r.title.isEmpty ? r.url : r.title).font(.system(size: 16)).foregroundStyle(.primary).lineLimit(1); Text(URL(string: r.url)?.host ?? r.url).font(.system(size: 13)).foregroundStyle(.secondary).lineLimit(1) } }.frame(maxWidth: .infinity, minHeight: 40, alignment: .leading)
     }
+    .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0)).alignmentGuide(.listRowSeparatorTrailing) { $0[.trailing] }
     .contextMenu { Button { if let u = URL(string: r.url) { b.newTab(u, isPrivate: false); dismiss() } } label: { Label("Open in New Tab", systemImage: "plus.square.on.square") }; Button { if let u = URL(string: r.url) { b.newTab(u, isPrivate: true); dismiss() } } label: { Label("Open in Private Tab", systemImage: "eyeglasses") }; Button { UIPasteboard.general.string = r.url } label: { Label("Copy Link", systemImage: "doc.on.doc") } }
   }
 }
@@ -197,6 +198,7 @@ struct SettingsView: View {
         Section { Button("Clear History…", role: .destructive) { sure = true }; Button("Clear Cookies and Cache") { b.clearCookies() } } header: { Text("Privacy") } footer: { Text("Clearing cookies signs you out of sites. Your decks, pages and tasks are not touched.") }
         Section { LabeledContent("Sleek for iPhone", value: version) }
       }
+      .contentMargins(.horizontal, 20, for: .scrollContent)
       .navigationTitle("Settings").navigationBarTitleDisplayMode(.inline)
       .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
       .confirmationDialog("Clear all of your history?", isPresented: $sure, titleVisibility: .visible) { Button("Clear History", role: .destructive) { b.clearHistory() } }
@@ -217,10 +219,10 @@ struct ShieldView: View {
         Image(systemName: on && b.blockerReady ? "checkmark.shield.fill" : "shield.slash").font(.system(size: 26)).foregroundStyle(on && b.blockerReady ? Color.tasks : .secondary).contentTransition(.symbolEffect(.replace))
       }
       Toggle("Block on this site", isOn: Binding(get: { on }, set: { b.setBlocking($0) })).tint(.tasks).font(.system(size: 17, weight: .medium))
-        .padding(.horizontal, 14).frame(height: 54).background(Color(.systemBackground).opacity(0.7), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .padding(.horizontal, 16).frame(height: 56).background(Color(.systemBackground).opacity(0.7), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
       Text("Switch it off if this site does not work as it should. Sleek remembers your choice for this site and loads the page again.").font(.system(size: 14)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
       Spacer(minLength: 0)
-    }.padding(.horizontal, 22).padding(.top, 28)
+    }.padding(.horizontal, 20).padding(.top, 24)
   }
 }
 
@@ -233,26 +235,26 @@ struct SaveView: View {
   @State private var busy = false
   private var boardName: String { b.day.boards.first { $0.id == board }?.name ?? b.day.boards.first?.name ?? "My tasks" }
   var body: some View {
-    VStack(alignment: .leading, spacing: 14) {
+    VStack(alignment: .leading, spacing: 16) {
       VStack(alignment: .leading, spacing: 2) { Text("Save to Sleek").font(.system(size: 26, weight: .bold)).tracking(-0.6); Text(b.tab.title.isEmpty ? b.tab.host : b.tab.title).font(.system(size: 15)).foregroundStyle(.secondary).lineLimit(1) }
       card {
-        HStack(spacing: 10) { AppIcon(app: "tasks", size: 30); Text("As a task").font(.system(size: 17, weight: .semibold)); Spacer()
-          Menu { Picker("Board", selection: $board) { ForEach(b.day.boards) { Text($0.name).tag($0.id) } } } label: { HStack(spacing: 4) { Text(boardName).lineLimit(1); Image(systemName: "chevron.up.chevron.down").font(.system(size: 11)) }.font(.system(size: 15)) }.tint(.tasks) }
+        HStack(spacing: 12) { AppIcon(app: "tasks", size: 30); Text("As a task").font(.system(size: 17, weight: .semibold)); Spacer()
+          Menu { Picker("Board", selection: $board) { ForEach(b.day.boards) { Text($0.name).tag($0.id) } } } label: { HStack(spacing: 4) { Text(boardName).lineLimit(1); Image(systemName: "chevron.up.chevron.down").font(.system(size: 11)) }.font(.system(size: 15)).frame(minWidth: 44, minHeight: 44, alignment: .trailing).contentShape(Rectangle()) }.tint(.tasks).padding(.vertical, -7) }
         Picker("Due", selection: $due) { Text("Today").tag("today"); Text("Tomorrow").tag("tomorrow"); Text("No date").tag("") }.pickerStyle(.segmented)
         act("Add Task", .tasks) { await b.save(asPage: false, board: board, due: due) }
       }
       card {
-        HStack(spacing: 10) { AppIcon(app: "docs", size: 30); VStack(alignment: .leading, spacing: 1) { Text("As a Docs page").font(.system(size: 17, weight: .semibold)); Text("Its words, or the ones you selected, with a link back").font(.system(size: 13)).foregroundStyle(.secondary) } }
+        HStack(spacing: 12) { AppIcon(app: "docs", size: 30); VStack(alignment: .leading, spacing: 2) { Text("As a Docs page").font(.system(size: 17, weight: .semibold)); Text("Its words, or the ones you selected, with a link back").font(.system(size: 13)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true) } }
         act("Keep as a Page", .docs) { await b.save(asPage: true) }
       }
       Spacer(minLength: 0)
     }
-    .padding(.horizontal, 20).padding(.top, 26).disabled(busy)
+    .padding(.horizontal, 20).padding(.top, 24).disabled(busy)
     .onAppear { Work.shared.refresh() }
   }
-  private func card<V: View>(@ViewBuilder _ v: () -> V) -> some View { VStack(alignment: .leading, spacing: 12) { v() }.padding(14).frame(maxWidth: .infinity, alignment: .leading).background(Color(.systemBackground).opacity(0.7), in: RoundedRectangle(cornerRadius: 20, style: .continuous)) }
+  private func card<V: View>(@ViewBuilder _ v: () -> V) -> some View { VStack(alignment: .leading, spacing: 12) { v() }.padding(16).frame(maxWidth: .infinity, alignment: .leading).background(Color(.systemBackground).opacity(0.7), in: RoundedRectangle(cornerRadius: 24, style: .continuous)) }
   private func act(_ name: String, _ c: Color, _ what: @escaping () async -> Bool) -> some View {
-    Button { tap(.medium); busy = true; Task { _ = await what(); busy = false; dismiss() } } label: { Text(name).font(.system(size: 16, weight: .semibold)).foregroundStyle(.white).frame(maxWidth: .infinity).frame(height: 46).background(c, in: Capsule()).shadow(color: c.opacity(0.35), radius: 12, y: 5) }.buttonStyle(Press())
+    Button { tap(.medium); busy = true; Task { _ = await what(); busy = false; dismiss() } } label: { Text(name).font(.system(size: 16, weight: .semibold)).foregroundStyle(.white).frame(maxWidth: .infinity).frame(height: 48).background(c, in: Capsule()).shadow(color: c.opacity(0.35), radius: 12, y: 5) }.buttonStyle(Press())
   }
 }
 
@@ -265,14 +267,14 @@ struct WelcomeView: View {
     VStack(spacing: 0) {
       Spacer(minLength: 20)
       Mark(size: 54).shadow(color: Color.sleekB.opacity(0.5), radius: 22, y: 10).scaleEffect(shown ? 1 : 0.7).opacity(shown ? 1 : 0)
-      Text("Welcome to Sleek").font(.system(size: 34, weight: .bold)).tracking(-1).padding(.top, 22).opacity(shown ? 1 : 0).offset(y: shown ? 0 : 12)
-      Text("Where would you like the bar?").font(.system(size: 19)).foregroundStyle(.secondary).padding(.top, 6).opacity(shown ? 1 : 0).offset(y: shown ? 0 : 12)
+      Text("Welcome to Sleek").font(.system(size: 34, weight: .bold)).tracking(-1).padding(.top, 24).opacity(shown ? 1 : 0).offset(y: shown ? 0 : 12)
+      Text("Where would you like the bar?").font(.system(size: 19)).foregroundStyle(.secondary).padding(.top, 8).opacity(shown ? 1 : 0).offset(y: shown ? 0 : 12)
       HStack(spacing: 16) { choice(atTop: false, name: "At the bottom", note: "Near your thumb"); choice(atTop: true, name: "At the top", note: "Where it has always been") }
-        .padding(.horizontal, 24).padding(.top, 34).opacity(shown ? 1 : 0).offset(y: shown ? 0 : 18)
-      Text("You can change this at any time in Settings.").font(.system(size: 14)).foregroundStyle(.secondary).padding(.top, 22).opacity(shown ? 1 : 0)
+        .padding(.horizontal, 20).padding(.top, 32).opacity(shown ? 1 : 0).offset(y: shown ? 0 : 18)
+      Text("You can change this at any time in Settings.").font(.system(size: 14)).foregroundStyle(.secondary).padding(.top, 24).opacity(shown ? 1 : 0)
       Spacer(minLength: 20)
       Button { b.chose(top: top) } label: { Text("Continue").font(.system(size: 18, weight: .semibold)).frame(maxWidth: .infinity).frame(height: 56).foregroundStyle(Color(.systemBackground)).background(Color.primary, in: Capsule()) }
-        .buttonStyle(Press()).padding(.horizontal, 24).padding(.bottom, 18).opacity(shown ? 1 : 0)
+        .buttonStyle(Press()).padding(.horizontal, 20).padding(.bottom, 16).opacity(shown ? 1 : 0)
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity)
     .background { ZStack { Color(.systemBackground); Circle().fill(Color.sleekA.opacity(0.3)).frame(width: 340).blur(radius: 80).offset(x: -130, y: -260); Circle().fill(Color.sleekC.opacity(0.24)).frame(width: 320).blur(radius: 80).offset(x: 150, y: -200) }.ignoresSafeArea() }
@@ -285,12 +287,12 @@ struct WelcomeView: View {
     return Button { tap(); withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) { top = atTop } } label: {
       VStack(spacing: 12) {
         ZStack(alignment: atTop ? .top : .bottom) {
-          RoundedRectangle(cornerRadius: 22, style: .continuous).fill(Color(.secondarySystemBackground))
+          RoundedRectangle(cornerRadius: 20, style: .continuous).fill(Color(.secondarySystemBackground))
           VStack(alignment: .leading, spacing: 7) { ForEach(0..<5, id: \.self) { i in Capsule().fill(Color.primary.opacity(0.1)).frame(width: i == 4 ? 46 : i % 2 == 0 ? 92 : 74, height: 7) } }.frame(maxWidth: .infinity, maxHeight: .infinity).padding(.vertical, 30)
           Capsule().fill(on ? AnyShapeStyle(sleekRun) : AnyShapeStyle(Color.primary.opacity(0.28))).frame(height: 16).padding(.horizontal, 12).padding(.vertical, 12).shadow(color: Color.sleekB.opacity(on ? 0.55 : 0), radius: 10, y: 4)
         }
         .frame(height: 220)
-        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(on ? AnyShapeStyle(sleekRun) : AnyShapeStyle(Color.primary.opacity(0.1)), lineWidth: on ? 2.5 : 1))
+        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(on ? AnyShapeStyle(sleekRun) : AnyShapeStyle(Color.primary.opacity(0.1)), lineWidth: on ? 2.5 : 1))
         .shadow(color: Color.sleekB.opacity(on ? 0.35 : 0), radius: 18, y: 8)
         VStack(spacing: 2) { Text(name).font(.system(size: 17, weight: .semibold)).foregroundStyle(.primary); Text(note).font(.system(size: 13)).foregroundStyle(.secondary) }
       }.frame(maxWidth: .infinity).scaleEffect(on ? 1 : 0.96)

@@ -66,13 +66,13 @@ struct PasswordsScreen: View {
   // ---------- closed ----------
   private var canAsk: Bool { Res.proving || LAContext().canEvaluatePolicy(.deviceOwnerAuthentication, error: nil) }
   private var locked: some View {
-    VStack(spacing: 14) {
+    VStack(spacing: 16) {
       Spacer()
       Image(systemName: "lock.fill").font(.system(size: 30, weight: .medium)).foregroundStyle(.white).frame(width: 76, height: 76).background(sleekRun, in: Circle()).shadow(color: Color.sleekB.opacity(0.45), radius: 20, y: 10)
       Text("Your passwords are locked").font(.system(size: 24, weight: .bold)).tracking(-0.5)
-      Text(V.unreadable ? "The key to your passwords is not in this iPhone’s Keychain, so they cannot be opened. The file has been left as it is." : !canAsk ? "Set a passcode on this iPhone first. Passwords open with Face ID or your passcode." : "They are kept on this iPhone only, encrypted, and never sent anywhere.").font(.system(size: 15)).foregroundStyle(.secondary).multilineTextAlignment(.center).padding(.horizontal, 36)
+      Text(V.unreadable ? "The key to your passwords is not in this iPhone’s Keychain, so they cannot be opened. The file has been left as it is." : !canAsk ? "Set a passcode on this iPhone first. Passwords open with Face ID or your passcode." : "They are kept on this iPhone only, encrypted, and never sent anywhere.").font(.system(size: 15)).foregroundStyle(.secondary).multilineTextAlignment(.center).padding(.horizontal, 32)
       if !V.unreadable && canAsk {
-        Button { tap(.medium); unlock() } label: { Label("Unlock", systemImage: "faceid").font(.system(size: 17, weight: .semibold)).padding(.horizontal, 26).frame(height: 52).foregroundStyle(Color(.systemBackground)).background(Color.primary, in: Capsule()) }.buttonStyle(Press()).padding(.top, 8)
+        Button { tap(.medium); unlock() } label: { Label("Unlock", systemImage: "faceid").font(.system(size: 17, weight: .semibold)).padding(.horizontal, 24).frame(height: 52).foregroundStyle(Color(.systemBackground)).background(Color.primary, in: Capsule()) }.buttonStyle(Press()).padding(.top, 8)
       }
       Spacer(); Spacer()
     }.frame(maxWidth: .infinity)
@@ -84,7 +84,7 @@ struct PasswordsScreen: View {
     let poor = all.filter { $0.verdict == "weak" || $0.verdict == "reused" }
     return List {
       if all.isEmpty {
-        VStack(spacing: 8) { Image(systemName: "key").font(.system(size: 30)).foregroundStyle(.secondary); Text("No passwords yet").font(.system(size: 19, weight: .semibold)); Text("Sign in to a site and Sleek offers to keep the password. Or add one, or bring them in from another browser, from the menu above.").font(.system(size: 15)).foregroundStyle(.secondary).multilineTextAlignment(.center) }.frame(maxWidth: .infinity).padding(.vertical, 50).listRowSeparator(.hidden).listRowBackground(Color.clear)
+        VStack(spacing: 12) { Image(systemName: "key").font(.system(size: 30)).foregroundStyle(.secondary); Text("No passwords yet").font(.system(size: 19, weight: .semibold)); Text("Sign in to a site and Sleek offers to keep the password. Or add one, or bring them in from another browser, from the menu above.").font(.system(size: 15)).foregroundStyle(.secondary).multilineTextAlignment(.center) }.frame(maxWidth: .infinity).padding(.vertical, 48).listRowSeparator(.hidden).listRowBackground(Color.clear)
       }
       if !poor.isEmpty && q.isEmpty {
         Section { ForEach(poor) { row($0) } } header: { Text("Worth changing") } footer: { Text("Easy to guess, or used for more than one sign-in.") }
@@ -95,6 +95,7 @@ struct PasswordsScreen: View {
         if !V.never.isEmpty { Section { ForEach(V.never.sorted(), id: \.self) { Text($0) }.onDelete { at in let n = V.never.sorted(); at.map { n[$0] }.forEach { V.neverSave(for: $0, false) } } } header: { Text("Never saved for") } footer: { Text("Swipe a site away and Sleek offers to save for it again.") } }
       }
     }
+    .contentMargins(.horizontal, 20, for: .scrollContent)
     .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search").textInputAutocapitalization(.never).autocorrectionDisabled()
     .animation(.spring(response: 0.35, dampingFraction: 0.85), value: all)
   }
@@ -102,7 +103,7 @@ struct PasswordsScreen: View {
     NavigationLink { PasswordDetail(b: b, id: s.id) } label: {
       HStack(spacing: 12) {
         SiteIcon(host: s.site, size: 36)
-        VStack(alignment: .leading, spacing: 1) { Text(s.site).font(.system(size: 16, weight: .medium)).lineLimit(1); Text(s.user.isEmpty ? "No name" : s.user).font(.system(size: 13)).foregroundStyle(.secondary).lineLimit(1) }
+        VStack(alignment: .leading, spacing: 2) { Text(s.site).font(.system(size: 16, weight: .medium)).lineLimit(1); Text(s.user.isEmpty ? "No name" : s.user).font(.system(size: 13)).foregroundStyle(.secondary).lineLimit(1) }
         Spacer(minLength: 0)
         if s.verdict == "weak" || s.verdict == "reused" { Image(systemName: "exclamationmark.triangle.fill").font(.system(size: 13)).foregroundStyle(.orange) }
       }
@@ -132,7 +133,7 @@ struct PasswordDetail: View {
           HStack {
             Text("Password"); Spacer()
             Text(shown ?? String(repeating: "•", count: min(length, 14))).font(.system(size: shown == nil ? 17 : 15, design: .monospaced)).foregroundStyle(.secondary).lineLimit(2).multilineTextAlignment(.trailing).textSelection(.enabled)
-            Button { tap(); withAnimation(.easeOut(duration: 0.15)) { shown = shown == nil ? V.reveal(id) : nil } } label: { Image(systemName: shown == nil ? "eye" : "eye.slash").frame(width: 32, height: 32) }.buttonStyle(.borderless)
+            Button { tap(); withAnimation(.easeOut(duration: 0.15)) { shown = shown == nil ? V.reveal(id) : nil } } label: { Image(systemName: shown == nil ? "eye" : "eye.slash").frame(width: 44, height: 44).contentShape(Rectangle()) }.buttonStyle(.borderless).padding(.vertical, -6).padding(.horizontal, -6)
           }
           Button { if let p = V.reveal(id) { V.copy(p); tap(.medium); b.say("Copied. It leaves the clipboard in a minute.") } } label: { Label("Copy Password", systemImage: "doc.on.doc") }
         } footer: { Text(verdict == "reused" ? "This password is used for \(shared) sign-ins. If one site loses it, the others are open too." : verdict == "weak" ? "This password is easy to guess." : verdict == "fair" ? "This password is fair. A longer one would be stronger." : "This password is strong.") }
@@ -150,6 +151,7 @@ struct PasswordDetail: View {
         }
       }
     }
+    .contentMargins(.horizontal, 20, for: .scrollContent)
     .navigationTitle(site).navigationBarTitleDisplayMode(.inline)
     .sheet(isPresented: $editing) { NavigationStack { EditPassword(b: b, id: id) }.presentationDetents([.large]).presentationCornerRadius(28) }
     .confirmationDialog("Remove this password from Sleek?", isPresented: $sure, titleVisibility: .visible) { Button("Remove", role: .destructive) { V.remove(id); dismiss() } }
@@ -178,6 +180,7 @@ struct EditPassword: View {
         Toggle("Of words, easier to type", isOn: $words)
       } header: { Text("Password") } footer: { if !password.isEmpty { Text(s.verdict == "weak" ? "Easy to guess." : s.verdict == "fair" ? "Fair. A longer one would be stronger." : "Strong.") } }
     }
+    .contentMargins(.horizontal, 20, for: .scrollContent)
     .navigationTitle(id == nil ? "Add a Password" : "Change").navigationBarTitleDisplayMode(.inline)
     .toolbar {
       ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
