@@ -8,7 +8,7 @@
 // the apps' engine warm, so they open at once.
 //
 // Nothing here goes anywhere but this Mac.
-import AppKit
+import Foundation
 import WebKit
 
 @MainActor
@@ -28,7 +28,7 @@ final class Work: NSObject, WKScriptMessageHandler {
   func start() {
     let c = WKWebViewConfiguration(); c.websiteDataStore = Work.store; c.setURLSchemeHandler(OwnPages(), forURLScheme: "sleek")
     c.userContentController.add(Weak(self), name: "sleekWork")
-    let w = WKWebView(frame: NSRect(x: 0, y: 0, width: 480, height: 320), configuration: c); web = w
+    let w = WKWebView(frame: CGRect(x: 0, y: 0, width: 480, height: 320), configuration: c); web = w
     w.load(URLRequest(url: URL(string: "sleek://app/_bridge.html")!))
   }
   func userContentController(_ c: WKUserContentController, didReceive message: WKScriptMessage) {

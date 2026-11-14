@@ -174,7 +174,8 @@ clips go in the picture store every Sleek app shares.
 ## Sleek, the browser
 
 A Mac app that browses the web with Slides, Docs and Tasks inside it is being built in the
-[browser](browser/README.md) folder. It is not a public download yet.
+[browser](browser/README.md) folder. It is not a public download yet. Sleek for iPhone, the same browser
+for the phone, is in the [ios](ios/README.md) folder; it is not in the App Store yet.
 
 ## The sample deck
 

@@ -234,24 +234,11 @@ final class BrowserWindow: NSObject, NSWindowDelegate, WKScriptMessageHandler, W
   func addTask(title: String, board: String = "", due: String = "") {
     Task { @MainActor in if let b = await Work.shared.addTask(title: title, board: board, due: due) { tell(["type": "toast", "text": "Added to " + b]) } else { tell(["type": "toast", "text": "That could not be added"]) } }
   }
-  /// What Save to Sleek takes from a page: its name and address, the words selected, and otherwise the words of its article.
-  private static let readPage = """
-  (function(){ var sel = String(window.getSelection ? window.getSelection() : '').trim(), out = { title: document.title || location.hostname, url: location.href, sel: sel, blocks: [] };
-    if(sel){ sel.split(/\\n+/).forEach(function(s){ s = s.trim(); if(s) out.blocks.push({ k: 'p', t: s.slice(0, 4000) }); }); return out; }
-    var root = document.querySelector('article') || document.querySelector('main, [role=main]') || document.body, n = 0;
-    Array.prototype.forEach.call(root.querySelectorAll('h2, h3, p, li, blockquote'), function(e){
-      if(n >= 300 || (e.closest && e.closest('nav, header, footer, aside, form, figure, [role=navigation], [aria-hidden=true]'))) return;
-      var tag = e.tagName, t = (e.innerText || '').replace(/\\s+/g, ' ').trim();
-      if(tag === 'P' && t.length < 40) return; if(tag === 'LI' && (t.length < 40 || e.querySelector('p, li'))) return; if(tag === 'BLOCKQUOTE' && e.querySelector('p')) return;
-      if(tag.charAt(0) === 'H' && (t.length < 3 || t.length > 200)) return;
-      out.blocks.push({ k: tag.charAt(0) === 'H' ? 'h' : tag === 'BLOCKQUOTE' ? 'q' : 'p', t: t.slice(0, 4000) }); n++;
-    });
-    return out; })()
-  """
   /// Save to Sleek: the page you are on becomes a task (with a link back, and the words you selected) or a Docs page.
+  /// (What is taken from the page is readPageScript, in Common.swift.)
   private func saveToSleek(as kind: String, board: String, due: String) {
     guard let t = current, t.kind == "web" else { return }
-    t.web.evaluateJavaScript(BrowserWindow.readPage) { [weak self] value, _ in
+    t.web.evaluateJavaScript(readPageScript) { [weak self] value, _ in
       let p = value as? [String: Any] ?? [:], title = (p["title"] as? String) ?? (t.web.title ?? ""), url = (p["url"] as? String) ?? t.address
       let blocks = p["blocks"] as? [[String: Any]] ?? [], sel = p["sel"] as? String ?? ""
       Task { @MainActor in

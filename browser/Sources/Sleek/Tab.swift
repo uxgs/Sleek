@@ -327,12 +327,6 @@ final class Tab: NSObject, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegat
   }
 }
 
-/// Lets a page's messages reach a tab without the page keeping the tab alive.
-final class Weak: NSObject, WKScriptMessageHandler {
-  weak var to: WKScriptMessageHandler?
-  init(_ to: WKScriptMessageHandler) { self.to = to }
-  func userContentController(_ c: WKUserContentController, didReceive message: WKScriptMessage) { to?.userContentController(c, didReceive: message) }
-}
 
 /// Every download, in every window.
 @MainActor
