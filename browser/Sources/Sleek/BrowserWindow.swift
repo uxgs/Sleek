@@ -110,11 +110,17 @@ final class BrowserWindow: NSObject, NSWindowDelegate, WKScriptMessageHandler, W
   // The red, yellow and green buttons sit where the bar says: in the tab row, which in immersive is inside the
   // floating bar, so they come and go with it. (The Mac lays them out afresh whenever the window changes, so
   // this is done again each time it does.)
-  private var lightsAt: NSPoint?, lightsHome: (height: CGFloat, origins: [NSPoint])?
+  private var lightsAt: NSPoint?, lightsHome: (height: CGFloat, origins: [NSPoint])?, lightsWatch: [NSObjectProtocol] = [], placingLights = false
   private var lights: [NSButton] { [.closeButton, .miniaturizeButton, .zoomButton].compactMap { window.standardWindowButton($0) } }
   func placeLights() {
-    let b = lights; guard b.count == 3, let strip = b[0].superview?.superview, !window.styleMask.contains(.fullScreen) else { return }
+    let b = lights; guard !placingLights, b.count == 3, let strip = b[0].superview?.superview, !window.styleMask.contains(.fullScreen) else { return }
+    placingLights = true; defer { placingLights = false }
     if lightsHome == nil { lightsHome = (strip.frame.height, b.map { $0.frame.origin }) }
+    // The Mac puts the buttons back in its own place at moments of its choosing (the window is renamed, as for a new tab;
+    // it becomes the front window; …). Watching the buttons themselves, they are put right in the same breath, before
+    // anything is drawn, so they are never seen to jump.
+    if lightsWatch.isEmpty { for v in b as [NSView] + [strip] { v.postsFrameChangedNotifications = true
+      lightsWatch.append(NotificationCenter.default.addObserver(forName: NSView.frameDidChangeNotification, object: v, queue: nil) { [weak self] _ in MainActor.assumeIsolated { self?.placeLights() } }) } }
     guard let home = lightsHome else { return }
     let step = home.origins[1].x - home.origins[0].x, h = b[0].frame.height
     let tall = lightsAt.map { h + 2 * $0.y } ?? home.height
@@ -233,7 +239,7 @@ final class BrowserWindow: NSObject, NSWindowDelegate, WKScriptMessageHandler, W
   func push() {
     if pushQueued { return }; pushQueued = true
     DispatchQueue.main.asyncAfter(deadline: .now() + 0.03) { [weak self] in guard let s = self else { return }; s.pushQueued = false
-      s.window.title = s.current?.web.title ?? "Sleek"
+      let name = s.current?.web.title ?? "Sleek"; if s.window.title != name { s.window.title = name }
       s.tell(["type": "state", "tabs": s.tabs.map { $0.state }, "panes": s.panes, "at": s.at, "n": s.n, "settings": s.store.settings, "glassOK": GlassView.available,"bookmarks": s.store.bookmarks, "private": s.isPrivate, "downloads": Downloads.shared.list, "blocker": Blocker.shared.summary]) }
   }
   func tabChanged(_ t: Tab?) { push() }
@@ -357,7 +363,7 @@ final class BrowserWindow: NSObject, NSWindowDelegate, WKScriptMessageHandler, W
   func show(_ what: String) { tell(["type": "show", "what": what]) }      // the menu bar asking the bar to open something of its own
 
   // ---------- the window ----------
-  func windowWillClose(_ notification: Notification) { if let m = monitor { NSEvent.removeMonitor(m) }; tabs.forEach { $0.close() }; tabs = []; onClose?(self) }
+  func windowWillClose(_ notification: Notification) { if let m = monitor { NSEvent.removeMonitor(m) }; lightsWatch.forEach { NotificationCenter.default.removeObserver($0) }; lightsWatch = []; tabs.forEach { $0.close() }; tabs = []; onClose?(self) }
   func windowDidEnterFullScreen(_ notification: Notification) { tell(["type": "full", "on": true]) }
   func windowDidExitFullScreen(_ notification: Notification) { tell(["type": "full", "on": false]) }
   var session: [String] { tabs.map { $0.address }.filter { $0.hasPrefix("http") || $0.hasPrefix("sleek://app/") } }

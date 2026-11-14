@@ -137,6 +137,10 @@ enum SelfTest {
 
     print("tabs")
     await press(w, ".plus"); _ = await until(5) { w.tabs.count == 2 && w.current?.kind == "start" }
+    // (the Mac lays the window's buttons out afresh when the window's name changes, as it does for a new tab; they must not be seen to jump)
+    await nap(0.3); w.window.contentView?.superview?.layoutSubtreeIfNeeded(); let afterNew = redButton()
+    w.window.title = "Another name"; w.window.contentView?.superview?.layoutSubtreeIfNeeded(); let afterName = redButton()
+    check("opening a new tab, or anything else that renames the window, leaves its red, yellow and green buttons where they were", afterNew == [13, 12] && afterName == [13, 12], [afterNew, afterName])
     _ = await bar(w, "Sleek.test.type('https://en.wikipedia.org/wiki/Web_browser'); return Sleek.test.enter()")
     ok = await loaded(w, "wikipedia.org"); _ = await until(5) { ((await see(w))["on"] as? String ?? "").contains("Wikipedia") }
     s = await see(w)
