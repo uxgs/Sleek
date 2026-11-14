@@ -76,6 +76,7 @@
   .go span { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 18px; border-radius: 999px; background: var(--a); color: #fff; font-weight: 600; white-space: nowrap; }
   .go code { font: 500 13.5px ui-monospace, "SF Mono", Menlo, monospace; color: var(--faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .foot { margin: 22px 0 0; color: var(--faint); font-size: 14px; }
+  .foot button { border: 0; background: none; padding: 0; font: inherit; color: var(--muted); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; } .foot button:hover { color: var(--fg); } .foot button:disabled { text-decoration: none; cursor: default; }
   @media (max-width: 1000px) { .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   @media (max-width: 720px) { .tiles { grid-template-columns: 1fr; } main { padding-top: calc(36px + env(safe-area-inset-top, 0px)); } .name h2 { font-size: 23px; } }
   @media (prefers-reduced-motion: reduce) { .tile, .mini-slide, .mini-page, .mini-board, .mini-board i { transition: none; } }
@@ -106,7 +107,7 @@
       <div class="go"><span>Open Tasks →</span><code>/tasks</code></div>
     </a>
   </div>
-  <p class="foot">Your work stays in this browser.</p>
+  <p class="foot">Your work stays in this browser. <button type="button" id="moveout">Save all of it to one file</button><span id="moveout-note"> to keep, or to move it to another browser.</span></p>
 </main>
 <script>
   // the offline cache (sw.js), as on the start screens
@@ -115,6 +116,20 @@
     var local = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname), on = !local;
     try { if(localStorage.getItem('sleek-sw') === '1') on = true; } catch(e){}
     if(on) window.addEventListener('load', function(){ navigator.serviceWorker.register('sw.js').catch(function(){}); });
+  })();
+</script>
+<script src="core/move.js"></script>
+<script>
+  // everything made here, as one file (core/move.js)
+  (function(){
+    var b = document.getElementById('moveout'), note = document.getElementById('moveout-note'); if(!b || !window.SleekMove) return;
+    b.addEventListener('click', function(){
+      if(b.disabled) return; b.disabled = true; var was = b.textContent;
+      window.SleekMove.save(function(step){ b.textContent = 'Gathering: ' + step + '…'; }).then(function(n){
+        b.textContent = was; b.disabled = false;
+        note.textContent = ' Saved ' + n.decks + (n.decks === 1 ? ' deck, ' : ' decks, ') + n.pages + (n.pages === 1 ? ' page and ' : ' pages and ') + n.tasks + (n.tasks === 1 ? ' task' : ' tasks') + ' to your downloads.';
+      }, function(){ b.textContent = was; b.disabled = false; note.textContent = ' That could not be saved here.'; });
+    });
   })();
 </script>
 <script src="core/short.js"></script>

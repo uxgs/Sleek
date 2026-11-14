@@ -352,6 +352,9 @@ enum SelfTest {
     await press(w, "[data-pin=tasks]"); ok = await until(15) { (await page(w.current, "return !!(window.SleekTasks && window.SleekTaskApp && SleekTasks.projects().length)")) as? Bool == true }
     s = await see(w)
     check("the Tasks pin opens Sleek Tasks from inside the app", ok && w.current?.kind == "tasks" && (s["url"] as? String) == "Sleek Tasks", [w.current?.address ?? "", s["url"] ?? ""])
+    let typeFacts = (await page(w.current, "await document.fonts.ready; var web = performance.getEntriesByType('resource').filter(function(r){ return /fonts\\.(googleapis|gstatic)\\.com/.test(r.name); }).length, n = performance.getEntriesByType('navigation')[0]; return [web, document.fonts.check('500 14px Inter'), !!document.querySelector('link[href^=\"fonts/\"]'), Math.round(n ? n.domContentLoadedEventEnd : -1)]")) as? [Any] ?? []
+    check("its type comes from inside the app, not from the web", (typeFacts.first as? Int) == 0 && (typeFacts.dropFirst().first as? Bool) == true && (typeFacts.dropFirst(2).first as? Bool) == true, typeFacts)
+    print("   Tasks was ready", (typeFacts.last as? Int) ?? -1, "ms after it was asked for")
     _ = await page(w.current, "document.body.style.transition = 'none'; document.body.style.opacity = '1'; return 1"); await nap(0.3)
     await shot(w, "10-sleek-tasks", to: out)
 
@@ -439,6 +442,34 @@ enum SelfTest {
     w.store.flush()
     let saved = (try? JSONSerialization.jsonObject(with: Data(contentsOf: w.store.dir.appendingPathComponent("bookmarks.json")))) as? [[String: Any]]
     check("bookmarks are saved to a file on this Mac", saved?.count == 1 && (saved?[0]["title"] as? String) == "Example", saved)
+
+    print("the copy of your work on this Mac")
+    let workDir = w.store.dir.appendingPathComponent("Work"), fm = FileManager.default
+    await W.keepCopy()
+    let pageFiles = ((try? fm.contentsOfDirectory(atPath: workDir.appendingPathComponent("pages").path)) ?? []).filter { $0.hasSuffix(".sleek") }
+    let tasksText = (try? String(contentsOf: workDir.appendingPathComponent("Tasks.sleek"), encoding: .utf8)) ?? ""
+    check("your tasks and pages are also kept as plain files on this Mac", tasksText.contains("\"format\":\"sleek-tasks\"") && tasksText.contains("Call the printer") && pageFiles.count == 1, [tasksText.count, pageFiles])
+    // bringing work in from a file
+    let incoming = fm.temporaryDirectory.appendingPathComponent("sleek-selftest-in-\(ProcessInfo.processInfo.processIdentifier).sleek")
+    let movedBoard: [String: Any] = ["id": "selftestb1", "name": "Moved over", "color": "#0A84FF", "created": 1, "updated": 1, "statuses": [["id": "todo", "name": "To do", "color": "#8E8E93", "done": false], ["id": "done", "name": "Done", "color": "#12A36A", "done": true]]]
+    let moved: [[String: Any]] = [["id": "selftestt1", "project": "selftestb1", "title": "From the other browser", "status": "todo", "order": 1], ["id": "selftestt2", "project": "selftestb1", "title": "Already finished there", "status": "done", "order": 2]]
+    try? JSONSerialization.data(withJSONObject: ["format": "sleek-tasks", "version": 1, "projects": [movedBoard], "tasks": moved, "people": []]).write(to: incoming)
+    let first = await W.bring([incoming]), second = await W.bring([incoming])
+    ok = await until(6) { dayList("boards").contains { ($0["name"] as? String) == "Moved over" } }
+    check("Bring In Sleek Work adds a file's boards and tasks; brought in twice, nothing doubles", first.boards == 1 && first.tasks == 2 && second.boards == 0 && second.tasks == 0 && ok && Work.say(first) == "Brought in 1 board, 2 tasks" && Work.say(second) == "Everything in there is already here", [Work.say(first), Work.say(second)])
+    let notOurs = fm.temporaryDirectory.appendingPathComponent("sleek-selftest-no-\(ProcessInfo.processInfo.processIdentifier).txt"); try? "hello".write(to: notOurs, atomically: true, encoding: .utf8)
+    let none = await W.bring([notOurs])
+    check("a file that is not Sleek's is refused", Work.say(none) == "That is not a Sleek file", Work.say(none))
+    try? fm.removeItem(at: incoming); try? fm.removeItem(at: notOurs)
+    await W.keepCopy()
+    // the storage is lost (as the engine may one day clear it): the copy brings everything back
+    for t in w.tabs where t.kind != "web" && t.kind != "start" { w.closeTab(t.id) }; await nap(0.5)
+    await Work.store.removeData(ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(), modifiedSince: .distantPast)
+    W.restart(); _ = await until(10) { W.ready }
+    let emptied = ((await W.ask("return await Work.stamps()")) as? [String: Any]).map { (($0["boards"] as? NSNumber)?.intValue ?? -1) == 0 && ($0["pages"] as? [Any] ?? [1]).isEmpty } ?? false
+    await W.keepCopy()
+    ok = await until(10) { dayList("boards").count == 2 && dayList("pages").count == 1 }
+    check("if the browser's storage is ever lost, the copy brings your boards, tasks and pages back", emptied && ok && titles("today").contains("Call the printer") && (dayList("pages").first?["title"] as? String) == "Example Domain", [emptied, dayList("boards").compactMap { $0["name"] as? String }, dayList("pages").count, titles("today")])
     try? FileManager.default.removeItem(at: w.store.dir)
   }
 }

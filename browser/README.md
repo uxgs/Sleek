@@ -4,7 +4,7 @@ A Mac app that browses the web and has Sleek Slides, Docs and Tasks inside it. I
 engine every Mac already has, so the app itself is small and opens quickly, and Apple keeps the
 engine patched.
 
-This is Stage 2: the browser itself, and blocking. It is not yet a public download.
+This is Stage 3: the browser itself, blocking, and Sleek inside. It is not yet a public download.
 
 ## What works
 
@@ -37,6 +37,33 @@ This is Stage 2: the browser itself, and blocking. It is not yet a public downlo
   sites, requests to send notifications, and cookie banners. The shield in the address box shows
   what was stopped on the page, and has a switch to turn blocking off for a site that needs it.
 
+## Sleek inside
+
+- **A new tab is your day.** What is overdue, due today and due this week, from Sleek Tasks, to tick
+  off and add to; and the decks and pages you last worked on. (A Private Browsing window shows
+  none of your work.)
+- **Your tasks beside any page.** The Tasks button (beside Look) opens them down the right of the
+  window: Today, or one board. Add a task, tick one; it is the same task everywhere at once.
+- **Save to Sleek.** Sleek's mark in the address box keeps the page you are on: as a task ("Read: …",
+  on the board and day you choose, with a link back and any words you had selected), or as a Docs
+  page (the words you selected, or the article's, with a link back).
+- **The address box finds your work**: decks, pages, boards and tasks, by name, ahead of the web.
+- **Your work is also kept as plain files**: `~/Library/Application Support/Sleek/Work` holds
+  `Tasks.sleek`, `decks/` and `pages/`, each the file its own app would save, written again when the
+  thing changes (a deck, a little after you stop working on it). If the web engine ever clears the
+  apps' storage, the browser finds it empty, sees the copy, and brings everything back. What you
+  delete in Sleek is moved to `Work/Removed`, not deleted.
+- **Moving work in.** File › Bring In Sleek Work… takes decks, pages, a Sleek Tasks file, or
+  everything in one file (the site's front page makes that one: "Save all of it to one file").
+  What is already here is left as it is.
+- **Quick to open.** The apps' type (Inter, and Instrument Serif in Docs) is inside the app, so
+  nothing waits on the web, and the app keeps the apps' engine warm behind the scenes.
+
+How it works: the three apps keep their work in the web engine's storage for `sleek://app`. The
+app reaches it through one page it keeps open out of sight (`Resources/chrome/bridge.html`, served
+as `sleek://app/_bridge.html` so that it shares that storage), which loads the same storage code
+the apps use. `Sources/Sleek/Work.swift` talks to that page. Nothing in this leaves the Mac.
+
 ## Blocking
 
 Sleek blocks with three lists kept by others: EasyList (adverts), EasyPrivacy (trackers) and the
@@ -60,8 +87,7 @@ What to know:
 
 ## What is still to come
 
-Your day on a new tab, Tasks beside any page and Save to Sleek; passwords; and the public release
-with automatic updates. Also not here yet: folders on the bookmarks bar, dragging tabs and bookmarks
+Passwords; and the public release with automatic updates. Also not here yet: folders on the bookmarks bar, dragging tabs and bookmarks
 to reorder them, and dragging the lines of a split view to resize it.
 
 ## Building it
@@ -93,15 +119,18 @@ Sources/Sleek/
   BrowserWindow.swift    one window: its tabs, which are showing, and doing what the bar asks
   Tab.swift              one tab: a page, and what a page may ask of the browser; downloads
   Blocker.swift          blocking: turns the lists into the engine's rules and keeps them fresh
+  Work.swift             your Sleek work as the browser sees it: your day, tasks, Save to Sleek, the copy on this Mac
   Known.swift            site icons kept on this Mac, and the list of well-known sites
   Images.swift           a picture dragged in: open it, or search for it
   Store.swift            settings, bookmarks and history, as files on this Mac
   Support.swift          where files are, Sleek's own pages (sleek://ui and sleek://app), small helpers
   SelfTest.swift         the app checking itself
 Resources/
-  chrome/                the bar: chrome.html, chrome.css, chrome.js; and start.html, a new tab's page
+  chrome/                the bar: chrome.html, chrome.css, chrome.js; start.html, a new tab's page; bridge.html, the door to your work
   lists-credits.txt      whose block lists these are, and their licences
   sites.txt              well-known sites, for finishing and suggesting addresses
+  fonts-credits.txt      whose fonts are inside the app, and their licence
+fonts.py                 puts the apps' fonts inside the app when it is built
   Info.plist, Sleek.icns what a Mac needs to know about the app, and its icon
 ```
 

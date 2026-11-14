@@ -23,7 +23,11 @@ final class App: NSObject, NSApplicationDelegate {
     Icons.dir = dir.appendingPathComponent("icons")
     Icons.onNew = { [weak self] in self?.windows.forEach { $0.iconsChanged() } }
     Work.shared.onChange.append { [weak self] in self?.windows.forEach { $0.workChanged() } }
+    Work.shared.folder = dir.appendingPathComponent("Work")
+    Work.shared.onNote = { [weak self] text in self?.front?.tell(["type": "toast", "text": text]) }
     if !Res.args.contains("--lists") { Work.shared.start() }
+    // decks and pages change without saying so: look every few minutes, so the copy on this Mac stays close behind
+    Timer.scheduledTimer(withTimeInterval: 180, repeats: true) { _ in Task { @MainActor in await Work.shared.keepCopy() } }
     buildMenu()
     // `--lists`: only make the block lists ready, say what came of it, and quit (for whoever is working on the lists)
     if Res.args.contains("--lists") {
@@ -70,7 +74,7 @@ final class App: NSObject, NSApplicationDelegate {
     main.addItem(menu("Sleek", [item("About Sleek", "", [], #selector(NSApplication.orderFrontStandardAboutPanel(_:))), sep(), item("Look…", ",", [.command], #selector(look)), item("Make Sleek the Default Browser", "", [], #selector(makeDefaultMenu)), sep(),
                            item("Hide Sleek", "h", [.command], #selector(NSApplication.hide(_:))), item("Quit Sleek", "q", [.command], #selector(NSApplication.terminate(_:)))]))
     main.addItem(menu("File", [item("New Tab", "t", [.command], #selector(newTab)), item("New Window", "n", [.command], #selector(newWin)), item("New Private Browsing Window", "n", [.command, .shift], #selector(newPrivate)), sep(),
-                          item("Open Location…", "l", [.command], #selector(address)), sep(), item("Close Tab", "w", [.command], #selector(closeTab)), item("Print…", "p", [.command], #selector(printPage))]))
+                          item("Open Location…", "l", [.command], #selector(address)), item("Bring In Sleek Work…", "", [], #selector(bringIn)), sep(), item("Close Tab", "w", [.command], #selector(closeTab)), item("Print…", "p", [.command], #selector(printPage))]))
     main.addItem(menu("Edit", [item("Undo", "z", [.command], Selector(("undo:"))), item("Redo", "z", [.command, .shift], Selector(("redo:"))), sep(), item("Cut", "x", [.command], #selector(NSText.cut(_:))), item("Copy", "c", [.command], #selector(NSText.copy(_:))),
                           item("Paste", "v", [.command], #selector(NSText.paste(_:))), item("Select All", "a", [.command], #selector(NSText.selectAll(_:))), sep(), item("Find…", "f", [.command], #selector(find))]))
     main.addItem(menu("View", [item("Reload", "r", [.command], #selector(reload)), sep(), item("Zoom In", "+", [.command], #selector(zoomIn)), item("Zoom Out", "-", [.command], #selector(zoomOut)), item("Actual Size", "0", [.command], #selector(zoomReset)), sep(),
@@ -87,6 +91,12 @@ final class App: NSObject, NSApplicationDelegate {
   @objc func newWin() { newWindow(isPrivate: false) }
   @objc func newPrivate() { newWindow(isPrivate: true) }
   @objc func address() { front?.focusAddress() }
+  /// Bring In Sleek Work: decks, pages and tasks saved as files (from another browser, or a copy you kept).
+  @objc func bringIn() {
+    let p = NSOpenPanel(); p.allowsMultipleSelection = true; p.canChooseDirectories = false; p.message = "Choose Sleek files: decks, pages, a Sleek Tasks file, or all your work in one file."
+    guard p.runModal() == .OK else { return }
+    let files = p.urls; Task { @MainActor in let n = await Work.shared.bring(files); self.front?.tell(["type": "toast", "text": Work.say(n)]) }
+  }
   @objc func closeTab() { if let w = front, let t = w.current { w.closeTab(t.id) } }
   @objc func printPage() { front?.printPage() }
   @objc func find() { if let w = front { w.window.makeFirstResponder(w.chrome); w.show("find") } }

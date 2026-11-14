@@ -1,0 +1,8 @@
+The fonts in this folder are the work of others, used with thanks and unchanged:
+
+  Inter              by Rasmus Andersson and contributors      https://rsms.me/inter/
+  Instrument Serif   by Rodrigo Fuenzalida and Jordan Egstad   https://github.com/Instrument/instrument-serif
+
+Both are offered under the SIL Open Font License, version 1.1 (https://openfontlicense.org), which
+allows them to be bundled with software. They are the same files Google Fonts serves; Sleek keeps
+them here so its apps open without asking the web for them.

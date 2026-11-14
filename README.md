@@ -140,6 +140,11 @@ today and due in the next seven days, across every board, with a box to add a ta
   list on the left inside a board); a board's ⋯ menu renames it, changes its colour or deletes it.
 - **Motion.** Going into a board, it opens out of its tile; a board's views slide from one to the
   next. (All of Sleek's pages hand over to each other the same way; `core/motion.css`.)
+- **A copy of everything.** At the foot of the home page, "Save a copy of them all" saves every board
+  and task as one `.sleek` file, pictures included, and "bring in a copy" adds a file's boards and
+  tasks beside what is here (what is already here is left as it is). The front page has the same
+  for all three apps at once: "Save all of it to one file" gathers every deck, page and task
+  (`core/move.js`), to keep, or to move to another browser.
 - **Board.** A column for each status. Drag a card to another column, or up and down within one,
   with a mouse or a finger (hold a moment, then drag). Add a column, press a column's name to rename
   it, and use its ⋯ menu for its colour, to delete it, or to say that ticked tasks go there.

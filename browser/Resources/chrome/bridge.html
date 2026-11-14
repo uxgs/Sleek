@@ -81,6 +81,38 @@
       return D.create({ seed: { kind: 'doc', v: 1, theme: {}, doc: { type: 'doc', content: blocks } } }).then(function(d){ return d ? { id: d.id, title: d.title } : null; });
     }
   };
+  // ---------- the copy the browser keeps on this Mac, and bringing work in from a file ----------
+  // What there is and when each thing last changed, so the app can tell what its copy is missing.
+  window.Work.stamps = function(){
+    return Promise.all([T.ready(), D.list().catch(function(){ return []; }), S.list().catch(function(){ return []; })]).then(function(r){
+      var newest = 0; T.projects().concat(T.tasks()).forEach(function(x){ newest = Math.max(newest, x.updated || x.created || 0); });
+      return { tasks: T.projects().length + ':' + T.tasks().length + ':' + T.people().length + ':' + newest, boards: T.projects().length,
+               decks: r[2].map(function(d){ return { id: d.id, at: d.updated || 0 }; }), pages: r[1].map(function(d){ return { id: d.id, at: d.updated || 0 }; }) };
+    });
+  };
+  // One thing as the text of its file: a deck, a page, or all your tasks. Nothing when it is gone, or too large to hand over in one piece.
+  window.Work.file = function(kind, id){
+    return (kind === 'deck' ? S.exportDeck(id) : kind === 'page' ? D.exportDoc(id) : T.exportAll()).then(function(text){ return text && text.length < 180e6 ? text : null; });
+  };
+  // Bring in the text of a file: a deck, a page, a Sleek Tasks file, or everything in one (core/move.js). Says what came in.
+  window.Work.bring = function(text){
+    var o; try { o = JSON.parse(text); } catch(e){ return Promise.resolve({ error: 'That is not a Sleek file.' }); }
+    var got = { decks: 0, pages: 0, boards: 0, tasks: 0, here: 0 }, have = {};
+    // a deck or a page that is already here (the very one, by its id) is left as it is, as boards and tasks are
+    function one(x){
+      if(!x || typeof x !== 'object') return Promise.resolve();
+      if(x.format === 'sleek-tasks') return T.importAll(JSON.stringify(x)).then(function(r){ got.boards += r.boards; got.tasks += r.tasks; });
+      if(x.format !== 'sleek') return Promise.resolve();
+      var page = x.kind === 'doc'; if(x.id && have[(page ? 'p:' : 'd:') + x.id]){ got.here++; return Promise.resolve(); }
+      return page ? D.importDoc(JSON.stringify(x)).then(function(d){ if(d) got.pages++; }) : S.importDeck(JSON.stringify(x)).then(function(d){ if(d) got.decks++; });
+    }
+    var list = o && o.format === 'sleek-work' ? (o.decks || []).concat(o.pages || [], [o.tasks]) : [o], chain = Promise.resolve();
+    return Promise.all([T.ready(), D.list().catch(function(){ return []; }), S.list().catch(function(){ return []; })]).then(function(r){
+      r[1].forEach(function(d){ have['p:' + d.id] = 1; }); r[2].forEach(function(d){ have['d:' + d.id] = 1; });
+      list.forEach(function(x){ chain = chain.then(function(){ return one(x); }).catch(function(){}); });
+      return chain;
+    }).then(function(){ return got; });
+  };
   // tell the app when tasks change (here, or in any other tab), a moment later so a run of changes is one telling
   var told = 0;
   T.ready().then(function(){ T.on(function(){ clearTimeout(told); told = setTimeout(function(){ post({ changed: 'tasks' }); }, 120); }); post({ ready: true }); }, function(e){ post({ failed: String(e) }); });

@@ -37,6 +37,8 @@ final class Work: NSObject, WKScriptMessageHandler {
     if m["changed"] != nil { refresh() }
     if let why = m["failed"] as? String { print("Sleek's work could not be opened:", why) }
   }
+  /// Open the door afresh (the app's own check uses this after emptying the storage, as the engine might one day).
+  func restart() { ready = false; restoreTried = false; kept = [:]; day = [:]; names = []; web?.reload() }
   /// Ask the page for something; nil when it is not ready or the asking fails.
   func ask(_ js: String, _ args: [String: Any] = [:]) async -> Any? {
     guard let w = web, ready else { return nil }
@@ -48,7 +50,7 @@ final class Work: NSObject, WKScriptMessageHandler {
     Task { @MainActor in
       let d = await ask("return await Work.day()") as? [String: Any], n = await ask("return await Work.names()") as? [[String: Any]]
       if let d = d { day = d }; if let n = n { names = n }
-      reading = false; onChange.forEach { $0() }
+      reading = false; onChange.forEach { $0() }; keepCopySoon()
       if again { again = false; refresh() }
     }
   }
@@ -71,6 +73,84 @@ final class Work: NSObject, WKScriptMessageHandler {
     refresh()
     return (r?["id"] as? String).map { "sleek://app/doc.html?d=" + $0 }
   }
+  // ---------- the copy on this Mac, and bringing work in from files ----------
+  // The apps' work lives in the web engine's storage, which the engine may clear. So the app also keeps a plain copy:
+  // …/Application Support/Sleek/Work/Tasks.sleek, decks/<id>.sleek and pages/<id>.sleek, each the same file its own
+  // app would save, written again whenever the thing changes. If the storage is ever found empty while a copy is
+  // here, the copy is brought back. What you delete in Sleek moves to Work/Removed rather than vanishing.
+  var folder: URL?
+  var onNote: ((String) -> Void)?
+  private var kept: [String: String] = [:], keeping = false, restoreTried = false, keepQueued = false
+  private func safe(_ id: String) -> Bool { !id.isEmpty && id.count <= 24 && id.allSatisfy { $0.isASCII && ($0.isLetter || $0.isNumber) } }
+  /// Keep the copy up to date a little while from now (so a run of changes is one pass).
+  func keepCopySoon() {
+    if keepQueued { return }; keepQueued = true
+    DispatchQueue.main.asyncAfter(deadline: .now() + (Res.selfTest != nil ? 0.5 : 8)) { [weak self] in self?.keepQueued = false; Task { @MainActor in await self?.keepCopy() } }
+  }
+  func keepCopy() async {
+    guard ready, !keeping, let dir = folder else { return }
+    keeping = true; defer { keeping = false }
+    guard let s = await ask("return await Work.stamps()") as? [String: Any] else { return }
+    let decks = s["decks"] as? [[String: Any]] ?? [], pages = s["pages"] as? [[String: Any]] ?? [], boards = (s["boards"] as? NSNumber)?.intValue ?? 0
+    let fm = FileManager.default, index = dir.appendingPathComponent("index.json")
+    if decks.isEmpty && pages.isEmpty && boards == 0 {
+      // nothing in the storage at all: if a copy is here the storage was lost, so bring the copy back (once in a run)
+      if !restoreTried { restoreTried = true; if await restore(from: dir) > 0 { onNote?("Your Sleek work was brought back from the copy on this Mac"); refresh() } }
+      return
+    }
+    for sub in ["decks", "pages"] { try? fm.createDirectory(at: dir.appendingPathComponent(sub), withIntermediateDirectories: true) }
+    if kept.isEmpty, let d = try? Data(contentsOf: index), let k = try? JSONSerialization.jsonObject(with: d) as? [String: String] { kept = k }
+    var changed = false
+    if boards > 0, let stamp = s["tasks"] as? String, kept["tasks"] != stamp, let text = await ask("return await Work.file('tasks')") as? String {
+      if (try? text.write(to: dir.appendingPathComponent("Tasks.sleek"), atomically: true, encoding: .utf8)) != nil { kept["tasks"] = stamp; changed = true }
+    }
+    let now = Date().timeIntervalSince1970 * 1000
+    for (kind, list, sub) in [("deck", decks, "decks"), ("page", pages, "pages")] {
+      var here = Set<String>()
+      for d in list {
+        guard let id = d["id"] as? String, safe(id) else { continue }
+        here.insert(id)
+        let at = (d["at"] as? NSNumber)?.doubleValue ?? 0, key = kind + ":" + id, stamp = String(Int(at))
+        if kept[key] == stamp || (Res.selfTest == nil && now - at < 20_000) { continue }      // the copy is current, or the thing is still being worked on
+        if let text = await ask("return await Work.file(kind, id)", ["kind": kind, "id": id]) as? String,
+           (try? text.write(to: dir.appendingPathComponent(sub).appendingPathComponent(id + ".sleek"), atomically: true, encoding: .utf8)) != nil { kept[key] = stamp; changed = true }
+      }
+      // what is no longer in Sleek is moved aside, not deleted
+      for f in (try? fm.contentsOfDirectory(at: dir.appendingPathComponent(sub), includingPropertiesForKeys: nil)) ?? [] where f.pathExtension == "sleek" {
+        let id = f.deletingPathExtension().lastPathComponent; if here.contains(id) { continue }
+        let aside = dir.appendingPathComponent("Removed").appendingPathComponent(sub); try? fm.createDirectory(at: aside, withIntermediateDirectories: true)
+        let to = aside.appendingPathComponent(f.lastPathComponent); if fm.fileExists(atPath: to.path) { try? fm.removeItem(at: to) }
+        try? fm.moveItem(at: f, to: to); kept[kind + ":" + id] = nil; changed = true
+      }
+    }
+    if changed, let d = try? JSONSerialization.data(withJSONObject: kept, options: [.sortedKeys]) { try? d.write(to: index, options: .atomic) }
+  }
+  private func files(in dir: URL) -> [URL] {
+    let fm = FileManager.default; var out: [URL] = []
+    let tasks = dir.appendingPathComponent("Tasks.sleek"); if fm.fileExists(atPath: tasks.path) { out.append(tasks) }
+    for sub in ["decks", "pages"] { out += ((try? fm.contentsOfDirectory(at: dir.appendingPathComponent(sub), includingPropertiesForKeys: nil)) ?? []).filter { $0.pathExtension == "sleek" } }
+    return out
+  }
+  private func restore(from dir: URL) async -> Int { let got = await bring(files(in: dir)); return got.decks + got.pages + got.boards + got.tasks }
+  /// Bring in Sleek files: decks, pages, a Sleek Tasks file, or everything in one. What is already here is left alone.
+  func bring(_ files: [URL]) async -> (decks: Int, pages: Int, boards: Int, tasks: Int, here: Int, unread: Int) {
+    var n = (decks: 0, pages: 0, boards: 0, tasks: 0, here: 0, unread: 0)
+    for f in files {
+      guard let text = try? String(contentsOf: f, encoding: .utf8), let r = await ask("return await Work.bring(text)", ["text": text]) as? [String: Any], r["error"] == nil else { n.unread += 1; continue }
+      func v(_ k: String) -> Int { (r[k] as? NSNumber)?.intValue ?? 0 }
+      n.decks += v("decks"); n.pages += v("pages"); n.boards += v("boards"); n.tasks += v("tasks"); n.here += v("here")
+    }
+    if n.decks + n.pages + n.boards + n.tasks > 0 { refresh() }
+    return n
+  }
+  /// In a few words, what came of bringing files in.
+  static func say(_ n: (decks: Int, pages: Int, boards: Int, tasks: Int, here: Int, unread: Int)) -> String {
+    func count(_ k: Int, _ one: String) -> String? { k == 0 ? nil : "\(k) \(one)\(k == 1 ? "" : "s")" }
+    let parts = [count(n.decks, "deck"), count(n.pages, "page"), count(n.boards, "board"), count(n.tasks, "task")].compactMap { $0 }
+    if parts.isEmpty { return n.unread > 0 ? "That is not a Sleek file" : "Everything in there is already here" }
+    return "Brought in " + parts.joined(separator: ", ") + (n.unread > 0 ? "; \(n.unread) could not be read" : "")
+  }
+
   /// Your decks, pages, boards and tasks whose names have every word typed.
   func suggest(_ typed: String, limit: Int = 4) -> [[String: Any]] {
     let words = typed.lowercased().split(separator: " ").map(String.init); if words.isEmpty || typed.count < 2 { return [] }

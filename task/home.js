@@ -36,7 +36,8 @@
       '<a class="hbtn" href="#today"><i class="dot"></i>Today' + (due ? '<em>' + due + ' due</em>' : '') + '</a></div>' +
       '<section aria-labelledby="bd-h"><div class="home-head"><h2 id="bd-h">Your boards</h2><span>' + (ps.length || '') + '</span></div><div class="bd-grid">' +
       (naming === 'new' ? '<article class="bd fresh" style="--c:' + T.COLORS[ps.length % T.COLORS.length] + ';--i:0"><span class="bd-thumb empty"></span><div class="bd-meta"><div><input class="bd-rename" data-k="rename-new" placeholder="Name this board" aria-label="Name this board" maxlength="80"><span>Press Enter to make it</span></div></div></article>' : '') +
-      ps.map(tile).join('') + '</div></section></div></div>';
+      ps.map(tile).join('') + '</div></section>' +
+      '<p class="home-foot">Your tasks live in this browser. <button type="button" data-do="copyout">Save a copy of them all</button> to keep or to move, or <button type="button" data-do="copyin">bring in a copy</button>.<input type="file" id="copyfile" accept=".sleek,.json,application/json" hidden></p></div></div>';
   };
 
   // ---------- naming a board in its tile: a new one, or one being renamed ----------
@@ -78,6 +79,22 @@
       A.$$('.bd-thumb', body).forEach(function(el){ el.style.viewTransitionName = el === x ? 'stage' : ''; });
       A.go(A.lastView(id), id); return;
     }
-    if((x = t.closest('[data-do]'))){ var what = x.getAttribute('data-do'); if(what === 'newboard') startNaming('new'); else if(what === 'look') A.look(); else if(what === 'news') A.news(x); }
+    if((x = t.closest('[data-do]'))){ var what = x.getAttribute('data-do'); if(what === 'newboard') startNaming('new'); else if(what === 'look') A.look(); else if(what === 'news') A.news(x); else if(what === 'copyout') copyOut(); else if(what === 'copyin') document.getElementById('copyfile').click(); }
+  });
+
+  // ---------- a copy of every board and task, as a file: to keep, or to move to another browser ----------
+  function copyOut(){
+    T.exportAll().then(function(text){
+      var a = document.createElement('a'), d = new Date(), url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+      a.href = url; a.download = 'Sleek Tasks ' + A.key(d) + '.sleek'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+      A.toast('Saved a copy of ' + T.projects().length + (T.projects().length === 1 ? ' board' : ' boards'));
+    }, function(){ A.toast('That copy could not be made'); });
+  }
+  body.addEventListener('change', function(e){
+    if(e.target.id !== 'copyfile' || !e.target.files || !e.target.files[0]) return;
+    var f = e.target.files[0]; e.target.value = '';
+    f.text().then(function(text){ return T.importAll(text); }).then(function(r){
+      A.toast(r.boards || r.tasks ? 'Brought in ' + r.boards + (r.boards === 1 ? ' board' : ' boards') + ' and ' + r.tasks + (r.tasks === 1 ? ' task' : ' tasks') : 'Everything in that file is already here');
+    }, function(err){ A.toast(err && /Sleek Tasks/.test(err.message) ? err.message : 'That file could not be read'); });
   });
 })();

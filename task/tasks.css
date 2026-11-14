@@ -332,3 +332,4 @@ html[data-shift="zoom"]::view-transition-old(stage), html[data-shift="zoom"]::vi
 @media (prefers-reduced-motion: reduce) { ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; } .body.enter > * { animation: none; } .bd-thumb, .bd-bloom, .hbtn { transition: none; } }
 /* a change of view inside Tasks is not a change of page: what is not part of the movement simply stays (core/motion.css moves whole pages) */
 html[data-shift]::view-transition-old(root) { animation: .2s ease both vt-fade; } html[data-shift]::view-transition-new(root) { animation: none; }
+.home-foot { margin: 46px 2px 0; font-size: 13px; color: var(--d-faint); } .home-foot button { border: 0; background: none; padding: 0; color: var(--d-muted); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; font-size: 13px; } .home-foot button:hover { color: var(--d-fg); }

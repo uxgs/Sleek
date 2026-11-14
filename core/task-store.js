@@ -234,8 +234,57 @@
     cache.people.push(p); put('meta', { id: 'people', list: cache.people }); changed({ kind: 'people' }); return p;
   }
 
+  // ---------- everything as one file: a copy to keep, or to move your tasks to another browser ----------
+  var FORMAT = 'sleek-tasks';
+  // every board, task and person, as text, with the pictures in notes and on cards inside it
+  function exportAll(){
+    return ready().then(function(){
+      var S = window.SleekStore, all = { projects: copy(cache.projects), tasks: copy(cache.tasks), people: copy(cache.people) };
+      return (S ? S.inline(all, false) : Promise.resolve(all)).then(function(o){
+        return JSON.stringify({ format: FORMAT, version: 1, exported: new Date().toISOString(), projects: o.projects, tasks: o.tasks, people: o.people });
+      });
+    });
+  }
+  function parseFile(text){
+    var o = JSON.parse(text);
+    if(!o || o.format !== FORMAT || !Array.isArray(o.projects) || !Array.isArray(o.tasks)) throw new Error('This is not a Sleek Tasks file.');
+    if(o.version > 1) throw new Error('This file was made with a newer Sleek Tasks.');
+    return o;
+  }
+  // Bring a file's boards and tasks in beside what is here. A board or a task that is already here (the very one,
+  // by its id) is left as it is, and nothing here is changed or removed. Resolves with how many came in.
+  function importAll(text){
+    var o; try { o = parseFile(text); } catch(e){ return Promise.reject(e); }
+    return ready().then(function(){
+      var S = window.SleekStore, in0 = { projects: o.projects, tasks: o.tasks };
+      return S ? S.dehydrate(in0) : in0;
+    }).then(function(d){
+      var okId = function(x){ return x && typeof x.id === 'string' && /^[a-z0-9]{4,24}$/.test(x.id); }, addP = [], addT = [];
+      d.projects.forEach(function(p){
+        if(!okId(p) || project(p.id) || !Array.isArray(p.statuses) || !p.statuses.length) return;
+        p.name = String(p.name || 'Board').slice(0, 80); p.created = p.created || now(); cache.projects.push(p); addP.push(p);
+      });
+      d.tasks.forEach(function(t){
+        var p = okId(t) && !task(t.id) ? project(t.project) : null; if(!p) return;
+        t.title = String(t.title || '').slice(0, 300) || 'Task'; if(!p.statuses.some(function(x){ return x.id === t.status; })) t.status = firstOpen(p);
+        t.tags = Array.isArray(t.tags) ? t.tags : []; t.subs = Array.isArray(t.subs) ? t.subs : []; t.vals = t.vals || {};
+        cache.tasks.push(t); addT.push(t);
+      });
+      var who = 0; (o.people || []).forEach(function(p){ if(p && p.name && !person(p.name)){ cache.people.push({ name: String(p.name).slice(0, 40), color: p.color || COLORS[0] }); who++; } });
+      if(addP.length || addT.length || who){
+        wrote(tx(['projects', 'tasks', 'meta'], 'readwrite', function(x){
+          addP.forEach(function(p){ x.objectStore('projects').put(copy(p)); }); addT.forEach(function(t){ x.objectStore('tasks').put(copy(t)); });
+          x.objectStore('meta').put({ id: 'people', list: copy(cache.people) });
+        })).catch(function(e){ console.error(e); });
+        cache.projects.sort(function(a, b){ return a.created - b.created; });
+        changed({ kind: 'project', imported: true });
+      }
+      return { boards: addP.length, tasks: addT.length };
+    });
+  }
+
   window.SleekTasks = {
-    open: open, ready: ready, on: on, uid: uid, COLORS: COLORS, STATUSES: STATUSES,
+    open: open, ready: ready, on: on, uid: uid, COLORS: COLORS, STATUSES: STATUSES, exportAll: exportAll, importAll: importAll, parseFile: parseFile,
     projects: projects, project: project, addProject: addProject, setProject: setProject, removeProject: removeProject, removeStatus: removeStatus, firstOpen: firstOpen, firstDone: firstDone,
     tasks: tasks, task: task, isDone: isDone, addTask: addTask, setTask: setTask, tick: tick, removeTask: removeTask,
     REPEATS: REPEATS, nextDue: nextDue, repeatsUntil: repeatsUntil, snapshot: snapshot,
