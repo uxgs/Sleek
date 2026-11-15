@@ -245,6 +245,11 @@ final class Browser: ObservableObject {
   var privateData = WKWebsiteDataStore.nonPersistent()
   /// Whether a tapped link may open in its own app. On unless you switch it off in Settings.
   var appLinks: Bool { store.settings["apps"] as? Bool ?? true }
+  /// Whether the start page shows the row of Sleek's three apps. On unless you switch it off in Settings.
+  var startApps: Bool { store.settings["startApps"] as? Bool ?? true }
+  /// Whether your search provider suggests searches as you type (never in a private tab). On unless you switch it off.
+  var searchHints: Bool { store.settings["searchHints"] as? Bool ?? true }
+  func setting(_ key: String, _ on: Bool) { withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) { store.set(key, on); objectWillChange.send() } }
   /// Offers an address to the phone: true when an app on this iPhone opened it. (The app's own check puts a stand-in here.)
   var handOff: (URL, @escaping (Bool) -> Void) -> Void = { url, done in UIApplication.shared.open(url, options: [.universalLinksOnly: true]) { ok in done(ok) } }
   /// Open the page showing in its app, if there is one.
@@ -477,7 +482,19 @@ final class Browser: ObservableObject {
       day = Day(late: rows("late"), today: rows("today"), soon: rows("soon"), done: rows("done"), recent: (items("decks", "slides") + items("pages", "docs")).sorted { $0.at > $1.at }.prefix(6).map { $0 }, boards: boards, loaded: true)
     }
   }
-  func tick(_ t: TaskRow) { tap(.medium); Work.shared.tick(t.id, !t.done) }
+  func tick(_ t: TaskRow) { tap(.medium); if t.done { cleared.remove(t.id) }; Work.shared.tick(t.id, !t.done) }
+  /// Tasks you have ticked off and then cleared from the start page by pulling it down. (They stay done in Sleek Tasks.)
+  @Published private(set) var cleared: Set<String> = []
+  var doneToday: [TaskRow] { day.done.filter { !cleared.contains($0.id) } }
+  /// What is due, without what you have ticked off and cleared.
+  var dueToday: [TaskRow] { (day.late + day.today).filter { !($0.done && cleared.contains($0.id)) } }
+  /// Pull the start page down: your tasks are read again, and what you have ticked off leaves Today.
+  func freshenToday() async {
+    Work.shared.refresh(); try? await Task.sleep(nanoseconds: 450_000_000)
+    let gone = Set((day.done + day.late + day.today).filter(\.done).map(\.id))
+    if !gone.subtracting(cleared).isEmpty { tap(.soft) }
+    withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) { cleared = gone }
+  }
   func addTask(_ title: String, board: String = "", due: String = "today") {
     let t = title.trimmingCharacters(in: .whitespacesAndNewlines); if t.isEmpty { return }
     tap(.medium); Task { @MainActor in if await Work.shared.addTask(title: t, board: board, due: due) == nil { say("That could not be added") } }
@@ -503,7 +520,18 @@ final class Browser: ObservableObject {
     if !hidden { for n in Work.shared.suggest(q, limit: 3) { let k = n["kind"] as? String ?? ""; out.append(Suggestion(kind: k, title: n["title"] as? String ?? "", hint: k == "slides" ? "Deck" : k == "docs" ? "Page" : (n["task"] as? Bool == true ? "Task" : "Board"), url: n["url"] as? String ?? "")) } }
     for s in store.suggest(q, limit: 4) where !hidden || (s["kind"] as? String) == "bookmark" { out.append(Suggestion(kind: s["kind"] as? String ?? "history", title: s["title"] as? String ?? "", hint: host(s["url"] as? String ?? ""), url: s["url"] as? String ?? "")) }
     for s in Sites.matching(q, limit: 3) where !out.contains(where: { host($0.url).replacingOccurrences(of: "www.", with: "") == host(s["url"] as? String ?? "") }) { out.append(Suggestion(kind: "site", title: s["title"] as? String ?? "", hint: host(s["url"] as? String ?? ""), url: s["url"] as? String ?? "")) }
-    out.append(Suggestion(kind: "search", title: "Search " + Search.name(for: store.search) + " for “\(q)”", hint: "", url: ""))
+    out.append(Suggestion(kind: "search", title: q, hint: "", url: ""))
     return out
   }
+  /// What your search provider would search for, given what you have typed so far: nothing in a private tab, with
+  /// suggestions switched off, or while the app checks itself. Asked without cookies, so it is not tied to you.
+  func askHints(_ typed: String) async -> [String] {
+    let q = typed.trimmingCharacters(in: .whitespaces)
+    guard !q.isEmpty, !tab.isPrivate, searchHints, !Res.proving, let u = Search.hints(for: store.search, q) else { return [] }
+    var r = URLRequest(url: u, cachePolicy: .returnCacheDataElseLoad, timeoutInterval: 4); r.httpShouldHandleCookies = false
+    guard let (data, _) = try? await Browser.hintSession.data(for: r) else { return [] }
+    let low = q.lowercased()
+    return Array(Search.readHints(data).filter { $0.lowercased() != low }.prefix(5))
+  }
+  private static let hintSession: URLSession = { let c = URLSessionConfiguration.ephemeral; c.httpCookieStorage = nil; c.urlCache = URLCache(memoryCapacity: 2_000_000, diskCapacity: 0); return URLSession(configuration: c) }()
 }

@@ -10,8 +10,12 @@ struct SearchView: View {
   @Environment(\.dismiss) private var dismiss
   @State private var text = ""
   @FocusState private var typing: Bool
+  @State private var hints: [String] = []          // what your search provider would search for
+  @State private var hintsFor = ""
   var body: some View {
-    let rows = b.suggestions(text)
+    let all = b.suggestions(text), rows = text.isEmpty ? all : all.filter { $0.kind != "search" }
+    // while the next ones are on their way, the last ones stay as long as they still fit what you have typed
+    let q = text.trimmingCharacters(in: .whitespaces), guesses = hints.filter { $0.lowercased() != q.lowercased() && (hintsFor == q || $0.lowercased().hasPrefix(q.lowercased())) }
     VStack(spacing: 0) {
       HStack(spacing: 12) {
         HStack(spacing: 8) { Image(systemName: b.tab.isPrivate ? "eyeglasses" : "magnifyingglass").foregroundStyle(.secondary)
@@ -25,10 +29,43 @@ struct SearchView: View {
         // the page you are on, to change its address rather than start again
         if text.isEmpty, b.tab.isWeb, let u = b.tab.address { Button { text = u.absoluteString } label: { HStack(spacing: 12) { Image(systemName: "pencil").frame(width: 28, height: 28).foregroundStyle(.secondary); VStack(alignment: .leading, spacing: 2) { Text("Edit this page’s address").font(.system(size: 16)).foregroundStyle(.primary); Text(u.absoluteString).font(.system(size: 13)).foregroundStyle(.secondary).lineLimit(1) } }.frame(maxWidth: .infinity, minHeight: 40, alignment: .leading) }.listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0)).alignmentGuide(.listRowSeparatorTrailing) { $0[.trailing] } }
         if text.isEmpty && !rows.isEmpty { Section { ForEach(rows) { row($0) } } header: { Text("Lately").listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20)) } }
-        else { ForEach(rows) { row($0) } }
-      }.listStyle(.plain).contentMargins(.horizontal, 20, for: .scrollContent).scrollDismissesKeyboard(.interactively).animation(.spring(response: 0.3, dampingFraction: 0.85), value: rows.map(\.id))
+        else if !q.isEmpty {
+          ForEach(rows) { row($0) }
+          // searches: what you typed, then what your provider suggests
+          Section { search(q, typed: true); ForEach(guesses, id: \.self) { search($0, typed: false) } } header: {
+            HStack(spacing: 6) { Image(systemName: "magnifyingglass").font(.system(size: 11, weight: .bold)); Text("Search with " + Search.name(for: b.store.search)) }.listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+          }
+        }
+      }.listStyle(.plain).contentMargins(.horizontal, 20, for: .scrollContent).scrollDismissesKeyboard(.interactively).animation(.spring(response: 0.3, dampingFraction: 0.85), value: rows.map(\.id) + guesses)
     }
     .onAppear { typing = true }
+    .task(id: text) {
+      let q = text.trimmingCharacters(in: .whitespaces)
+      if q.isEmpty { hints = []; hintsFor = ""; return }
+      try? await Task.sleep(nanoseconds: 120_000_000); if Task.isCancelled { return }          // wait for a pause in typing
+      let got = await b.askHints(q); if Task.isCancelled { return }
+      hints = got; hintsFor = q
+    }
+  }
+  /// One search: a looking glass in Sleek's colours, the words (what you have not typed yet in bold), and an arrow
+  /// that puts them in the box to carry on typing.
+  private func search(_ s: String, typed: Bool) -> some View {
+    Button { go(s) } label: {
+      HStack(spacing: 12) {
+        Image(systemName: "magnifyingglass").font(.system(size: 13, weight: .bold)).foregroundStyle(.white).frame(width: 28, height: 28).background(sleekRun, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        bolded(s, typed: typed).font(.system(size: 16)).foregroundStyle(.primary).lineLimit(1)
+        Spacer(minLength: 0)
+        if !typed { Button { tap(); text = s + " " } label: { Image(systemName: "arrow.up.left").font(.system(size: 14, weight: .semibold)).foregroundStyle(.tertiary).frame(width: 44, height: 44).contentShape(Rectangle()) }.buttonStyle(.borderless).padding(.vertical, -4).accessibilityLabel("Use “\(s)”") }
+      }.frame(maxWidth: .infinity, minHeight: 40, alignment: .leading)
+    }
+    .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0)).alignmentGuide(.listRowSeparatorTrailing) { $0[.trailing] }
+    .transition(.opacity)
+  }
+  private func bolded(_ s: String, typed: Bool) -> Text {
+    let q = text.trimmingCharacters(in: .whitespaces)
+    if typed { return Text(s).fontWeight(.semibold) }
+    guard s.lowercased().hasPrefix(q.lowercased()) else { return Text(s) }
+    return Text(String(s.prefix(q.count))) + Text(String(s.dropFirst(q.count))).fontWeight(.semibold)
   }
   private func go(_ what: String) { guard !what.trimmingCharacters(in: .whitespaces).isEmpty else { return }; tap(); b.open(what); dismiss() }
   private func row(_ r: Suggestion) -> some View {
@@ -58,7 +95,7 @@ struct TabsView: View {
   var body: some View {
     VStack(spacing: 0) {
       HStack {
-        Picker("", selection: $hidden.animation(.spring(response: 0.4, dampingFraction: 0.85))) { Text("Tabs").tag(false); Label("Private", systemImage: "eyeglasses").tag(true) }.pickerStyle(.segmented).frame(width: 210)
+        TabSwitch(hidden: $hidden)
         Spacer(); Button { dismiss() } label: { Text("Done").font(.system(size: 17, weight: .semibold)).frame(minWidth: 44, minHeight: 44, alignment: .trailing).contentShape(Rectangle()) }
       }.padding(.horizontal, 20).padding(.top, 20).padding(.bottom, 12)
       ScrollView {
@@ -81,6 +118,26 @@ struct TabsView: View {
       Text("Private Browsing").font(.system(size: 22, weight: .bold))
       Text("Sleek keeps no history of private tabs, and forgets their cookies and sign-ins when you close the last one.").font(.system(size: 15)).foregroundStyle(.secondary).multilineTextAlignment(.center)
     }.padding(.horizontal, 40).padding(.top, 72)
+  }
+}
+/// Your tabs or your private ones: two parts on one piece of glass, each with its picture, and a lens that slides to the one showing.
+struct TabSwitch: View {
+  @Binding var hidden: Bool
+  @Namespace private var ns
+  var body: some View {
+    let parts = HStack(spacing: 0) { part(false, "Tabs", "square.on.square"); part(true, "Private", "eyeglasses") }.padding(4)
+    if #available(iOS 26, *) { parts.glassEffect(.regular.interactive(), in: Capsule()) } else { parts.modifier(Glass(shape: Capsule())) }
+  }
+  private func part(_ value: Bool, _ name: String, _ icon: String) -> some View {
+    let on = hidden == value
+    return Button { if !on { tap(); withAnimation(.spring(response: 0.42, dampingFraction: 0.8)) { hidden = value } } } label: {
+      HStack(spacing: 7) { Image(systemName: icon).font(.system(size: 15, weight: .semibold)); Text(name).font(.system(size: 16, weight: .semibold)) }
+        .foregroundStyle(on ? Color.primary : Color.secondary)
+        .padding(.horizontal, 18).frame(height: 44)
+        .background { if on { Capsule().fill(Color.primary.opacity(0.1)).overlay(Capsule().stroke(Color.primary.opacity(0.08), lineWidth: 0.5)).matchedGeometryEffect(id: "lens", in: ns) } }
+        .contentShape(Capsule())
+    }
+    .buttonStyle(Press()).accessibilityAddTraits(on ? .isSelected : [])
   }
 }
 struct TabCard: View {
@@ -189,7 +246,9 @@ struct SettingsView: View {
         Section { Picker("Bar", selection: Binding(get: { b.barAtTop }, set: { b.placeBar(top: $0) })) { Text("At the bottom").tag(false); Text("At the top").tag(true) }.pickerStyle(.segmented) } header: { Text("Bar") } footer: { Text("Scroll down a page and the bar draws in to a tile. Drag the tile to any corner and it stays there.") }
         Section { NavigationLink { PasswordsScreen(b: b, sheet: false) } label: { Text("Passwords") } } header: { Text("Passwords") } footer: { Text("Kept on this iPhone only, encrypted, and opened with Face ID or your passcode.") }
         Section("Look") { Picker("Look", selection: $b.look) { Text("Automatic").tag("auto"); Text("Light").tag("light"); Text("Dark").tag("dark") }.pickerStyle(.segmented) }
-        Section { Picker("Search with", selection: Binding(get: { b.store.search }, set: { b.store.set("search", $0); b.objectWillChange.send() })) { ForEach(Search.providers, id: \.address) { Text($0.name).tag($0.address) } } } header: { Text("Search") } footer: { Text("What you type in the address box goes to your search provider only when you search. Suggestions come from this iPhone.") }
+        Section { Picker("Search with", selection: Binding(get: { b.store.search }, set: { b.store.set("search", $0); b.objectWillChange.send() })) { ForEach(Search.providers, id: \.address) { Text($0.name).tag($0.address) } }
+          Toggle("Search suggestions", isOn: Binding(get: { b.searchHints }, set: { b.setting("searchHints", $0) })) } header: { Text("Search") } footer: { Text("With suggestions on, " + Search.name(for: b.store.search) + " is sent what you type in the address box, without cookies, to suggest searches. Never from a private tab.") }
+        Section { Toggle("Sleek apps", isOn: Binding(get: { b.startApps }, set: { b.setting("startApps", $0) })) } header: { Text("Start page") } footer: { Text("The row of Slides, Docs and Tasks on a new tab.") }
         Section { Toggle("Open links in their apps", isOn: Binding(get: { b.appLinks }, set: { b.store.set("apps", $0); b.objectWillChange.send() })) } header: { Text("Apps") } footer: { Text("Tap a link to a site whose app is on this iPhone and it opens there. Links within the site you are browsing, addresses you type, and private tabs stay in Sleek. Open in App, in the ⋯ menu, sends the page showing to its app.") }
         Section {
           LabeledContent("Adverts and trackers", value: b.blockerReady ? "Blocked" : "Getting ready…")

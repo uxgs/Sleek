@@ -70,6 +70,16 @@ enum Search {
   static let providers: [(name: String, address: String)] = [("DuckDuckGo", "https://duckduckgo.com/"), ("Google", "https://www.google.com/search"), ("Bing", "https://www.bing.com/search"), ("Brave Search", "https://search.brave.com/search"),
     ("Ecosia", "https://www.ecosia.org/search"), ("Startpage", "https://www.startpage.com/sp/search?query=%s"), ("Kagi", "https://kagi.com/search")]
   static func name(for address: String) -> String { providers.first { $0.address == address }?.name ?? (URL(string: address)?.host ?? "the web") }
+  /// Where each provider offers searches as you type. Every one answers the same way: ["what you typed", ["a search", …]].
+  static func hints(for address: String, _ typed: String) -> URL? {
+    guard let q = typed.addingPercentEncoding(withAllowedCharacters: .alphanumerics) else { return nil }
+    let at: [String: String] = ["https://duckduckgo.com/": "https://duckduckgo.com/ac/?type=list&q=", "https://www.google.com/search": "https://suggestqueries.google.com/complete/search?client=firefox&q=",
+      "https://www.bing.com/search": "https://api.bing.com/osjson.aspx?query=", "https://search.brave.com/search": "https://search.brave.com/api/suggest?q=", "https://www.ecosia.org/search": "https://ac.ecosia.org/autocomplete?type=list&q=",
+      "https://www.startpage.com/sp/search?query=%s": "https://www.startpage.com/osuggestions?q=", "https://kagi.com/search": "https://kagi.com/api/autosuggest?q="]
+    return at[address].flatMap { URL(string: $0 + q) }
+  }
+  /// What a provider offered, read from its answer.
+  static func readHints(_ data: Data) -> [String] { ((try? JSONSerialization.jsonObject(with: data)) as? [Any]).flatMap { $0.count > 1 ? $0[1] as? [String] : nil } ?? [] }
 }
 
 /// What Save to Sleek takes from a page: its name and address, the words selected, and otherwise the words of its article.

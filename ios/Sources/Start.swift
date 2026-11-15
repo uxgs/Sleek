@@ -7,24 +7,39 @@ struct StartView: View {
   @ObservedObject var b: Browser; @Binding var sheet: Sheet?
   @State private var newTask = ""
   @FocusState private var adding: Bool
+  @State private var composing = false
+  @State private var pressingTile = false          // the New task tile has opened into a box to type in
+  @Namespace private var addNS
+  @State private var shown = false                 // the page has come in (each part rises in turn)
   private var hello: String { let h = Calendar.current.component(.hour, from: Date()); return h < 12 ? "Good morning." : h < 18 ? "Good afternoon." : "Good evening." }
   private var sub: String { let n = b.day.today.count, late = b.day.late.count; return (n == 0 ? "Nothing due today" : "\(n) task\(n == 1 ? "" : "s") for today") + (late > 0 ? ", and \(late) overdue" : "") + "." }
   var body: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 24) {
-        HStack(spacing: 12) { Mark(size: 30); Text("Sleek").font(.system(size: 26, weight: .bold)).tracking(-1) }.padding(.top, 8)
-        VStack(alignment: .leading, spacing: 4) { Text(hello).font(.system(size: 34, weight: .bold)).tracking(-1); Text(b.day.loaded ? sub : " ").font(.system(size: 17)).foregroundStyle(.secondary) }
-        today
-        apps
-        if !b.day.recent.isEmpty { recent }
-        if !marks.isEmpty { grid("Bookmarks", marks) }
-        if !places.isEmpty { grid("Where you go most", places) }
+        brand.padding(.top, 8)
+        VStack(alignment: .leading, spacing: 4) { Text(hello).font(.system(size: 34, weight: .bold)).tracking(-1); Text(b.day.loaded ? sub : " ").font(.system(size: 17)).foregroundStyle(.secondary) }.rise(shown, 1)
+        today.rise(shown, 2)
+        if b.startApps { apps.rise(shown, 3).transition(.opacity.combined(with: .scale(scale: 0.96, anchor: .top))) }
+        if !b.day.recent.isEmpty { recent.rise(shown, 4) }
+        if !marks.isEmpty { grid("Bookmarks", marks).rise(shown, 5) }
+        if !places.isEmpty { grid("Where you go most", places).rise(shown, 6) }
       }
       .padding(.horizontal, 20).padding(.top, b.barAtTop ? 68 : 0).padding(.bottom, b.barAtTop ? 40 : 112)
     }
     .scrollDismissesKeyboard(.interactively)
-    .background(alignment: .top) { bloom }
-    .onAppear { Work.shared.refresh() }
+    .refreshable { await b.freshenToday() }          // pull down: your tasks again, without the ones you have ticked off
+    .background(alignment: .top) { bloom.opacity(shown ? 1 : 0).scaleEffect(shown ? 1 : 0.6, anchor: .top).animation(.easeOut(duration: 0.9), value: shown) }
+    .onAppear { Work.shared.refresh(); DispatchQueue.main.async { shown = true } }
+    .onChange(of: adding) { _, on in if !on && composing && newTask.trimmingCharacters(in: .whitespaces).isEmpty { withAnimation(.spring(response: 0.42, dampingFraction: 0.85)) { composing = false } } }      // left with nothing typed: back to the tile
+  }
+  /// Sleek's mark turns into place and the name slides in beside it.
+  private var brand: some View {
+    HStack(spacing: 12) {
+      Mark(size: 30).rotationEffect(.degrees(shown ? 0 : -90)).scaleEffect(shown ? 1 : 0.4).opacity(shown ? 1 : 0)
+        .animation(.spring(response: 0.7, dampingFraction: 0.62), value: shown)
+      Text("Sleek").font(.system(size: 26, weight: .bold)).tracking(-1).opacity(shown ? 1 : 0).offset(x: shown ? 0 : -14).blur(radius: shown ? 0 : 6)
+        .animation(.spring(response: 0.6, dampingFraction: 0.85).delay(0.08), value: shown)
+    }
   }
   /// The soft light at the top of the page, in Sleek's colours.
   private var bloom: some View {
@@ -36,16 +51,56 @@ struct StartView: View {
     card {
       VStack(alignment: .leading, spacing: 12) {
         HStack { head("Today, from Sleek Tasks"); Spacer(); Button { sheet = .tasks } label: { Text("All").font(.system(size: 13, weight: .semibold)).frame(minWidth: 44, minHeight: 44, alignment: .trailing).contentShape(Rectangle()) }.foregroundStyle(Color.tasks).padding(.vertical, -14) }
-        HStack(spacing: 8) { Image(systemName: "plus.circle.fill").foregroundStyle(Color.tasks).font(.system(size: 20))
-          TextField("Add a task for today", text: $newTask).focused($adding).submitLabel(.done).onSubmit { b.addTask(newTask); newTask = "" } }
-          .padding(.horizontal, 12).frame(height: 44).background(Color(.systemBackground).opacity(0.9), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-          .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(adding ? Color.tasks : .clear, lineWidth: 1.5)).shadow(color: Color.tasks.opacity(adding ? 0.35 : 0), radius: 14, y: 5).animation(.easeOut(duration: 0.2), value: adding)
-        let rows = b.day.late + b.day.today
-        if rows.isEmpty && b.day.done.isEmpty { Text(b.day.loaded ? "Nothing is due. Add a task above." : "Opening your tasks…").font(.system(size: 15)).foregroundStyle(.secondary).padding(.vertical, 4) }
-        ForEach(rows.prefix(5)) { TaskLine(t: $0, b: b) }
-        ForEach(b.day.done.prefix(2)) { TaskLine(t: $0, b: b) }
+        newTask_
+        let rows = b.dueToday
+        if rows.isEmpty && b.doneToday.isEmpty && !composing { Text(b.day.loaded ? "Nothing is due today." : "Opening your tasks…").font(.system(size: 15)).foregroundStyle(.secondary).padding(.vertical, 4) }
+        ForEach(rows.prefix(5)) { TaskLine(t: $0, b: b).transition(.opacity) }
+        // ticked off, a task stays here struck through; pull the page down and it slides away
+        ForEach(b.doneToday.prefix(2)) { TaskLine(t: $0, b: b).transition(.asymmetric(insertion: .opacity, removal: .opacity.combined(with: .move(edge: .trailing)))) }
       }
     }
+  }
+  /// Adding a task: a tile in Tasks green, which opens into a box to type in (and folds back when you are done).
+  @ViewBuilder private var newTask_: some View {
+    let shape = RoundedRectangle(cornerRadius: composing ? 16 : 22, style: .continuous)
+    if composing {
+      HStack(spacing: 10) {
+        Image(systemName: "plus").font(.system(size: 14, weight: .bold)).foregroundStyle(.white).frame(width: 28, height: 28).background(Color.tasks, in: Circle()).matchedGeometryEffect(id: "icon", in: addNS)
+        TextField("What needs doing today?", text: $newTask).font(.system(size: 16)).focused($adding).submitLabel(.done).onSubmit { finish(add: true) }
+        Button { finish(add: !newTask.trimmingCharacters(in: .whitespaces).isEmpty) } label: {
+          Image(systemName: newTask.trimmingCharacters(in: .whitespaces).isEmpty ? "xmark" : "arrow.up").font(.system(size: 13, weight: .bold)).frame(width: 30, height: 30)
+            .foregroundStyle(newTask.trimmingCharacters(in: .whitespaces).isEmpty ? Color.secondary : .white)
+            .background(newTask.trimmingCharacters(in: .whitespaces).isEmpty ? Color.primary.opacity(0.08) : Color.tasks, in: Circle())
+            .frame(width: 44, height: 44).contentShape(Rectangle())
+        }.buttonStyle(Press()).accessibilityLabel(newTask.isEmpty ? "Close" : "Add")
+      }
+      .padding(.leading, 10).padding(.trailing, 2).frame(height: 52).frame(maxWidth: .infinity)
+      .background { shape.fill(Color(.systemBackground)).matchedGeometryEffect(id: "tile", in: addNS) }
+      .overlay(shape.stroke(Color.tasks, lineWidth: 1.5)).shadow(color: Color.tasks.opacity(0.3), radius: 16, y: 6)
+      .transition(.opacity)
+    } else {
+      HStack(spacing: 10) {
+        Image(systemName: "plus").font(.system(size: 14, weight: .bold)).foregroundStyle(.white).frame(width: 28, height: 28).background(Color.tasks, in: Circle()).matchedGeometryEffect(id: "icon", in: addNS)
+        Text("New task").font(.system(size: 15, weight: .semibold)).foregroundStyle(Color.tasks)
+      }
+      .padding(.leading, 8).padding(.trailing, 18).frame(height: 44)
+      .background { shape.fill(Color.tasks.opacity(0.13)).matchedGeometryEffect(id: "tile", in: addNS) }
+      .contentShape(.interaction, shape)
+      .scaleEffect(pressingTile ? 0.96 : 1).animation(.spring(response: 0.25, dampingFraction: 0.7), value: pressingTile)
+      .onLongPressGesture(minimumDuration: 0, maximumDistance: 12, perform: {}, onPressingChanged: { pressingTile = $0 })
+      .simultaneousGesture(TapGesture().onEnded {
+        tap(); withAnimation(.spring(response: 0.42, dampingFraction: 0.82)) { composing = true }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) { adding = true }
+      })
+      .transition(.opacity).accessibilityElement(children: .ignore).accessibilityLabel("New task for today").accessibilityAddTraits(.isButton)
+    }
+  }
+  /// Add what was typed (if anything), and fold the box back into its tile.
+  private func finish(add: Bool) {
+    let t = newTask.trimmingCharacters(in: .whitespaces)
+    if add && !t.isEmpty { b.addTask(t) }
+    newTask = ""; adding = false
+    withAnimation(.spring(response: 0.42, dampingFraction: 0.85)) { composing = false }
   }
   private var apps: some View {
     VStack(alignment: .leading, spacing: 12) {
@@ -129,6 +184,14 @@ struct PrivateStartView: View {
   }
   private func line(_ icon: String, _ text: String) -> some View {
     HStack(alignment: .top, spacing: 12) { Image(systemName: icon).font(.system(size: 15)).foregroundStyle(.white.opacity(0.6)).frame(width: 24); Text(text).font(.system(size: 16)).foregroundStyle(.white.opacity(0.78)).fixedSize(horizontal: false, vertical: true) }
+  }
+}
+
+extension View {
+  /// Comes in with the page: up a little and into view, each part a moment after the one before.
+  func rise(_ on: Bool, _ step: Int) -> some View {
+    opacity(on ? 1 : 0).offset(y: on ? 0 : 22).scaleEffect(on ? 1 : 0.97, anchor: .top)
+      .animation(.spring(response: 0.62, dampingFraction: 0.84).delay(0.05 + Double(step) * 0.055), value: on)
   }
 }
 

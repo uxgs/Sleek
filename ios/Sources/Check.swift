@@ -103,6 +103,17 @@ final class Checker: ObservableObject {
     if let t = b.day.today.first(where: { $0.title == "Checked on the phone" }) { b.tick(t) }
     let ticked = await until(10) { self.b.day.done.contains { $0.title == "Checked on the phone" } }
     say(ticked, "and can be ticked off")
+    let doneShown = b.doneToday.contains { $0.title == "Checked on the phone" }
+    await b.freshenToday()
+    say(doneShown && !b.doneToday.contains { $0.title == "Checked on the phone" } && b.day.done.contains { $0.title == "Checked on the phone" }, "pulling the start page down clears what was ticked off from Today (it stays done in Tasks)")
+    let hintsWere = b.searchHints; b.setting("searchHints", false); let hintsOff = !b.searchHints; b.setting("searchHints", hintsWere)
+    let appsWere = b.startApps; b.setting("startApps", false); let appsOff = !b.startApps; b.setting("startApps", appsWere)
+    say(hintsOff && appsOff && b.startApps == appsWere, "search suggestions and the row of Sleek apps can each be switched off")
+    let hintsEvery = Search.providers.allSatisfy { Search.hints(for: $0.address, "new york")?.absoluteString.contains("new%20york") == true }
+    let hintsRead = Search.readHints(Data(#"["new",["news","new york times"]]"#.utf8)) == ["news", "new york times"] && Search.readHints(Data("oops".utf8)).isEmpty
+    say(hintsEvery && hintsRead, "every search provider has an address for suggestions, and their answers are read")
+    let hintsSent = await b.askHints("new")
+    say(hintsSent.isEmpty, "while the app checks itself, nothing is sent to a search provider")
     let asTask = await b.save(asPage: false)
     let savedTask = await until(10) { self.b.day.today.contains { $0.title.hasPrefix("Read: ") } }
     say(asTask && savedTask, "Save to Sleek makes a task of the page showing")

@@ -12,8 +12,9 @@ yet; you build it yourself with Xcode.
   it stays there.
 - **The address.** Press it to search or type an address. As you type, Sleek offers your own decks,
   pages, boards and tasks first, then bookmarks and places you have been, then well-known sites, then
-  a search. All of that comes from the phone; what you type goes to your search provider only when
-  you search. Slide the address sideways for the next or last tab, and up for all of them.
+  searches: what you typed, and what your search provider suggests for it (asked without cookies, never
+  from a private tab; Settings can switch suggestions off, and then nothing you type leaves the phone
+  until you search). Slide the address sideways for the next or last tab, and up for all of them.
 - **Tabs, and Private Browsing.** All your tabs are a grid, with the private ones apart. A private tab
   writes no history, is offered none of your history or work as you type, keeps its cookies and
   sign-ins apart from your ordinary tabs, and forgets them when you close the last private tab. A link
@@ -38,7 +39,8 @@ yet; you build it yourself with Xcode.
   notices. The shield beside an address switches blocking off for a site that does not work, and
   Sleek remembers that. Settings lists those sites.
 - **A new tab is your day.** What is due from Sleek Tasks, to tick off and add to; Slides, Docs and
-  Tasks; the decks and pages you last worked on; your bookmarks; and where you go most.
+  Tasks; the decks and pages you last worked on; your bookmarks; and where you go most. Pull it down
+  and what you have ticked off leaves Today. Settings can hide the row of Sleek's apps.
 - **Slides, Docs and Tasks inside.** They open from inside the app (no network needed) and keep their
   work on the phone. A plain copy of everything is also kept in the app's own folder, and brought
   back if the phone ever empties the web engine's storage.
