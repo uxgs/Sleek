@@ -95,7 +95,7 @@ struct StartView: View {
   }
   /// One place: its icon, 56 wide, and its name centred beneath (the name may be a little wider than the icon).
   private func place(_ p: Place) -> some View {
-    Button { tap(); b.open(p.url) } label: { VStack(spacing: 8) { SiteIcon(host: p.host, size: 56); Text(p.name).font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1).minimumScaleFactor(0.9).frame(width: 64).frame(width: 56) } }.buttonStyle(Press())
+    Button { tap(); b.open(p.url) } label: { VStack(spacing: 8) { SiteIcon(host: p.host, size: 56); Text(p.name).font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1).minimumScaleFactor(0.9).frame(width: 72).frame(width: 56) } }.buttonStyle(Press())
       .contextMenu { Button { b.newTab(URL(string: p.url)) } label: { Label("Open in New Tab", systemImage: "plus.square.on.square") }; Button { b.newTab(URL(string: p.url), isPrivate: true) } label: { Label("Open in Private Tab", systemImage: "eyeglasses") } }
   }
 }

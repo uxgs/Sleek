@@ -156,7 +156,7 @@ struct BarView: View {
   private var tabsButton: some View {
     let mine = b.tabs.filter { $0.isPrivate == tab.isPrivate }.count
     return Button { showTabs() } label: {
-      ZStack { Image(systemName: "square.on.square").font(.system(size: 17, weight: .medium)); if mine > 1 { Text("\(mine)").font(.system(size: 9, weight: .bold, design: .rounded)).offset(x: -2.5, y: 2.5) } }.frame(width: 44, height: 44)
+      TabsGlyph(count: mine).frame(width: 44, height: 44)
     }
     .foregroundStyle(.primary)
     .contextMenu {
@@ -234,5 +234,27 @@ struct BarView: View {
         withAnimation(.spring(response: 0.45, dampingFraction: 0.72)) { carry = .zero; dragging = false; b.corner = top ? (left ? .topLeading : .topTrailing) : (left ? .bottomLeading : .bottomTrailing) }
       })
       .transition(.scale(scale: 0.6).combined(with: .opacity))
+  }
+}
+
+
+/// The tabs button's picture: two squares, drawn here so that the front one is the right size to hold how many
+/// tabs are open, with the number in its very middle. (The system's two-squares symbol leaves no room for a number:
+/// one laid over it sat across the symbol's own lines.) The back square stops short of the front one, with a little air.
+private struct TabsGlyph: View {
+  let count: Int
+  private let front = CGRect(x: 1.5, y: 5.5, width: 17, height: 17), back = CGRect(x: 5.5, y: 1.5, width: 17, height: 17)
+  var body: some View {
+    Canvas { ctx, size in
+      var behind = ctx, hole = Path(CGRect(origin: .zero, size: size))
+      hole.addPath(Path(roundedRect: front.insetBy(dx: -2.4, dy: -2.4), cornerRadius: 6.5, style: .continuous))
+      behind.clip(to: hole, style: FillStyle(eoFill: true))
+      behind.stroke(Path(roundedRect: back, cornerRadius: 4.5, style: .continuous), with: .foreground, lineWidth: 1.7)
+      ctx.stroke(Path(roundedRect: front, cornerRadius: 4.5, style: .continuous), with: .foreground, lineWidth: 1.7)
+    }
+    .overlay(alignment: .topLeading) {
+      if count > 1 { Text("\(min(count, 99))").font(.system(size: count > 9 ? 8.5 : 10.5, weight: .bold, design: .rounded)).monospacedDigit().frame(width: front.width, height: front.height).offset(x: front.minX, y: front.minY) }
+    }
+    .frame(width: 24, height: 24)
   }
 }
