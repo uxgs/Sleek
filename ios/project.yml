@@ -18,6 +18,7 @@ targets:
       - path: ../browser/Sources/Sleek/Known.swift
       - path: ../browser/Sources/Sleek/Work.swift
       - path: ../browser/Sources/Sleek/Vault.swift
+      - path: ../browser/Sources/Sleek/Passkeys.swift
       - path: Assets.xcassets
       - path: build/inside/app
         type: folder

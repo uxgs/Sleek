@@ -6,12 +6,13 @@ import WebKit
 extension BrowserWindow {
   // ---------- filling ----------
   /// The cursor went into a sign-in box. Offer the names saved for this site; or, where a new password is being chosen, a strong one.
-  func signInField(_ t: Tab, site: String, rect: [String: Any], fresh: Bool, on field: String) {
+  func signInField(_ t: Tab, site: String, rect: [String: Any], fresh: Bool, on field: String, keysOnly: Bool = false) {
     guard panes.contains(t.id) else { return }
-    let users = fresh ? [] : Vault.shared.users(for: site), strong = fresh && field == "pass" && !isPrivate
-    if users.isEmpty && !strong { tell(["type": "pw-hide", "tab": t.id]); return }
+    let users = fresh || keysOnly ? [] : Vault.shared.users(for: site), strong = fresh && field == "pass" && !isPrivate && !keysOnly
+    let keys = fresh ? [] : t.keys.quiet.map { Passkeys.choices($0) } ?? []      // passkeys, when the page is waiting quietly for one
+    if users.isEmpty && keys.isEmpty && !strong { tell(["type": "pw-hide", "tab": t.id]); return }
     if strong, t.suggested == nil { t.suggested = Vault.generate(words: false, length: 20) }
-    tell(["type": "pw-offer", "tab": t.id, "site": site, "rect": rect, "users": users, "strong": strong ? (t.suggested ?? "") : ""])
+    tell(["type": "pw-offer", "tab": t.id, "site": keys.isEmpty ? site : (t.keys.quiet?.rp ?? site), "rect": rect, "users": users, "keys": keys, "strong": strong ? (t.suggested ?? "") : ""])
   }
   func signInLeft(_ t: Tab) { tell(["type": "pw-hide", "tab": t.id]) }
   /// From the bar: fill this saved sign-in, once Touch ID has said yes; or (no sign-in named) use the strong password offered.
@@ -24,6 +25,43 @@ extension BrowserWindow {
       // only ever into the site it was saved for
       guard let l = Vault.shared.password(for: login), l.site == Vault.site(t.web.url?.host) else { tell(["type": "toast", "text": "That password could not be filled here"]); return }
       t.fill(user: l.user, password: l.password, both: false); window.makeFirstResponder(t.web)
+    }
+  }
+
+  // ---------- passkeys ----------
+  /// A site asks to make a passkey, or to sign in with one (not quietly). Ask in the bar.
+  func passkeyAsked(_ t: Tab, _ a: KeyAsk) {
+    if !a.make && a.conditional { t.web.callAsyncJavaScript("window.__sleekRefocus && window.__sleekRefocus()", arguments: [:], in: nil, in: Tab.world) { _ in }; return }      // offered under the sign-in box instead, when the cursor is there
+    if a.make, Passkeys.hasOne(a) {
+      t.keys.answer(a.ask, nil, fail: KeyFail(name: "InvalidStateError", message: "A passkey for this account is kept already."))
+      tell(["type": "toast", "text": "Sleek already keeps a passkey for this account"]); return
+    }
+    if a.make { tell(["type": "pk-ask", "tab": t.id, "ask": a.ask, "make": true, "site": a.rp, "user": a.user.isEmpty ? a.display : a.user]) }
+    else { tell(["type": "pk-ask", "tab": t.id, "ask": a.ask, "make": false, "site": a.rp, "users": Passkeys.choices(a)]) }
+    if !panes.contains(t.id) { select(t.id) }      // the page asking is the one you see
+  }
+  /// From the bar: yes (make it, or sign in with the passkey named) once Touch ID agrees; or no.
+  func answerPasskey(tab id: String, ask: String, yes: Bool, id key: String?) {
+    guard let t = tab(id), let a = t.keys.open[ask] else { return }
+    guard yes, a.make || key != nil else { t.keys.answer(ask, nil); return }
+    Task { @MainActor in
+      guard await Vault.shared.unlock(a.make ? "make a passkey for " + a.rp : "sign in to " + a.rp + " with a passkey") else { t.keys.answer(ask, nil); return }
+      guard t.keys.open[ask] != nil else { return }      // the page went away meanwhile
+      if a.make {
+        let r = Passkeys.make(a, page: t.address); t.keys.answer(ask, r)
+        tell(["type": "toast", "text": r != nil ? "Passkey saved for " + a.rp : "That passkey could not be kept"])
+      } else {
+        let r = Passkeys.sign(a, with: key ?? ""); t.keys.answer(ask, r)
+        if r == nil { tell(["type": "toast", "text": "That passkey could not be used here"]) }
+      }
+    }
+  }
+  /// From the offer under a sign-in box: sign in with this passkey, once Touch ID agrees.
+  func useQuietPasskey(tab id: String, id key: String) {
+    guard let t = tab(id), let a = t.keys.quiet else { return }
+    Task { @MainActor in
+      guard await Vault.shared.unlock("sign in to " + a.rp + " with a passkey"), t.keys.open[a.ask] != nil else { return }      // no: the page keeps waiting, as it would in Safari
+      let r = Passkeys.sign(a, with: key); if r != nil { t.keys.answer(a.ask, r) } else { tell(["type": "toast", "text": "That passkey could not be used here"]) }
     }
   }
 
@@ -61,6 +99,8 @@ extension BrowserWindow {
     let V = Vault.shared
     var s: [String: Any] = ["open": V.isOpen, "count": V.count, "never": V.never.sorted(), "offer": (store.settings["savePasswords"] as? Bool) != false, "unreadable": V.unreadable, "still": Res.selfTest != nil]
     if let l = V.list() { s["items"] = l }
+    if let k = V.passkeyList() { s["keys"] = k }
+    s["count"] = V.count + V.passkeyCount
     t.web.evaluateJavaScript("window.Passwords && Passwords.fill(" + json(s) + ")")
   }
   private func word(_ text: String) -> String { String(json([text]).dropFirst().dropLast()) }      // a piece of text, written so a page's script can read it
@@ -73,9 +113,9 @@ extension BrowserWindow {
     case "lock": V.lock()
     case "show": if let p = V.reveal(id) { t.web.evaluateJavaScript("window.Passwords && Passwords.shown(" + word(id) + ", " + word(p) + ")") } else { fillPasswords(t) }
     case "copy":
-      if m["of"] as? String == "user" { if let u = V.list()?.first(where: { ($0["id"] as? String) == id })?["user"] as? String { V.copy(u, forgetAfter: 600); note("Copied") } }
+      if m["of"] as? String == "user" { if let u = ((V.list() ?? []) + (V.passkeyList() ?? [])).first(where: { ($0["id"] as? String) == id })?["user"] as? String { V.copy(u, forgetAfter: 600); note("Copied") } }
       else if let p = V.reveal(id) { V.copy(p); note("Copied. It leaves the clipboard in a minute.") } else { fillPasswords(t) }
-    case "delete": if !V.remove(id) { fillPasswords(t) }
+    case "delete": if !(m["passkey"] as? Bool == true ? V.removePasskey(id) : V.remove(id)) { fillPasswords(t) }
     case "change": if !V.change(id, site: m["site"] as? String, user: m["user"] as? String, password: m["password"] as? String) { note("That could not be saved"); fillPasswords(t) }
     case "add":
       let site = (m["site"] as? String ?? "").trimmingCharacters(in: .whitespaces), pass = m["password"] as? String ?? ""

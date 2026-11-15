@@ -105,19 +105,25 @@ let sharedSignInScript = """
   }
   function fresh(pw){ return /new-password/.test(pw.getAttribute('autocomplete') || '') || passes(scope(pw)).length >= 2; }
   function rect(e){ var r = e.getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; }
-  var cur = null, last = '';
-  document.addEventListener('focusin', function(e){
-    var t = e.target; if(!t || t.tagName !== 'INPUT') return;
+  var cur = null, last = '', wa = null;
+  function onFocus(t){
+    if(!t || t.tagName !== 'INPUT') return;
     var pw = null; if(t.type === 'password') pw = t; else { var ps = passes(scope(t)); if(ps.length && userFor(ps[0]) === t) pw = ps[0]; }
-    if(!pw) return;
+    // a box that says it takes passkeys (autocomplete="username webauthn"), with no password box beside it
+    if(!pw){ if(/webauthn/i.test(t.getAttribute('autocomplete') || '') && vis(t)){ wa = t; post({ focus: rect(t), on: 'user', fresh: false, webauthn: 1 }); } return; }
     cur = { user: userFor(pw), pass: pw, all: passes(scope(pw)) };
     post({ focus: rect(t), on: t === pw ? 'pass' : 'user', fresh: fresh(pw) });
-  }, true);
-  document.addEventListener('focusout', function(e){ if(cur && (e.target === cur.pass || e.target === cur.user)) setTimeout(function(){ var a = document.activeElement; if(!cur || (a !== cur.pass && a !== cur.user)) post({ blur: 1 }); }, 200); }, true);
+  }
+  document.addEventListener('focusin', function(e){ onFocus(e.target); }, true);
+  // a page that starts waiting for a passkey after the cursor is already in its box: offer it now
+  window.__sleekRefocus = function(){ onFocus(document.activeElement); };
+  document.addEventListener('focusout', function(e){
+    if(wa && e.target === wa) setTimeout(function(){ if(wa && document.activeElement !== wa){ wa = null; post({ blur: 1 }); } }, 200);
+    if(cur && (e.target === cur.pass || e.target === cur.user)) setTimeout(function(){ var a = document.activeElement; if(!cur || (a !== cur.pass && a !== cur.user)) post({ blur: 1 }); }, 200); }, true);
   window.addEventListener('scroll', function(){ if(cur) post({ blur: 1, scrolled: 1 }); }, { passive: true, capture: true });
   function set(el, v){ if(!el) return; var d = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value'); d.set.call(el, v); el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); }
   window.__sleekFill = function(user, pass, both){
-    if(!cur || !cur.pass.isConnected){ var ps = passes(); if(!ps.length) return false; cur = { user: userFor(ps[0]), pass: ps[0], all: passes(scope(ps[0])) }; }
+    if(!cur || !cur.pass || !cur.pass.isConnected){ var ps = passes(); if(!ps.length) return false; cur = { user: userFor(ps[0]), pass: ps[0], all: passes(scope(ps[0])) }; }
     if(user && cur.user) set(cur.user, user);
     (both ? cur.all : [cur.pass]).forEach(function(p){ set(p, pass); });
     return true;

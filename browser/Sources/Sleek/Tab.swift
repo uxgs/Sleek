@@ -12,6 +12,8 @@ final class Tab: NSObject, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegat
   var blocking = false                    // whether the block lists are on this tab now (they are off on Sleek's own pages, and on sites you switched them off for)
   var blocked: [String: Int] = [:]        // what was blocked on the page showing: ads, trackers, cookies, notes (notification requests), popups
   var mine = false                        // the load now starting is your own (typed, a bookmark), not one the page started
+  /// Where the page's passkey questions arrive (Passkeys.swift).
+  let keys = KeyBridge()
   private var watching: [NSKeyValueObservation] = []
   private var downloads: [ObjectIdentifier: (id: String, to: URL, watch: NSKeyValueObservation?)] = [:]
 
@@ -93,6 +95,9 @@ final class Tab: NSObject, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegat
     view.onDrop = { [weak self] pb in if let s = self, let dir = s.owner?.store.dir.appendingPathComponent("dropped"), let image = DroppedImage.from(pb, keepIn: dir) { s.drop = (image, Date()) } }
     configuration.userContentController.add(Weak(self), name: "sleekPage")
     configuration.userContentController.add(Weak(self), contentWorld: Tab.world, name: "sleekPw")
+    configuration.userContentController.addScriptMessageHandler(keys, contentWorld: .page, name: "sleekKey")
+    keys.onAsk = { [weak self] a in if let s = self { s.owner?.passkeyAsked(s, a) } }
+    keys.onDrop = { [weak self] a in self?.owner?.tell(["type": "pk-hide", "ask": a]) }
     applyBlocking(false)
     web.navigationDelegate = self; web.uiDelegate = self
     web.allowsBackForwardNavigationGestures = true
@@ -104,6 +109,7 @@ final class Tab: NSObject, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegat
   func close() {
     watching = []; let c = web.configuration.userContentController
     c.removeScriptMessageHandler(forName: "sleekPage"); c.removeScriptMessageHandler(forName: "sleekPw", contentWorld: Tab.world)
+    c.removeScriptMessageHandler(forName: "sleekKey", contentWorld: .page); keys.dropAll()
     web.stopLoading(); web.removeFromSuperview()
   }
 
@@ -113,6 +119,7 @@ final class Tab: NSObject, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegat
     c.removeAllContentRuleLists(); c.removeAllUserScripts()
     c.addUserScript(WKUserScript(source: Tab.pageScript, injectionTime: .atDocumentStart, forMainFrameOnly: true))
     c.addUserScript(WKUserScript(source: Tab.signInScript, injectionTime: .atDocumentEnd, forMainFrameOnly: true, in: Tab.world))
+    c.addUserScript(WKUserScript(source: Passkeys.script, injectionTime: .atDocumentStart, forMainFrameOnly: true))
     if on { Blocker.shared.lists.values.forEach { c.add($0) }; c.addUserScript(WKUserScript(source: Tab.shieldScript, injectionTime: .atDocumentStart, forMainFrameOnly: true)) }
     blocking = on
   }
@@ -199,7 +206,7 @@ final class Tab: NSObject, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegat
   private func signIn(_ m: [String: Any]) {
     guard let u = web.url, u.scheme == "https", let host = u.host else { return }      // never over a connection others can read
     let site = Vault.site(host)
-    if let f = m["focus"] as? [String: Any] { owner?.signInField(self, site: site, rect: f, fresh: m["fresh"] as? Bool ?? false, on: m["on"] as? String ?? "pass") }
+    if let f = m["focus"] as? [String: Any] { owner?.signInField(self, site: site, rect: f, fresh: m["fresh"] as? Bool ?? false, on: m["on"] as? String ?? "pass", keysOnly: m["webauthn"] != nil) }
     if m["blur"] != nil { owner?.signInLeft(self) }
     if let s = m["sent"] as? [String: Any], let pass = s["pass"] as? String, !pass.isEmpty { owner?.signedIn(self, site: site, address: u.absoluteString, user: s["user"] as? String ?? "", password: pass) }
   }
@@ -229,7 +236,7 @@ final class Tab: NSObject, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegat
   func webView(_ webView: WKWebView, decidePolicyFor response: WKNavigationResponse, decisionHandler: @escaping (WKNavigationResponsePolicy) -> Void) {
     decisionHandler(response.canShowMIMEType ? .allow : .download)
   }
-  func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) { icon = ""; blocked = [:]; mine = false; owner?.tabChanged(self) }      // a new page: the old one's icon goes, and the page says its own
+  func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) { icon = ""; blocked = [:]; mine = false; keys.dropAll(); owner?.tabChanged(self) }      // a new page: the old one's icon goes, and the page says its own
   func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) { owner?.visited(self) }
   func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) { failed(error) }
   func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) { failed(error) }

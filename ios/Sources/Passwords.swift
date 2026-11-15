@@ -83,13 +83,17 @@ struct PasswordsScreen: View {
     let q = query.lowercased().trimmingCharacters(in: .whitespaces), shown = q.isEmpty ? all : all.filter { $0.site.contains(q) || $0.user.lowercased().contains(q) }
     let poor = all.filter { $0.verdict == "weak" || $0.verdict == "reused" }
     return List {
-      if all.isEmpty {
+      if all.isEmpty && passkeys.isEmpty {
         VStack(spacing: 12) { Image(systemName: "key").font(.system(size: 30)).foregroundStyle(.secondary); Text("No passwords yet").font(.system(size: 19, weight: .semibold)); Text("Sign in to a site and Sleek offers to keep the password. Or add one, or bring them in from another browser, from the menu above.").font(.system(size: 15)).foregroundStyle(.secondary).multilineTextAlignment(.center) }.frame(maxWidth: .infinity).padding(.vertical, 48).listRowSeparator(.hidden).listRowBackground(Color.clear)
       }
       if !poor.isEmpty && q.isEmpty {
         Section { ForEach(poor) { row($0) } } header: { Text("Worth changing") } footer: { Text("Easy to guess, or used for more than one sign-in.") }
       }
       Section { ForEach(shown) { row($0) }.onDelete { at in at.map { shown[$0].id }.forEach { V.remove($0) } } } header: { if !all.isEmpty { Text(q.isEmpty ? "All" : "Found") } }
+      let keys = passkeys.filter { q.isEmpty || $0.site.contains(q) || $0.user.lowercased().contains(q) }
+      if !keys.isEmpty {
+        Section { ForEach(keys) { keyRow($0) }.onDelete { at in at.map { keys[$0].id }.forEach { V.removePasskey($0) }; b.objectWillChange.send() } } header: { Text("Passkeys") } footer: { Text("Made on this iPhone and kept only here. You sign in with Face ID; the site holds just the public half.") }
+      }
       if q.isEmpty {
         Section { Toggle("Offer to save passwords", isOn: Binding(get: { b.savePasswords }, set: { b.store.set("savePasswords", $0); b.objectWillChange.send() })) }
         if !V.never.isEmpty { Section { ForEach(V.never.sorted(), id: \.self) { Text($0) }.onDelete { at in let n = V.never.sorted(); at.map { n[$0] }.forEach { V.neverSave(for: $0, false) } } } header: { Text("Never saved for") } footer: { Text("Swipe a site away and Sleek offers to save for it again.") } }
@@ -98,6 +102,15 @@ struct PasswordsScreen: View {
     .contentMargins(.horizontal, 20, for: .scrollContent)
     .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search").textInputAutocapitalization(.never).autocorrectionDisabled()
     .animation(.spring(response: 0.35, dampingFraction: 0.85), value: all)
+  }
+  private var passkeys: [Saved] { (V.passkeyList() ?? []).map { Saved(id: $0["id"] as? String ?? "", site: $0["site"] as? String ?? "", user: $0["user"] as? String ?? "", verdict: "passkey", sharedWith: 1, changed: $0["added"] as? Double ?? 0) } }
+  private func keyRow(_ s: Saved) -> some View {
+    HStack(spacing: 12) {
+      SiteIcon(host: s.site, size: 36)
+      VStack(alignment: .leading, spacing: 2) { Text(s.site).font(.system(size: 16, weight: .medium)).lineLimit(1); Text(s.user.isEmpty ? "Passkey" : s.user).font(.system(size: 13)).foregroundStyle(.secondary).lineLimit(1) }
+      Spacer(minLength: 0)
+      Image(systemName: "person.badge.key.fill").font(.system(size: 14)).foregroundStyle(.secondary)
+    }
   }
   private func row(_ s: Saved) -> some View {
     NavigationLink { PasswordDetail(b: b, id: s.id) } label: {

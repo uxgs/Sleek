@@ -112,7 +112,8 @@ struct BarView: View {
   }
   /// What sits beside the bar while you sign in: the offer to fill (or to use a strong password), or the question after.
   @ViewBuilder private var extras: some View {
-    if let a = b.keepAsk { askCard(a).transition(.move(edge: b.barAtTop ? .top : .bottom).combined(with: .opacity)) }
+    if let k = b.keyAsk, k.tab == tab.id { keyCard(k).transition(.move(edge: b.barAtTop ? .top : .bottom).combined(with: .opacity)) }
+    else if let a = b.keepAsk { askCard(a).transition(.move(edge: b.barAtTop ? .top : .bottom).combined(with: .opacity)) }
     else if let o = b.offer, o.tab == tab.id { offerRow(o).transition(.move(edge: b.barAtTop ? .top : .bottom).combined(with: .opacity)) }
   }
   private func chip(_ icon: String, _ text: String, _ act: @escaping () -> Void) -> some View {
@@ -124,6 +125,7 @@ struct BarView: View {
   private func offerRow(_ o: SignInOffer) -> some View {
     ScrollView(.horizontal, showsIndicators: false) {
       HStack(spacing: 8) {
+        ForEach(o.keys) { u in chip("person.badge.key.fill", u.user.isEmpty ? "Sign in with passkey" : u.user) { b.useQuietPasskey(u.id) } }
         ForEach(o.users) { u in chip("key.fill", u.user.isEmpty ? "Fill saved password" : u.user) { b.fillSignIn(u.id) } }
         if !o.strong.isEmpty { chip("wand.and.stars", "Use a strong password") { b.fillSignIn(nil) } }
       }.padding(.horizontal, 4).padding(.vertical, 10)
@@ -143,6 +145,42 @@ struct BarView: View {
         Button { b.answerSignIn("save") } label: { Text(a.update ? "Update" : "Save").font(.system(size: 15, weight: .semibold)).padding(.horizontal, 20).frame(height: 44).foregroundStyle(Color(.systemBackground)).background(Color.primary, in: Capsule()) }
       }.buttonStyle(Press())
     }
+    .padding(16).modifier(Glass(shape: RoundedRectangle(cornerRadius: 24, style: .continuous)))
+  }
+  /// A site asks to make a passkey, or to sign in with one.
+  private func keyCard(_ k: KeyQuestion) -> some View {
+    VStack(alignment: .leading, spacing: 12) {
+      HStack(spacing: 12) {
+        Image(systemName: "person.badge.key.fill").font(.system(size: 15, weight: .semibold)).foregroundStyle(.white).frame(width: 36, height: 36).background(sleekRun, in: Circle())
+        VStack(alignment: .leading, spacing: 2) {
+          Text(k.make ? "Make a passkey?" : k.users.isEmpty ? "No passkey for this site" : "Sign in with a passkey").font(.system(size: 16, weight: .semibold))
+          Text((k.make && !k.user.isEmpty ? k.user + " · " : "") + k.site).font(.system(size: 13)).foregroundStyle(.secondary).lineLimit(1)
+        }
+        Spacer(minLength: 0)
+      }
+      if k.make { Text("Kept on this iPhone only and used with Face ID, so you sign in without a password.").font(.system(size: 13)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true) }
+      else if k.users.isEmpty { Text("Sign in another way. If the site then offers to add a passkey, Sleek keeps it.").font(.system(size: 13)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true) }
+      else {
+        VStack(spacing: 6) {
+          ForEach(k.users) { u in
+            Button { b.answerPasskey(yes: true, id: u.id) } label: {
+              HStack(spacing: 10) { Image(systemName: "faceid").font(.system(size: 15, weight: .medium)).foregroundStyle(sleekRun); Text(u.user.isEmpty ? "Passkey" : u.user).font(.system(size: 15, weight: .medium)).lineLimit(1); Spacer(minLength: 0); Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold)).foregroundStyle(.tertiary) }
+                .padding(.horizontal, 14).frame(height: 48).background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 14, style: .continuous)).contentShape(Rectangle())
+            }.foregroundStyle(.primary)
+          }
+        }
+      }
+      HStack(spacing: 8) {
+        Spacer(minLength: 0)
+        if k.make {
+          Button { b.answerPasskey(yes: false) } label: { Text("Not Now").font(.system(size: 15, weight: .medium)).padding(.horizontal, 16).frame(height: 44).background(Color.primary.opacity(0.08), in: Capsule()) }.foregroundStyle(.primary)
+          Button { b.answerPasskey(yes: true) } label: { Text("Make Passkey").font(.system(size: 15, weight: .semibold)).padding(.horizontal, 20).frame(height: 44).foregroundStyle(Color(.systemBackground)).background(Color.primary, in: Capsule()) }
+        } else {
+          Button { b.answerPasskey(yes: false) } label: { Text(k.users.isEmpty ? "OK" : "Cancel").font(.system(size: 15, weight: .medium)).padding(.horizontal, 18).frame(height: 44).background(Color.primary.opacity(0.08), in: Capsule()) }.foregroundStyle(.primary)
+        }
+      }
+    }
+    .buttonStyle(Press())
     .padding(16).modifier(Glass(shape: RoundedRectangle(cornerRadius: 24, style: .continuous)))
   }
   private var barProgress: some View {

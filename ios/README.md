@@ -51,8 +51,9 @@ yet; you build it yourself with Xcode.
 
 ## What is not here yet
 
-- Saving files, a count of what was blocked, reader view, iPad, passkeys, and filling the iPhone's
-  own saved passwords (Sleek fills the ones it keeps).
+- Saving files, a count of what was blocked, reader view, iPad, and filling the iPhone's own saved
+  passwords or passkeys (Sleek fills and signs in with the ones it keeps; passkeys made in Sleek stay
+  in Sleek, apart from iCloud Keychain).
 - It cannot be set as the iPhone's browser for links from other apps until Apple grants that to a
   released app.
 - Work does not travel between this app and Sleek anywhere else by itself; move it with the apps'

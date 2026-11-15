@@ -4,6 +4,7 @@
 // (It can run with the screen locked; nothing on screen is needed.)
 import AppKit
 import WebKit
+import CryptoKit
 
 @MainActor
 enum SelfTest {
@@ -580,6 +581,97 @@ enum SelfTest {
     V.ageOut(); _ = await pwPage("window.webkit.messageHandlers.sleekPage.postMessage({ vault: 'state' }); return 1")
     ok = await until(5) { (await pwPage("return !!document.querySelector('.locked')")) as? Bool == true }
     check("five minutes after it was last used, it locks itself again", ok && !V.isOpen && V.reveal(V.users(for: "signin-test.example").first?["id"] ?? "") == nil)
+    if let t = w.current, t.kind == "passwords" { w.closeTab(t.id) }; await nap(0.3)
+
+    print("passkeys")
+    // A made-up site that exists only inside this check asks for a passkey, then signs in with it, as a real site would.
+    let keyPage = #"""
+    <!doctype html><meta charset=utf-8><title>Passkey test</title><h1>Passkey test</h1><input id=u autocomplete="username webauthn" style="width:300px;height:36px">
+    <script>
+    function enc(b){ var a = new Uint8Array(b), s = ''; for(var i = 0; i < a.length; i++) s += String.fromCharCode(a[i]); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
+    function dec(s){ s = s.replace(/-/g, '+').replace(/_/g, '/'); while(s.length % 4) s += '='; var t = atob(s), b = new Uint8Array(t.length); for(var i = 0; i < t.length; i++) b[i] = t.charCodeAt(i); return b; }
+    window.ch = crypto.getRandomValues(new Uint8Array(32));
+    window.mk = function(exclude){ window.made = null; return navigator.credentials.create({ publicKey: { rp: { name: 'Passkey test' }, user: { id: new Uint8Array([1, 2, 3, 4]), name: 'maya@example.com', displayName: 'Maya' }, challenge: ch,
+      pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }], excludeCredentials: exclude ? [{ type: 'public-key', id: dec(exclude) }] : [], authenticatorSelection: { residentKey: 'required', userVerification: 'required' }, extensions: { credProps: true } } })
+      .then(function(c){ window.made = { id: c.id, raw: enc(c.rawId), type: c.type, inst: c instanceof PublicKeyCredential, cd: enc(c.response.clientDataJSON), att: enc(c.response.attestationObject), ad: enc(c.response.getAuthenticatorData()), pub: enc(c.response.getPublicKey()), alg: c.response.getPublicKeyAlgorithm(), rk: (c.getClientExtensionResults().credProps || {}).rk, json: c.toJSON().response.publicKeyAlgorithm }; },
+            function(e){ window.made = { err: e.name }; }); };
+    window.si = function(rp, allow, quiet, signal){ window.got = null; return navigator.credentials.get({ mediation: quiet ? 'conditional' : undefined, signal: signal, publicKey: { challenge: ch, rpId: rp, allowCredentials: allow ? [{ type: 'public-key', id: dec(allow) }] : [], userVerification: 'required' } })
+      .then(function(c){ window.got = { id: c.id, cd: enc(c.response.clientDataJSON), ad: enc(c.response.authenticatorData), sig: enc(c.response.signature), uh: enc(c.response.userHandle) }; }, function(e){ window.got = { err: e.name }; }); };
+    </script>
+    """#
+    func keySite(_ host: String) async {
+      w.current?.web.loadSimulatedRequest(URLRequest(url: URL(string: "https://\(host)/account")!), responseHTML: keyPage)
+      _ = await until(8) { (await page(w.current, "return typeof window.mk === 'function' && document.readyState === 'complete'")) as? Bool == true && (w.current?.address ?? "").contains(host) }; await nap(0.3)
+    }
+    func pageVal(_ name: String) async -> [String: Any] { (await page(w.current, "return window.\(name) || null")) as? [String: Any] ?? [:] }
+    V.testApproves = true
+    await keySite("passkey-test.example")
+    let caps = (await page(w.current, "return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable() && await PublicKeyCredential.isConditionalMediationAvailable()")) as? Bool ?? false
+    check("pages are told this browser can make and use passkeys", caps)
+    _ = await page(w.current, "mk(); return 1"); await nap(0.6); s = await see(w)
+    check("a site asking to make a passkey: Sleek asks first, with the account and the site", (s["key"] as? String) == "make:maya@example.com@passkey-test.example", s["key"])
+    await shot(w, "26-passkey-make", to: out)
+    await press(w, "[data-pkans=yes]"); _ = await until(6) { !(await pageVal("made")).isEmpty }
+    let kMade = await pageVal("made"), madeCD = (kMade["cd"] as? String).flatMap(Passkeys.unb64u).flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] } ?? [:]
+    let chB64 = (await page(w.current, "return enc(ch)")) as? String ?? "-"
+    check("Make passkey answers the page as a passkey keeper would", kMade["inst"] as? Bool == true && kMade["type"] as? String == "public-key" && (kMade["alg"] as? Int) == -7 && (kMade["json"] as? Int) == -7 && kMade["rk"] as? Bool == true && kMade["id"] as? String == kMade["raw"] as? String,
+          kMade.filter { $0.key != "att" && $0.key != "ad" && $0.key != "cd" })
+    check("for this page's own address and question, as the engine says, not the page", madeCD["type"] as? String == "webauthn.create" && madeCD["origin"] as? String == "https://passkey-test.example" && madeCD["challenge"] as? String == chB64, madeCD)
+    let keyDisk = (try? String(contentsOf: w.store.dir.appendingPathComponent("passwords.sleekvault"), encoding: .utf8)) ?? ""
+    check("the passkey is kept in the vault, sealed: the site's name shows, the account and the key do not", V.keySites.contains("passkey-test.example") && V.passkeys(for: "passkey-test.example").count == 1 && keyDisk.contains("\"keys\"") && !keyDisk.contains("maya@example.com"), [V.keySites.sorted(), keyDisk.count])
+    _ = await page(w.current, "si('passkey-test.example'); return 1"); await nap(0.6); s = await see(w)
+    check("signing in: Sleek offers the site's passkeys", (s["key"] as? String) == "use:maya@example.com@passkey-test.example", s["key"])
+    await shot(w, "27-passkey-sign-in", to: out)
+    await press(w, "[data-pkuse]"); _ = await until(6) { !(await pageVal("got")).isEmpty }
+    var kGot = await pageVal("got")
+    func verifies(_ g: [String: Any]) -> Bool {
+      guard let pub = (kMade["pub"] as? String).flatMap(Passkeys.unb64u), let key = try? P256.Signing.PublicKey(derRepresentation: pub), let ad = (g["ad"] as? String).flatMap(Passkeys.unb64u),
+            let cd = (g["cd"] as? String).flatMap(Passkeys.unb64u), let sd = (g["sig"] as? String).flatMap(Passkeys.unb64u), let sig = try? P256.Signing.ECDSASignature(derRepresentation: sd) else { return false }
+      return key.isValidSignature(sig, for: ad + Data(SHA256.hash(data: cd))) && ad.prefix(32) == Data(SHA256.hash(data: Data("passkey-test.example".utf8))) && ad[32] & 0x05 == 0x05
+    }
+    check("with Touch ID, the page gets a signature the site can check with the public key it was given", verifies(kGot) && kGot["id"] as? String == kMade["id"] as? String && kGot["uh"] as? String == "AQIDBA", kGot.mapValues { "\($0)".prefix(24) })
+    V.testApproves = false; V.lock()
+    _ = await page(w.current, "si('passkey-test.example'); return 1"); await nap(0.6); await press(w, "[data-pkuse]"); _ = await until(6) { !(await pageVal("got")).isEmpty }
+    kGot = await pageVal("got")
+    check("without Touch ID, the page gets nothing", kGot["err"] as? String == "NotAllowedError", kGot)
+    V.testApproves = true
+    _ = await page(w.current, "mk('\(kMade["id"] as? String ?? "")'); return 1"); _ = await until(4) { !(await pageVal("made")).isEmpty }
+    let again = await pageVal("made")
+    check("a site that has this passkey already is told so, and no second one is made", again["err"] as? String == "InvalidStateError" && V.passkeys(for: "passkey-test.example").count == 1, again)
+    _ = await page(w.current, "window.ac = new AbortController(); si('passkey-test.example', null, false, ac.signal); return 1"); await nap(0.5)
+    let askedThen = (await see(w))["key"] as? String ?? ""
+    _ = await page(w.current, "ac.abort(); return 1"); await nap(0.5); s = await see(w); let aborted = await pageVal("got")
+    check("a page that takes its question back: the question goes", askedThen.hasPrefix("use:") && (s["key"] as? String) == "" && aborted["err"] as? String == "AbortError", [askedThen, s["key"] ?? "", aborted])
+    // the quiet kind: the page waits, and the passkey is offered under the sign-in box
+    _ = await page(w.current, "si('passkey-test.example', null, true); return 1"); await nap(0.4); await focusBox("u"); s = await see(w)
+    check("a page waiting quietly: its passkey is offered under the box that takes it", ((s["pwfill"] as? [String: Any])?["keys"] as? [String]) == ["maya@example.com"] && (s["key"] as? String) == "", s["pwfill"])
+    await shot(w, "28-passkey-quiet", to: out)
+    _ = await bar(w, "document.querySelector('[data-pkquiet]').dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true })); return 1")
+    _ = await until(6) { !(await pageVal("got")).isEmpty }; kGot = await pageVal("got")
+    check("and choosing it signs in", verifies(kGot), kGot)
+    // another site cannot use it, or claim to be the first
+    await keySite("other-test.example")
+    _ = await page(w.current, "si('passkey-test.example'); return 1"); _ = await until(4) { !(await pageVal("got")).isEmpty }
+    let claimed = await pageVal("got")
+    _ = await page(w.current, "si('example'); return 1"); _ = await until(4) { !(await pageVal("got")).isEmpty }
+    let bare = await pageVal("got")
+    _ = await page(w.current, "si(); return 1"); await nap(0.6); s = await see(w)
+    check("another site may not ask for this site's passkeys, nor for a name that belongs to no one", claimed["err"] as? String == "SecurityError" && bare["err"] as? String == "SecurityError", [claimed, bare])
+    check("asking for its own, it hears there are none in Sleek", (s["key"] as? String) == "none:@other-test.example", s["key"])
+    await press(w, "[data-pkans=no]"); _ = await until(4) { !(await pageVal("got")).isEmpty }
+    let told = await pageVal("got")
+    check("and OK tells the page no", told["err"] as? String == "NotAllowedError", told)
+    check("the rules on which site may use which name", Passkeys.allowed(rp: "example.com", host: "accounts.example.com") && !Passkeys.allowed(rp: "co.uk", host: "shop.co.uk") && !Passkeys.allowed(rp: "github.io", host: "me.github.io") && !Passkeys.allowed(rp: "other.com", host: "example.com") && !Passkeys.allowed(rp: "le.com", host: "example.com") && Passkeys.allowed(rp: "localhost", host: "localhost"))
+    // the Passwords page lists it
+    V.lock(); w.showPasswords(); _ = await until(8) { w.current?.kind == "passwords" }; _ = await until(5) { (await page(w.current, "return !!document.getElementById('unlock')")) as? Bool == true }
+    _ = await page(w.current, "document.getElementById('unlock').click(); return 1")
+    ok = await until(8) { (await page(w.current, "return [].some.call(document.querySelectorAll('.vrow'), function(r){ return /Passkey/.test(r.textContent) && /passkey-test/.test(r.textContent); })")) as? Bool == true }
+    _ = await page(w.current, "[].filter.call(document.querySelectorAll('.vrow'), function(r){ return /Passkey/.test(r.textContent); })[0].click(); return 1"); await nap(0.4)
+    let pkCard = (await page(w.current, "return document.querySelector('.pkf') ? document.querySelector('.pkf').textContent : ''")) as? String ?? ""
+    check("the Passwords page lists the passkey beside the passwords", ok && pkCard.contains("Touch ID"), pkCard)
+    await shot(w, "29-passkey-in-passwords", to: out)
+    _ = await page(w.current, "document.querySelector('[data-v=delete]').click(); return 1"); await nap(0.3); _ = await page(w.current, "document.querySelector('[data-v=delete]').click(); return 1"); await nap(0.5)
+    check("and Delete (pressed twice) removes it", V.passkeys(for: "passkey-test.example").isEmpty && !V.keySites.contains("passkey-test.example"), V.keySites.sorted())
     if let t = w.current, t.kind == "passwords" { w.closeTab(t.id) }; await nap(0.3)
 
     print("closing, and a private window")

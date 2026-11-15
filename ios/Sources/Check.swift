@@ -4,6 +4,7 @@
 // While it checks, nothing of yours is touched: settings go to a throwaway folder and pages keep nothing.
 import SwiftUI
 import WebKit
+import CryptoKit
 
 @main
 struct SleekApp: App {
@@ -226,6 +227,57 @@ final class Checker: ObservableObject {
     let came = V.bring(csv: "name,url,username,password\n\"Shop, the\",https://shop-test.example/login,\"a \"\"quoted\"\" name\",p1-long-enough\r\nplain,https://plain-shop.example,bob,p2-long-enough\nagain,https://signin-test.example,\(who),whatever\n")
     let gone = V.remove(after?["id"] as? String ?? "")
     say(came?.added == 2 && came?.here == 1 && gone && V.count == 4, "passwords come in from another browser's file, and one can be removed")
+
+    // ---------- passkeys (a made-up site that exists only inside this check) ----------
+    let keyPage = #"""
+    <!doctype html><meta charset=utf-8><meta name=viewport content='width=device-width'><title>Passkey test</title><h1>Passkey test</h1><input id=u autocomplete="username webauthn" style="width:90%;height:40px">
+    <script>
+    function enc(b){ var a = new Uint8Array(b), s = ''; for(var i = 0; i < a.length; i++) s += String.fromCharCode(a[i]); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
+    window.ch = crypto.getRandomValues(new Uint8Array(32));
+    window.mk = function(){ window.made = null; navigator.credentials.create({ publicKey: { rp: { name: 'Passkey test' }, user: { id: new Uint8Array([1, 2, 3, 4]), name: 'maya@example.com', displayName: 'Maya' }, challenge: ch, pubKeyCredParams: [{ type: 'public-key', alg: -7 }] } })
+      .then(function(c){ window.made = { id: c.id, inst: c instanceof PublicKeyCredential, cd: enc(c.response.clientDataJSON), pub: enc(c.response.getPublicKey()), alg: c.response.getPublicKeyAlgorithm() }; }, function(e){ window.made = { err: e.name }; }); };
+    window.si = function(rp, quiet){ window.got = null; navigator.credentials.get({ mediation: quiet ? 'conditional' : undefined, publicKey: { challenge: ch, rpId: rp } })
+      .then(function(c){ window.got = { id: c.id, cd: enc(c.response.clientDataJSON), ad: enc(c.response.authenticatorData), sig: enc(c.response.signature), uh: enc(c.response.userHandle) }; }, function(e){ window.got = { err: e.name }; }); };
+    </script>
+    """#
+    let kt = b.newTab(isPrivate: false); kt.atStart = false
+    func keySite(_ host: String) async {
+      kt.web.loadSimulatedRequest(URLRequest(url: URL(string: "https://\(host)/account")!), responseHTML: keyPage)
+      _ = await until(8) { (await self.js(kt, "return typeof window.mk === 'function' && document.readyState === 'complete' && location.host === '\(host)'")) as? Bool == true }; await nap(0.3)
+    }
+    func pageVal(_ name: String) async -> [String: Any] { (await self.js(kt, "return window.\(name) || null")) as? [String: Any] ?? [:] }
+    V.testApproves = true
+    await keySite("passkey-test.example")
+    _ = await js(kt, "mk(); return 1"); _ = await until(4) { self.b.keyAsk != nil }
+    say(b.keyAsk?.make == true && b.keyAsk?.user == "maya@example.com" && b.keyAsk?.site == "passkey-test.example", "a site asking to make a passkey: Sleek asks first, with the account and the site")
+    b.answerPasskey(yes: true); _ = await until(6) { !(await pageVal("made")).isEmpty }
+    let pkMade = await pageVal("made"), pkCD = (pkMade["cd"] as? String).flatMap(Passkeys.unb64u).flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] } ?? [:]
+    say(pkMade["inst"] as? Bool == true && (pkMade["alg"] as? Int) == -7 && pkCD["origin"] as? String == "https://passkey-test.example" && pkCD["type"] as? String == "webauthn.create" && V.passkeys(for: "passkey-test.example").count == 1, "Make Passkey answers the page, for its own address, and keeps the passkey in the vault")
+    func verifies(_ g: [String: Any]) -> Bool {
+      guard let pub = (pkMade["pub"] as? String).flatMap(Passkeys.unb64u), let key = try? P256.Signing.PublicKey(derRepresentation: pub), let ad = (g["ad"] as? String).flatMap(Passkeys.unb64u),
+            let cd = (g["cd"] as? String).flatMap(Passkeys.unb64u), let sd = (g["sig"] as? String).flatMap(Passkeys.unb64u), let sig = try? P256.Signing.ECDSASignature(derRepresentation: sd) else { return false }
+      return key.isValidSignature(sig, for: ad + Data(SHA256.hash(data: cd))) && g["uh"] as? String == "AQIDBA"
+    }
+    _ = await js(kt, "si('passkey-test.example'); return 1"); _ = await until(4) { self.b.keyAsk != nil }
+    let pkUsers = b.keyAsk?.users ?? []
+    say(b.keyAsk?.make == false && pkUsers.map(\.user) == ["maya@example.com"], "signing in: Sleek offers the site's passkeys")
+    b.answerPasskey(yes: true, id: pkUsers.first?.id); _ = await until(6) { !(await pageVal("got")).isEmpty }
+    say(verifies(await pageVal("got")), "with Face ID, the page gets a signature the site can check with its public key")
+    V.testApproves = false; V.lock()
+    _ = await js(kt, "si('passkey-test.example'); return 1"); _ = await until(4) { self.b.keyAsk != nil }; b.answerPasskey(yes: true, id: pkUsers.first?.id); _ = await until(6) { !(await pageVal("got")).isEmpty }
+    say((await pageVal("got"))["err"] as? String == "NotAllowedError", "without Face ID, the page gets nothing")
+    V.testApproves = true
+    _ = await js(kt, "si('passkey-test.example', true); return 1"); await nap(0.4); await focusBox(kt, "u")
+    let quietKeys = b.offer?.keys ?? []
+    say(quietKeys.map(\.user) == ["maya@example.com"] && b.keyAsk == nil, "a page waiting quietly: its passkey is offered beside the bar while the cursor is in its box")
+    b.useQuietPasskey(quietKeys.first?.id ?? ""); _ = await until(6) { !(await pageVal("got")).isEmpty }
+    say(verifies(await pageVal("got")), "and choosing it signs in")
+    await keySite("other-test.example")
+    _ = await js(kt, "si('passkey-test.example'); return 1"); _ = await until(4) { !(await pageVal("got")).isEmpty }
+    say((await pageVal("got"))["err"] as? String == "SecurityError", "another site may not ask for this site's passkeys")
+    let pkGone = V.removePasskey(pkUsers.first?.id ?? "")
+    say(pkGone && V.passkeys(for: "passkey-test.example").isEmpty, "a passkey can be removed")
+    b.close(kt)
     if let i = b.tabs.firstIndex(where: { $0 === s }) { b.show(i) }
 
     // ---------- the bar ----------

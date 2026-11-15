@@ -338,6 +338,8 @@ final class BrowserWindow: NSObject, NSWindowDelegate, WKScriptMessageHandler, W
     case "image": imageChosen(m["how"] as? String ?? "")
     case "pw-fill": fillSignIn(tab: m["tab"] as? String ?? "", login: m["login"] as? String)
     case "pw-answer": answerSignIn(m["how"] as? String ?? "")
+    case "pk-answer": answerPasskey(tab: m["tab"] as? String ?? "", ask: m["ask"] as? String ?? "", yes: m["yes"] as? Bool ?? false, id: m["id"] as? String)
+    case "pk-quiet": useQuietPasskey(tab: m["tab"] as? String ?? "", id: m["id"] as? String ?? "")
     case "passwords": showPasswords()
     case "task-add": addTask(title: m["title"] as? String ?? "", board: m["board"] as? String ?? "", due: m["due"] as? String ?? "")
     case "task-tick": Work.shared.tick(id, m["on"] as? Bool ?? true)

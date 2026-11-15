@@ -224,6 +224,8 @@ h5.sec { margin: 10px 6px 3px; font-size: 11px; letter-spacing: .13em; text-tran
 .askbar { position: absolute; z-index: 18; left: 50%; transform: translateX(-50%); width: min(440px, calc(100% - 24px)); padding: 12px 14px; border-radius: 14px; background: var(--k-raise); border: 1px solid var(--k-line2); box-shadow: var(--k-shadow); display: flex; flex-direction: column; gap: 8px; }
 .askbar.in { animation: askIn .3s cubic-bezier(.2, .8, .2, 1) both; }
 @keyframes askIn { from { opacity: 0; transform: translateX(-50%) translateY(-10px) scale(.97); } }
+.keyask .kh { display: flex; align-items: center; gap: 10px; } .keyask .kico { flex: none; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 9px; background: var(--k-hover); color: var(--k-fg); } .keyask .kico svg.i { width: 17px; height: 17px; }
+.keyask .klist { display: flex; flex-direction: column; gap: 2px; margin: 0 -6px; } .keyask .klist .mi { padding: 8px 9px; } .keyask .klist .mi .two { color: var(--k-fg); font-size: 13.5px; } .keyask .klist .mi .two i { font-size: 11.5px; } .keyask .mi small svg.i { width: 14px; height: 14px; }
 .askbar b { font-weight: 600; } .askbar span { color: var(--k-muted); font-size: 13px; overflow-wrap: anywhere; }
 
 /* ---------- Glass: the bar and what hangs from it are the Mac's own Liquid Glass, laid behind this page by the app

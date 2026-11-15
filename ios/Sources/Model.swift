@@ -14,7 +14,9 @@ struct Board: Identifiable, Equatable { let id: String, name: String, color: Str
 struct Day { var late: [TaskRow] = [], today: [TaskRow] = [], soon: [TaskRow] = [], done: [TaskRow] = [], recent: [WorkItem] = [], boards: [Board] = [], loaded = false
   var due: Int { late.count + today.count } }
 struct SavedName: Identifiable, Equatable { let id: String, user: String }
-struct SignInOffer: Equatable { let tab: String, site: String, users: [SavedName], strong: String }
+struct SignInOffer: Equatable { let tab: String, site: String, users: [SavedName], strong: String; var keys: [SavedName] = [] }
+/// A site asks to make a passkey, or to sign in with one (Passkeys.swift).
+struct KeyQuestion: Equatable { let tab: String, ask: String, make: Bool, site: String, user: String, users: [SavedName] }
 struct SignInAsk: Equatable { let site: String, user: String, update: Bool }
 struct Suggestion: Identifiable { let kind: String, title: String, hint: String, url: String; var id: String { kind + "|" + title + "|" + url } }
 
@@ -39,6 +41,8 @@ final class PhoneTab: NSObject, ObservableObject, Identifiable, WKNavigationDele
   private(set) var blocking = false      // whether the block lists are on this tab now
   weak var browser: Browser?
   private var watch: [NSKeyValueObservation] = [], lastY: CGFloat = 0
+  /// Where the page's passkey questions arrive (Passkeys.swift, shared with the Mac app).
+  let keys = KeyBridge()
 
   init(browser: Browser, isPrivate: Bool = false) {
     self.isPrivate = isPrivate
@@ -53,13 +57,21 @@ final class PhoneTab: NSObject, ObservableObject, Identifiable, WKNavigationDele
     // signing in: a script apart from the page's own (the same one the Mac app uses) says where the sign-in boxes are and what was sent
     c.userContentController.addUserScript(WKUserScript(source: sharedSignInScript, injectionTime: .atDocumentEnd, forMainFrameOnly: true, in: signInWorld))
     c.userContentController.add(Weak(self), contentWorld: signInWorld, name: "sleekPw")
+    // passkeys: a script in the page stands in for navigator.credentials and hands the question to Sleek
+    c.userContentController.addUserScript(WKUserScript(source: Passkeys.script, injectionTime: .atDocumentStart, forMainFrameOnly: true))
+    c.userContentController.addScriptMessageHandler(keys, contentWorld: .page, name: "sleekKey")
     let pull = UIRefreshControl(); pull.addTarget(self, action: #selector(pulled(_:)), for: .valueChanged); web.scrollView.refreshControl = pull
     let sync: (WKWebView, Any) -> Void = { [weak self] _, _ in Task { @MainActor in self?.sync() } }
     watch = [web.observe(\.title, changeHandler: sync), web.observe(\.url, changeHandler: sync), web.observe(\.isLoading, changeHandler: sync), web.observe(\.estimatedProgress, changeHandler: sync),
              web.observe(\.canGoBack, changeHandler: sync), web.observe(\.canGoForward, changeHandler: sync),
              web.scrollView.observe(\.contentOffset) { [weak self] s, _ in MainActor.assumeIsolated { self?.scrolled(s) } }]
     fit(top: browser.barAtTop)
+    keys.onAsk = { [weak self] a in if let s = self { s.browser?.passkeyAsked(s, a) } }
+    keys.onDrop = { [weak self] a in if let b = self?.browser, b.keyAsk?.ask == a { withAnimation(.easeOut(duration: 0.2)) { b.keyAsk = nil } } }
   }
+  /// The tab is going: its page's open passkey questions are answered "not allowed", and nothing holds on to it.
+  func closing() { keys.dropAll(); web.configuration.userContentController.removeScriptMessageHandler(forName: "sleekKey", contentWorld: .page) }
+  func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) { keys.dropAll() }      // a new page: the old one's questions are over
   /// Leave room for the bar at whichever end it is, so nothing at the very top or bottom of a page sits under it.
   func fit(top: Bool) {
     let room: CGFloat = 62, inset = UIEdgeInsets(top: top ? room : 0, left: 0, bottom: top ? 0 : room, right: 0)
@@ -101,7 +113,7 @@ final class PhoneTab: NSObject, ObservableObject, Identifiable, WKNavigationDele
   func userContentController(_ c: WKUserContentController, didReceive message: WKScriptMessage) {
     guard message.name == "sleekPw", let m = message.body as? [String: Any], let u = web.url, u.scheme == "https", let host = u.host else { return }      // never over a connection others can read
     let site = Vault.site(host)
-    if m["focus"] != nil { browser?.signInField(self, site: site, fresh: m["fresh"] as? Bool ?? false, on: m["on"] as? String ?? "pass") }
+    if m["focus"] != nil { browser?.signInField(self, site: site, fresh: m["fresh"] as? Bool ?? false, on: m["on"] as? String ?? "pass", keysOnly: m["webauthn"] != nil) }
     if m["blur"] != nil, m["scrolled"] == nil { browser?.signInLeft(self) }      // on a phone the page scrolls as the keyboard comes up: that is not leaving the box
     if let s = m["sent"] as? [String: Any], let pass = s["pass"] as? String, !pass.isEmpty { browser?.signedIn(self, site: site, address: u.absoluteString, user: s["user"] as? String ?? "", password: pass) }
   }
@@ -221,6 +233,7 @@ final class Browser: ObservableObject {
   @Published var toast: String?
   @Published var offer: SignInOffer?             // the cursor is in a sign-in box: saved names to fill, or a strong password to use
   @Published var keepAsk: SignInAsk?             // a sign-in was sent: keep it?
+  @Published var keyAsk: KeyQuestion?            // a site asks to make a passkey, or to sign in with one
   private var pendingLogin: (site: String, address: String, user: String, password: String, replacing: String?)?
   private var offerN = 0
   /// Where the bar lives is yours to choose: along the bottom or along the top (asked the first time, then in Settings and the
@@ -294,6 +307,7 @@ final class Browser: ObservableObject {
   }
   func close(_ t: PhoneTab) {
     guard let i = tabs.firstIndex(where: { $0 === t }) else { return }
+    t.closing(); if keyAsk?.tab == t.id { keyAsk = nil }
     withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { tabs.remove(at: i); if tabs.isEmpty { tabs = [PhoneTab(browser: self)] }; at = min(at > i ? at - 1 : at, tabs.count - 1) }
     if !tabs.contains(where: { $0.isPrivate }) { privateData = .nonPersistent() }      // the last private tab is gone: so is everything they kept
     saveSession()
@@ -318,13 +332,45 @@ final class Browser: ObservableObject {
   // ---------- passwords (the vault is the Mac app's own: Vault.swift) ----------
   var savePasswords: Bool { store.settings["savePasswords"] as? Bool ?? true }
   /// The cursor went into a sign-in box. Offer the names saved for this site; or, where a new password is being chosen, a strong one.
-  func signInField(_ t: PhoneTab, site: String, fresh: Bool, on field: String) {
+  func signInField(_ t: PhoneTab, site: String, fresh: Bool, on field: String, keysOnly: Bool = false) {
     guard t === current else { return }
-    let users = fresh ? [] : Vault.shared.users(for: site).map { SavedName(id: $0["id"] ?? "", user: $0["user"] ?? "") }, strong = fresh && field == "pass" && !t.isPrivate
+    let users = fresh || keysOnly ? [] : Vault.shared.users(for: site).map { SavedName(id: $0["id"] ?? "", user: $0["user"] ?? "") }, strong = fresh && field == "pass" && !t.isPrivate && !keysOnly
+    let keys = fresh ? [] : (t.keys.quiet.map { Passkeys.choices($0) } ?? []).map { SavedName(id: $0["id"] ?? "", user: $0["user"] ?? "") }      // passkeys, when the page is waiting quietly for one
     offerN += 1
-    if users.isEmpty && !strong { if offer != nil { withAnimation(.easeOut(duration: 0.2)) { offer = nil } }; return }
+    if users.isEmpty && keys.isEmpty && !strong { if offer != nil { withAnimation(.easeOut(duration: 0.2)) { offer = nil } }; return }
     if strong, t.suggested == nil { t.suggested = Vault.generate(words: false, length: 20) }
-    withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) { offer = SignInOffer(tab: t.id, site: site, users: users, strong: strong ? (t.suggested ?? "") : ""); compact = false }
+    withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) { offer = SignInOffer(tab: t.id, site: site, users: users, strong: strong ? (t.suggested ?? "") : "", keys: keys); compact = false }
+  }
+
+  // ---------- passkeys (Passkeys.swift, shared with the Mac app) ----------
+  /// A site asks to make a passkey, or to sign in with one (not quietly). Ask beside the bar.
+  func passkeyAsked(_ t: PhoneTab, _ a: KeyAsk) {
+    if !a.make && a.conditional { t.web.callAsyncJavaScript("window.__sleekRefocus && window.__sleekRefocus()", arguments: [:], in: nil, in: signInWorld) { _ in }; return }      // offered beside the bar while the cursor is in the sign-in box
+    if a.make, Passkeys.hasOne(a) { t.keys.answer(a.ask, nil, fail: KeyFail(name: "InvalidStateError", message: "A passkey for this account is kept already.")); say("Sleek already keeps a passkey for this account"); return }
+    let users = a.make ? [] : Passkeys.choices(a).map { SavedName(id: $0["id"] ?? "", user: $0["user"] ?? "") }
+    withAnimation(.spring(response: 0.45, dampingFraction: 0.8)) { offer = nil; keepAsk = nil; keyAsk = KeyQuestion(tab: t.id, ask: a.ask, make: a.make, site: a.rp, user: a.user.isEmpty ? a.display : a.user, users: users); compact = false }
+  }
+  /// Yes (make it, or sign in with the passkey named) once Face ID agrees; or no.
+  func answerPasskey(yes: Bool, id key: String? = nil) {
+    guard let q = keyAsk else { return }
+    withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) { keyAsk = nil }
+    guard let t = tabs.first(where: { $0.id == q.tab }), let a = t.keys.open[q.ask] else { return }
+    guard yes, a.make || key != nil else { t.keys.answer(q.ask, nil); return }
+    tap(.medium)
+    Task { @MainActor in
+      guard await Vault.shared.unlock(a.make ? "make a passkey for " + a.rp : "sign in to " + a.rp + " with a passkey") else { t.keys.answer(q.ask, nil); return }
+      guard t.keys.open[q.ask] != nil else { return }
+      if a.make { let r = Passkeys.make(a, page: t.web.url?.absoluteString ?? ""); t.keys.answer(q.ask, r); say(r != nil ? "Passkey saved for " + a.rp : "That passkey could not be kept") }
+      else { let r = Passkeys.sign(a, with: key ?? ""); t.keys.answer(q.ask, r); if r == nil { say("That passkey could not be used here") } }
+    }
+  }
+  /// From the offer beside the bar: sign in with this passkey, once Face ID agrees.
+  func useQuietPasskey(_ key: String) {
+    let t = tab; guard let a = t.keys.quiet else { return }; tap(.medium)
+    Task { @MainActor in
+      guard await Vault.shared.unlock("sign in to " + a.rp + " with a passkey"), t.keys.open[a.ask] != nil else { return }
+      if let r = Passkeys.sign(a, with: key) { t.keys.answer(a.ask, r); withAnimation { offer = nil } } else { say("That passkey could not be used here") }
+    }
   }
   /// The cursor left the sign-in boxes: the offer goes, a moment later (so a press on it still lands).
   func signInLeft(_ t: PhoneTab) {

@@ -44,6 +44,10 @@ final class Vault {
   private(set) var count = 0
   private var sealed: Data?               // the sign-ins, encrypted, as on disk
   private var logins: [Login]?            // the sign-ins, readable: only while the vault is open
+  /// Passkeys (Passkeys.swift): sealed with the same key, beside the sign-ins. The sites that have one are known without opening anything.
+  private var sealedKeys: Data?
+  private var keys: [Passkey]?            // readable: only while the vault is open
+  private(set) var keySites: Set<String> = []
   private var lastUse = Date.distantPast
   private var key: SymmetricKey?
   private var testKey: SymmetricKey?      // while the app checks itself: a key that is thrown away, so your Keychain is never touched
@@ -61,12 +65,14 @@ final class Vault {
     guard let f = file, let d = try? Data(contentsOf: f), let o = try? JSONSerialization.jsonObject(with: d) as? [String: Any] else { return }
     sites = Set(o["sites"] as? [String] ?? []); never = Set(o["never"] as? [String] ?? []); count = o["count"] as? Int ?? 0
     sealed = (o["sealed"] as? String).flatMap { Data(base64Encoded: $0) }
+    sealedKeys = (o["keys"] as? String).flatMap { Data(base64Encoded: $0) }; keySites = Set(o["keySites"] as? [String] ?? [])
   }
   /// Write the file (readable by you alone). False when it could not be written.
   @discardableResult private func write() -> Bool {
     guard let f = file else { return false }
     var o: [String: Any] = ["v": 1, "sites": sites.sorted(), "never": never.sorted(), "count": count]
     if let s = sealed { o["sealed"] = s.base64EncodedString() }
+    if let k = sealedKeys { o["keys"] = k.base64EncodedString(); o["keySites"] = keySites.sorted() }
     guard let d = try? JSONSerialization.data(withJSONObject: o, options: [.sortedKeys]), (try? d.write(to: f, options: .atomic)) != nil else { return false }
     try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: f.path)
     onChange.forEach { $0() }
@@ -81,7 +87,7 @@ final class Vault {
     var out: CFTypeRef?
     let found = SecItemCopyMatching(find as CFDictionary, &out)
     if found == errSecSuccess, let d = out as? Data, d.count == 32 { key = SymmetricKey(data: d); return key }
-    guard found == errSecItemNotFound, make, sealed == nil else { return nil }      // never a new key while there is a vault the old key locked
+    guard found == errSecItemNotFound, make, sealed == nil, sealedKeys == nil else { return nil }      // never a new key while there is a vault the old key locked
     var bytes = [UInt8](repeating: 0, count: 32)
     guard SecRandomCopyBytes(kSecRandomDefault, 32, &bytes) == errSecSuccess else { return nil }
     var add = base; add[kSecValueData as String] = Data(bytes); add[kSecAttrLabel as String] = "Sleek Passwords"
@@ -108,18 +114,54 @@ final class Vault {
     return true
   }
   /// True when the vault cannot be read at all (its key is gone from the Keychain, or you refused it).
-  var unreadable: Bool { sealed != nil && read() == nil }
+  var unreadable: Bool { (sealed != nil && read() == nil) || (sealedKeys != nil && readKeys() == nil) }
+
+  // ---------- passkeys ----------
+  private func readKeys() -> [Passkey]? {
+    if let k = keys { return k }
+    guard let s = sealedKeys else { return [] }
+    guard let k = theKey(make: false), let box = try? AES.GCM.SealedBox(combined: s), let plain = try? AES.GCM.open(box, using: k), let l = try? JSONDecoder().decode([Passkey].self, from: plain) else { return nil }
+    return l
+  }
+  private func keepKeys(_ l: [Passkey]) -> Bool {
+    guard let k = theKey(make: true), let plain = try? JSONEncoder().encode(l), let box = try? AES.GCM.seal(plain, using: k), let combined = box.combined else { return false }
+    let was = (sealedKeys, keySites, keys)
+    sealedKeys = combined; keySites = Set(l.map { $0.rp })
+    if keys != nil { keys = l }
+    if !write() { (sealedKeys, keySites, keys) = was; return false }
+    return true
+  }
+  var passkeyCount: Int { readKeys()?.count ?? 0 }
+  /// The passkeys kept for a site: names only, known without Touch ID. Their keys are not.
+  func passkeys(for rp: String) -> [[String: String]] { (readKeys() ?? []).filter { $0.rp == rp }.sorted { $0.used > $1.used }.map { ["id": $0.id, "user": $0.user.isEmpty ? $0.display : $0.user] } }
+  /// Keep a new passkey. Only while the vault is open (Touch ID said yes just now).
+  func keepPasskey(_ p: Passkey) -> Bool {
+    guard isOpen, var l = readKeys() else { return false }; used()
+    l.removeAll { $0.rp == p.rp && $0.handle == p.handle }      // the same account on the same site: the new one takes its place, as the site's will
+    l.insert(p, at: 0); return keepKeys(l)
+  }
+  /// A passkey, key and all, to sign in with. Only while the vault is open; marks it as used.
+  func passkey(_ id: String) -> Passkey? {
+    guard isOpen, var l = readKeys(), let i = l.firstIndex(where: { $0.id == id }) else { return nil }
+    used(); l[i].used = Date().timeIntervalSince1970; let got = l[i]; _ = keepKeys(l); return got
+  }
+  /// Every passkey, without its key: for the Passwords page.
+  func passkeyList() -> [[String: Any]]? {
+    guard isOpen, let l = readKeys() else { return nil }; used()
+    return l.sorted { $0.rp == $1.rp ? $0.user < $1.user : $0.rp < $1.rp }.map { ["id": $0.id, "site": $0.rp, "url": $0.url, "user": $0.user.isEmpty ? $0.display : $0.user, "added": $0.added, "used": $0.used, "passkey": true] }
+  }
+  @discardableResult func removePasskey(_ id: String) -> Bool { guard isOpen, var l = readKeys() else { return false }; used(); l.removeAll { $0.id == id }; return keepKeys(l) }
 
   // ---------- opening and closing ----------
   var isOpen: Bool { logins != nil && Date().timeIntervalSince(lastUse) < Vault.stayOpen }
   private func used() { lastUse = Date() }
-  func lock() { logins = nil; onChange.forEach { $0() } }
+  func lock() { logins = nil; keys = nil; onChange.forEach { $0() } }
   /// For the app's own checks: as if five minutes had gone by since the vault was last used.
   func ageOut() { lastUse = .distantPast }
   /// Ask for Touch ID (or the Mac's password), then open the vault. `why` finishes "Sleek is trying to …".
   func unlock(_ why: String) async -> Bool {
     if isOpen { used(); return true }
-    logins = nil
+    logins = nil; keys = nil
     var yes = false
     if Res.selfTest != nil { yes = testApproves }
     else {
@@ -128,8 +170,8 @@ final class Vault {
       if c.canEvaluatePolicy(.deviceOwnerAuthentication, error: &e) { yes = (try? await c.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: why)) ?? false }
       else { yes = false }      // a Mac with no password set at all: nothing to ask, so nothing is shown
     }
-    guard yes, let l = read() else { return false }
-    logins = l; used(); onChange.forEach { $0() }; return true
+    guard yes, let l = read(), let k = readKeys() else { return false }
+    logins = l; keys = k; used(); onChange.forEach { $0() }; return true
   }
 
   // ---------- what a site has (no passwords leave here) ----------

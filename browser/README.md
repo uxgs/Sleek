@@ -116,8 +116,12 @@ What to know:
   bound to Touch ID.
 - Each new build of the app is a stranger to the Keychain, which asks for your Mac password once
   ("Always Allow") the first time that build opens the vault. A signed release does not have this.
-- Sign-in boxes inside a frame from another site are not offered a fill yet, and there are no
-  passkeys (those need a permission from Apple that comes with release signing).
+- Sign-in boxes inside a frame from another site are not offered a fill yet.
+- Passkeys: Sleek keeps its own (Sources/Sleek/Passkeys.swift). When a site offers to make one, Sleek
+  asks, then keeps it in the same sealed vault; signing in with it asks for Touch ID. A site waiting
+  quietly for a passkey gets it offered under its sign-in box. Passkeys made in Sleek stay in Sleek:
+  they are not the ones in iCloud Keychain, and a phone or security key cannot be used. Using
+  iCloud Keychain's passkeys needs a browser permission Apple grants on request.
 
 ## What is still to come
 
