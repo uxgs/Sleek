@@ -76,11 +76,7 @@ struct StartView: View {
   }
   struct Place: Identifiable { let host: String, name: String, url: String; var id: String { url } }
   private var marks: [Place] { b.store.bookmarks.prefix(8).compactMap { m in guard let u = m["url"] as? String, let h = URL(string: u)?.host else { return nil }; return Place(host: h, name: m["title"] as? String ?? h, url: u) } }
-  private var places: [Place] {
-    var seen = Set<String>(), out: [Place] = []
-    for h in b.store.history.sorted(by: { ($0["n"] as? Int ?? 1) > ($1["n"] as? Int ?? 1) }) { guard let u = h["u"] as? String, let host = URL(string: u)?.host, !seen.contains(host) else { continue }; seen.insert(host); out.append(Place(host: host, name: host.replacingOccurrences(of: "www.", with: ""), url: u)); if out.count == 8 { break } }
-    return out
-  }
+  private var places: [Place] { b.topSites.map { Place(host: $0.host, name: $0.host.replacingOccurrences(of: "www.", with: ""), url: $0.url) } }
   private func grid(_ name: String, _ list: [Place]) -> some View {
     VStack(alignment: .leading, spacing: 12) {
       head(name)
@@ -88,15 +84,20 @@ struct StartView: View {
       VStack(spacing: 16) { ForEach(Array(stride(from: 0, to: list.count, by: 4)), id: \.self) { i in
         HStack(alignment: .top, spacing: 0) { ForEach(0..<4, id: \.self) { j in
           if j > 0 { Spacer(minLength: 0) }
-          if i + j < list.count { place(list[i + j]) } else { Color.clear.frame(width: 56, height: 56) }
+          if i + j < list.count { place(list[i + j], mark: name == "Bookmarks") } else { Color.clear.frame(width: 56, height: 56) }
         } }
       } }
     }
   }
   /// One place: its icon, 56 wide, and its name centred beneath (the name may be a little wider than the icon).
-  private func place(_ p: Place) -> some View {
+  /// Press and hold it to open it in a new tab or a private one, or to take it off the start screen.
+  private func place(_ p: Place, mark: Bool) -> some View {
     Button { tap(); b.open(p.url) } label: { VStack(spacing: 8) { SiteIcon(host: p.host, size: 56); Text(p.name).font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1).minimumScaleFactor(0.9).frame(width: 72).frame(width: 56) } }.buttonStyle(Press())
-      .contextMenu { Button { b.newTab(URL(string: p.url)) } label: { Label("Open in New Tab", systemImage: "plus.square.on.square") }; Button { b.newTab(URL(string: p.url), isPrivate: true) } label: { Label("Open in Private Tab", systemImage: "eyeglasses") } }
+      .contentShape(.contextMenuPreview, RoundedRectangle(cornerRadius: 16, style: .continuous).inset(by: -10))      // lifted for its menu, its name comes with it whole
+      .contextMenu { Button { b.newTab(URL(string: p.url)) } label: { Label("Open in New Tab", systemImage: "plus.square.on.square") }; Button { b.newTab(URL(string: p.url), isPrivate: true) } label: { Label("Open in Private Tab", systemImage: "eyeglasses") }
+        Divider()
+        if mark { Button(role: .destructive) { tap(.medium); b.removeMark(p.url) } label: { Label("Remove Bookmark", systemImage: "trash") } }
+        else { Button(role: .destructive) { tap(.medium); b.hideTop(p.host) } label: { Label("Remove", systemImage: "minus.circle") } } }
   }
 }
 

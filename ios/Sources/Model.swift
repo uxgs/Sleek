@@ -372,7 +372,27 @@ final class Browser: ObservableObject {
     if let u = URL(string: "https://" + site + "/.well-known/change-password") { newTab(u, isPrivate: false) }
     say("The new password is copied. Sleek keeps it once " + site + " has taken it.")
   }
-  func clearHistory() { store.clearHistory(); store.flush(); objectWillChange.send(); say("History cleared") }
+  func clearHistory() { store.clearHistory(); store.set("hiddenTop", [String]()); store.flush(); objectWillChange.send(); say("History cleared") }
+  /// The sites you go to most, for the start screen: one for each site, the most visited first, leaving out
+  /// any you took off the list there.
+  var topSites: [(host: String, url: String)] {
+    let hidden = Set(store.settings["hiddenTop"] as? [String] ?? []); var seen = Set<String>(), out: [(host: String, url: String)] = []
+    for h in store.history.sorted(by: { ($0["n"] as? Int ?? 1) > ($1["n"] as? Int ?? 1) }) {
+      guard let u = h["u"] as? String, let host = URL(string: u)?.host, !seen.contains(host) else { continue }
+      seen.insert(host); if hidden.contains(host) { continue }
+      out.append((host, u)); if out.count == 8 { break }
+    }
+    return out
+  }
+  /// Take a site off "Where you go most" (press and hold it on the start screen). Your history keeps it, and it is
+  /// still offered as you type; it is only left off that list, until you clear your history.
+  func hideTop(_ host: String) {
+    var h = store.settings["hiddenTop"] as? [String] ?? []; if !h.contains(host) { h.append(host) }
+    withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) { store.set("hiddenTop", h); objectWillChange.send() }
+    store.flush(); say("Removed from Where you go most")
+  }
+  /// Take a bookmark away (press and hold it on the start screen).
+  func removeMark(_ url: String) { withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) { store.removeBookmark(url: url); objectWillChange.send() }; store.flush(); say("Bookmark removed") }
   func forget(_ url: String) { store.history.removeAll { ($0["u"] as? String) == url }; store.flush(); objectWillChange.send() }
   /// Sign out of sites and empty what they kept to load faster. Your Sleek work is kept apart from these and stays.
   func clearCookies() {

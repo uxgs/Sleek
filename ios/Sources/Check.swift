@@ -42,6 +42,10 @@ final class Checker: ObservableObject {
     say(there && !first.atStart && first.host == "example.com" && !first.title.isEmpty, "a page opens: “\(first.title)” at \(first.host)")
     say(first.blocking, "blocking is on for it")
     say((b.store.history.first?["u"] as? String) == "https://example.com/", "it is written in your history")
+    let wasTop = b.topSites.contains { $0.host == "example.com" }
+    b.hideTop("example.com")
+    say(wasTop && !b.topSites.contains { $0.host == "example.com" } && b.store.history.contains { ($0["u"] as? String) == "https://example.com/" }, "the site shows among the places you go most; removed from there, it leaves that list and stays in your history")
+    b.store.set("hiddenTop", [String]())
     say(first.web.findInteraction != nil && first.web.scrollView.refreshControl != nil && first.web.allowsBackForwardNavigationGestures, "find on page, pull down to refresh and swiping back are there")
 
     // ---------- blocking, and switching it off for a site ----------
