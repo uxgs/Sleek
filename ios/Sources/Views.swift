@@ -226,6 +226,7 @@ struct BarView: View {
       Button { b.newTab(isPrivate: false) } label: { Label("New Tab", systemImage: "plus.square.on.square") }
       Button { b.newTab(isPrivate: true) } label: { Label("Private Tab", systemImage: "eyeglasses") }
       if !tab.isPrivate { Button { sheet = .tasks } label: { Label("Tasks", systemImage: "checklist") } }
+      if tab.atStart && !tab.isPrivate { Button { tap(.heavy); withAnimation(.spring(response: 0.4, dampingFraction: 0.78)) { b.arranging = true } } label: { Label("Edit Start Page", systemImage: "square.grid.2x2") } }
     }
     Section {
       Menu { appearance } label: { Label("Appearance", systemImage: "paintbrush") }
@@ -245,7 +246,7 @@ struct BarView: View {
       if let u = tab.address, tab.isWeb { ShareLink(item: u) { Label("Share", systemImage: "square.and.arrow.up") } }
     }
   }
-  /// How Sleek looks: where the bar is, light or dark, the tiles for where you go most, the row of Sleek's apps.
+  /// How Sleek looks: where the bar is, light or dark, and the tiles on a new tab (what is on it is arranged there: Layout.swift).
   @ViewBuilder private var appearance: some View {
     Picker(selection: Binding(get: { b.barAtTop }, set: { tap(); b.placeBar(top: $0) })) {
       Label("At the Bottom", systemImage: "rectangle.bottomthird.inset.filled").tag(false); Label("At the Top", systemImage: "rectangle.topthird.inset.filled").tag(true)
@@ -260,7 +261,6 @@ struct BarView: View {
         Picker("Layout", selection: Binding(get: { b.tileLayout }, set: { tap(); b.choose("tileLayout", $0) })) { Label("Grid", systemImage: "square.grid.2x2").tag("grid"); Label("Row", systemImage: "rectangle.split.3x1").tag("row") }.pickerStyle(.inline)
       }
     } label: { Label("Site Tiles", systemImage: "rectangle.grid.2x2") }
-    Toggle(isOn: Binding(get: { b.startApps }, set: { b.setting("startApps", $0) })) { Label("Sleek Apps", systemImage: "square.grid.3x1.below.line.grid.1x2") }
   }
   /// What Sleek keeps and how it behaves: passwords, bookmarks, history, blocking, searching, links to apps.
   @ViewBuilder private var manage: some View {

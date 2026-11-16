@@ -187,6 +187,50 @@ final class Checker: ObservableObject {
     if let f = Icons.file("tile-check.example") { try? FileManager.default.createDirectory(at: f.deletingLastPathComponent(), withIntermediateDirectories: true); try? redIcon.pngData()?.write(to: f) }
     let keptTint = Tint.of("tile-check.example"); if let f = Icons.file("tile-check.example") { try? FileManager.default.removeItem(at: f) }
     say(["slides", "docs", "tasks"].allSatisfy { SiteTile.apps[$0]?.accent != nil }, "Slides, Docs and Tasks have glass tiles in their own colours")
+
+    // ---------- the start page, arranged your way ----------
+    let layoutWas = ["startOrder", "startOff", "startApps", "startAppList", "startMarks", "goalsOff"].map { ($0, b.store.settings[$0]) }
+    for (k, _) in layoutWas { b.store.settings[k] = nil }
+    let firstOrder = b.parts == Part.allCases
+    b.movePart(.goals, to: 0); b.takeOff(.today); b.movePart(.most, to: 1)
+    let arranged = b.parts == [.goals, .most, .apps, .recent, .marks] && b.partsOff == [.today]
+    b.bringBack(.today)
+    say(firstOrder && arranged && b.parts.last == .today && b.partsOff.isEmpty, "the start page's sections move into any order, come off, and come back at the foot")
+    b.store.settings["startOrder"] = nil; b.store.settings["startOff"] = nil; b.store.settings["startApps"] = false
+    say(b.partsOff == [.apps] && !b.parts.contains(.apps), "the old switch that hid Sleek's apps counts as taking that section off")
+    b.store.settings["startApps"] = nil
+    b.moveTile(.apps, "tasks", to: "slides"); b.setApp("docs", on: false)
+    say(b.appsOnPage == ["tasks", "slides"], "Sleek's apps on the page move into your order, and one can come off")
+    let marksWere = b.store.bookmarks
+    b.store.bookmarks = []; for i in 1...10 { b.store.addBookmark(title: "Mark \(i)", url: "https://mark\(i).example/") }
+    let firstMarks = b.marksOnPage.map(\.name)
+    b.setMark("https://mark2.example/", on: false); b.setMark("https://mark10.example/", on: true); b.moveTile(.marks, "https://mark10.example/", to: "https://mark1.example/")
+    let chosen = b.marksOnPage.map(\.name)
+    say(firstMarks.count == 8 && chosen.count == 8 && chosen.first == "Mark 10" && !chosen.contains("Mark 2") && b.allMarks.count == 10, "bookmarks on the page start as your first eight; you choose which, in your order, and those taken off stay in Bookmarks")
+    b.store.bookmarks = marksWere
+    // goals, read from every Sleek app's copy and moved on from the page as a widget does
+    let groot = FileManager.default.temporaryDirectory.appendingPathComponent("start-goals-\(UUID().uuidString)")
+    let today = GDay.today, g0 = GDay.stamp
+    let gfile: [String: Any] = ["format": "sleek-tasks", "version": 1, "goals": [
+      ["id": "rungoal001", "kind": "days", "title": "Run", "start": GDay.add(today, -5), "due": GDay.add(today, 25), "target": 20, "marks": [GDay.add(today, -1)], "created": g0, "updated": g0],
+      ["id": "bookgoal01", "kind": "count", "title": "Books", "start": GDay.add(today, -5), "due": GDay.add(today, 60), "target": 2, "unit": ["book", "books"], "log": [["id": "a1", "d": today, "a": 1]], "created": g0, "updated": g0],
+      ["id": "donegoal01", "kind": "count", "title": "Done already", "start": GDay.add(today, -5), "due": GDay.add(today, 60), "target": 1, "unit": ["book", "books"], "log": [["id": "a2", "d": today, "a": 1]], "created": g0, "updated": g0]]]
+    if let f = SiriTasks.file("tasks", groot), let data = try? JSONSerialization.data(withJSONObject: gfile) {
+      try? FileManager.default.createDirectory(at: f.deletingLastPathComponent(), withIntermediateDirectories: true); try? data.write(to: f)
+    }
+    b.readGoals(groot)
+    let goalsRead = b.goals.count == 3 && b.goalsOnPage.map(\.id).sorted() == ["bookgoal01", "rungoal001"]
+    b.showGoal("rungoal001", false)
+    let goalOff = b.goalsOnPage.map(\.id) == ["bookgoal01"]
+    b.showGoal("rungoal001", true)
+    say(goalsRead && goalOff && b.goalsOnPage.count == 2, "the Goals section shows your goals from Sleek Tasks, not the ones reached, and any can be switched off")
+    if let run = b.goals.first(where: { $0.id == "rungoal001" }) { b.stepGoal(run, root: groot) }
+    if let books = b.goals.first(where: { $0.id == "bookgoal01" }) { b.stepGoal(books, root: groot) }
+    let stepped = SiriTasks.read(groot).goalList
+    say(stepped.first { $0.id == "rungoal001" }?.markedToday == true && stepped.first { $0.id == "bookgoal01" }?.reached == true && b.goals.first { $0.id == "bookgoal01" }?.reached == true && !b.goalsOnPage.contains { $0.id == "bookgoal01" },
+        "a tap on a goal marks today or adds one, written where the other Sleek apps read it, and a goal it completes leaves the page")
+    try? FileManager.default.removeItem(at: groot); b.goals = []
+    for (k, v) in layoutWas { b.store.settings[k] = v }
     say(Chime.url != nil, "the opening sound is inside the app")
     say(b.launch == .done,"while the app checks itself, Sleek opens without its launch animation")
     say(keptTint == redTint && SiteName.of("www.tile-check.example") == "tile-check.example" && PhoneTab.iconScript.contains("apple-touch-icon"), "tiles read the icon Sleek keeps for a site, and Sleek keeps the site's iPhone icon when it has one")

@@ -269,6 +269,8 @@ final class Browser: ObservableObject {
   @Published var compact = false                 // the bar drawn in to its tile
   @Published var slideFrom: Edge = .trailing     // which way the next tab comes in
   @Published var day = Day()
+  @Published var goals: [Goal] = []             // from Sleek Tasks, for the start page's Goals (Layout.swift)
+  @Published var arranging = false               // the start page is wiggling: being arranged (Layout.swift)
   @Published var blockerReady = false
   @Published var toast: String?
   @Published var offer: SignInOffer?             // the cursor is in a sign-in box: saved names to fill, or a strong password to use
@@ -326,6 +328,7 @@ final class Browser: ObservableObject {
     Work.shared.onAdopt = { [weak self] _, id in for t in self?.tabs ?? [] where t.web.url?.scheme == "sleek" && (t.web.url?.query ?? "").contains("d=" + id) { t.web.reload() } }
     Work.shared.onNote = { [weak self] text in self?.say(text) }
     Work.shared.onChange.append { [weak self] in self?.readDay() }
+    if !Res.proving { Shared.listen { [weak self] in self?.readGoals() }; readGoals() }      // a goal moved on in Sleek Tasks or a widget
     Vault.shared.onChange.append { [weak self] in self?.objectWillChange.send() }
     Vault.shared.start(dir: base)
     Work.shared.start()
@@ -579,6 +582,7 @@ final class Browser: ObservableObject {
   // ---------- your Sleek work (the same door the Mac app uses: Work.swift and bridge.html) ----------
   private func readDay() {
     let d = Work.shared.day
+    if !Res.proving { readGoals() }
     func rows(_ k: String) -> [TaskRow] { (d[k] as? [[String: Any]] ?? []).map { TaskRow(id: $0["id"] as? String ?? "", title: $0["title"] as? String ?? "", board: $0["board"] as? String ?? "", color: $0["color"] as? String ?? "#12A36A", due: $0["due"] as? String ?? "", done: $0["done"] as? Bool ?? false, late: $0["late"] as? Bool ?? false) } }
     func items(_ k: String, _ kind: String) -> [WorkItem] { (d[k] as? [[String: Any]] ?? []).map { WorkItem(id: $0["id"] as? String ?? "", title: $0["title"] as? String ?? "", url: $0["url"] as? String ?? "", kind: kind, at: ($0["at"] as? NSNumber)?.doubleValue ?? 0, slides: ($0["slides"] as? NSNumber)?.intValue ?? 0,
                                                                                      peek: $0["peek"] as? String ?? "", kicker: $0["kicker"] as? String ?? "", heading: $0["heading"] as? String ?? "", mode: $0["mode"] as? String ?? "dark", accent: $0["accent"] as? String ?? "#7C5CFF", thumb: $0["thumb"] as? String ?? "") } }

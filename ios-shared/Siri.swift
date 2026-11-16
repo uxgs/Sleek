@@ -127,6 +127,16 @@ enum SiriTasks {
     guard let root = root, var g = read(root).goals[id] else { return nil }
     change(&g); keep(goal: g, root: root); return Goal(g)
   }
+  /// Mark today, add one step, or tick a thing off a goal (a widget's button, or the Sleek browser's start page).
+  @discardableResult static func goalStep(_ id: String, _ act: String, thing: String = "", root: URL? = Shared.root) -> Goal? {
+    goal(id, root: root) { r in
+      switch act {
+      case "mark": GoalEdit.mark(&r)
+      case "add": GoalEdit.add(&r, Goal(r)?.step ?? 1)
+      default: GoalEdit.tick(&r, thing, on: true)
+      }
+    }
+  }
 
   // ---------- saying it ----------
   /// "Avocados", 3 → "3 avocados".

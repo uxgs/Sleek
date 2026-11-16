@@ -41,17 +41,21 @@ yet; you build it yourself with Xcode.
 - **A new tab is your day.** What is due from Sleek Tasks, to tick off and add to, with any grocery
   list whose day has come (tick things into the basket there, or open the list); Slides, Docs and
   Tasks, as glass tiles in their colours; the decks and pages you last worked on; your bookmarks; and where you
-  go most, as glass tiles made from each site's own icon (filling its shape) and coloured from it. Pull it down
-  and what you have ticked off leaves Today.
-  Appearance chooses clear glass, colour glass or plain icons; wide tiles or square ones; a grid or a
-  row that scrolls sideways; and whether the row of Sleek's apps shows.
+  go most, as glass tiles made from each site's own icon (filling its shape) and coloured from it; and your
+  goals from Sleek Tasks, as rings or bars, with one tap to mark today, add one or tick the next thing. Pull
+  it down and what you have ticked off leaves Today.
+- **The new tab is yours to arrange.** Press and hold anywhere on it (or ⋯ › Edit Start Page) and it wiggles,
+  as the Home Screen does: drag sections up and down and tiles within a section, tap "−" to take any of them
+  off, and Add to bring a section back. Tap a section for its options: which apps, bookmarks and goals it
+  shows, what Today includes, how many to pick up, rings or bars. Tiles come in clear glass, colour glass
+  or plain icons, wide or square, in a grid or a row that scrolls sideways, and bookmarks take the same look.
 - **An opening.** Each time Sleek starts, the two bars of its mark slide together, a soft glow rises, the
   name writes itself in, and the mark flies up into its place on the new tab (on a page, it lifts away), to
   the film's opening sound (quiet, silent when the iPhone is on silent, never stopping your music). A tap
   skips it; with Reduce Motion it is a quick fade. The very first time, three short pages about Sleek come
   before the question about the bar.
 - **One menu, no settings screen.** The ⋯ menu has New Tab, Private Tab and Tasks; Appearance (where
-  the bar is, light or dark, the site tiles, the row of Sleek's apps); and Manage (passwords, bookmarks,
+  the bar is, light or dark, the site tiles); Edit Start Page on a new tab; and Manage (passwords, bookmarks,
   history, blocking, your search provider and its suggestions, and links opening in apps).
 - **Slides, Docs and Tasks inside.** They open from inside the app (no network needed) and keep their
   work on the phone. A plain copy of everything is also kept, and brought back if the phone ever
@@ -108,7 +112,8 @@ Sounds/opening.m4a   the opening's sound (made by ../tools/film/opening.py)
 Sources/
   Model.swift        tabs (ordinary and private), the bar's place, blocking for each site, links handed to apps, bookmarks, history, your Sleek work
   Views.swift        the screen: the page, the bar and its tile, the menu
-  Start.swift        a new tab: your day; and a private tab's first page
+  Start.swift        a new tab: your day, arranged by holding it; its Add and options sheets; and a private tab's first page
+  Layout.swift       what a new tab shows and in what order: its sections, their tiles and options, and goals from Sleek Tasks
   Tiles.swift        the glass tiles for where you go most, coloured from each site's own icon, and for Sleek's apps
   Intro.swift        the opening each time Sleek starts, and the three pages the first time
   Sheets.swift       searching, all your tabs, tasks, bookmarks and history, blocking, the shield, Save to Sleek, the first-time question
@@ -123,5 +128,5 @@ providers, the script that notices sign-in boxes), `Vault.swift` (passwords), `B
 well-known sites) and `Work.swift` (your Sleek work, through `bridge.html`, and sharing it with the other apps).
 
 From `../ios-shared/` it compiles `Shared.swift` (the folder the Sleek apps share), `SharedWork.swift`
-(sharing through `Work.swift`), `Aisles.swift` and `Siri.swift` (what Siri can ask; Sleek Tasks
-compiles the same file). Siri itself can only be tried on a real iPhone.
+(sharing through `Work.swift`), `Aisles.swift`, `Siri.swift` (what Siri can ask; Sleek Tasks
+compiles the same file) and `Goals.swift` (goals, for the start page's Goals section). Siri itself can only be tried on a real iPhone.

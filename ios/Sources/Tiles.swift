@@ -55,44 +55,6 @@ enum SiteName {
   static func of(_ host: String) -> String { let bare = host.hasPrefix("www.") ? String(host.dropFirst(4)) : host; return names[bare] ?? bare }
 }
 
-/// The places you go most as tiles: wide (16 by 9) or square, in a grid (wide two across, square three)
-/// or a row that scrolls sideways. Each comes in a moment after the one before.
-struct SiteTiles: View {
-  @ObservedObject var b: Browser
-  let places: [StartView.Place]
-  var shown = true
-  var menus = true
-  private var wide: Bool { b.tileShape == "wide" }
-  var body: some View {
-    if b.tileLayout == "row" {
-      ScrollView(.horizontal, showsIndicators: false) {
-        HStack(spacing: 12) { ForEach(Array(places.enumerated()), id: \.element.id) { i, p in
-          tile(p, i, big: true).containerRelativeFrame(.horizontal, count: wide ? 5 : 2, span: wide ? 4 : 1, spacing: 12)
-        } }.scrollTargetLayout().padding(.vertical, 14)
-      }
-      .scrollTargetBehavior(.viewAligned).contentMargins(.horizontal, 20, for: .scrollContent).padding(.horizontal, -20).padding(.vertical, -14)
-    } else {
-      LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: wide ? 2 : 3), spacing: 12) {
-        ForEach(Array(places.enumerated()), id: \.element.id) { i, p in tile(p, i, big: false) }
-      }
-    }
-  }
-  private func tile(_ p: StartView.Place, _ i: Int, big: Bool) -> some View {
-    Button { tap(); b.open(p.url) } label: { SiteTile(host: p.host, name: p.name, style: b.tileStyle, wide: wide, big: big) }
-      .buttonStyle(Press())
-      .opacity(shown ? 1 : 0).offset(y: shown ? 0 : 16).scaleEffect(shown ? 1 : 0.97)
-      .animation(.spring(response: 0.55, dampingFraction: 0.8).delay(0.4 + Double(i) * 0.055), value: shown)
-      .contentShape(.contextMenuPreview, RoundedRectangle(cornerRadius: 22, style: .continuous))
-      .contextMenu { if menus {
-        Button { b.newTab(URL(string: p.url), background: true) } label: { Label("Open in Background", systemImage: "square.on.square.dashed") }
-        Button { b.newTab(URL(string: p.url)) } label: { Label("Open in New Tab", systemImage: "plus.square.on.square") }
-        Button { b.newTab(URL(string: p.url), isPrivate: true) } label: { Label("Open in Private Tab", systemImage: "eyeglasses") }
-        Divider()
-        Button(role: .destructive) { tap(.medium); b.hideTop(p.host) } label: { Label("Remove", systemImage: "minus.circle") }
-      } }
-  }
-}
-
 /// One tile. Clear glass: frosted, the site's colour glowing through, its icon in the middle. Colour glass:
 /// filled with the site's colour, the icon blurred into it, the crisp icon, name and address on top.
 struct SiteTile: View {

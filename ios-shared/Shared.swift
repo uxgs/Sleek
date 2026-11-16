@@ -19,11 +19,11 @@ enum Shared {
   static func peers(of app: String) -> [URL] { (apps + ["siri"]).filter { $0 != app }.compactMap(place) }
   /// Tell the other apps (and this one) that something was written.
   static func tell() { WidgetCenter.shared.reloadAllTimelines(); CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), CFNotificationName(ping), nil, nil, true) }
-  @MainActor private static var heard: (@MainActor () -> Void)?
-  /// What to do on hearing it (one thing per app; on the main thread).
+  @MainActor private static var heard: [@MainActor () -> Void] = []
+  /// What to do on hearing it (on the main thread; each thing asked for is done).
   @MainActor static func listen(_ f: @escaping @MainActor () -> Void) {
-    if heard == nil { CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), nil, { _, _, _, _, _ in DispatchQueue.main.async { MainActor.assumeIsolated { WidgetCenter.shared.reloadAllTimelines(); Shared.heard?() } } }, ping, nil, .deliverImmediately) }
-    heard = f
+    if heard.isEmpty { CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), nil, { _, _, _, _, _ in DispatchQueue.main.async { MainActor.assumeIsolated { WidgetCenter.shared.reloadAllTimelines(); for h in Shared.heard { h() } } } }, ping, nil, .deliverImmediately) }
+    heard.append(f)
   }
   #if !WIDGET
   /// Some time to finish writing as the app is left, before iOS stops it.

@@ -188,19 +188,6 @@ struct WData {
   }
 }
 
-// ---------- a goal moved on, right on the widget ----------
-extension SiriTasks {
-  /// Mark today, add one, or tick a thing off a goal, written to Siri's place.
-  @discardableResult static func goalStep(_ id: String, _ act: String, thing: String = "", root: URL? = Shared.root) -> Goal? {
-    goal(id, root: root) { r in
-      switch act {
-      case "mark": GoalEdit.mark(&r)
-      case "add": GoalEdit.add(&r, Goal(r)?.step ?? 1)
-      default: GoalEdit.tick(&r, thing, on: true)
-      }
-    }
-  }
-}
 struct WGoalIntent: AppIntent {
   static let title: LocalizedStringResource = "Move a Goal On"
   static let isDiscoverable = false
