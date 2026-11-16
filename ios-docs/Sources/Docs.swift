@@ -21,7 +21,7 @@ final class Library: ObservableObject {
   @Published var ready = false
   private var W: Work { Work.shared }
   func start() {
-    W.folder = Res.support.appendingPathComponent("Work")
+    W.share(as: "docs", holds: ["tasks", "pages"], else: Res.support.appendingPathComponent("Work"))      // with the other Sleek apps on this iPhone
     W.onChange.append { [weak self] in Task { @MainActor in await self?.refresh() } }
     W.start()
     Timer.scheduledTimer(withTimeInterval: 120, repeats: true) { _ in Task { @MainActor in await Work.shared.keepCopy() } }
@@ -161,9 +161,13 @@ struct DocsRoot: View {
   var body: some View {
     NavigationStack { LibraryView(lib: lib, page: page, shell: shell) }
       .tint(.docs).modifier(Toast(shell: shell))
-      .onAppear { lib.start() }
-      .onChange(of: phase) { _, now in if now != .active { page.flush(); Task { await Work.shared.keepCopy() } } else { Task { await lib.refresh() } } }
-      .onOpenURL { url in Task { shell.say(await lib.bring(url)) } }
+      .onAppear { lib.start(); Work.shared.onAdopt = { kind, id in if kind == "page" && page.id == id { page.open(id) } } }      // changed in another app: open it afresh
+      .onChange(of: phase) { _, now in if now != .active { page.flush(); Work.shared.leaving(wait: 0.5) } else { Task { await Work.shared.pull(); await lib.refresh() } } }
+      // the Sleek browser or a widget opening a page here (sleek-docs://open?d=<id>; ://new for a new page), once its latest work is in; or a .sleek file
+      .onOpenURL { url in
+        if url.scheme == "sleek-docs" { Task { for _ in 0..<100 where !Work.shared.ready { try? await Task.sleep(nanoseconds: 100_000_000) }; await Work.shared.pull(); await lib.refresh(); shell.goTo = url.host == "new" ? "new" : URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first { $0.name == "d" }?.value ?? "" }; return }
+        Task { shell.say(await lib.bring(url)) }
+      }
   }
 }
 
@@ -173,6 +177,8 @@ struct LibraryView: View {
   @State private var found: [PageRec]?
   @State private var folder = ""
   @State private var open: String?           // a page's id, or "new"
+  /// Open what the Sleek browser asked for ("" : just the list).
+  private func go(_ id: String?) { guard let id else { return }; shell.goTo = nil; if open == id && !id.isEmpty { return }; open = nil; if !id.isEmpty { DispatchQueue.main.async { open = id } } }
   @State private var naming = false
   @State private var name = ""
   @State private var bringing = false
@@ -209,6 +215,7 @@ struct LibraryView: View {
       Button { tap(.medium); open = "new" } label: { Image(systemName: "square.and.pencil").font(.system(size: 22, weight: .semibold)).foregroundStyle(.white).frame(width: 64, height: 64).background(Color.docs, in: Circle()).shadow(color: Color.docs.opacity(0.5), radius: 16, y: 8) }.buttonStyle(Press()).padding(16)
     }
     .navigationDestination(item: $open) { which in PageScreen(page: page, lib: lib, shell: shell, id: which == "new" ? nil : which, folder: folder) }
+    .onAppear { go(shell.goTo) }.onChange(of: shell.goTo) { _, id in go(id) }
     .onChange(of: query) { _, q in let words = q.trimmingCharacters(in: .whitespaces); if words.isEmpty { found = nil } else { Task { let r = await lib.search(words); if query.trimmingCharacters(in: .whitespaces) == words { withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) { found = r } } } } }
     .alert("New folder", isPresented: $naming) { TextField("Its name", text: $name); Button("Cancel", role: .cancel) {}; Button("Add") { Task { await lib.addFolder(name) } } }
     .fileImporter(isPresented: $bringing, allowedContentTypes: [.sleek, .json, .data]) { r in if case .success(let u) = r { Task { shell.say(await lib.bring(u)) } } }

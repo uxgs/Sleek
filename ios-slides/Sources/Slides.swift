@@ -20,7 +20,7 @@ final class Library: ObservableObject {
   @Published var ready = false
   private var W: Work { Work.shared }
   func start() {
-    W.folder = Res.support.appendingPathComponent("Work")
+    W.share(as: "slides", holds: ["tasks", "decks"], else: Res.support.appendingPathComponent("Work"))      // with the other Sleek apps on this iPhone
     W.onChange.append { [weak self] in Task { @MainActor in await self?.refresh() } }
     W.start()
     Timer.scheduledTimer(withTimeInterval: 120, repeats: true) { _ in Task { @MainActor in await Work.shared.keepCopy() } }
@@ -146,9 +146,14 @@ struct SlidesRoot: View {
   var body: some View {
     NavigationStack { LibraryView(lib: lib, deck: deck, shell: shell) }
       .tint(.slides).modifier(Toast(shell: shell))
-      .onAppear { lib.start() }
-      .onChange(of: phase) { _, now in if now != .active { deck.flush(); Task { await Work.shared.keepCopy() } } else { Task { await lib.refresh() } } }
-      .onOpenURL { url in Task { shell.say(await lib.bring(url)) } }
+      .onAppear { lib.start(); Work.shared.onAdopt = { kind, id in if kind == "deck" && deck.id == id { deck.open(id) } } }      // changed in another app: open it afresh
+      .onChange(of: phase) { _, now in if now != .active { deck.flush(); Work.shared.leaving(wait: 0.5) } else { Task { await Work.shared.pull(); await lib.refresh() } } }
+      // the Sleek browser or a widget opening a deck here (sleek-slides://open?d=<id>; ://present?d=<id> to start presenting it;
+      // ://new for a new deck), once its latest work is in; or a .sleek file
+      .onOpenURL { url in
+        if url.scheme == "sleek-slides" { Task { for _ in 0..<100 where !Work.shared.ready { try? await Task.sleep(nanoseconds: 100_000_000) }; await Work.shared.pull(); await lib.refresh(); let id = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first { $0.name == "d" }?.value ?? ""; DeckScreen.presentNext = url.host == "present" && !id.isEmpty; shell.goTo = url.host == "new" ? "new" : id }; return }
+        Task { shell.say(await lib.bring(url)) }
+      }
   }
 }
 
@@ -178,6 +183,8 @@ struct Cover: View {
 struct LibraryView: View {
   @ObservedObject var lib: Library; @ObservedObject var deck: Deck; @ObservedObject var shell: Shell
   @State private var open: String?
+  /// Open what the Sleek browser asked for ("" : just the list).
+  private func go(_ id: String?) { guard let id else { return }; shell.goTo = nil; if id == "new" { open = nil; making = true; return }; if open == id && !id.isEmpty { return }; open = nil; if !id.isEmpty { DispatchQueue.main.async { open = id } } }
   @State private var making = false
   @State private var bringing = false
   @State private var renaming: DeckRec?
@@ -224,6 +231,7 @@ struct LibraryView: View {
       Button { tap(.medium); making = true } label: { Image(systemName: "plus").font(.system(size: 24, weight: .semibold)).foregroundStyle(.white).frame(width: 64, height: 64).background(Color.slides, in: Circle()).shadow(color: Color.slides.opacity(0.5), radius: 16, y: 8) }.buttonStyle(Press()).padding(20)
     }
     .navigationDestination(item: $open) { id in DeckScreen(deck: deck, lib: lib, shell: shell, id: id) }
+    .onAppear { go(shell.goTo) }.onChange(of: shell.goTo) { _, id in go(id) }
     .sheet(isPresented: $making) { NewDeck { title, mode, accent in making = false; Task { if let id = await lib.create(title: title, mode: mode, accent: accent) { open = id } } }.presentationDetents([.height(388)]).presentationCornerRadius(30).presentationBackground(.regularMaterial) }
     .alert("Rename deck", isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } })) { TextField("Its name", text: $name); Button("Cancel", role: .cancel) {}; Button("Save") { if let d = renaming { Task { await lib.rename(d.id, name) } } } }
     .fileImporter(isPresented: $bringing, allowedContentTypes: [.sleek, .json, .data]) { r in if case .success(let u) = r { Task { shell.say(await lib.bring(u)) } } }
@@ -266,7 +274,10 @@ struct NewDeck: View {
 struct DeckScreen: View {
   @ObservedObject var deck: Deck; @ObservedObject var lib: Library; @ObservedObject var shell: Shell
   let id: String
-  @State private var presenting = Res.arg("--present") != nil
+  @State private var presenting = Res.arg("--present") != nil || DeckScreen.takePresent()
+  /// A widget's Present: the next deck opened starts presenting.
+  static var presentNext = false
+  static func takePresent() -> Bool { defer { presentNext = false }; return presentNext }
   @State private var began = Date()
   @State private var adding: [Layout]?
   @State private var sharing: URL?

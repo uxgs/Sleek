@@ -32,7 +32,8 @@ This is Stage 4: the browser itself, blocking, Sleek inside, and passwords. It i
   the wheel themselves such as maps, and Sleek's own pages. A mouse with a plain wheel has no
   "letting go", so it doesn't pull.
 - **History, downloads, find on the page, zoom, print**, and the usual menu bar with its shortcuts.
-- Pages may ask to open a new tab, upload a file, or use the camera or microphone (Sleek asks you).
+- Pages may ask to open a new tab, upload a file, use the camera or microphone, or know where you
+  are (Sleek asks you; the Mac then asks once whether Sleek itself may know).
 - **Blocking**, on everywhere from the start: adverts, trackers, pop-ups and redirects to advert
   sites, requests to send notifications, and cookie banners. The shield in the address box shows
   what was stopped on the page, and has a switch to turn blocking off for a site that needs it.
@@ -40,14 +41,14 @@ This is Stage 4: the browser itself, blocking, Sleek inside, and passwords. It i
 ## Sleek inside
 
 - **A new tab is your day.** What is overdue, due today and due this week, from Sleek Tasks, to tick
-  off and add to; and the decks and pages you last worked on. (A Private Browsing window shows
+  off and add to, with any grocery list whose day has come; and the decks and pages you last worked on. (A Private Browsing window shows
   none of your work.)
 - **Your tasks beside any page.** The Tasks button (beside Look) opens them down the right of the
   window: Today, or one board. Add a task, tick one; it is the same task everywhere at once.
 - **Save to Sleek.** Sleek's mark in the address box keeps the page you are on: as a task ("Read: …",
   on the board and day you choose, with a link back and any words you had selected), or as a Docs
   page (the words you selected, or the article's, with a link back).
-- **The address box finds your work**: decks, pages, boards and tasks, by name, ahead of the web.
+- **The address box finds your work**: decks, pages, boards, grocery lists and tasks, by name, ahead of the web.
 - **Your work is also kept as plain files**: `~/Library/Application Support/Sleek/Work` holds
   `Tasks.sleek`, `decks/` and `pages/`, each the file its own app would save, written again when the
   thing changes (a deck, a little after you stop working on it). If the web engine ever clears the
@@ -84,6 +85,9 @@ What to know:
 - Requests to send notifications are refused. Allowing them for a chosen site is not possible yet.
 - The numbers in the shield come from a part of the engine Apple does not promise to keep. If it
   goes, blocking carries on and the shield stops counting.
+- A site that only ever serves pop-up adverts is refused whole. Where the lists name a single
+  address of an ordinary site as a pop-up advert (they name `google.com/favicon.ico`), only that
+  address is refused: the rest of the site, its sign-in pages among it, is left alone.
 
 ## Passwords
 
@@ -157,6 +161,7 @@ Sources/Sleek/
   BrowserWindow.swift    one window: its tabs, which are showing, and doing what the bar asks
   Tab.swift              one tab: a page, and what a page may ask of the browser; downloads
   Blocker.swift          blocking: turns the lists into the engine's rules and keeps them fresh
+  Location.swift         where you are, handed to a page you allowed (through a part of the engine Apple does not promise to keep; without it pages are told no)
   Vault.swift            passwords: the encrypted file, its key, Touch ID, strength, making one, import and export
   Passwords.swift        passwords in a window: offering to fill, offering to keep, the Passwords page
   Work.swift             your Sleek work as the browser sees it: your day, tasks, Save to Sleek, the copy on this Mac

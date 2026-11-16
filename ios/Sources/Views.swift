@@ -8,7 +8,7 @@
 import SwiftUI
 import WebKit
 
-enum Sheet: String, Identifiable { case search, tabs, tasks, library, settings, shield, save, passwords; var id: String { rawValue } }
+enum Sheet: String, Identifiable { case search, tabs, tasks, library, history, blocking, shield, save, passwords; var id: String { rawValue } }
 
 struct BrowserView: View {
   @StateObject private var b = Browser()
@@ -20,6 +20,7 @@ struct BrowserView: View {
         .transition(.asymmetric(insertion: .move(edge: b.slideFrom).combined(with: .opacity), removal: .move(edge: b.slideFrom == .trailing ? .leading : .trailing).combined(with: .opacity)))
       BarView(b: b, tab: b.tab, sheet: $sheet)
       ToastView(b: b)
+      if b.launch == .showing || b.launch == .flying { LaunchView(b: b).zIndex(10) }       // Sleek opening
     }
     .sheet(item: $sheet) { which in
       Group {
@@ -28,7 +29,8 @@ struct BrowserView: View {
         case .tabs: TabsView(b: b).presentationDetents([.large])
         case .tasks: TasksView(b: b).presentationDetents([.medium, .large]).presentationBackground(.regularMaterial)
         case .library: LibraryView(b: b).presentationDetents([.large])
-        case .settings: SettingsView(b: b).presentationDetents([.large])
+        case .history: LibraryView(b: b, history: true).presentationDetents([.large])
+        case .blocking: BlockingView(b: b).presentationDetents([.medium, .large])
         case .shield: ShieldView(b: b, tab: b.tab).presentationDetents([.height(224)]).presentationBackground(.regularMaterial)
         case .save: SaveView(b: b).presentationDetents([.height(436)]).presentationBackground(.regularMaterial)
         case .passwords: NavigationStack { PasswordsScreen(b: b, sheet: true) }.presentationDetents([.large])
@@ -38,7 +40,21 @@ struct BrowserView: View {
     .fullScreenCover(isPresented: Binding(get: { b.asking }, set: { _ in })) { WelcomeView(b: b).preferredColorScheme(b.scheme) }
     .preferredColorScheme(b.scheme)
     .tint(.sleekB)
-    .onChange(of: phase) { _, now in if now != .active { b.leaving() }; if now == .background { Vault.shared.lock() } }      // passwords close when you leave the app
+    .onChange(of: phase) { _, now in if now != .active { b.leaving() } else { Task { await Work.shared.pull() } }; if now == .background { Vault.shared.lock() } }      // passwords close when you leave the app
+    // the widgets: sleek-browser://search, ://private, ://open?u=<a site, or one of Sleek's own pages>
+    .onOpenURL { url in
+      guard url.scheme == "sleek-browser" else { return }
+      let u = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first { $0.name == "u" }?.value
+      switch url.host {
+      case "search": sheet = nil; DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { sheet = .search }
+      case "private": sheet = nil; b.newTab(nil, isPrivate: true)
+      case "open":
+        guard let s = u, let to = URL(string: s), ["https", "http", "sleek"].contains(to.scheme ?? "") else { return }
+        sheet = nil
+        if to.scheme == "sleek" { if !b.tab.atStart || b.tab.isPrivate { b.newTab(nil, isPrivate: false) }; b.open(s) } else { b.newTab(to, isPrivate: false) }
+      default: break
+      }
+    }
   }
 }
 
@@ -100,7 +116,7 @@ struct BarView: View {
       round("chevron.left", dim: tab.atStart) { tap(); tab.back() }
       address
       tabsButton
-      Menu { menu } label: { Image(systemName: "ellipsis").font(.system(size: 17, weight: .semibold)).frame(width: 44, height: 44) }.foregroundStyle(.primary)
+      Menu { menu } label: { Image(systemName: "ellipsis").font(.system(size: 17, weight: .semibold)).frame(width: 44, height: 44) }.menuOrder(.fixed).foregroundStyle(.primary)
     }
     .padding(.horizontal, 4).frame(height: 52)
     // with the bar at the top, a page's progress runs along the bar's own lower edge
@@ -203,26 +219,61 @@ struct BarView: View {
       Button(role: .destructive) { b.close(tab) } label: { Label("Close This Tab", systemImage: "xmark") }
     }
   }
+  /// The ⋯ menu, top to bottom wherever the bar is: tabs and Tasks; Appearance and Manage, each opening onto its own
+  /// choices; what you can do with the page showing; and Forward, Reload and Share.
   @ViewBuilder private var menu: some View {
+    Section {
+      Button { b.newTab(isPrivate: false) } label: { Label("New Tab", systemImage: "plus.square.on.square") }
+      Button { b.newTab(isPrivate: true) } label: { Label("Private Tab", systemImage: "eyeglasses") }
+      if !tab.isPrivate { Button { sheet = .tasks } label: { Label("Tasks", systemImage: "checklist") } }
+    }
+    Section {
+      Menu { appearance } label: { Label("Appearance", systemImage: "paintbrush") }
+      Menu { manage } label: { Label("Manage", systemImage: "slider.horizontal.3") }
+    }
+    Section {
+      if !tab.atStart { Button { tab.find() } label: { Label("Find on Page", systemImage: "magnifyingglass") } }
+      if tab.isWeb {
+        if !tab.isPrivate { Button { sheet = .save } label: { Label("Save to Sleek…", systemImage: "tray.and.arrow.down") } }
+        Button { b.toggleBookmark() } label: { Label(b.isBookmarked(tab) ? "Remove Bookmark" : "Add Bookmark", systemImage: b.isBookmarked(tab) ? "bookmark.fill" : "bookmark") }
+        if !tab.isPrivate { Button { b.openInApp() } label: { Label("Open in App", systemImage: "arrow.up.forward.app") } }
+      }
+    }
     ControlGroup {
       Button { tab.web.goForward() } label: { Label("Forward", systemImage: "chevron.right") }.disabled(!tab.canForward || tab.atStart)
       Button { tab.web.reload() } label: { Label("Reload", systemImage: "arrow.clockwise") }.disabled(tab.atStart)
       if let u = tab.address, tab.isWeb { ShareLink(item: u) { Label("Share", systemImage: "square.and.arrow.up") } }
     }
-    ControlGroup {
-      Button { b.newTab(isPrivate: false) } label: { Label("New Tab", systemImage: "plus") }
-      Button { b.newTab(isPrivate: true) } label: { Label("Private Tab", systemImage: "eyeglasses") }
+  }
+  /// How Sleek looks: where the bar is, light or dark, the tiles for where you go most, the row of Sleek's apps.
+  @ViewBuilder private var appearance: some View {
+    Picker(selection: Binding(get: { b.barAtTop }, set: { tap(); b.placeBar(top: $0) })) {
+      Label("At the Bottom", systemImage: "rectangle.bottomthird.inset.filled").tag(false); Label("At the Top", systemImage: "rectangle.topthird.inset.filled").tag(true)
+    } label: { Label("Bar Placement", systemImage: "menubar.rectangle") }.pickerStyle(.menu)
+    Picker(selection: Binding(get: { b.look }, set: { tap(); b.look = $0 })) {
+      Label("Automatic", systemImage: "circle.lefthalf.filled").tag("auto"); Label("Light", systemImage: "sun.max").tag("light"); Label("Dark", systemImage: "moon").tag("dark")
+    } label: { Label("Look", systemImage: "circle.lefthalf.filled") }.pickerStyle(.menu)
+    Menu {
+      Picker("Style", selection: Binding(get: { b.tileStyle }, set: { tap(); b.choose("tileStyle", $0) })) { Text("Clear Glass").tag("clear"); Text("Colour Glass").tag("colour"); Text("Icons").tag("icons") }.pickerStyle(.inline)
+      if b.tileStyle != "icons" {
+        Picker("Shape", selection: Binding(get: { b.tileShape }, set: { tap(); b.choose("tileShape", $0) })) { Label("Wide", systemImage: "rectangle").tag("wide"); Label("Square", systemImage: "square").tag("square") }.pickerStyle(.inline)
+        Picker("Layout", selection: Binding(get: { b.tileLayout }, set: { tap(); b.choose("tileLayout", $0) })) { Label("Grid", systemImage: "square.grid.2x2").tag("grid"); Label("Row", systemImage: "rectangle.split.3x1").tag("row") }.pickerStyle(.inline)
+      }
+    } label: { Label("Site Tiles", systemImage: "rectangle.grid.2x2") }
+    Toggle(isOn: Binding(get: { b.startApps }, set: { b.setting("startApps", $0) })) { Label("Sleek Apps", systemImage: "square.grid.3x1.below.line.grid.1x2") }
+  }
+  /// What Sleek keeps and how it behaves: passwords, bookmarks, history, blocking, searching, links to apps.
+  @ViewBuilder private var manage: some View {
+    Button { sheet = .passwords } label: { Label("Passwords", systemImage: "key") }
+    Button { sheet = .library } label: { Label("Bookmarks", systemImage: "bookmark") }
+    Button { sheet = .history } label: { Label("History", systemImage: "clock") }
+    Button { sheet = .blocking } label: { Label("Blocking", systemImage: "checkmark.shield") }
+    Section {
+      Picker(selection: Binding(get: { b.store.search }, set: { b.store.set("search", $0); b.objectWillChange.send() })) { ForEach(Search.providers, id: \.address) { Text($0.name).tag($0.address) } } label: { Label("Search With", systemImage: "magnifyingglass") }.pickerStyle(.menu)
+      Toggle(isOn: Binding(get: { b.searchHints }, set: { b.setting("searchHints", $0) })) { Text("Suggestions"); Text("Asked without cookies, never from private tabs") }
+      Toggle(isOn: Binding(get: { b.appLinks }, set: { b.store.set("apps", $0); b.objectWillChange.send() })) { Text("Open in Apps"); Text("Links to a site whose app is on this iPhone, and Sleek Tasks, Docs and Slides") }
     }
-    if tab.isWeb {
-      if !tab.isPrivate { Button { b.openInApp() } label: { Label("Open in App", systemImage: "arrow.up.forward.app") } }
-      Button { b.toggleBookmark() } label: { Label(b.isBookmarked(tab) ? "Remove Bookmark" : "Add Bookmark", systemImage: b.isBookmarked(tab) ? "bookmark.fill" : "bookmark") }
-      if !tab.isPrivate { Button { sheet = .save } label: { Label("Save to Sleek…", systemImage: "tray.and.arrow.down") } }
-    }
-    if !tab.atStart { Button { tab.find() } label: { Label("Find on Page", systemImage: "magnifyingglass") } }
-    Button { sheet = .library } label: { Label("Bookmarks and History", systemImage: "book") }
-    if !tab.isPrivate { Button { sheet = .tasks } label: { Label("Tasks", systemImage: "checklist") } }
-    Divider()
-    Button { sheet = .settings } label: { Label("Settings", systemImage: "gearshape") }
+    Section { Text("Sleek for iPhone " + ((Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String) ?? "")) }
   }
   /// What stands before the address: a looking glass on a new tab, Sleek's mark on Sleek's own pages, and on the web
   /// the shield, which opens blocking for this site.

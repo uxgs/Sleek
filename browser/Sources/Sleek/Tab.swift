@@ -92,12 +92,14 @@ final class Tab: NSObject, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegat
     let view = PageView(frame: .zero, configuration: configuration); web = view
     self.owner = owner
     super.init()
+    view.onMenu = { [weak self] menu in self?.addBackgroundItems(menu) }
     view.onDrop = { [weak self] pb in if let s = self, let dir = s.owner?.store.dir.appendingPathComponent("dropped"), let image = DroppedImage.from(pb, keepIn: dir) { s.drop = (image, Date()) } }
     configuration.userContentController.add(Weak(self), name: "sleekPage")
     configuration.userContentController.add(Weak(self), contentWorld: Tab.world, name: "sleekPw")
     configuration.userContentController.addScriptMessageHandler(keys, contentWorld: .page, name: "sleekKey")
     keys.onAsk = { [weak self] a in if let s = self { s.owner?.passkeyAsked(s, a) } }
     keys.onDrop = { [weak self] a in self?.owner?.tell(["type": "pk-hide", "ask": a]) }
+    Location.shared.serve(configuration)
     applyBlocking(false)
     web.navigationDelegate = self; web.uiDelegate = self
     web.allowsBackForwardNavigationGestures = true
@@ -196,7 +198,9 @@ final class Tab: NSObject, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegat
       // the Passwords page (and only it) asks about the vault
       if from.path == "/passwords.html", let what = m["vault"] as? String { owner?.passwordsPage(self, what, m) }
       // your day, on a new tab: tick a task, add one for today
-      if owner?.isPrivate == false { if let id = m["tick"] as? String { Work.shared.tick(id, m["on"] as? Bool ?? true) }; if let title = m["addTask"] as? String { owner?.addTask(title: title, board: m["board"] as? String ?? "", due: "today") } }
+      if owner?.isPrivate == false { if let id = m["tick"] as? String { Work.shared.tick(id, m["on"] as? Bool ?? true) }; if let title = m["addTask"] as? String { owner?.addTask(title: title, board: m["board"] as? String ?? "", due: "today") }
+        if let h = m["hideTop"] as? String { owner?.hideTop(h, true) }; if let h = m["showTop"] as? String { owner?.hideTop(h, false) } }
+      if let a = m["hideApp"] as? String { owner?.hideApp(a, true) }; if let a = m["showApp"] as? String { owner?.hideApp(a, false) }
     }
   }
 
@@ -227,7 +231,7 @@ final class Tab: NSObject, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegat
       // a picture dropped on a page that had no use for it: ask what to do with it, rather than replace the page with the bare picture
       if let d = drop, !mine, Date().timeIntervalSince(d.at) < 2 { drop = nil; owner?.imageDropped(d.image); decisionHandler(.cancel, preferences); return }
       // a page that sends you off to a site that only ever serves pop-up adverts: no
-      if blocking, !mine, action.navigationType == .other, Blocker.shared.isPopupHost(u.host) { blocked["popups", default: 0] += 1; owner?.tabChanged(self); decisionHandler(.cancel, preferences); return }
+      if blocking, !mine, action.navigationType == .other, Blocker.shared.isPopup(u, from: webView.url?.host) { blocked["popups", default: 0] += 1; owner?.tabChanged(self); decisionHandler(.cancel, preferences); return }
       let want = owner?.blockingWanted(for: u) ?? false
       if want != blocking { applyBlocking(want) }
     }
@@ -268,8 +272,33 @@ final class Tab: NSObject, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegat
   // ---------- what a page may ask for ----------
   func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration, for action: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
     guard let owner = owner else { return nil }
-    if blocking, Blocker.shared.isPopupHost(action.request.url?.host) { blocked["popups", default: 0] += 1; owner.tabChanged(self); return nil }      // a pop-up advert
+    if blocking, Blocker.shared.isPopup(action.request.url, from: webView.url?.host) { blocked["popups", default: 0] += 1; owner.tabChanged(self); return nil }      // a pop-up advert
+    if let how = background {      // Open Link in Background Tab, or in a Background Private Tab: you stay on this page
+      background = nil
+      if how == .privately, let u = action.request.url { App.shared.openInBackgroundPrivately(u); return nil }      // a private tab can't share this page's cookies, so it starts afresh
+      return owner.newTab(configuration: configuration, select: false).web
+    }
     return owner.newTab(configuration: configuration).web      // a link that opens a new window opens a new tab
+  }
+  // ---------- opening a link behind this page ----------
+  // A right-click on a link adds Open Link in Background Tab (and, in an ordinary window, in a Background Private Tab)
+  // beside WebKit's own Open Link in New Window. Each runs WebKit's item, so the link is the one it would open, with
+  // a note to open it behind this page instead of in front of it.
+  enum Behind { case here, privately }
+  var background: Behind?
+  func addBackgroundItems(_ menu: NSMenu) {
+    guard let i = menu.items.firstIndex(where: { $0.identifier?.rawValue == "WKMenuItemIdentifierOpenLinkInNewWindow" }) else { return }
+    let link = menu.items[i]; link.title = "Open Link in New Tab"
+    var add = [NSMenuItem(title: "Open Link in Background Tab", action: #selector(openBehind(_:)), keyEquivalent: "")]
+    if owner?.isPrivate == false { add.append(NSMenuItem(title: "Open Link in Background Private Tab", action: #selector(openBehindPrivately(_:)), keyEquivalent: "")) }
+    for (k, item) in add.enumerated() { item.target = self; item.representedObject = link; menu.insertItem(item, at: i + 1 + k) }
+  }
+  @objc func openBehind(_ item: NSMenuItem) { runLink(item, .here) }
+  @objc func openBehindPrivately(_ item: NSMenuItem) { runLink(item, .privately) }
+  private func runLink(_ item: NSMenuItem, _ how: Behind) {
+    guard let link = item.representedObject as? NSMenuItem, let action = link.action else { return }
+    background = how; NSApp.sendAction(action, to: link.target, from: link)
+    DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in self?.background = nil }      // in case WebKit opened nothing
   }
   func webViewDidClose(_ webView: WKWebView) { owner?.closeTab(id) }
   private func sheet(_ text: String, info: String = "", buttons: [String], field: String? = nil, then: @escaping (Int, String?) -> Void) {
@@ -291,6 +320,17 @@ final class Tab: NSObject, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegat
   func webView(_ webView: WKWebView, requestMediaCapturePermissionFor origin: WKSecurityOrigin, initiatedByFrame frame: WKFrameInfo, type: WKMediaCaptureType, decisionHandler: @escaping (WKPermissionDecision) -> Void) {
     let what = type == .camera ? "your camera" : type == .microphone ? "your microphone" : "your camera and microphone"
     sheet("Let \(origin.host) use \(what)?", info: "It can use it until you close this tab.", buttons: ["Don’t allow", "Allow"]) { i, _ in decisionHandler(i == 1 ? .grant : .deny) }
+  }
+  /// A page asks where you are (a map, or a TV service checking you are in its area). You are asked once for each site in
+  /// this tab. (A part of the engine Apple doesn't promise to keep; Location.swift hands the place over.)
+  private var placeFor = Set<String>()
+  static var placeAnswer: Bool?      // for the app's own checks: the answer, given without asking
+  @objc(_webView:requestGeolocationPermissionForOrigin:initiatedByFrame:decisionHandler:)
+  func place(_ webView: WKWebView, origin: WKSecurityOrigin, frame: WKFrameInfo, decisionHandler: @escaping (WKPermissionDecision) -> Void) {
+    guard Location.shared.works, origin.protocol == "https" else { decisionHandler(.deny); return }
+    if let a = Tab.placeAnswer { decisionHandler(a ? .grant : .deny); return }
+    if placeFor.contains(origin.host) { decisionHandler(.grant); return }
+    sheet("Let \(origin.host) know where you are?", info: "It can see where you are until you close this tab.", buttons: ["Don’t allow", "Allow"]) { [weak self] i, _ in if i == 1 { self?.placeFor.insert(origin.host) }; decisionHandler(i == 1 ? .grant : .deny) }
   }
 }
 

@@ -43,6 +43,8 @@ struct Bloom: View {
 @MainActor
 final class Shell: ObservableObject {
   @Published var toast: String?
+  /// What the Sleek browser asked to open (a page's or deck's id; "" for the list of them all).
+  @Published var goTo: String?
   private var n = 0
   func say(_ text: String) { n += 1; let mine = n; withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) { toast = text }; DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in if self?.n == mine { withAnimation(.easeOut(duration: 0.25)) { self?.toast = nil } } } }
 }

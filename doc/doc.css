@@ -181,9 +181,21 @@ div.dk-tasks { margin: 20px 0; padding: 14px 16px 12px; border-radius: 16px; bor
 .tk-colh > b { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .tk-colh > span { margin-left: auto; color: var(--d-faint); }
 .tk-card { padding: 8px 10px; border-radius: 9px; background: var(--d-bg); border: 1px solid var(--d-line); font-size: 14px; line-height: 1.35; overflow-wrap: anywhere; }
 .tk-card.done { color: var(--d-faint); text-decoration: line-through; }
+/* a grocery list: its basket, a bar that fills as things go in, and its aisles in two columns */
+.dk-gl .tk-h > i.gl-i { width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; background: color-mix(in srgb, var(--c, #12A36A) 16%, transparent); color: var(--c, #12A36A); }
+.dk-gl .tk-h > i.gl-i svg { width: 15px; height: 15px; }
+.gl-bar { height: 4px; border-radius: 4px; background: var(--d-hover); overflow: hidden; margin: 0 0 6px; } .gl-bar b { display: block; height: 100%; border-radius: 4px; background: var(--c, #12A36A); transition: width .5s cubic-bezier(.2,.7,.2,1); }
+.gl-aisles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 22px; align-items: start; }
+.gl-a { min-width: 0; break-inside: avoid; }
+.gl-a h5 { display: flex; align-items: center; gap: 7px; margin: 8px 0 2px; font-size: 11.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--d-muted); }
+.gl-a h5 i { width: 7px; height: 7px; border-radius: 50%; background: var(--c, #8E8E93); }
+.dk-gl .tk-row q { quotes: none; flex: none; font-size: 13px; color: var(--d-muted); font-variant-numeric: tabular-nums; }
+.dk-gl .tk-row.done { opacity: .6; }
+.dk-gl .tk-none { grid-column: 1 / -1; }
+@media (max-width: 560px) { .gl-aisles { grid-template-columns: minmax(0, 1fr); } }
 @media print {
   div.dk-tasks { break-inside: avoid; margin-inline: 0 !important; border-color: #CCC; } .tk-board { overflow: visible; grid-auto-columns: 1fr; }
-  .tk-ck, .tk-col, .tk-av, .tc-s::before, .tk-h > i, .tk-colh > i { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  .tk-ck, .tk-col, .tk-av, .tc-s::before, .tk-h > i, .tk-colh > i, .gl-a h5 i { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
 }
 
 /* Save as PDF: the page alone, on white, whatever its mode */

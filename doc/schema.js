@@ -93,6 +93,11 @@
       parseDOM: [{ tag: 'div.dk-tasks', getAttrs: function(d){ return { project: d.getAttribute('data-project') || '', view: d.getAttribute('data-view') === 'board' ? 'board' : 'list', show: d.getAttribute('data-show') === 'all' ? 'all' : 'open', ids: json(d.getAttribute('data-ids')), snap: json(d.getAttribute('data-snap')) }; } }],
       toDOM: function(n){
         var a = n.attrs, s = a.snap || { n: 'Tasks', cols: [] }, cols = s.cols || [], body;
+        // a grocery list: its aisles, each with its things (snap from SleekTasks.listSnapshot)
+        if(s.kind === 'grocery') return ['div', { class: 'dk-tasks dk-gl', 'data-project': a.project, 'data-view': a.view, 'data-show': a.show, 'data-ids': JSON.stringify(a.ids || null), 'data-snap': JSON.stringify(a.snap || null) },
+          ['div', { class: 'tk-h' }, ['i', { class: 'gl-i', style: '--c:' + colour(s.c) }], ['b', String(s.n || 'Groceries')], ['span', 'Grocery list' + (s.at ? ', as on ' + new Date(s.at).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' }) : '')]],
+          ['div', { class: 'gl-aisles' }].concat((s.aisles || []).map(function(x){ return ['div', { class: 'gl-a' }, ['h5', ['i', { style: '--c:' + colour(x.c) }], String(x.n || '')]].concat((x.items || []).map(function(t){
+            var r = ['div', { class: 'tk-row' + (t.done ? ' done' : '') }, ['span', { class: 'tk-ck' + (t.done ? ' on' : '') }], ['span', { class: 'tk-t' }, String(t.t || '')]]; if(t.q > 1) r.push(['q', '×' + t.q]); return r; })); }))];
         if(a.view === 'board') body = ['div', { class: 'tk-board' }].concat(cols.map(function(c){
           return ['div', { class: 'tk-col' }, ['div', { class: 'tk-colh' }, ['i', { style: '--c:' + colour(c.c) }], ['b', String(c.n || '')], ['span', String((c.tasks || []).length)]]].concat((c.tasks || []).map(function(t){ return ['div', { class: 'tk-card' + (t.done ? ' done' : '') }, String(t.t || '')]; })); }));
         else { var rows = []; cols.forEach(function(c){ (c.tasks || []).forEach(function(t){ if(a.show === 'all' || !t.done) rows.push(t); }); });
@@ -130,6 +135,7 @@
   kit.taskPlain = function(n){ var s = (kit.taskSnap ? kit.taskSnap(n) : n.attrs.snap) || {}; return { t: String(s.t || 'A task'), done: !!s.done }; };
   kit.tasksPlain = function(n){
     var s = (kit.taskSnap ? kit.taskSnap(n) : n.attrs.snap) || {}, board = n.attrs.view === 'board', all = [], groups = [];
+    if(s.kind === 'grocery') return { name: String(s.n || 'Groceries'), board: true, list: true, groups: (s.aisles || []).map(function(x){ return { name: String(x.n || ''), rows: (x.items || []).map(function(t){ return { t: String(t.t || '') + (t.q > 1 ? ' ×' + t.q : ''), done: !!t.done, due: '' }; }) }; }) };
     (s.cols || []).forEach(function(c){
       var rows = (c.tasks || []).filter(function(t){ return board || n.attrs.show === 'all' || !t.done; }).map(function(t){ return { t: String(t.t || ''), done: !!t.done, due: t.due ? dateWords(t.due) : '' }; });
       if(board){ if(rows.length) groups.push({ name: String(c.n || ''), rows: rows }); } else all = all.concat(rows);

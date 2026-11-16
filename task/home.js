@@ -17,22 +17,29 @@
       return '<span class="bd-col' + (s.done ? ' done' : '') + '"><i></i>' + cards + '</span>';
     }).join('') + '</span>';
   }
+  // a grocery list in small: its first few things, ticked or not, under a basket
+  function miniList(p){
+    var ts = T.tasks(p.id).slice().sort(function(a, b){ return (T.isDone(a) - T.isDone(b)) || (a.order || 0) - (b.order || 0); }).slice(0, 5), lines = '';
+    ts.forEach(function(t){ lines += '<span class="' + (T.isDone(t) ? 'got' : '') + '"><i></i><b style="width:' + (34 + (t.title.length * 7) % 46) + '%"></b></span>'; });
+    return '<span class="bd-list" aria-hidden="true"><span class="bd-bk">' + ((A.icons && A.icons.basket) || '') + '</span><span class="bd-lines">' + lines + '</span></span>';
+  }
   function tile(p, i){
-    var ts = T.tasks(p.id), open = ts.filter(function(t){ return !T.isDone(t); }), due = open.filter(function(t){ return t.due && A.away(t) <= 0; }).length;
-    var sub = !ts.length ? 'Nothing in it yet' : (open.length ? open.length + ' open' : 'All done') + (due ? ' · ' + due + ' due' : '');
+    var ts = T.tasks(p.id), open = ts.filter(function(t){ return !T.isDone(t); }), due = open.filter(function(t){ return t.due && A.away(t) <= 0; }).length, gl = T.isList(p);
+    var sub = gl ? (p.done ? 'Shopped' : (p.due ? A.dayName(p.due) + ' · ' : '') + (!ts.length ? 'Nothing on it yet' : open.length ? open.length + ' to get' : 'All in the basket'))
+      : !ts.length ? 'Nothing in it yet' : (open.length ? open.length + ' open' : 'All done') + (due ? ' · ' + due + ' due' : '');
     var name = naming === p.id ? '<input class="bd-rename" value="' + esc(p.name) + '" data-k="rename-' + p.id + '" aria-label="Board name" maxlength="80">' : '<b class="bd-name">' + esc(p.name) + '</b>';
-    return '<article class="bd' + (fresh === p.id ? ' fresh' : '') + '" style="--c:' + p.color + ';--i:' + i + '" data-flip="bd-' + p.id + '"><span class="bd-bloom" aria-hidden="true"></span>' +
-      '<a class="bd-thumb" href="#/' + p.id + '/' + A.lastView(p.id) + '" data-board="' + p.id + '" aria-label="Open ' + esc(p.name) + '"' + (state.proj === p.id ? ' style="view-transition-name:stage"' : '') + '>' + (TH && TH.is(p.thumb) ? '<img class="bd-pic" alt="" src="' + p.thumb + '">' : mini(p)) + '</a>' +
+    return '<article class="bd' + (fresh === p.id ? ' fresh' : '') + (gl ? ' bd-gl' + (p.done ? ' shopped' : '') : '') + '" style="--c:' + p.color + ';--i:' + i + '" data-flip="bd-' + p.id + '"><span class="bd-bloom" aria-hidden="true"></span>' +
+      '<a class="bd-thumb" href="#/' + p.id + '/' + A.lastView(p.id) + '" data-board="' + p.id + '" aria-label="Open ' + esc(p.name) + '"' + (state.proj === p.id ? ' style="view-transition-name:stage"' : '') + '>' + (TH && TH.is(p.thumb) ? '<img class="bd-pic" alt="" src="' + p.thumb + '">' : gl ? miniList(p) : mini(p)) + '</a>' +
       '<div class="bd-meta"><div>' + name + '<span>' + sub + '</span></div><button type="button" class="bd-more" data-bmore="' + p.id + '" aria-label="More for ' + esc(p.name) + '" aria-haspopup="true">⋯</button></div></article>';
   }
   A.views.home = function(){
-    var ps = T.projects(), due = T.tasks().filter(function(t){ return !T.isDone(t) && t.due && A.away(t) <= 0; }).length;
+    var ps = T.projects(), due = T.tasks().filter(function(t){ return !T.isDone(t) && t.due && A.away(t) <= 0; }).length + ps.filter(T.listOnToday).length;
     var v = window.SLEEK_TASK_CHANGES ? 'v' + window.SLEEK_TASK_CHANGES[0].v : '';
     return '<div class="home"><div class="home-in">' +
       '<div class="home-brand"><nav class="brand" aria-label="Where you are"><a href="index.html" title="Back to Sleek, to pick another app"><img src="icons/tasks.svg" alt="" width="34" height="31">Sleek</a><i aria-hidden="true">/</i><b aria-current="page">Tasks</b></nav>' +
       '<span class="grow"></span><button type="button" class="home-v" data-do="news" aria-haspopup="true">' + v + '</button><button type="button" class="home-v" data-do="look" title="Light or dark" aria-label="Light or dark">◐</button></div>' +
       '<h1>Know What’s Next.</h1><p class="lede">Everything saves as you go. No account, nothing to install, and it works offline.</p>' +
-      '<div class="home-acts"><button type="button" class="hbtn new" data-do="newboard"><span class="plus" aria-hidden="true">+</span>New board</button>' +
+      '<div class="home-acts"><button type="button" class="hbtn new" data-do="newmenu" aria-haspopup="true"><span class="plus" aria-hidden="true">+</span>New</button>' +
       '<a class="hbtn" href="#today"><i class="dot"></i>Today' + (due ? '<em>' + due + ' due</em>' : '') + '</a></div>' +
       '<section aria-labelledby="bd-h"><div class="home-head"><h2 id="bd-h">Your boards</h2><span>' + (ps.length || '') + '</span></div><div class="bd-grid">' +
       (naming === 'new' ? '<article class="bd fresh" style="--c:' + T.COLORS[ps.length % T.COLORS.length] + ';--i:0"><span class="bd-thumb empty"></span><div class="bd-meta"><div><input class="bd-rename" data-k="rename-new" placeholder="Name this board" aria-label="Name this board" maxlength="80"><span>Press Enter to make it</span></div></div></article>' : '') +
@@ -57,6 +64,13 @@
   });
   body.addEventListener('focusout', function(e){ if(e.target.classList && e.target.classList.contains('bd-rename')) setTimeout(function(){ var a = document.activeElement; if(naming && !(a && a.classList && a.classList.contains('bd-rename'))) endNaming(true); }, 0); });
 
+  // New: a board, or a grocery list (task/grocery.js)
+  function newMenu(btn){
+    A.menu(btn, function(m){
+      var b = A.item(m, '', function(){ A.closePop(); startNaming('new'); }, 'two'); b.innerHTML = '<b>Board</b><i>Columns, cards and dates, for anything with steps.</i>';
+      if(A.newList){ var g = A.item(m, '', function(){ A.closePop(); A.newList(); }, 'two'); g.innerHTML = '<b>Grocery list</b><i>Quick to fill, sorted by aisle, with your usuals one tap away.</i>'; }
+    });
+  }
   function more(btn, p){
     A.menu(btn, function(m){
       A.item(m, 'Open', function(){ A.closePop(); A.go(A.lastView(p.id), p.id); });
@@ -73,7 +87,7 @@
       m.appendChild(sw);
       var l = document.createElement('div'); l.className = 'line'; m.appendChild(l);
       var n = T.tasks(p.id).length;
-      A.danger(m, n ? 'Delete board and its ' + n + (n === 1 ? ' task' : ' tasks') : 'Delete board', function(){ T.removeProject(p.id); A.toast('Deleted “' + p.name + '”'); });
+      A.danger(m, T.isList(p) ? 'Delete this list' : n ? 'Delete board and its ' + n + (n === 1 ? ' task' : ' tasks') : 'Delete board', function(){ T.removeProject(p.id); A.toast('Deleted “' + p.name + '”'); });
     });
   }
   body.addEventListener('click', function(e){
@@ -85,7 +99,7 @@
       A.$$('.bd-thumb', body).forEach(function(el){ el.style.viewTransitionName = el === x ? 'stage' : ''; });
       A.go(A.lastView(id), id); return;
     }
-    if((x = t.closest('[data-do]'))){ var what = x.getAttribute('data-do'); if(what === 'newboard') startNaming('new'); else if(what === 'look') A.look(); else if(what === 'news') A.news(x); else if(what === 'copyout') copyOut(); else if(what === 'copyin') document.getElementById('copyfile').click(); }
+    if((x = t.closest('[data-do]'))){ var what = x.getAttribute('data-do'); if(what === 'newboard') startNaming('new'); else if(what === 'newmenu') newMenu(x); else if(what === 'look') A.look(); else if(what === 'news') A.news(x); else if(what === 'copyout') copyOut(); else if(what === 'copyin') document.getElementById('copyfile').click(); }
   });
 
   // ---------- a copy of every board and task, as a file: to keep, or to move to another browser ----------

@@ -182,10 +182,48 @@
     return (id ? meta(id) : Promise.resolve(null)).then(function(have){ return create({ id: have ? null : id, seed: o.seed, folder: folder || null }); }).then(function(n){ return pic && n ? setThumb(n.id, pic) : n; });
   }
 
+  // ---------- the other Sleek apps on the same iPhone ----------
+  // On iPhone, the Sleek browser and Sleek Docs each keep their own pages and swap copies through a folder they share
+  // (browser/Sources/Sleek/Work.swift). adopt takes another app's copy of a page when it is newer than the one here,
+  // keeping its id and the time it last changed, so the two agree and nothing goes back and forth. Where it sits in your
+  // folders, and its Viewers codes, stay as they are here. Resolves with the page's record, or null when the one here is as new.
+  function adopt(text){
+    var o = parseFile(text), id = typeof o.id === 'string' && /^[a-z0-9]{4,24}$/.test(o.id) ? o.id : null, at = +o.updated || 0;
+    if(!id || !at) return Promise.resolve(null);
+    return Promise.all([meta(id), S().dehydrate(o.seed)]).then(function(r){
+      var have = r[0], s = r[1]; if(have && (have.updated || 0) >= at) return null;
+      var m = have || { id: id, created: at, folder: null };
+      m.title = typeof o.title === 'string' && o.title ? o.title.slice(0, 120) : titleOf(s); m.text = words(s.doc).toLowerCase(); m.peek = peek(s, m.title); m.updated = at;
+      if(typeof o.thumb === 'string' && /^data:image\/(jpeg|png|webp);base64,/.test(o.thumb) && o.thumb.length < 900000) m.thumb = o.thumb; else delete m.thumb;
+      return write(m, s);
+    });
+  }
+  // Your folders, and which page is in which: for the other apps (folderMap), and taking theirs (takeFolders).
+  // Whether a folder is open in the sidebar is this app's own, and stays.
+  function folderMap(){
+    return Promise.all([folders(), all('docs')]).then(function(r){
+      var places = {}; r[1].forEach(function(d){ if(d.folder) places[d.id] = d.folder; });
+      return { folders: r[0].map(function(f){ return { id: f.id, name: f.name, parent: f.parent || null, created: f.created || 0 }; }).sort(function(a, b){ return a.id < b.id ? -1 : 1; }), places: places };
+    });
+  }
+  function takeFolders(o){
+    var ok = function(id){ return typeof id === 'string' && /^[a-z0-9]{4,24}$/.test(id); };
+    var list = (o && Array.isArray(o.folders) ? o.folders : []).filter(function(f){ return f && ok(f.id); }), places = (o && o.places) || {}, ids = {};
+    list.forEach(function(f){ ids[f.id] = 1; });
+    return Promise.all([folders(), all('docs')]).then(function(r){
+      var open = {}; r[0].forEach(function(f){ open[f.id] = f.open; });
+      return tx(['docs', 'folders'], 'readwrite', function(t){
+        r[0].forEach(function(f){ if(!ids[f.id]) t.objectStore('folders').delete(f.id); });
+        list.forEach(function(f){ t.objectStore('folders').put({ id: f.id, name: String(f.name || 'Folder').slice(0, 80), parent: f.parent && ids[f.parent] ? f.parent : null, open: open[f.id] !== false, created: +f.created || now() }); });
+        r[1].forEach(function(d){ var want = places[d.id] && ids[places[d.id]] ? places[d.id] : null; if((d.folder || null) !== want){ d.folder = want; t.objectStore('docs').put(d); } });
+      });
+    });
+  }
+
   window.SleekDocs = {
     open: open, uid: uid, blank: blank, titleOf: titleOf, words: words,
     list: list, get: get, create: create, save: save, duplicate: duplicate, remove: remove, move: move, search: search, setViewers: setViewers, setThumb: setThumb,
     folders: folders, addFolder: addFolder, setFolder: setFolder, removeFolder: removeFolder,
-    snapshot: snapshot, exportDoc: exportDoc, importDoc: importDoc, parseFile: parseFile
+    snapshot: snapshot, exportDoc: exportDoc, importDoc: importDoc, parseFile: parseFile, adopt: adopt, folderMap: folderMap, takeFolders: takeFolders
   };
 })();

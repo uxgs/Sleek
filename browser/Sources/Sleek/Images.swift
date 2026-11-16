@@ -69,5 +69,8 @@ struct DroppedImage {
 /// the drop (the page's script says so), Sleek can step in with its question. The page still gets the drop first.
 final class PageView: WKWebView {
   var onDrop: ((NSPasteboard) -> Void)?
+  /// The menu a right-click (or Control-click) brings up, for Sleek to add to before it shows.
+  var onMenu: ((NSMenu) -> Void)?
+  override func willOpenMenu(_ menu: NSMenu, with event: NSEvent) { super.willOpenMenu(menu, with: event); onMenu?(menu) }
   override func performDragOperation(_ sender: NSDraggingInfo) -> Bool { if sender.draggingSource == nil { onDrop?(sender.draggingPasteboard) }; return super.performDragOperation(sender) }
 }

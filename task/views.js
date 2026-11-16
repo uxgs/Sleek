@@ -18,11 +18,15 @@
     var open = T.tasks().filter(function(t){ return !T.isDone(t) && t.due; }).sort(byDue);
     var over = open.filter(A.late), now = open.filter(function(t){ return A.away(t) === 0; }), soon = open.filter(function(t){ var n = A.away(t); return n > 0 && n <= 7; });
     var hour = new Date().getHours(), hi = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+    // grocery lists for today (or a day gone by) that are not shopped yet, as cards above the tasks (task/grocery.js)
+    var lists = A.listCard ? T.projects().filter(T.listOnToday) : [], toGet = lists.reduce(function(n, p){ return n + T.tasks(p.id).filter(function(t){ return !T.isDone(t); }).length; }, 0);
+    // "1 task for today, 3 overdue and 8 things to get"
+    function say(){ var a = Array.prototype.filter.call(arguments, Boolean); if(!a.length) return 'Nothing due today'; var t = a.length > 1 ? a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1] : a[0]; return t.charAt(0).toUpperCase() + t.slice(1); }
     function sec(name, ts, cls){ return ts.length ? '<h4 class="' + (cls || '') + '">' + name + ' <em>' + ts.length + '</em></h4>' + ts.map(function(t){ return A.row(t, true); }).join('') : ''; }
-    var ps = T.projects(), pick = ps.length > 1 ? '<select id="today-proj" aria-label="Board for the new task">' + ps.map(function(p){ return '<option value="' + p.id + '"' + (p.id === state.proj ? ' selected' : '') + '>' + esc(p.name) + '</option>'; }).join('') + '</select>' : '';
-    return '<div class="hello"><b>' + hi + '.</b><span>' + (now.length ? now.length + (now.length === 1 ? ' task' : ' tasks') + ' for today' : 'Nothing due today') + (over.length ? ', and ' + over.length + ' overdue' : '') + '.</span></div>' +
-      '<div class="list"><div class="quick"><input placeholder="Add a task for today and press Enter" data-add="today" aria-label="Add a task for today" maxlength="300">' + pick + '</div>' + sec('Overdue', over, 'late') + sec('Today', now) + sec('Next 7 days', soon) +
-      (over.length + now.length + soon.length ? '' : '<div class="empty"><b>Nothing due this week.</b>Tasks with a due date show up here, from every board.</div>') + '</div>';
+    var ps = T.projects().filter(function(p){ return !T.isList(p); }), pick = ps.length > 1 ? '<select id="today-proj" aria-label="Board for the new task">' + ps.map(function(p){ return '<option value="' + p.id + '"' + (p.id === state.proj ? ' selected' : '') + '>' + esc(p.name) + '</option>'; }).join('') + '</select>' : '';
+    return '<div class="hello"><b>' + hi + '.</b><span>' + say(now.length ? now.length + (now.length === 1 ? ' task' : ' tasks') + ' for today' : '', over.length ? over.length + ' overdue' : '', toGet ? toGet + (toGet === 1 ? ' thing' : ' things') + ' to get' : '') + '.</span></div>' +
+      '<div class="list"><div class="quick"><input placeholder="Add a task for today and press Enter" data-add="today" aria-label="Add a task for today" maxlength="300">' + pick + '</div>' + lists.map(A.listCard).join('') + sec('Overdue', over, 'late') + sec('Today', now) + sec('Next 7 days', soon) +
+      (over.length + now.length + soon.length + lists.length ? '' : '<div class="empty"><b>Nothing due this week.</b>Tasks with a due date show up here, from every board.</div>') + '</div>';
   };
 
   // ---------- list ----------
@@ -101,7 +105,9 @@
   function addFrom(input){
     var where = input.getAttribute('data-add'), title = input.value.trim(); if(!title) return;
     var o = { project: state.proj, title: title };
-    if(where === 'today'){ var sel = document.getElementById('today-proj'); o.project = sel ? sel.value : state.proj; state.proj = o.project; o.due = A.dayKey(0); }
+    if(where === 'today'){ var sel = document.getElementById('today-proj'); o.project = sel ? sel.value : state.proj;
+      if(T.isList(o.project)){ var bd = T.projects().filter(function(x){ return !T.isList(x); })[0] || T.addProject({ name: 'My tasks' }); o.project = bd.id; }      // a task never goes on a grocery list
+      state.proj = o.project; o.due = A.dayKey(0); }
     else if(where.indexOf('w:') === 0) o.who = where.slice(2);
     else if(where.indexOf('day:') === 0) o.due = where.slice(4);
     else if(where !== 'list' && where !== 'grid') o.status = where;

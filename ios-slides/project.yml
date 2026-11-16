@@ -10,8 +10,12 @@ targets:
   SleekSlides:
     type: application
     platform: iOS
+    dependencies:
+      - target: SleekSlidesWidgets
     sources:
       - path: Sources
+      - path: ../ios-shared/Shared.swift
+      - path: ../ios-shared/SharedWork.swift
       - path: ../ios-shared/Kit.swift
       - path: ../ios-shared/Host.swift
       - path: ../browser/Sources/Sleek/Common.swift
@@ -31,6 +35,10 @@ targets:
         UILaunchScreen: {}
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
         LSSupportsOpeningDocumentsInPlace: false
+        # the Sleek browser opens a board, page or deck here by this address
+        CFBundleURLTypes:
+          - CFBundleURLName: com.sleek.slides
+            CFBundleURLSchemes: [sleek-slides]
         UTExportedTypeDeclarations:
           - UTTypeIdentifier: com.sleek.file
             UTTypeDescription: Sleek file
@@ -41,6 +49,10 @@ targets:
           - CFBundleTypeName: Sleek file
             LSHandlerRank: Alternate
             LSItemContentTypes: [com.sleek.file]
+    entitlements:
+      path: build/SleekSlides.entitlements
+      properties:
+        com.apple.security.application-groups: [group.com.uxg.sleek]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.sleek.slides
@@ -51,3 +63,37 @@ targets:
         CODE_SIGN_STYLE: Manual
         DEVELOPMENT_TEAM: ""
         TARGETED_DEVICE_FAMILY: "1"
+  # the app's widgets (drawn by ../ios-shared/Widgets.swift), reading the work the Sleek apps share
+  SleekSlidesWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Widgets
+      - path: ../ios-shared/Widgets.swift
+      - path: ../ios-shared/Shared.swift
+      - path: ../ios-shared/Aisles.swift
+      - path: ../ios-shared/Siri.swift
+      - path: ../ios-shared/Goals.swift
+    info:
+      path: build/Widgets-Info.plist
+      properties:
+        CFBundleDisplayName: Sleek Slides
+        CFBundleShortVersionString: "0.1.0"
+        CFBundleVersion: "1"
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    entitlements:
+      path: build/SleekSlidesWidgets.entitlements
+      properties:
+        com.apple.security.application-groups: [group.com.uxg.sleek]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.sleek.slides.widgets
+        PRODUCT_NAME: SleekSlidesWidgets
+        SWIFT_VERSION: "5.0"
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) WIDGET"
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGN_STYLE: Manual
+        DEVELOPMENT_TEAM: ""
+        TARGETED_DEVICE_FAMILY: "1"
+        SKIP_INSTALL: YES

@@ -9,6 +9,8 @@ import UniformTypeIdentifiers
 
 struct BoardsView: View {
   @ObservedObject var s: Store; @ObservedObject var shell: Shell
+  /// Open the board or list the Sleek browser asked for.
+  private func go(_ id: String?) { guard let id, let b = s.board(id) else { return }; shell.goTo = nil; if open?.id == b.id { return }; open = nil; DispatchQueue.main.async { open = b } }
   @State private var open: Board?
   @State private var task: Item?
   @State private var query = ""
@@ -26,6 +28,7 @@ struct BoardsView: View {
           Spacer()
           Menu {
             Button { name = ""; adding = true } label: { Label("New Board", systemImage: "plus") }
+            Button { open = s.board(s.addList()) } label: { Label("New Grocery List", systemImage: "basket") }
             Divider()
             Button { file = TasksFile(text: s.text); saving = true } label: { Label("Save a Copy of Everything…", systemImage: "square.and.arrow.up") }
             Button { bringing = true } label: { Label("Bring In a Copy…", systemImage: "square.and.arrow.down") }
@@ -44,19 +47,37 @@ struct BoardsView: View {
             }.buttonStyle(.plain)
           }
         } else {
-          ForEach(s.boards) { b in card(b) }
-          Button { tap(); name = ""; adding = true } label: { Label("New board", systemImage: "plus").font(.system(size: 16, weight: .semibold)).foregroundStyle(Color.tasks).frame(maxWidth: .infinity).frame(height: 56).background(Color.tasks.opacity(0.1), in: RoundedRectangle(cornerRadius: 24, style: .continuous)) }.buttonStyle(Press())
+          ForEach(s.boards) { b in if b.isList { listCard(b) } else { card(b) } }
+          HStack(spacing: 12) {
+            Button { tap(); name = ""; adding = true } label: { Label("New board", systemImage: "plus").font(.system(size: 16, weight: .semibold)).foregroundStyle(Color.tasks).frame(maxWidth: .infinity).frame(height: 56).background(Color.tasks.opacity(0.1), in: RoundedRectangle(cornerRadius: 24, style: .continuous)) }.buttonStyle(Press())
+            Button { tap(); open = s.board(s.addList()) } label: { Label("Grocery list", systemImage: "basket").font(.system(size: 16, weight: .semibold)).foregroundStyle(Color.tasks).frame(maxWidth: .infinity).frame(height: 56).background(Color.tasks.opacity(0.1), in: RoundedRectangle(cornerRadius: 24, style: .continuous)) }.buttonStyle(Press())
+          }
         }
       }.padding(.horizontal, 20).padding(.bottom, 32).animation(.spring(response: 0.35, dampingFraction: 0.85), value: s.boards)
     }
     .scrollDismissesKeyboard(.interactively)
     .background(alignment: .top) { Bloom() }
-    .navigationDestination(item: $open) { b in BoardView(s: s, shell: shell, id: b.id) }
+    .navigationDestination(item: $open) { b in if b.isList { GroceryView(s: s, shell: shell, id: b.id) } else { BoardView(s: s, shell: shell, id: b.id) } }
+    .onAppear { go(shell.goTo) }.onChange(of: shell.goTo) { _, id in go(id) }
     .taskSheet($task, s, shell)
     .alert("New board", isPresented: $adding) { TextField("Its name", text: $name); Button("Cancel", role: .cancel) {}; Button("Add") { let id = s.addBoard(name); if let b = s.board(id) { open = b } } }
     .fileExporter(isPresented: $saving, document: file, contentType: .sleek, defaultFilename: "Sleek Tasks " + Day.today) { r in file = TasksFile(text: ""); if case .success = r { shell.say("Saved. Open it in Sleek Tasks anywhere to bring your tasks in.") } }
     .fileImporter(isPresented: $bringing, allowedContentTypes: [.sleek, .json, .data]) { r in if case .success(let u) = r { bring(u, into: s, shell) } }
-    .onAppear { if Args.arg("--open") == "board", open == nil { open = s.boards.first } }
+    .onAppear { if Args.arg("--open") == "board", open == nil { open = s.plainBoards.first }; if Args.arg("--open") == "list", open == nil { open = s.lists.first { !$0.shopped } ?? s.lists.first } }
+  }
+  /// A grocery list in the list of boards: a basket, its day, how far along, and the first things to get.
+  private func listCard(_ b: Board) -> some View {
+    let mine = s.things(b.id), left = mine.filter { !$0.done }, c = Color(hex: b.color)
+    return Button { tap(); open = b } label: {
+      VStack(alignment: .leading, spacing: 12) {
+        HStack(spacing: 10) { Image(systemName: "basket.fill").font(.system(size: 13)).foregroundStyle(.white).frame(width: 26, height: 26).background(c, in: RoundedRectangle(cornerRadius: 8, style: .continuous)); Text(b.name).font(.system(size: 21, weight: .bold)).lineLimit(1); Spacer(); Image(systemName: "chevron.right").font(.system(size: 13, weight: .semibold)).foregroundStyle(.tertiary) }
+        GeometryReader { g in ZStack(alignment: .leading) { Capsule().fill(c.opacity(0.16)); Capsule().fill(c).frame(width: mine.isEmpty ? 0 : g.size.width * CGFloat(mine.count - left.count) / CGFloat(mine.count)) } }.frame(height: 4)
+        Text(b.shopped ? "Shopped" : (b.due.isEmpty ? "" : Day.word(b.due) + " · ") + (mine.isEmpty ? "Nothing on it yet" : left.isEmpty ? "All in the basket" : "\(left.count) to get")).font(.system(size: 15)).foregroundStyle(.secondary)
+        if !b.shopped, !left.isEmpty { Text(left.prefix(4).map(\.title).joined(separator: ", ") + (left.count > 4 ? "…" : "")).font(.system(size: 15)).foregroundStyle(.secondary).lineLimit(1) }
+      }
+      .padding(20).foregroundStyle(.primary).opacity(b.shopped ? 0.6 : 1)
+      .background { ZStack { RoundedRectangle(cornerRadius: 24, style: .continuous).fill(c.opacity(b.shopped ? 0.1 : 0.3)).blur(radius: 18).offset(y: 10).padding(10); RoundedRectangle(cornerRadius: 24, style: .continuous).fill(Color(.secondarySystemBackground)) } }
+    }.buttonStyle(Press())
   }
   private func card(_ b: Board) -> some View {
     let mine = s.items.filter { $0.board == b.id }, left = mine.filter { !$0.done }.sorted { $0.order < $1.order }, c = Color(hex: b.color)

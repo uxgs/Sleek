@@ -9,6 +9,13 @@ import SwiftUI
 @MainActor
 final class Shell: ObservableObject {
   @Published var toast: String?
+  /// The board or list the Sleek browser asked to open.
+  @Published var goTo: String?
+  /// The goal a widget asked to open.
+  @Published var goGoal: String?
+  /// The widget's Add: the list opens with the keyboard up (taken once, by the list's add bar).
+  var adding = false
+  func takeAdding() -> Bool { defer { adding = false }; return adding }
   @Published var lastBoard: String { didSet { UserDefaults.standard.set(lastBoard, forKey: "lastBoard") } }
   private var n = 0
   init() { lastBoard = Args.proving ? "" : (UserDefaults.standard.string(forKey: "lastBoard") ?? "") }
@@ -21,9 +28,18 @@ struct TasksRoot: View {
   @State private var tab = Args.arg("--tab") ?? "today"
   @Environment(\.scenePhase) private var phase
   init() {
-    let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-    let store = Store(file: dir.appendingPathComponent("Tasks.sleek"))
-    if store.boards.isEmpty && store.readable { store.addBoard("My tasks") }      // somewhere for your first task to go
+    // your tasks live in Sleek Tasks' place in the folder the Sleek apps share (../ios-shared/Shared.swift), so the
+    // browser, Docs and Slides see them too. The first time, the file this app kept before comes along (and stays, as a copy).
+    let fm = FileManager.default, old = fm.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("Tasks.sleek")
+    var file = old, peers: [URL] = []
+    if !Args.proving, let me = Shared.place("tasks") {
+      let f = me.appendingPathComponent("Tasks.sleek")
+      if !fm.fileExists(atPath: f.path) { try? fm.createDirectory(at: me, withIntermediateDirectories: true); if fm.fileExists(atPath: old.path) { try? fm.copyItem(at: old, to: f) } }
+      file = f; peers = Shared.peers(of: "tasks")
+    }
+    let store = Store(file: file)
+    if !peers.isEmpty { store.peers = peers; store.tell = Shared.tell; store.pull(); Shared.listen { [weak store] in store?.pull() } }
+    if store.plainBoards.isEmpty && store.readable { store.addBoard("My tasks") }      // somewhere for your first task to go
     _s = StateObject(wrappedValue: store)
   }
   var body: some View {
@@ -31,12 +47,20 @@ struct TasksRoot: View {
       NavigationStack { TodayView(s: s, shell: shell) }.tabItem { Label("Today", systemImage: "sun.max.fill") }.tag("today")
       NavigationStack { UpcomingView(s: s, shell: shell) }.tabItem { Label("Upcoming", systemImage: "calendar") }.tag("upcoming")
       NavigationStack { BoardsView(s: s, shell: shell) }.tabItem { Label("Boards", systemImage: "rectangle.split.3x1.fill") }.tag("boards")
+      NavigationStack { GoalsView(s: s, shell: shell) }.tabItem { Label("Goals", systemImage: "target") }.tag("goals")
     }
     .tint(.tasks)
     .overlay(alignment: .top) { if let t = shell.toast { Text(t).font(.system(size: 15, weight: .medium)).padding(.horizontal, 16).frame(minHeight: 40).modifier(Glass(shape: Capsule())).padding(.top, 8).padding(.horizontal, 20).transition(.move(edge: .top).combined(with: .opacity)).id(t) } }
-    .onChange(of: phase) { _, now in if now != .active { s.flush() } }
-    // a .sleek file sent to this iPhone (from Sleek Tasks on the web, or another phone) opens here
-    .onOpenURL { url in bring(url, into: s, shell) }
+    .onChange(of: phase) { _, now in if now != .active { s.flush() } else { s.pull() } }
+    // the Sleek browser opening a board or list here (sleek-tasks://open?board=<id>), or a .sleek file sent to this
+    // iPhone (from Sleek Tasks on the web, or another phone)
+    .onOpenURL { url in
+      // (and its widgets: sleek-tasks://today, ://open?board=<list>, ://add?board=<list>)
+      // (the goal widgets: sleek-tasks://goals, ://goal?id=<goal>)
+      if url.scheme == "sleek-tasks", url.host == "goals" || url.host == "goal" { s.pull(); tab = "goals"; shell.goGoal = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first { $0.name == "id" }?.value; return }
+      if url.scheme == "sleek-tasks" { s.pull(); let id = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first { $0.name == "board" }?.value ?? ""; if url.host != "today", s.board(id) != nil { tab = "boards"; shell.goTo = id; if url.host == "add" { shell.adding = true } } else { tab = "today" }; return }
+      bring(url, into: s, shell)
+    }
   }
 }
 /// Read a file of tasks and bring it in, saying what came.
@@ -87,8 +111,9 @@ struct TodayView: View {
   @ObservedObject var s: Store; @ObservedObject var shell: Shell
   @State private var open: Item?
   @State private var showDone = false
+  @State private var list: String?
   var body: some View {
-    let late = s.late, today = s.due(Day.today), done = s.doneToday, left = late.count + today.count
+    let late = s.late, today = s.due(Day.today), done = s.doneToday, left = late.count + today.count, lists = s.listsToday
     List {
       VStack(alignment: .leading, spacing: 4) {
         Text(Date().formatted(.dateTime.weekday(.wide).day().month(.wide)).uppercased()).font(.system(size: 12, weight: .semibold)).tracking(1.4).foregroundStyle(.secondary).frame(height: 16)
@@ -97,8 +122,10 @@ struct TodayView: View {
           Spacer()
           if left + done.count > 0 { ZStack { Circle().stroke(Color.tasks.opacity(0.18), lineWidth: 5); Circle().trim(from: 0, to: CGFloat(done.count) / CGFloat(left + done.count)).stroke(Color.tasks, style: StrokeStyle(lineWidth: 5, lineCap: .round)).rotationEffect(.degrees(-90)).animation(.spring(response: 0.6, dampingFraction: 0.8), value: done.count) }.frame(width: 32, height: 32).padding(.trailing, 2) }
         }
-        Text(!s.readable ? "Your tasks could not be read, so nothing will be changed." : left == 0 ? (done.isEmpty ? "Nothing is due. Add a task below." : "All done. Enjoy your day.") : late.isEmpty ? "A clear run." : "Start with what is late.").font(.system(size: 16)).foregroundStyle(.secondary)
+        Text(!s.readable ? "Your tasks could not be read, so nothing will be changed." : left == 0 ? (lists.isEmpty ? (done.isEmpty ? "Nothing is due. Add a task below." : "All done. Enjoy your day.") : "Just the shopping.") : late.isEmpty ? "A clear run." : "Start with what is late.").font(.system(size: 16)).foregroundStyle(.secondary)
       }.padding(.top, 4).padding(.bottom, 12).plainRow()
+      // grocery lists for today, or a day gone by, that are not shopped yet
+      ForEach(lists) { l in ListCard(s: s, l: l) { list = l.id }.padding(.bottom, 12).plainRow() }
       if !late.isEmpty { Head(text: "Late", c: .red); ForEach(late) { TaskRow(t: $0, s: s) { open = $0 } } }
       if !today.isEmpty { Head(text: "Due today"); ForEach(today) { TaskRow(t: $0, s: s, showDue: false) { open = $0 } } }
       if !done.isEmpty {
@@ -111,6 +138,8 @@ struct TodayView: View {
     .background(alignment: .top) { Bloom() }
     .safeAreaInset(edge: .bottom) { AddBar(s: s, shell: shell) }
     .taskSheet($open, s, shell)
+    .navigationDestination(item: $list) { id in GroceryView(s: s, shell: shell, id: id) }
+    .animation(.spring(response: 0.45, dampingFraction: 0.85), value: lists)
   }
 }
 
@@ -120,14 +149,14 @@ struct AddBar: View {
   @State private var text = ""
   @State private var when = 0            // 0 today, 1 tomorrow, 7 next week, -1 no date
   @FocusState private var typing: Bool
-  private var board: String { s.board(shell.lastBoard)?.id ?? s.boards.first?.id ?? "" }
+  private var board: String { s.plainBoards.first { $0.id == shell.lastBoard }?.id ?? s.plainBoards.first?.id ?? "" }
   var body: some View {
     VStack(spacing: 8) {
       if typing {
         ScrollView(.horizontal, showsIndicators: false) {
           HStack(spacing: 8) {
             ForEach([(0, "Today", "sun.max"), (1, "Tomorrow", "sunrise"), (7, "Next week", "calendar"), (-1, "No date", "minus.circle")], id: \.0) { w in chip(w.1, w.2, on: when == w.0, .tasks) { when = w.0 } }
-            if s.boards.count > 1 { Divider().frame(height: 24); ForEach(s.boards) { b in chip(b.name, "circle.fill", on: board == b.id, Color(hex: b.color)) { shell.lastBoard = b.id } } }
+            if s.plainBoards.count > 1 { Divider().frame(height: 24); ForEach(s.plainBoards) { b in chip(b.name, "circle.fill", on: board == b.id, Color(hex: b.color)) { shell.lastBoard = b.id } } }
           }.padding(.horizontal, 16)
         }.padding(.vertical, -4).transition(.move(edge: .bottom).combined(with: .opacity))
       }
@@ -158,7 +187,7 @@ struct UpcomingView: View {
   @ObservedObject var s: Store; @ObservedObject var shell: Shell
   @State private var open: Item?
   var body: some View {
-    let far = Day.from(today: 14), later = s.items.filter { !$0.done && $0.due > far }.sorted { $0.due < $1.due }, loose = s.items.filter { !$0.done && $0.due.isEmpty }.sorted { $0.order < $1.order }
+    let far = Day.from(today: 14), later = s.items.filter { !$0.done && $0.due > far }.sorted { $0.due < $1.due }, lists = Set(s.lists.map(\.id)), loose = s.items.filter { !$0.done && $0.due.isEmpty && !lists.contains($0.board) }.sorted { $0.order < $1.order }
     List {
       Text("Upcoming").font(.system(size: 40, weight: .bold)).tracking(-1.2).padding(.top, 24).padding(.bottom, 8).plainRow()
       ForEach(1..<15, id: \.self) { n in
@@ -205,7 +234,7 @@ struct TaskSheet: View {
             }.padding(.horizontal, 20)
           }.padding(.horizontal, -20).padding(.vertical, -4)
           HStack(spacing: 8) {
-            Menu { ForEach(s.boards) { x in Button(x.name) { withAnimation { s.move(id, toBoard: x.id) } } } } label: { pill(b.name, "circle.fill", c) }.buttonStyle(.plain)
+            Menu { ForEach(s.plainBoards) { x in Button(x.name) { withAnimation { s.move(id, toBoard: x.id) } } } } label: { pill(b.name, "circle.fill", c) }.buttonStyle(.plain)
             Menu { ForEach(b.columns) { x in Button(x.name) { withAnimation { s.move(id, to: x.id) } } } } label: { pill(b.columns.first { $0.id == t.column }?.name ?? "", "rectangle.split.3x1", .secondary) }.buttonStyle(.plain)
             Menu { Button("Does not repeat") { s.setRepeat(id, "") }; ForEach(Repeats.all, id: \.self) { r in Button(Repeats.name(r)) { s.setRepeat(id, r) } } } label: { pill(t.rep.isEmpty ? "Repeat" : Repeats.name(t.rep), "repeat", t.rep.isEmpty ? .secondary : .tasks) }.buttonStyle(.plain)
           }.padding(.vertical, -4)

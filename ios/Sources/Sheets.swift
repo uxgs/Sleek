@@ -91,26 +91,33 @@ struct TabsView: View {
   @Environment(\.colorScheme) private var scheme
   @State private var hidden: Bool
   init(b: Browser) { self.b = b; _hidden = State(initialValue: b.tab.isPrivate) }
-  private var shown: [(at: Int, tab: PhoneTab)] { b.tabs.enumerated().filter { $0.element.isPrivate == hidden }.map { ($0.offset, $0.element) } }
+  private func shown(_ p: Bool) -> [(at: Int, tab: PhoneTab)] { b.tabs.enumerated().filter { $0.element.isPrivate == p }.map { ($0.offset, $0.element) } }
   var body: some View {
     VStack(spacing: 0) {
       HStack {
         TabSwitch(hidden: $hidden)
         Spacer(); Button { dismiss() } label: { Text("Done").font(.system(size: 17, weight: .semibold)).frame(minWidth: 44, minHeight: 44, alignment: .trailing).contentShape(Rectangle()) }
       }.padding(.horizontal, 20).padding(.top, 20).padding(.bottom, 12)
-      ScrollView {
-        if hidden && shown.isEmpty { nothingPrivate }
-        LazyVGrid(columns: [GridItem(.flexible(), spacing: 16), GridItem(.flexible(), spacing: 16)], spacing: 24) {
-          ForEach(shown, id: \.tab.id) { s in TabCard(t: s.tab, on: s.at == b.at) { b.show(s.at); dismiss() } close: { b.close(s.tab) }.transition(.scale(scale: 0.85).combined(with: .opacity)) }
-        }.padding(.horizontal, 20).padding(.top, 4).padding(.bottom, 96)
-      }
+      // your tabs and your private ones side by side: swipe left or right between them, or press the switch above
+      TabView(selection: $hidden.animation(.spring(response: 0.42, dampingFraction: 0.8))) { page(false).tag(false); page(true).tag(true) }      // each page in its own look, so the dark of Private follows your finger
+        .tabViewStyle(.page(indexDisplayMode: .never))
     }
+    .sensoryFeedback(.selection, trigger: hidden)
     .background(Color(.systemBackground).ignoresSafeArea())
     .overlay(alignment: .bottom) {
       Button { tap(); b.newTab(isPrivate: hidden); dismiss() } label: { Label(hidden ? "New Private Tab" : "New Tab", systemImage: hidden ? "eyeglasses" : "plus").font(.system(size: 17, weight: .semibold)).padding(.horizontal, 24).frame(height: 52) }
         .foregroundStyle(.primary).modifier(Glass(shape: Capsule())).padding(.bottom, 16)
     }
     .environment(\.colorScheme, hidden ? .dark : scheme)
+  }
+  private func page(_ p: Bool) -> some View {
+    ScrollView {
+      if p && shown(p).isEmpty { nothingPrivate }
+      LazyVGrid(columns: [GridItem(.flexible(), spacing: 16), GridItem(.flexible(), spacing: 16)], spacing: 24) {
+        ForEach(shown(p), id: \.tab.id) { s in TabCard(t: s.tab, on: s.at == b.at) { b.show(s.at); dismiss() } close: { b.close(s.tab) }.transition(.scale(scale: 0.85).combined(with: .opacity)) }
+      }.padding(.horizontal, 20).padding(.top, 4).padding(.bottom, 96)
+    }
+    .background(Color(.systemBackground)).environment(\.colorScheme, p ? .dark : scheme)
   }
   private var nothingPrivate: some View {
     VStack(spacing: 12) {
@@ -130,7 +137,7 @@ struct TabSwitch: View {
   }
   private func part(_ value: Bool, _ name: String, _ icon: String) -> some View {
     let on = hidden == value
-    return Button { if !on { tap(); withAnimation(.spring(response: 0.42, dampingFraction: 0.8)) { hidden = value } } } label: {
+    return Button { if !on { withAnimation(.spring(response: 0.42, dampingFraction: 0.8)) { hidden = value } } } label: {      // the tap is felt where the sheet notices the change (swiped or pressed)
       HStack(spacing: 7) { Image(systemName: icon).font(.system(size: 15, weight: .semibold)); Text(name).font(.system(size: 16, weight: .semibold)) }
         .foregroundStyle(on ? Color.primary : Color.secondary)
         .padding(.horizontal, 18).frame(height: 44)
@@ -188,8 +195,9 @@ struct TasksView: View {
 struct LibraryView: View {
   @ObservedObject var b: Browser
   @Environment(\.dismiss) private var dismiss
-  @State private var history = false
+  @State private var history: Bool
   @State private var sure = false
+  init(b: Browser, history: Bool = false) { self.b = b; _history = State(initialValue: history) }
   struct Row: Identifiable { let title: String, url: String, at: Double; var id: String { url } }
   private var marks: [Row] { b.store.bookmarks.map { Row(title: $0["title"] as? String ?? "", url: $0["url"] as? String ?? "", at: 0) } }
   private var visits: [Row] { b.store.history.prefix(400).map { Row(title: $0["t"] as? String ?? "", url: $0["u"] as? String ?? "", at: ($0["at"] as? NSNumber)?.doubleValue ?? 0) } }
@@ -212,7 +220,11 @@ struct LibraryView: View {
         if history {
           if visits.isEmpty { empty("clock", "No history yet", "Pages you open are listed here. Private tabs never are.") }
           ForEach(days, id: \.name) { day in Section { ForEach(day.rows) { row($0) }.onDelete { at in at.map { day.rows[$0].url }.forEach(b.forget) } } header: { Text(day.name).listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20)) } }
-          if !visits.isEmpty { Button("Clear History…", role: .destructive) { sure = true }.frame(maxWidth: .infinity, minHeight: 40, alignment: .leading).listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0)).alignmentGuide(.listRowSeparatorTrailing) { $0[.trailing] } }
+          Section {
+            if !visits.isEmpty { Button("Clear History…", role: .destructive) { sure = true }.frame(maxWidth: .infinity, minHeight: 40, alignment: .leading).listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0)).alignmentGuide(.listRowSeparatorTrailing) { $0[.trailing] } }
+            Button("Clear Cookies and Cache") { b.clearCookies() }.frame(maxWidth: .infinity, minHeight: 40, alignment: .leading).listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0)).alignmentGuide(.listRowSeparatorTrailing) { $0[.trailing] }
+          } footer: { Text("Clearing cookies signs you out of sites. Your decks, pages and tasks are not touched.").font(.system(size: 13)).foregroundStyle(.secondary) }
+          .listRowSeparator(.hidden, edges: .bottom)
         } else {
           if marks.isEmpty { empty("bookmark", "No bookmarks yet", "Add one from the ⋯ menu on any page.") }
           ForEach(marks) { row($0) }.onDelete { at in at.map { marks[$0].url }.forEach { b.store.removeBookmark(url: $0) }; b.objectWillChange.send() }
@@ -230,37 +242,26 @@ struct LibraryView: View {
         VStack(alignment: .leading, spacing: 2) { Text(r.title.isEmpty ? r.url : r.title).font(.system(size: 16)).foregroundStyle(.primary).lineLimit(1); Text(URL(string: r.url)?.host ?? r.url).font(.system(size: 13)).foregroundStyle(.secondary).lineLimit(1) } }.frame(maxWidth: .infinity, minHeight: 40, alignment: .leading)
     }
     .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0)).alignmentGuide(.listRowSeparatorTrailing) { $0[.trailing] }
-    .contextMenu { Button { if let u = URL(string: r.url) { b.newTab(u, isPrivate: false); dismiss() } } label: { Label("Open in New Tab", systemImage: "plus.square.on.square") }; Button { if let u = URL(string: r.url) { b.newTab(u, isPrivate: true); dismiss() } } label: { Label("Open in Private Tab", systemImage: "eyeglasses") }; Button { UIPasteboard.general.string = r.url } label: { Label("Copy Link", systemImage: "doc.on.doc") } }
+    .contextMenu { Button { if let u = URL(string: r.url) { b.newTab(u, isPrivate: false, background: true) } } label: { Label("Open in Background", systemImage: "square.on.square.dashed") }; Button { if let u = URL(string: r.url) { b.newTab(u, isPrivate: false); dismiss() } } label: { Label("Open in New Tab", systemImage: "plus.square.on.square") }; Button { if let u = URL(string: r.url) { b.newTab(u, isPrivate: true); dismiss() } } label: { Label("Open in Private Tab", systemImage: "eyeglasses") }; Button { UIPasteboard.general.string = r.url } label: { Label("Copy Link", systemImage: "doc.on.doc") } }
   }
 }
 
-// ---------- settings ----------
-struct SettingsView: View {
+// ---------- Manage, Blocking: what is blocked, and the sites you switched it off for ----------
+struct BlockingView: View {
   @ObservedObject var b: Browser
   @Environment(\.dismiss) private var dismiss
-  @State private var sure = false
-  private var version: String { (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String) ?? "" }
   var body: some View {
     NavigationStack {
       Form {
-        Section { Picker("Bar", selection: Binding(get: { b.barAtTop }, set: { b.placeBar(top: $0) })) { Text("At the bottom").tag(false); Text("At the top").tag(true) }.pickerStyle(.segmented) } header: { Text("Bar") } footer: { Text("Scroll down a page and the bar draws in to a tile. Drag the tile to any corner and it stays there.") }
-        Section { NavigationLink { PasswordsScreen(b: b, sheet: false) } label: { Text("Passwords") } } header: { Text("Passwords") } footer: { Text("Kept on this iPhone only, encrypted, and opened with Face ID or your passcode.") }
-        Section("Look") { Picker("Look", selection: $b.look) { Text("Automatic").tag("auto"); Text("Light").tag("light"); Text("Dark").tag("dark") }.pickerStyle(.segmented) }
-        Section { Picker("Search with", selection: Binding(get: { b.store.search }, set: { b.store.set("search", $0); b.objectWillChange.send() })) { ForEach(Search.providers, id: \.address) { Text($0.name).tag($0.address) } }
-          Toggle("Search suggestions", isOn: Binding(get: { b.searchHints }, set: { b.setting("searchHints", $0) })) } header: { Text("Search") } footer: { Text("With suggestions on, " + Search.name(for: b.store.search) + " is sent what you type in the address box, without cookies, to suggest searches. Never from a private tab.") }
-        Section { Toggle("Sleek apps", isOn: Binding(get: { b.startApps }, set: { b.setting("startApps", $0) })) } header: { Text("Start page") } footer: { Text("The row of Slides, Docs and Tasks on a new tab.") }
-        Section { Toggle("Open links in their apps", isOn: Binding(get: { b.appLinks }, set: { b.store.set("apps", $0); b.objectWillChange.send() })) } header: { Text("Apps") } footer: { Text("Tap a link to a site whose app is on this iPhone and it opens there. Links within the site you are browsing, addresses you type, and private tabs stay in Sleek. Open in App, in the ⋯ menu, sends the page showing to its app.") }
+        Section { LabeledContent("Adverts and trackers", value: b.blockerReady ? "Blocked" : "Getting ready…") } footer: { Text("Lists: " + Blocker.sources.map(\.title).joined(separator: ", ") + ".") }
         Section {
-          LabeledContent("Adverts and trackers", value: b.blockerReady ? "Blocked" : "Getting ready…")
+          if b.blockOff.isEmpty { Text("None").foregroundStyle(.secondary) }
           ForEach(b.blockOff, id: \.self) { h in LabeledContent(h, value: "Off") }.onDelete { at in at.map { b.blockOff[$0] }.forEach(b.allowBlocking) }
-        } header: { Text("Blocking") } footer: { Text("Press the shield beside an address to switch blocking off for a site that does not work. Sites you switched it off for are listed here; swipe one away to block there again. Lists: " + Blocker.sources.map(\.title).joined(separator: ", ") + ".") }
-        Section { Button("Clear History…", role: .destructive) { sure = true }; Button("Clear Cookies and Cache") { b.clearCookies() } } header: { Text("Privacy") } footer: { Text("Clearing cookies signs you out of sites. Your decks, pages and tasks are not touched.") }
-        Section { LabeledContent("Sleek for iPhone", value: version) }
+        } header: { Text("Switched off for") } footer: { Text("Press the shield beside an address to switch blocking off for a site that does not work. Swipe a site away here to block there again.") }
       }
       .contentMargins(.horizontal, 20, for: .scrollContent)
-      .navigationTitle("Settings").navigationBarTitleDisplayMode(.inline)
+      .navigationTitle("Blocking").navigationBarTitleDisplayMode(.inline)
       .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
-      .confirmationDialog("Clear all of your history?", isPresented: $sure, titleVisibility: .visible) { Button("Clear History", role: .destructive) { b.clearHistory() } }
     }
   }
 }
@@ -322,7 +323,14 @@ struct WelcomeView: View {
   @ObservedObject var b: Browser
   @State private var top = false
   @State private var shown = false
+  @State private var page = 0                       // the three pages about Sleek, then (3) the question
   var body: some View {
+    ZStack {
+      if page < 3 { IntroPages(page: $page).transition(.asymmetric(insertion: .opacity, removal: .move(edge: .leading).combined(with: .opacity))) }
+      else { question.transition(.move(edge: .trailing).combined(with: .opacity)) }
+    }.interactiveDismissDisabled()
+  }
+  private var question: some View {
     VStack(spacing: 0) {
       Spacer(minLength: 20)
       Mark(size: 54).shadow(color: Color.sleekB.opacity(0.5), radius: 22, y: 10).scaleEffect(shown ? 1 : 0.7).opacity(shown ? 1 : 0)
@@ -330,7 +338,7 @@ struct WelcomeView: View {
       Text("Where would you like the bar?").font(.system(size: 19)).foregroundStyle(.secondary).padding(.top, 8).opacity(shown ? 1 : 0).offset(y: shown ? 0 : 12)
       HStack(spacing: 16) { choice(atTop: false, name: "At the bottom", note: "Near your thumb"); choice(atTop: true, name: "At the top", note: "Where it has always been") }
         .padding(.horizontal, 20).padding(.top, 32).opacity(shown ? 1 : 0).offset(y: shown ? 0 : 18)
-      Text("You can change this at any time in Settings.").font(.system(size: 14)).foregroundStyle(.secondary).padding(.top, 24).opacity(shown ? 1 : 0)
+      Text("You can change this at any time: ⋯, then Appearance.").font(.system(size: 14)).foregroundStyle(.secondary).padding(.top, 24).opacity(shown ? 1 : 0)
       Spacer(minLength: 20)
       Button { b.chose(top: top) } label: { Text("Continue").font(.system(size: 18, weight: .semibold)).frame(maxWidth: .infinity).frame(height: 56).foregroundStyle(Color(.systemBackground)).background(Color.primary, in: Capsule()) }
         .buttonStyle(Press()).padding(.horizontal, 20).padding(.bottom, 16).opacity(shown ? 1 : 0)

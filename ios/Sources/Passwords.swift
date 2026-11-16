@@ -19,7 +19,7 @@ struct PasswordsFile: FileDocument {
 
 struct PasswordsScreen: View {
   @ObservedObject var b: Browser
-  let sheet: Bool                                  // shown as its own sheet (with Done), or inside Settings
+  let sheet: Bool                                  // shown as its own sheet (with Done), or inside another screen
   @Environment(\.dismiss) private var dismiss
   @State private var query = ""
   @State private var adding = false

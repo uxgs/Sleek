@@ -282,6 +282,25 @@
     });
   }
 
+  // On iPhone, the Sleek browser and Sleek Slides each keep their own decks and swap copies through a folder they share
+  // (browser/Sources/Sleek/Work.swift). adopt takes another app's copy of a deck when it is newer than the one here,
+  // keeping its id and the time it last changed, so the two agree and nothing goes back and forth. Its cover and Viewers
+  // codes stay as they are here. Resolves with the deck, or null when the one here is as new.
+  function adopt(text){
+    var o = parseFile(text), id = typeof o.id === 'string' && /^[a-z0-9]{4,24}$/.test(o.id) ? o.id : null, at = +o.updated || 0;
+    if(!id || !at) return Promise.resolve(null);
+    return get(id).then(function(have){
+      if(have && (have.updated || 0) >= at) return null;
+      return dehydrate(o.seed).then(function(s){
+        var deck = have || { id: id, created: at };
+        deck.title = o.title || deck.title || 'Untitled deck'; deck.seed = s; deck.updated = at;
+        if(okThumb(o.thumb)) deck.thumb = o.thumb; else delete deck.thumb;
+        // what the engine kept of the older deck on this device would stand over the newer one
+        return (have ? clearDeviceState(id) : Promise.resolve()).then(function(){ return put(deck); });
+      });
+    });
+  }
+
   // ---------- first run: the sample deck ----------
   function ensureSample(){
     var flag = 'sleek-sample-added';
@@ -302,7 +321,7 @@
     list: list, get: get, create: create, save: save, rename: rename, setThumb: setThumb, setViewers: setViewers, duplicate: duplicate, remove: remove,
     hydrate: hydrate, dehydrate: dehydrate, inline: inline, addMedia: addMedia,
     undo: function(id, o){ return step(id, -1, o); }, redo: function(id, o){ return step(id, 1, o); }, canStep: canStep,
-    exportDeck: exportDeck, importDeck: importDeck, parseFile: parseFile, hasNotes: hasNotes,
+    exportDeck: exportDeck, importDeck: importDeck, parseFile: parseFile, hasNotes: hasNotes, adopt: adopt,
     ensureSample: ensureSample, addSample: addSample, clearDeviceState: clearDeviceState
   };
 })();

@@ -24,9 +24,11 @@ it yourself with Xcode.
 ## Your decks, and Sleek Slides elsewhere
 
 Your decks are kept on the iPhone, in the app's own storage, and a plain `.sleek` copy of each is
-also kept in the app's folder and brought back if that storage is ever emptied. Nothing is sent
-anywhere. Decks move between the phone and Sleek Slides on the web as `.sleek` files: Send a Copy
-from here, or ⋯ › Bring In a Deck. The two do not stay in step by themselves.
+also kept, and brought back if that storage is ever emptied. That copy is in a folder the Sleek apps
+on this iPhone share: this app brings in what is newer in the Sleek browser's copy (and the other
+apps'), and the browser in this one's, so a deck written here is in the browser too. The Sleek browser
+opens your decks here when this app is on the phone. Nothing is sent anywhere. Decks move between the phone and Sleek Slides on the web as `.sleek` files: Send a Copy
+from here, or ⋯ › Bring In a Deck. The phone and the web do not stay in step by themselves.
 
 ## Not here yet
 
@@ -56,7 +58,8 @@ project.yml            what the app is made of
 make.sh                calls ../ios-shared/build.sh, which gathers a copy of Sleek's pages and builds
 Sources/Slides.swift   the library, one deck (the deck page inside, and what the app tells it), the fields, the presenter
 Sources/Check.swift    the app checking itself
-../ios-shared/         Kit.swift (colours, glass, small pieces) and Host.swift (one of Sleek's pages inside a native app)
+../ios-shared/         Kit.swift (colours, glass, small pieces), Host.swift (one of Sleek's pages inside a native app),
+                     Shared.swift and SharedWork.swift (sharing your work with the other Sleek apps)
 ```
 
 It also compiles three files of the Mac browser as they are (`../browser/Sources/Sleek/`):

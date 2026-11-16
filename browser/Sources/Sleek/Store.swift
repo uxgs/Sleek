@@ -8,7 +8,8 @@ import Foundation
 
 final class Store {
   let dir: URL
-  var settings: [String: Any] = ["look": "auto", "theme": "graphite", "barAt": "top", "imm": false, "bar": false, "search": "https://duckduckgo.com/"]
+  var settings: [String: Any] = ["look": "auto", "theme": "graphite", "barAt": "top", "imm": false, "bar": false, "search": "https://duckduckgo.com/",
+                                 "tileStyle": "clear", "tileShape": "wide", "tileLayout": "grid", "startApps": true, "searchHints": true]      // how a new tab shows where you go most (⋯ › Appearance › Site Tiles)
   var bookmarks: [[String: Any]] = []
   var history: [[String: Any]] = []
   var onChange: [() -> Void] = []
@@ -49,7 +50,7 @@ final class Store {
     soon("history")
   }
   func retitle(url: String, title: String) { if let i = history.firstIndex(where: { ($0["u"] as? String) == url }), !title.isEmpty { history[i]["t"] = title; soon("history") } }
-  func clearHistory() { history = []; soon("history"); changed() }
+  func clearHistory() { history = []; settings["hiddenTop"] = [String](); soon("history"); soon("settings"); changed() }      // the sites taken off Where you go most come back with a fresh start
   /// How to finish an address that is being typed: the site you go to most that begins that way, then a bookmark,
   /// then a well-known site. What was typed comes back as typed, with the rest added; nothing when there is no match.
   func finish(_ typed: String, known: Bool) -> String {

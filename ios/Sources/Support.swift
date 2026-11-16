@@ -24,12 +24,15 @@ let sleekRun = LinearGradient(colors: [.sleekA, .sleekB, .sleekC], startPoint: .
 
 /// Sleek's mark: two bars, each with one round end.
 struct SleekMark: Shape {
+  var part = 0                                     // both bars, or only the top one (1) or the bottom one (2), placed as in the whole mark
   func path(in r: CGRect) -> Path {
     let w = r.width / 280, h = r.height / 252
     func bar(x: CGFloat, y: CGFloat, roundLeft: Bool) -> Path {
       var p = Path(); let b = CGRect(x: r.minX + x * w, y: r.minY + y * h, width: 220 * w, height: 112 * h), rad = b.height / 2
       p.addRoundedRect(in: b, cornerRadii: RectangleCornerRadii(topLeading: roundLeft ? rad : 0, bottomLeading: roundLeft ? rad : 0, bottomTrailing: roundLeft ? 0 : rad, topTrailing: roundLeft ? 0 : rad)); return p
     }
+    if part == 1 { return bar(x: 60, y: 0, roundLeft: true) }
+    if part == 2 { return bar(x: 0, y: 140, roundLeft: false) }
     var p = bar(x: 60, y: 0, roundLeft: true); p.addPath(bar(x: 0, y: 140, roundLeft: false)); return p
   }
 }
@@ -43,16 +46,21 @@ struct AppIcon: View {
     else { Mark(size: size * 0.6).frame(width: size, height: size) }
   }
 }
-/// A site's own icon, kept by Sleek; its first letter until there is one.
+/// A site's own icon, kept by Sleek, filling its rounded square; one drawn on a see-through background sits on
+/// white with room around it, as it was drawn. Its first letter until there is one.
 struct SiteIcon: View {
-  let host: String; var size: CGFloat = 44
+  let host: String; var size: CGFloat = 44; var radius: CGFloat = 0.28
   var body: some View {
-    let bare = host.hasPrefix("www.") ? String(host.dropFirst(4)) : host
+    let bare = host.hasPrefix("www.") ? String(host.dropFirst(4)) : host, shape = RoundedRectangle(cornerRadius: size * radius, style: .continuous)
     ZStack {
-      RoundedRectangle(cornerRadius: size * 0.28, style: .continuous).fill(Color(.tertiarySystemFill))
-      if let f = Icons.file(host), let img = UIImage(contentsOfFile: f.path) { Image(uiImage: img).resizable().interpolation(.high).scaledToFit().padding(size * 0.16) }
-      else { Text(String(bare.prefix(1)).uppercased()).font(.system(size: size * 0.42, weight: .bold, design: .rounded)).foregroundStyle(.secondary) }
-    }.frame(width: size, height: size).clipShape(RoundedRectangle(cornerRadius: size * 0.28, style: .continuous))
+      if let f = Icons.file(host), let img = UIImage(contentsOfFile: f.path) {
+        if Tint.of(host).map({ $0.corner == nil }) ?? false { Color.white; Image(uiImage: img).resizable().interpolation(.high).scaledToFit().padding(size * 0.16) }
+        else { Image(uiImage: img).resizable().interpolation(.high).scaledToFill() }
+      } else {
+        shape.fill(Color(.tertiarySystemFill))
+        Text(String(bare.prefix(1)).uppercased()).font(.system(size: size * 0.42, weight: .bold, design: .rounded)).foregroundStyle(.secondary)
+      }
+    }.frame(width: size, height: size).clipShape(shape)
   }
 }
 /// Glass: frosted, with a hairline and a soft shadow.

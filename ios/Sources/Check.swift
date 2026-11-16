@@ -95,6 +95,23 @@ final class Checker: ObservableObject {
     let p3Cookie = (await js(p3, "return document.cookie")) as? String ?? "seen"
     say(!p3Cookie.contains("seen"), "a private tab opened afterwards starts clean")
     b.close(p3)
+    // the start screen's "Pick up where you left off": a picture of sample tiles, light and dark, to look at
+    let samples = [WorkItem(id: "a", title: "Pace", url: "", kind: "slides", at: 0, slides: 12, kicker: "Quarterly review", heading: "Pace of the year", mode: "dark", accent: "#7C5CFF"),
+                   WorkItem(id: "b", title: "Launch", url: "", kind: "slides", at: 0, slides: 8, kicker: "", heading: "", mode: "light", accent: "#FF6A3D"),
+                   WorkItem(id: "c", title: "Hey", url: "", kind: "docs", at: 0, slides: 0, peek: "Thanks for the notes on Tuesday. Here is where the plan stands, and the three things I would like us to settle before the end of the month: who owns the launch, when it ships, and what we cut."),
+                   WorkItem(id: "d", title: "Rip plan", url: "", kind: "docs", at: 0, slides: 0)]
+    for dark in [false, true] {
+      let r = ImageRenderer(content: HStack(spacing: 14) { ForEach(samples) { RecentTile(r: $0) } }.padding(24).background(dark ? Color.black : Color(hex: "#F4F2FA")).environment(\.colorScheme, dark ? .dark : .light)); r.scale = 2
+      if let d = r.uiImage?.pngData(), let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first { try? d.write(to: docs.appendingPathComponent(dark ? "recent-dark.png" : "recent-light.png")) }
+    }
+    // Open in Background: the link opens behind the page you are on, in an ordinary tab or a private one
+    let on = b.tab, count = b.tabs.count, bg = b.newTab(URL(string: "https://example.com/"), isPrivate: false, background: true)
+    say(b.tab === on && b.tabs.count == count + 1 && !bg.isPrivate && b.toast == "Opened in a tab behind this one", "Open in Background opens the link in a tab behind this page, and you stay here")
+    let bgp = b.newTab(URL(string: "https://example.com/"), isPrivate: true, background: true)
+    say(b.tab === on && bgp.isPrivate && bgp.web.configuration.websiteDataStore === b.privateData && b.toast == "Opened in a private tab, behind this one", "Open in Background Private Tab opens it in a private tab behind this page")
+    b.show(b.tabs.firstIndex { $0 === bgp }!); let bgp2 = b.newTab(URL(string: "https://example.com/"), background: true)
+    say(b.tab === bgp && bgp2.isPrivate, "from a private tab, Open in Background opens another private tab behind it")
+    b.close(bgp2); b.close(bgp); b.close(bg); b.show(b.tabs.firstIndex { $0 === on } ?? 0)
 
     // ---------- your Sleek work ----------
     b.addTask("Checked on the phone")
@@ -106,9 +123,73 @@ final class Checker: ObservableObject {
     let doneShown = b.doneToday.contains { $0.title == "Checked on the phone" }
     await b.freshenToday()
     say(doneShown && !b.doneToday.contains { $0.title == "Checked on the phone" } && b.day.done.contains { $0.title == "Checked on the phone" }, "pulling the start page down clears what was ticked off from Today (it stays done in Tasks)")
+    // a grocery list due today shows on Today; ticking a thing there puts it in the basket in Tasks
+    let listId = await Work.shared.ask("var T = SleekTasks; var l = T.addList({ name: 'Checked list' }); T.setProject(l.id, { due: T.dayKey(new Date()) }); T.addItem(l.id, '2 lemons'); T.addItem(l.id, 'milk'); return l.id") as? String ?? ""
+    Work.shared.refresh()
+    let listShown = await until(10) { self.b.day.lists.contains { $0.id == listId && $0.left == 2 } }
+    say(listShown && !b.day.boards.contains { $0.id == listId } && b.day.toGet >= 2, "a grocery list due today shows on Today, apart from the boards")
+    if let l = b.day.lists.first(where: { $0.id == listId }), let t = l.items.first(where: { $0.title == "Lemons" }) { b.tick(t, on: l) }
+    let gotIt = await until(10) { self.b.day.lists.first { $0.id == listId }.map { $0.left == 1 && $0.items.contains { $0.title == "Lemons" && $0.done } } ?? false }
+    say(gotIt, "and a thing ticked there goes in the basket")
+    _ = await Work.shared.ask("var T = SleekTasks; T.finishList(id, false); return true", ["id": listId]); Work.shared.refresh()
+    let listGone = await until(10) { !self.b.day.lists.contains { $0.id == listId } }
+    say(listGone, "a shopped list leaves Today")
+    _ = await Work.shared.ask("SleekTasks.removeProject(id); return true", ["id": listId])
+    // sharing with the other Sleek apps on this iPhone: this app's place and another's, in a folder standing in for the shared one
+    let fm = FileManager.default, was = (Work.shared.folder, Work.shared.peers)
+    let share = fm.temporaryDirectory.appendingPathComponent("sleek-share-\(ProcessInfo.processInfo.processIdentifier)"), mine = share.appendingPathComponent("browser"), other = share.appendingPathComponent("tasks")
+    try? fm.createDirectory(at: other.appendingPathComponent("pages"), withIntermediateDirectories: true)
+    Work.shared.folder = mine; Work.shared.peers = [other]
+    let t0 = Int(Date().timeIntervalSince1970 * 1000)
+    func tasksFile(gone: String) -> String { "{\"format\":\"sleek-tasks\",\"version\":1,\"projects\":[{\"id\":\"sharedbrd1\",\"name\":\"Shared board\",\"color\":\"#12A36A\",\"statuses\":[{\"id\":\"todo\",\"name\":\"To do\",\"color\":\"#8E8E93\",\"done\":false},{\"id\":\"done\",\"name\":\"Done\",\"color\":\"#12A36A\",\"done\":true}],\"created\":\(t0),\"updated\":\(t0)}],\"tasks\":[{\"id\":\"sharedtsk1\",\"project\":\"sharedbrd1\",\"title\":\"From Sleek Tasks\",\"status\":\"todo\",\"order\":1,\"created\":\(t0),\"updated\":\(t0)}],\"people\":[],\"usuals\":[],\"gone\":{\(gone)}}" }
+    try? tasksFile(gone: "").write(to: other.appendingPathComponent("Tasks.sleek"), atomically: true, encoding: .utf8)
+    let pageText = await Work.shared.ask("var D = SleekDocs, p = await D.create({ seed: { kind: 'doc', v: 1, theme: {}, doc: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Written in Sleek Docs' }] }] } } }); var o = JSON.parse(await D.exportDoc(p.id)); await D.remove(p.id); o.id = 'sharedpg01'; o.updated = Date.now() - 1000; return JSON.stringify(o)") as? String ?? ""
+    let pageAt = ((try? JSONSerialization.jsonObject(with: Data(pageText.utf8))) as? [String: Any])?["updated"] as? NSNumber
+    try? pageText.write(to: other.appendingPathComponent("pages/sharedpg01.sleek"), atomically: true, encoding: .utf8)
+    try? "{\"page:sharedpg01\":\"\(pageAt?.int64Value ?? 0)\"}".write(to: other.appendingPathComponent("index.json"), atomically: true, encoding: .utf8)
+    let took = await Work.shared.pull()
+    let cameIn = await Work.shared.ask("var T = SleekTasks, k = T.task('sharedtsk1'), p = await SleekDocs.get('sharedpg01'); return !!T.project('sharedbrd1') && !!k && k.title === 'From Sleek Tasks' && !!p && p.updated === at", ["at": pageAt ?? 0]) as? Bool ?? false
+    say(took >= 2 && cameIn, "another app's board, task and page come in from the shared folder")
+    let twice = await Work.shared.pull(); say(twice == 0, "and bringing them in again changes nothing")
+    _ = await Work.shared.ask("SleekTasks.removeTask('sharedtsk1'); await SleekDocs.remove('sharedpg01'); return 1")
+    await Work.shared.keepCopy(now: true)
+    let myTasks = (try? Data(contentsOf: mine.appendingPathComponent("Tasks.sleek"))).flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] }
+    let myGone = (try? Data(contentsOf: mine.appendingPathComponent("gone.json"))).flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] }
+    say((myTasks?["gone"] as? [String: Any])?["sharedtsk1"] != nil && myGone?["page:sharedpg01"] != nil, "what is deleted here is written in this app's place, for the others")
+    let again = await Work.shared.pull(), stillGone = await Work.shared.ask("return !SleekTasks.task('sharedtsk1') && !(await SleekDocs.get('sharedpg01'))") as? Bool ?? false
+    say(again == 0 && stillGone, "and the other app's older copy does not bring it back")
+    try? await Task.sleep(nanoseconds: 50_000_000)
+    try? tasksFile(gone: "\"sharedbrd1\":\(t0 + 5000)").write(to: other.appendingPathComponent("Tasks.sleek"), atomically: true, encoding: .utf8)
+    _ = await Work.shared.pull()
+    let boardGone = await Work.shared.ask("return !SleekTasks.project('sharedbrd1')") as? Bool ?? false
+    say(boardGone, "a board deleted in another app goes here too")
+    Work.shared.folder = was.0; Work.shared.peers = was.1; try? fm.removeItem(at: share)
+    let addr = { (s: String) in Browser.sleekApp(for: URL(string: s)!)?.absoluteString ?? "-" }
+    say(addr("sleek://app/tasks.html#/abcde12345/shop") == "sleek-tasks://open?board=abcde12345" && addr("sleek://app/tasks.html") == "sleek-tasks://open" && addr("sleek://app/doc.html?d=pg12345678") == "sleek-docs://open?d=pg12345678"
+        && addr("sleek://app/deck.html?d=dk12345678") == "sleek-slides://open?d=dk12345678" && addr("sleek://app/slides.html") == "sleek-slides://open" && addr("https://example.org/doc.html?d=x1234") == "-" && addr("sleek://app/tasks.html#/BAD!/x") == "sleek-tasks://open",
+        "each of Sleek's own pages knows the address of the Sleek app that shows it")
     let hintsWere = b.searchHints; b.setting("searchHints", false); let hintsOff = !b.searchHints; b.setting("searchHints", hintsWere)
     let appsWere = b.startApps; b.setting("startApps", false); let appsOff = !b.startApps; b.setting("startApps", appsWere)
     say(hintsOff && appsOff && b.startApps == appsWere, "search suggestions and the row of Sleek apps can each be switched off")
+    // the tiles for where you go most: clear glass, wide, in a grid unless chosen otherwise, and coloured from each site's own icon
+    let tilesFirst = b.tileStyle == "clear" && b.tileShape == "wide" && b.tileLayout == "grid"
+    b.choose("tileStyle", "colour"); b.choose("tileShape", "square"); b.choose("tileLayout", "row")
+    let tilesChosen = b.tileStyle == "colour" && b.tileShape == "square" && b.tileLayout == "row"
+    b.choose("tileStyle", "clear"); b.choose("tileShape", "wide"); b.choose("tileLayout", "grid")
+    say(tilesFirst && tilesChosen, "where you go most starts as wide clear-glass tiles two across, and Appearance can make them colour glass, square or a sideways row")
+    func iconOf(_ px: Int, _ draw: (CGContext) -> Void) -> UIImage { let f = UIGraphicsImageRendererFormat(); f.scale = 1; return UIGraphicsImageRenderer(size: CGSize(width: px, height: px), format: f).image { draw($0.cgContext) } }
+    let redIcon = iconOf(180) { c in c.setFillColor(UIColor.white.cgColor); c.fill(CGRect(x: 0, y: 0, width: 180, height: 180)); c.setFillColor(UIColor(red: 1, green: 0, blue: 0.1, alpha: 1).cgColor); c.fillEllipse(in: CGRect(x: 30, y: 30, width: 120, height: 120)) }
+    let monoIcon = iconOf(64) { c in c.setFillColor(UIColor.black.cgColor); c.fill(CGRect(x: 0, y: 0, width: 64, height: 64)); c.setFillColor(UIColor.white.cgColor); c.fill(CGRect(x: 16, y: 16, width: 32, height: 32)) }
+    let redTint = Tint.read(redIcon), monoTint = Tint.read(monoIcon)
+    let redOK = redTint?.accent.map { $0[0] > 200 && $0[1] < 60 } == true && redTint?.corner.map { Tint.lum($0) > 0.9 } == true && redTint?.pixels == 180
+    let monoOK = monoTint?.accent == nil && monoTint?.corner.map { Tint.lum($0) < 0.1 } == true && monoTint.map { Tint.lum($0.pair(dark: false).1) < 0.2 } == true
+    say(redOK && monoOK, "a tile takes its colour from the site's icon (red for a red one), and a black-and-white icon gets a graphite tile")
+    if let f = Icons.file("tile-check.example") { try? FileManager.default.createDirectory(at: f.deletingLastPathComponent(), withIntermediateDirectories: true); try? redIcon.pngData()?.write(to: f) }
+    let keptTint = Tint.of("tile-check.example"); if let f = Icons.file("tile-check.example") { try? FileManager.default.removeItem(at: f) }
+    say(["slides", "docs", "tasks"].allSatisfy { SiteTile.apps[$0]?.accent != nil }, "Slides, Docs and Tasks have glass tiles in their own colours")
+    say(Chime.url != nil, "the opening sound is inside the app")
+    say(b.launch == .done,"while the app checks itself, Sleek opens without its launch animation")
+    say(keptTint == redTint && SiteName.of("www.tile-check.example") == "tile-check.example" && PhoneTab.iconScript.contains("apple-touch-icon"), "tiles read the icon Sleek keeps for a site, and Sleek keeps the site's iPhone icon when it has one")
     let hintsEvery = Search.providers.allSatisfy { Search.hints(for: $0.address, "new york")?.absoluteString.contains("new%20york") == true }
     let hintsRead = Search.readHints(Data(#"["new",["news","new york times"]]"#.utf8)) == ["news", "new york times"] && Search.readHints(Data("oops".utf8)).isEmpty
     say(hintsEvery && hintsRead, "every search provider has an address for suggestions, and their answers are read")

@@ -6,12 +6,19 @@
 //   Browser    the tabs, which one is showing, where the bar lives, your Sleek work as last read,
 //              bookmarks and history and settings (the Mac app's Store), and blocking.
 import SwiftUI
+import WidgetKit
 import WebKit
 
 struct TaskRow: Identifiable, Equatable { let id: String, title: String, board: String, color: String, due: String; var done: Bool; let late: Bool }
-struct WorkItem: Identifiable { let id: String, title: String, url: String, kind: String, at: Double, slides: Int }
+/// A deck or page you worked on lately, with enough to draw its preview: a page's opening words; a deck's cover
+/// (its kicker and heading) and theme; and a picture of your own for either, when you set one.
+struct WorkItem: Identifiable { let id: String, title: String, url: String, kind: String, at: Double, slides: Int; var peek = "", kicker = "", heading = "", mode = "dark", accent = "#7C5CFF", thumb = "" }
 struct Board: Identifiable, Equatable { let id: String, name: String, color: String, open: Int }
-struct Day { var late: [TaskRow] = [], today: [TaskRow] = [], soon: [TaskRow] = [], done: [TaskRow] = [], recent: [WorkItem] = [], boards: [Board] = [], loaded = false
+/// A grocery list that is on Today (not shopped, its day today or gone by): how much is left, and the first things to get.
+struct ListRow: Identifiable, Equatable { let id: String, name: String, color: String, due: String, late: Bool; var left: Int, got: Int; let all: Int, url: String; var items: [ThingRow] }
+struct ThingRow: Identifiable, Equatable { let id: String, title: String, qty: Int, aisle: String; var done: Bool }
+struct Day { var late: [TaskRow] = [], today: [TaskRow] = [], soon: [TaskRow] = [], done: [TaskRow] = [], recent: [WorkItem] = [], boards: [Board] = [], lists: [ListRow] = [], loaded = false
+  var toGet: Int { lists.reduce(0) { $0 + $1.left } }
   var due: Int { late.count + today.count } }
 struct SavedName: Identifiable, Equatable { let id: String, user: String }
 struct SignInOffer: Equatable { let tab: String, site: String, users: [SavedName], strong: String; var keys: [SavedName] = [] }
@@ -30,6 +37,13 @@ final class PhoneTab: NSObject, ObservableObject, Identifiable, WKNavigationDele
   let id = UUID().uuidString
   let web: WKWebView
   let isPrivate: Bool
+  /// Finds the site's icon: its iPhone icon (marked "#touch"), or else the largest it names, or else /favicon.ico.
+  static let iconScript = """
+  (function(){ var t = document.querySelector('link[rel~="apple-touch-icon"], link[rel~="apple-touch-icon-precomposed"]'); if (t && t.href) return t.href + '#touch';
+    var best = null, top = -1; document.querySelectorAll('link[rel~="icon"]').forEach(function(l){ var s = parseInt((l.getAttribute('sizes') || '').split('x')[0], 10) || (/\\.svg/i.test(l.href) ? 0 : 16); if (l.href && s > top) { top = s; best = l.href; } });
+    return best || location.origin + '/favicon.ico'; })()
+  """
+  static var upgraded = Set<String>()
   @Published var title = ""
   @Published var address: URL?
   @Published var loading = false
@@ -44,13 +58,18 @@ final class PhoneTab: NSObject, ObservableObject, Identifiable, WKNavigationDele
   /// Where the page's passkey questions arrive (Passkeys.swift, shared with the Mac app).
   let keys = KeyBridge()
 
-  init(browser: Browser, isPrivate: Bool = false) {
+  /// `from`: the settings a page hands over when it opens a window of its own (a sign-in window, say). The new tab must be
+  /// made from them, or the page that opened it and the window it opened can't talk to each other, and the sign-in never comes back.
+  init(browser: Browser, isPrivate: Bool = false, from given: WKWebViewConfiguration? = nil) {
     self.isPrivate = isPrivate
-    let c = WKWebViewConfiguration()
-    c.websiteDataStore = isPrivate ? browser.privateData : Work.store
-    c.setURLSchemeHandler(OwnPages(), forURLScheme: "sleek")
-    c.applicationNameForUserAgent = "Version/26.0 Mobile/15E148 Safari/604.1"      // sites treat Sleek as they treat Safari, whose engine it is
-    c.allowsInlineMediaPlayback = true
+    let c = given ?? WKWebViewConfiguration()
+    if given != nil { c.userContentController = WKUserContentController() }      // its own scripts and messages, not those of the page that asked; the rest (below) it already has
+    else {
+      c.websiteDataStore = isPrivate ? browser.privateData : Work.store
+      c.setURLSchemeHandler(OwnPages(), forURLScheme: "sleek")
+      c.applicationNameForUserAgent = "Version/26.0 Mobile/15E148 Safari/604.1"      // sites treat Sleek as they treat Safari, whose engine it is
+      c.allowsInlineMediaPlayback = true
+    }
     web = WKWebView(frame: .zero, configuration: c); self.browser = browser
     super.init()
     web.navigationDelegate = self; web.uiDelegate = self; web.allowsBackForwardNavigationGestures = true; web.isFindInteractionEnabled = true
@@ -177,8 +196,21 @@ final class PhoneTab: NSObject, ObservableObject, Identifiable, WKNavigationDele
     b.pageLoaded(self)
     guard !isPrivate, u.scheme == "https" || u.scheme == "http" else { return }
     b.store.visit(url: u.absoluteString, title: webView.title ?? "")
-    webView.evaluateJavaScript("(function(){ var l = document.querySelector('link[rel~=\"icon\"], link[rel=\"apple-touch-icon\"]'); return l && l.href ? l.href : location.origin + '/favicon.ico'; })()") { v, _ in
-      if let icon = v as? String, let h = u.host { Icons.keep(host: h, from: icon) }
+    // the site's icon: the one it gives iPhones if it has one (large and made to be seen), or else its largest
+    webView.evaluateJavaScript(PhoneTab.iconScript) { v, _ in
+      guard let icon = v as? String, let h = u.host, let f = Icons.file(h) else { return }
+      let touch = icon.hasSuffix("#touch"), named = touch ? String(icon.dropLast(6)) : icon
+      let small = UIImage(contentsOfFile: f.path).map { $0.size.width * $0.scale < 96 } ?? true
+      guard small, !PhoneTab.upgraded.contains(h), let origin = u.host.map({ (u.scheme ?? "https") + "://" + $0 }) else { Icons.keep(host: h, from: named); return }
+      // no icon yet, or one too small for a tile: ask at once for the site's iPhone icon (the one it names, or else
+      // the one at the usual address), keeping what there is until a better one comes; failing that, the icon it names
+      PhoneTab.upgraded.insert(h)
+      let stale = { try? FileManager.default.setAttributes([.modificationDate: Date.distantPast], ofItemAtPath: f.path) }
+      stale(); Icons.keep(host: h, from: touch ? named : origin + "/apple-touch-icon.png")
+      if !touch { DispatchQueue.main.asyncAfter(deadline: .now() + 6) {
+        let got = (try? FileManager.default.attributesOfItem(atPath: f.path))?[.modificationDate] as? Date
+        if got == nil || got == .distantPast { stale(); Icons.keep(host: h, from: named) }
+      } }
     }
   }
   func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) { failed(error) }
@@ -194,9 +226,14 @@ final class PhoneTab: NSObject, ObservableObject, Identifiable, WKNavigationDele
 
   // ---------- what a page may ask for ----------
   func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration, for action: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
-    if action.request.url != nil, let t = browser?.newTab(nil, isPrivate: isPrivate) { t.tapAt = tapAt; t.tapSite = tapSite; t.stay(action.request) }      // a link that opens a new window opens a new tab
-    return nil
+    // a link that opens a new window opens a new tab. The tab is the window the page asked for (made from what the engine
+    // hands over), so a sign-in window can hand its answer back to the page that opened it.
+    guard let u = action.request.url, let t = browser?.newTab(nil, isPrivate: isPrivate, from: configuration) else { return nil }
+    t.tapAt = tapAt; t.tapSite = tapSite; t.passing = u; t.atStart = false
+    return t.web
   }
+  /// A window a page opened has closed itself (a sign-in window, once you have signed in): its tab goes.
+  func webViewDidClose(_ webView: WKWebView) { browser?.close(self) }
   private func ask(_ title: String, _ text: String, field: String? = nil, cancel: Bool, done: @escaping (Bool, String?) -> Void) {
     let a = UIAlertController(title: title, message: text, preferredStyle: .alert)
     if let f = field { a.addTextField { $0.text = f } }
@@ -213,8 +250,11 @@ final class PhoneTab: NSObject, ObservableObject, Identifiable, WKNavigationDele
     guard let u = elementInfo.linkURL else { return nil }
     return UIContextMenuConfiguration(identifier: nil, previewProvider: nil) { [weak self] _ in
       UIMenu(title: u.absoluteString, children: [
+        UIAction(title: "Open in Background", image: UIImage(systemName: "square.on.square.dashed")) { _ in self?.browser?.newTab(u, isPrivate: self?.isPrivate ?? false, background: true) },
         UIAction(title: "Open in New Tab", image: UIImage(systemName: "plus.square.on.square")) { _ in self?.browser?.newTab(u, isPrivate: self?.isPrivate ?? false) },
-        UIAction(title: "Open in Private Tab", image: UIImage(systemName: "eyeglasses")) { _ in self?.browser?.newTab(u, isPrivate: true) },
+        UIMenu(title: "", options: .displayInline, children: [
+          UIAction(title: "Open in Private Tab", image: UIImage(systemName: "eyeglasses")) { _ in self?.browser?.newTab(u, isPrivate: true) }] +
+          (self?.isPrivate == true ? [] : [UIAction(title: "Open in Background Private Tab", image: UIImage(systemName: "eyeglasses")) { _ in self?.browser?.newTab(u, isPrivate: true, background: true) }])),
         UIAction(title: "Copy Link", image: UIImage(systemName: "doc.on.doc")) { _ in UIPasteboard.general.url = u },
         UIAction(title: "Share…", image: UIImage(systemName: "square.and.arrow.up")) { _ in topController()?.present(UIActivityViewController(activityItems: [u], applicationActivities: nil), animated: true) }
       ])
@@ -236,19 +276,31 @@ final class Browser: ObservableObject {
   @Published var keyAsk: KeyQuestion?            // a site asks to make a passkey, or to sign in with one
   private var pendingLogin: (site: String, address: String, user: String, password: String, replacing: String?)?
   private var offerN = 0
-  /// Where the bar lives is yours to choose: along the bottom or along the top (asked the first time, then in Settings and the
+  /// Where the bar lives is yours to choose: along the bottom or along the top (asked the first time, then in Appearance and the
   /// ⋯ menu, or by dragging its tile to a top or bottom corner). The corner also says which side the tile rests on.
   @Published var corner: Corner { didSet { store.set("corner", corner.rawValue); fit() } }
   @Published var look: String { didSet { store.set("look", look) } }
   @Published var asking: Bool
+  /// Sleek opening: its mark coming together (showing), flying to its place on the start page (flying), then gone
+  /// (done). The very first time it waits until the question about the bar is answered. Never while checking.
+  enum Launch { case waiting, showing, flying, done }
+  @Published var launch: Launch = .done
+  /// Where the start page's mark sits on the screen, for the launch to land on (nil when a page is showing).
+  var brandAt: CGRect?
   let store: Store
   var privateData = WKWebsiteDataStore.nonPersistent()
-  /// Whether a tapped link may open in its own app. On unless you switch it off in Settings.
+  /// Whether a tapped link may open in its own app. On unless you switch it off (⋯, Manage).
   var appLinks: Bool { store.settings["apps"] as? Bool ?? true }
-  /// Whether the start page shows the row of Sleek's three apps. On unless you switch it off in Settings.
+  /// Whether the start page shows the row of Sleek's three apps. On unless you switch it off (⋯, Manage).
   var startApps: Bool { store.settings["startApps"] as? Bool ?? true }
   /// Whether your search provider suggests searches as you type (never in a private tab). On unless you switch it off.
   var searchHints: Bool { store.settings["searchHints"] as? Bool ?? true }
+  /// How the places you go most look on a new tab (⋯, Appearance): clear glass, colour glass or plain
+  /// icons; wide (16 by 9) or square tiles; a grid or a row that scrolls sideways.
+  var tileStyle: String { store.settings["tileStyle"] as? String ?? "clear" }
+  var tileShape: String { store.settings["tileShape"] as? String ?? "wide" }
+  var tileLayout: String { store.settings["tileLayout"] as? String ?? "grid" }
+  func choose(_ key: String, _ value: String) { withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) { store.set(key, value); objectWillChange.send() } }
   func setting(_ key: String, _ on: Bool) { withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) { store.set(key, on); objectWillChange.send() } }
   /// Offers an address to the phone: true when an app on this iPhone opened it. (The app's own check puts a stand-in here.)
   var handOff: (URL, @escaping (Bool) -> Void) -> Void = { url, done in UIApplication.shared.open(url, options: [.universalLinksOnly: true]) { ok in done(ok) } }
@@ -266,10 +318,12 @@ final class Browser: ObservableObject {
     look = store.settings["look"] as? String ?? "auto"
     asking = (store.settings["corner"] == nil && !Res.proving) || Res.args.contains("--welcome")
     if let place = Res.arg("--bar") { corner = place == "top" ? .topTrailing : .bottomTrailing; asking = false }
+    launch = Res.proving || Res.args.contains("--still") ? .done : asking ? .waiting : .showing
     Icons.dir = base.appendingPathComponent("icons"); Icons.onNew = { [weak self] in Task { @MainActor in self?.objectWillChange.send() } }
     Blocker.shared.onChange.append { [weak self] in self?.blockerChanged() }
     Blocker.shared.start(dir: base.appendingPathComponent("lists"))
-    Work.shared.folder = base.appendingPathComponent("Work")
+    Work.shared.share(as: "browser", holds: ["tasks", "pages", "decks"], else: base.appendingPathComponent("Work"))      // with the other Sleek apps on this iPhone
+    Work.shared.onAdopt = { [weak self] _, id in for t in self?.tabs ?? [] where t.web.url?.scheme == "sleek" && (t.web.url?.query ?? "").contains("d=" + id) { t.web.reload() } }
     Work.shared.onNote = { [weak self] text in self?.say(text) }
     Work.shared.onChange.append { [weak self] in self?.readDay() }
     Vault.shared.onChange.append { [weak self] in self?.objectWillChange.send() }
@@ -293,15 +347,21 @@ final class Browser: ObservableObject {
     guard top != barAtTop else { return }
     tap(.medium); withAnimation(.spring(response: 0.5, dampingFraction: 0.82)) { corner = top ? (corner.isLeading ? .topLeading : .topTrailing) : (corner.isLeading ? .bottomLeading : .bottomTrailing); compact = false }
   }
-  func chose(top: Bool) { tap(.medium); withAnimation(.spring(response: 0.5, dampingFraction: 0.82)) { corner = top ? .topTrailing : .bottomTrailing; asking = false } }
+  func chose(top: Bool) { tap(.medium); withAnimation(.spring(response: 0.5, dampingFraction: 0.82)) { corner = top ? .topTrailing : .bottomTrailing; asking = false }
+    if launch == .waiting { DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in self?.launch = .showing } } }     // then Sleek opens, as it will every time
   func fit() { for t in tabs { t.fit(top: barAtTop) } }
   /// A short message over the page, gone in a few seconds.
   func say(_ text: String) { toastN += 1; let n = toastN; withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) { toast = text }; DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in if self?.toastN == n { withAnimation(.easeOut(duration: 0.25)) { self?.toast = nil } } } }
 
   // ---------- tabs ----------
   /// A new tab, on a page or on your day; private when asked, or when opened from a private tab.
-  @discardableResult func newTab(_ url: URL? = nil, isPrivate: Bool? = nil) -> PhoneTab {
-    let t = PhoneTab(browser: self, isPrivate: isPrivate ?? tab.isPrivate); tabs.append(t); show(tabs.count - 1); if let u = url { t.go(u) }; saveSession(); return t
+  /// A new tab. In the background, it opens behind the page you are on (Open in Background): you stay where you are,
+  /// the tab count goes up, and a note says where it went.
+  @discardableResult func newTab(_ url: URL? = nil, isPrivate: Bool? = nil, from given: WKWebViewConfiguration? = nil, background: Bool = false) -> PhoneTab {
+    let t = PhoneTab(browser: self, isPrivate: isPrivate ?? tab.isPrivate, from: given)
+    if background { withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) { tabs.append(t) }; tap(); say(t.isPrivate && !tab.isPrivate ? "Opened in a private tab, behind this one" : "Opened in a tab behind this one") }
+    else { tabs.append(t); show(tabs.count - 1) }
+    if let u = url { t.go(u) }; saveSession(); return t
   }
   func show(_ i: Int) {
     guard i >= 0, i < tabs.count, i != at else { return }
@@ -322,7 +382,28 @@ final class Browser: ObservableObject {
     let mine = tabs.indices.filter { tabs[$0].isPrivate == tab.isPrivate }; guard let k = mine.firstIndex(of: at) else { return nil }
     let j = k + step; return j >= 0 && j < mine.count ? mine[j] : nil
   }
-  func open(_ typed: String) { if let u = destination(for: typed, search: store.search) { tab.go(u); setCompact(false) } }
+  func open(_ typed: String) {
+    guard let u = destination(for: typed, search: store.search) else { return }
+    // Sleek Tasks, Docs or Slides, when that app is on this iPhone: it opens there, with your latest work written for it
+    // first. Otherwise the same page opens here, from inside this app, as it always has. ("Open in Apps" in Settings.)
+    if appLinks && !Res.proving, let app = Browser.sleekApp(for: u), UIApplication.shared.canOpenURL(app) {
+      Task { @MainActor in await Work.shared.keepCopy(now: true); await UIApplication.shared.open(app) }; return
+    }
+    tab.go(u); setCompact(false)
+  }
+  /// For one of Sleek's own pages inside this app, the address of the Sleek app that shows it (nil for anything else):
+  /// tasks.html#/<board>/… → sleek-tasks://open?board=<board>; doc.html?d=<id> → sleek-docs://open?d=<id>; deck.html?d=<id> → sleek-slides://open?d=<id>.
+  static func sleekApp(for u: URL) -> URL? {
+    guard u.scheme == "sleek", u.host == "app" else { return nil }
+    let d = URLComponents(url: u, resolvingAgainstBaseURL: false)?.queryItems?.first { $0.name == "d" }?.value, ok = { (s: String) in s.range(of: "^[a-z0-9]{4,24}$", options: .regularExpression) != nil }
+    func app(_ scheme: String, _ key: String, _ id: String?) -> URL? { var c = URLComponents(); c.scheme = scheme; c.host = "open"; if let id, ok(id) { c.queryItems = [URLQueryItem(name: key, value: id)] }; return c.url }
+    switch u.lastPathComponent {
+    case "tasks.html": return app("sleek-tasks", "board", (u.fragment ?? "").split(separator: "/").first.map(String.init))
+    case "doc.html", "docs.html": return app("sleek-docs", "d", d)
+    case "deck.html", "slides.html", "index.html": return app("sleek-slides", "d", d)
+    default: return nil
+    }
+  }
   func pageLoaded(_ t: PhoneTab) { saveSession(); if t.isSleek { Work.shared.refresh() }; if offer?.tab == t.id { offer = nil } }
   /// The tabs to bring back next time (never private ones).
   func saveSession() {
@@ -332,7 +413,7 @@ final class Browser: ObservableObject {
   }
 
   /// Leaving the app: everything is written down now, not a moment later.
-  func leaving() { saveSession(); store.flush(); Task { @MainActor in await Work.shared.keepCopy() } }
+  func leaving() { saveSession(); store.flush(); keepSitesForWidgets(); Work.shared.leaving(wait: 0.4) }
 
   // ---------- passwords (the vault is the Mac app's own: Vault.swift) ----------
   var savePasswords: Bool { store.settings["savePasswords"] as? Bool ?? true }
@@ -435,6 +516,29 @@ final class Browser: ObservableObject {
     }
     return out
   }
+  /// The four sites you go to most, written down for the Search and Sites widget, each with a copy of its icon and its
+  /// colour (only from your ordinary history: private tabs keep none). Written again when it changed, as you leave the app.
+  func keepSitesForWidgets() {
+    guard !Res.proving, let me = Shared.place("browser") else { return }
+    let fm = FileManager.default, icons = me.appendingPathComponent("icons"); try? fm.createDirectory(at: icons, withIntermediateDirectories: true)
+    func hex(_ c: Tint.RGB) -> String { String(format: "#%02X%02X%02X", Int(c[0].rounded()), Int(c[1].rounded()), Int(c[2].rounded())) }
+    var sites: [[String: Any]] = [], keep = Set<String>()
+    for s in topSites.prefix(4) {
+      var o: [String: Any] = ["name": SiteName.of(s.host), "url": s.url]
+      if let t = Tint.of(s.host) { o["color"] = hex(t.pair(dark: true).1) }
+      let k = Icons.key(s.host)
+      if let f = Icons.file(s.host), fm.fileExists(atPath: f.path), k.allSatisfy({ $0.isASCII }) {
+        let to = icons.appendingPathComponent(k); keep.insert(k)
+        let a = (try? fm.attributesOfItem(atPath: f.path))?[.modificationDate] as? Date, b = (try? fm.attributesOfItem(atPath: to.path))?[.modificationDate] as? Date
+        if b == nil || (a ?? .distantPast) > b! { try? fm.removeItem(at: to); try? fm.copyItem(at: f, to: to) }
+        o["icon"] = k
+      }
+      sites.append(o)
+    }
+    for f in (try? fm.contentsOfDirectory(atPath: icons.path)) ?? [] where !keep.contains(f) { try? fm.removeItem(at: icons.appendingPathComponent(f)) }
+    let file = me.appendingPathComponent("sites.json")
+    if let d = try? JSONSerialization.data(withJSONObject: ["sites": sites], options: [.sortedKeys]), d != (try? Data(contentsOf: file)) { try? d.write(to: file, options: .atomic); WidgetCenter.shared.reloadAllTimelines() }
+  }
   /// Take a site off "Where you go most" (press and hold it on the start screen). Your history keeps it, and it is
   /// still offered as you type; it is only left off that list, until you clear your history.
   func hideTop(_ host: String) {
@@ -476,13 +580,30 @@ final class Browser: ObservableObject {
   private func readDay() {
     let d = Work.shared.day
     func rows(_ k: String) -> [TaskRow] { (d[k] as? [[String: Any]] ?? []).map { TaskRow(id: $0["id"] as? String ?? "", title: $0["title"] as? String ?? "", board: $0["board"] as? String ?? "", color: $0["color"] as? String ?? "#12A36A", due: $0["due"] as? String ?? "", done: $0["done"] as? Bool ?? false, late: $0["late"] as? Bool ?? false) } }
-    func items(_ k: String, _ kind: String) -> [WorkItem] { (d[k] as? [[String: Any]] ?? []).map { WorkItem(id: $0["id"] as? String ?? "", title: $0["title"] as? String ?? "", url: $0["url"] as? String ?? "", kind: kind, at: ($0["at"] as? NSNumber)?.doubleValue ?? 0, slides: ($0["slides"] as? NSNumber)?.intValue ?? 0) } }
+    func items(_ k: String, _ kind: String) -> [WorkItem] { (d[k] as? [[String: Any]] ?? []).map { WorkItem(id: $0["id"] as? String ?? "", title: $0["title"] as? String ?? "", url: $0["url"] as? String ?? "", kind: kind, at: ($0["at"] as? NSNumber)?.doubleValue ?? 0, slides: ($0["slides"] as? NSNumber)?.intValue ?? 0,
+                                                                                     peek: $0["peek"] as? String ?? "", kicker: $0["kicker"] as? String ?? "", heading: $0["heading"] as? String ?? "", mode: $0["mode"] as? String ?? "dark", accent: $0["accent"] as? String ?? "#7C5CFF", thumb: $0["thumb"] as? String ?? "") } }
     let boards = (d["boards"] as? [[String: Any]] ?? []).map { Board(id: $0["id"] as? String ?? "", name: $0["name"] as? String ?? "", color: $0["color"] as? String ?? "#12A36A", open: ($0["open"] as? NSNumber)?.intValue ?? 0) }
+    func n(_ x: Any?) -> Int { (x as? NSNumber)?.intValue ?? 0 }
+    let lists = (d["lists"] as? [[String: Any]] ?? []).map { l in
+      ListRow(id: l["id"] as? String ?? "", name: l["name"] as? String ?? "", color: l["color"] as? String ?? "#12A36A", due: l["due"] as? String ?? "", late: l["late"] as? Bool ?? false,
+              left: n(l["left"]), got: n(l["got"]), all: n(l["all"]), url: l["url"] as? String ?? "",
+              items: (l["items"] as? [[String: Any]] ?? []).map { ThingRow(id: $0["id"] as? String ?? "", title: $0["title"] as? String ?? "", qty: max(1, n($0["qty"])), aisle: $0["aisle"] as? String ?? "", done: $0["done"] as? Bool ?? false) })
+    }
     withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
-      day = Day(late: rows("late"), today: rows("today"), soon: rows("soon"), done: rows("done"), recent: (items("decks", "slides") + items("pages", "docs")).sorted { $0.at > $1.at }.prefix(6).map { $0 }, boards: boards, loaded: true)
+      day = Day(late: rows("late"), today: rows("today"), soon: rows("soon"), done: rows("done"), recent: (items("decks", "slides") + items("pages", "docs")).sorted { $0.at > $1.at }.prefix(6).map { $0 }, boards: boards, lists: lists, loaded: true)
     }
   }
   func tick(_ t: TaskRow) { tap(.medium); if t.done { cleared.remove(t.id) }; Work.shared.tick(t.id, !t.done) }
+  /// Something on a grocery list, into the basket (or out of it). Shown at once; Tasks catches up a moment later.
+  func tick(_ t: ThingRow, on list: ListRow) {
+    tap(.medium); if t.done { cleared.remove(t.id) }
+    if let li = day.lists.firstIndex(where: { $0.id == list.id }), let ti = day.lists[li].items.firstIndex(where: { $0.id == t.id }) {
+      withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) { day.lists[li].items[ti].done = !t.done; day.lists[li].got += t.done ? -1 : 1; day.lists[li].left += t.done ? 1 : -1 }
+    }
+    Work.shared.tick(t.id, !t.done)
+  }
+  /// A list's things on the start page, without what you have got and then cleared by pulling the page down.
+  func things(_ l: ListRow) -> [ThingRow] { l.items.filter { !($0.done && cleared.contains($0.id)) } }
   /// Tasks you have ticked off and then cleared from the start page by pulling it down. (They stay done in Sleek Tasks.)
   @Published private(set) var cleared: Set<String> = []
   var doneToday: [TaskRow] { day.done.filter { !cleared.contains($0.id) } }
@@ -491,7 +612,7 @@ final class Browser: ObservableObject {
   /// Pull the start page down: your tasks are read again, and what you have ticked off leaves Today.
   func freshenToday() async {
     Work.shared.refresh(); try? await Task.sleep(nanoseconds: 450_000_000)
-    let gone = Set((day.done + day.late + day.today).filter(\.done).map(\.id))
+    let gone = Set((day.done + day.late + day.today).filter(\.done).map(\.id) + day.lists.flatMap(\.items).filter(\.done).map(\.id))
     if !gone.subtracting(cleared).isEmpty { tap(.soft) }
     withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) { cleared = gone }
   }

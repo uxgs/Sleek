@@ -34,6 +34,13 @@ body.editing .slide.active .tks-host:hover, body.tks-open .slide.active .tks-hos
 .tks-st { flex: none; display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); white-space: nowrap; }
 .tks-st::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--c, var(--faint)); }
 .tks-none { color: var(--faint); font-size: 18px; }
+/* a grocery list: aisles running down three columns */
+.tks-gl { flex: 1 1 auto; min-height: 0; overflow: hidden; display: flex; flex-direction: column; flex-wrap: wrap; align-content: flex-start; column-gap: 40px; }
+.tks-ga { flex: none; width: calc((100% - 80px) / 3); } .tks-ga[hidden] { display: none; }
+.tks-gh { flex: none; display: flex; align-items: center; gap: 8px; padding: 14px 2px 4px; font-size: 13px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.tks-gh > i { width: 8px; height: 8px; border-radius: 50%; background: var(--c, var(--faint)); }
+.tks-gr { padding: 9px 2px; } .tks-gr .tks-t { font-size: 18px; } .tks-gr.done { opacity: .55; }
+.tks-in .tks-gh { animation: tks-rise .5s cubic-bezier(.2,.8,.2,1) both; animation-delay: 120ms; }
 /* under it: which project, and where it comes from */
 .tks-foot { flex: none; display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--faint); }
 .tks-foot > b { font-weight: 600; color: var(--muted); } .tks-rest { margin-left: auto; }

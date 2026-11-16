@@ -34,14 +34,14 @@
   function close(){ if(ed){ ed.remove(); ed = null; if(btn) btn.setAttribute('aria-expanded', 'false'); document.body.classList.remove('tks-open'); } }
   function save(c){ if(c.host._tk !== c.tk) c.host._tk = c.tk; K.redraw(c.s); D.saveAdded(); }
   function fill(){
-    var c = cur(); if(!ed || !c) return; var T = K.tasks(), ps = T ? T.projects() : [], tk = c.tk;
+    var c = cur(); if(!ed || !c) return; var T = K.tasks(), ps = T ? T.projects() : [], tk = c.tk, gl = !!(T && T.isList && tk.project && T.isList(tk.project));
     ed.innerHTML = '<div class="tks-ed-h"><b>The tasks on this slide</b><button type="button" class="tks-ed-x" aria-label="Close">×</button></div>' +
       (!T ? '<p>Opening your tasks…</p>' : !ps.length ? '<p>You have no boards yet. Make one in Sleek Tasks, then choose it here.</p>' :
-        '<label for="tks-p">Board</label><select id="tks-p">' + (tk.project && ps.some(function(p){ return p.id === tk.project; }) ? '' : '<option value="">' + (tk.project ? 'Not in this browser' : 'Choose a project') + '</option>') +
-          ps.map(function(p){ return '<option value="' + esc(p.id) + '"' + (p.id === tk.project ? ' selected' : '') + '>' + esc(p.name) + '</option>'; }).join('') + '</select>' +
-        '<span class="tks-ed-l">Shown as</span><span class="tks-ed-seg" role="group" aria-label="Shown as">' + [['board', 'Board'], ['list', 'List']].map(function(v){ var on = (tk.view === 'list' ? 'list' : 'board') === v[0]; return '<button type="button" data-view="' + v[0] + '" aria-pressed="' + on + '" class="' + (on ? 'on' : '') + '">' + v[1] + '</button>'; }).join('') + '</span>' +
-        '<label class="tks-ed-c"><input type="checkbox" id="tks-d"' + (tk.done !== false ? ' checked' : '') + '> Show done tasks</label>') +
-      '<div class="tks-ed-f"><a href="tasks.html' + (tk.project ? '#/' + esc(tk.project) + '/board' : '') + '" target="_blank" rel="noopener">Open Sleek Tasks</a><span>It follows your tasks while you edit and present. A published deck shows them as they were when you published.</span></div>';
+        '<label for="tks-p">Show</label><select id="tks-p">' + (tk.project && ps.some(function(p){ return p.id === tk.project; }) ? '' : '<option value="">' + (tk.project ? 'Not in this browser' : 'Choose a project') + '</option>') +
+          ps.map(function(p){ return '<option value="' + esc(p.id) + '"' + (p.id === tk.project ? ' selected' : '') + '>' + esc(p.name) + (T.isList && T.isList(p) ? ' (grocery list)' : '') + '</option>'; }).join('') + '</select>' +
+        (gl ? '' : '<span class="tks-ed-l">Shown as</span><span class="tks-ed-seg" role="group" aria-label="Shown as">' + [['board', 'Board'], ['list', 'List']].map(function(v){ var on = (tk.view === 'list' ? 'list' : 'board') === v[0]; return '<button type="button" data-view="' + v[0] + '" aria-pressed="' + on + '" class="' + (on ? 'on' : '') + '">' + v[1] + '</button>'; }).join('') + '</span>') +
+        '<label class="tks-ed-c"><input type="checkbox" id="tks-d"' + (tk.done !== false ? ' checked' : '') + '> ' + (gl ? 'Show what is in the basket' : 'Show done tasks') + '</label>') +
+      '<div class="tks-ed-f"><a href="tasks.html' + (tk.project ? '#/' + esc(tk.project) + (gl ? '/shop' : '/board') : '') + '" target="_blank" rel="noopener">Open Sleek Tasks</a><span>It follows your tasks while you edit and present. A published deck shows them as they were when you published.</span></div>';
   }
   function place(){
     if(!ed || !btn) return; var b = btn.getBoundingClientRect(), w = ed.offsetWidth;
@@ -75,7 +75,7 @@
   new MutationObserver(function(){ var now = editing(); if(now === wasEditing) return; wasEditing = now; if(!now) close(); paintBar(); }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
   // once the tasks are here: a Tasks slide that has no project yet takes the first one, and an open panel fills in
   K.onReady(function(T){
-    var first = T.projects()[0], changed = false;
+    var first = T.projects().filter(function(p){ return !(T.isList && T.isList(p)); })[0] || T.projects()[0], changed = false;
     Array.prototype.forEach.call(D.stage.querySelectorAll('.slide[data-added]'), function(s){
       var h = hostOf(s), a = h && D.addedOf(s); if(!a) return; var tk = a.tk || (a.tk = { view: 'board' });
       if(!tk.project && !tk.snap && first){ tk.project = first.id; h._tk = tk; K.redraw(s); changed = true; }

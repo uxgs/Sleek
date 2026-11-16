@@ -171,9 +171,9 @@ final class BrowserWindow: NSObject, NSWindowDelegate, WKScriptMessageHandler, W
     return t
   }
   /// A tab a page asked for (a link that opens a new window): it must use the settings the page hands over.
-  func newTab(configuration: WKWebViewConfiguration) -> Tab {
+  func newTab(configuration: WKWebViewConfiguration, select: Bool = true) -> Tab {
     configuration.userContentController = WKUserContentController()      // its own, not the one of the page that asked
-    let t = Tab(configuration: configuration, owner: self); tabs.append(t); select(t.id); return t
+    let t = Tab(configuration: configuration, owner: self); tabs.append(t); if select { self.select(t.id) } else { push() }; return t
   }
   func select(_ id: String) {
     guard tab(id) != nil else { return }
@@ -255,10 +255,52 @@ final class BrowserWindow: NSObject, NSWindowDelegate, WKScriptMessageHandler, W
   /// The start page asks what to show: your day (what is due, and what you last worked on), your bookmarks, and the
   /// places you go most. A Private Browsing window shows none of your work or your history.
   func fillStart(_ t: Tab) {
-    let top = isPrivate ? [] : Array(store.history.sorted { ($0["n"] as? Int ?? 1) > ($1["n"] as? Int ?? 1) }.prefix(8))
-    var all: [String: Any] = ["bookmarks": store.bookmarks, "top": top, "private": isPrivate, "still": Res.selfTest != nil]
+    let s = store.settings, tiles: [String: Any] = ["style": s["tileStyle"] ?? "clear", "shape": s["tileShape"] ?? "wide", "layout": s["tileLayout"] ?? "grid", "apps": s["startApps"] as? Bool ?? true, "hiddenApps": s["hiddenApps"] as? [String] ?? []]
+    var all: [String: Any] = ["bookmarks": store.bookmarks, "top": isPrivate ? [] : topSites(), "tiles": tiles, "private": isPrivate, "still": Res.selfTest != nil]
     if !isPrivate, Work.shared.ready { all["day"] = Work.shared.day }
     t.web.evaluateJavaScript("window.Start && Start.fill(" + json(all) + ")")
+  }
+
+  /// The sites you go to most: one for each site (its page you open most), the most visited first, leaving out the
+  /// ones you took off the new tab. Each with the site's own name when it is a well-known one.
+  /// What your search provider would search for, given what has been typed so far, as on the iPhone. Never from a
+  /// private window, with Search Suggestions switched off, or while the app checks itself. Asked without cookies, so
+  /// it is not tied to you; the answer is shown only while it still matches what is in the box.
+  func askHints(_ typed: String) {
+    let q = typed.trimmingCharacters(in: .whitespaces)
+    guard !q.isEmpty, !isPrivate, store.settings["searchHints"] as? Bool ?? true, Res.selfTest == nil, !q.contains("://"), let u = Search.hints(for: store.search, q) else { return }
+    hintAsk += 1; let n = hintAsk
+    var r = URLRequest(url: u, cachePolicy: .returnCacheDataElseLoad, timeoutInterval: 4); r.httpShouldHandleCookies = false
+    Task { @MainActor [weak self] in
+      guard let (data, _) = try? await BrowserWindow.hintSession.data(for: r), let self = self, n == self.hintAsk else { return }
+      let low = q.lowercased()
+      self.tell(["type": "hints", "q": q, "items": Array(Search.readHints(data).filter { $0.lowercased() != low }.prefix(4))])
+    }
+  }
+  private var hintAsk = 0
+  static let hintSession: URLSession = { let c = URLSessionConfiguration.ephemeral; c.httpCookieStorage = nil; c.urlCache = URLCache(memoryCapacity: 2_000_000, diskCapacity: 0); return URLSession(configuration: c) }()
+
+  func topSites(_ n: Int = 12) -> [[String: Any]] {
+    let hidden = Set(store.settings["hiddenTop"] as? [String] ?? []); var seen = Set<String>(), out: [[String: Any]] = []
+    for e in store.history.sorted(by: { ($0["n"] as? Int ?? 1) > ($1["n"] as? Int ?? 1) }) {
+      guard let u = e["u"] as? String, let url = URL(string: u), url.scheme == "http" || url.scheme == "https", let full = url.host else { continue }
+      let h = full.hasPrefix("www.") ? String(full.dropFirst(4)) : full
+      if !seen.insert(h).inserted || hidden.contains(h) { continue }
+      out.append(["u": u, "t": e["t"] as? String ?? "", "h": h, "name": BrowserWindow.names[h] ?? h]); if out.count == n { break }
+    }
+    return out
+  }
+  /// Unpin one of Sleek's apps from the new tab (its ×), or pin it again (Undo). Turning Sleek Apps on in Appearance brings them all back.
+  func hideApp(_ app: String, _ hide: Bool) {
+    guard ["slides", "docs", "tasks"].contains(app) else { return }
+    var h = (store.settings["hiddenApps"] as? [String] ?? []).filter { $0 != app }; if hide { h.append(app) }
+    if h.count == 3 { store.settings["hiddenApps"] = [String](); store.set("startApps", false) } else { store.set("hiddenApps", h) }      // the last one unpinned: the row is off
+  }
+  static let names: [String: String] = Dictionary(Sites.all.map { ($0.host, $0.name) }, uniquingKeysWith: { a, _ in a })
+  /// Take a site off Where you go most (the × on its tile), or put it back (Undo). History keeps it either way.
+  func hideTop(_ host: String, _ hide: Bool) {
+    var h = (store.settings["hiddenTop"] as? [String] ?? []).filter { $0 != host }; if hide { h.append(host) }
+    store.set("hiddenTop", h)
   }
 
   // ---------- Sleek inside: your work, beside and within the web ----------
@@ -291,7 +333,7 @@ final class BrowserWindow: NSObject, NSWindowDelegate, WKScriptMessageHandler, W
     let look = store.settings["look"] as? String ?? "auto"
     window.appearance = isPrivate || look == "dark" ? NSAppearance(named: .darkAqua) : look == "light" ? NSAppearance(named: .aqua) : nil
   }
-  func settingsChanged() { applyLook(); push() }
+  func settingsChanged() { applyLook(); push(); for t in tabs where t.kind == "start" { fillStart(t) } }      // new tabs follow the tiles' look, and sites taken off
 
   // ---------- what the bar asks for ----------
   func userContentController(_ c: WKUserContentController, didReceive message: WKScriptMessage) {
@@ -320,7 +362,7 @@ final class BrowserWindow: NSObject, NSWindowDelegate, WKScriptMessageHandler, W
     case "split": setSplit(m["n"] as? Int ?? 1)
     case "pane": if let i = m["i"] as? Int, i < panes.count { at = i; push(); focusPage() }
     case "unpane": if let i = m["i"] as? Int, i < panes.count, n > 1 { panes.remove(at: i); n -= 1; at = min(at > i ? at - 1 : at, n - 1); arrange(); push() }
-    case "set": if let k = m["k"] as? String, let v = m["v"] { store.set(k, v) }
+    case "set": if let k = m["k"] as? String, let v = m["v"] { if k == "startApps", v as? Bool == true { store.settings["hiddenApps"] = [String]() }; store.set(k, v) }      // Sleek Apps on again brings back any you unpinned
     case "mark":
       let url = m["url"] as? String ?? current?.address ?? ""
       switch m["how"] as? String ?? "" { case "add": store.addBookmark(title: m["title"] as? String ?? current?.web.title ?? "", url: url); case "remove": store.removeBookmark(url: url); default: store.renameBookmark(url: url, title: m["title"] as? String ?? "") }
@@ -335,6 +377,7 @@ final class BrowserWindow: NSObject, NSWindowDelegate, WKScriptMessageHandler, W
       items += Sites.matching(q, limit: 8).filter { !have.contains(Icons.key(URL(string: $0["url"] as? String ?? "")?.host ?? "")) }.prefix(max(2, 6 - items.count))
       if !isPrivate { items = Work.shared.suggest(q, limit: 3) + items }      // your own decks, pages, boards and tasks come first
       tell(["type": "suggest", "q": q, "items": items, "fill": store.finish(q, known: !isPrivate)])
+      askHints(q)
     case "image": imageChosen(m["how"] as? String ?? "")
     case "pw-fill": fillSignIn(tab: m["tab"] as? String ?? "", login: m["login"] as? String)
     case "pw-answer": answerSignIn(m["how"] as? String ?? "")

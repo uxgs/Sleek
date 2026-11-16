@@ -8,8 +8,15 @@ targets:
   SleekTasks:
     type: application
     platform: iOS
+    dependencies:
+      - target: SleekTasksWidgets
     sources:
       - path: Sources
+      - path: ../ios-shared/Shared.swift
+      - path: ../ios-shared/Aisles.swift
+      - path: ../ios-shared/Siri.swift
+      - path: ../ios-shared/Goals.swift
+      - path: ../ios-shared/Widgets.swift
       - path: Assets.xcassets
     info:
       path: build/Info.plist
@@ -20,6 +27,10 @@ targets:
         UILaunchScreen: {}
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         LSSupportsOpeningDocumentsInPlace: false
+        # the Sleek browser opens a board, page or deck here by this address
+        CFBundleURLTypes:
+          - CFBundleURLName: com.sleek.tasks
+            CFBundleURLSchemes: [sleek-tasks]
         # a .sleek file (the copy Sleek Tasks saves, here and on the web) can be opened with this app
         UTExportedTypeDeclarations:
           - UTTypeIdentifier: com.sleek.file
@@ -31,6 +42,10 @@ targets:
           - CFBundleTypeName: Sleek file
             LSHandlerRank: Alternate
             LSItemContentTypes: [com.sleek.file]
+    entitlements:
+      path: build/SleekTasks.entitlements
+      properties:
+        com.apple.security.application-groups: [group.com.uxg.sleek]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.sleek.tasks
@@ -41,3 +56,37 @@ targets:
         CODE_SIGN_STYLE: Manual
         DEVELOPMENT_TEAM: ""
         TARGETED_DEVICE_FAMILY: "1"
+  # the app's widgets (drawn by ../ios-shared/Widgets.swift), reading the work the Sleek apps share
+  SleekTasksWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Widgets
+      - path: ../ios-shared/Widgets.swift
+      - path: ../ios-shared/Shared.swift
+      - path: ../ios-shared/Aisles.swift
+      - path: ../ios-shared/Siri.swift
+      - path: ../ios-shared/Goals.swift
+    info:
+      path: build/Widgets-Info.plist
+      properties:
+        CFBundleDisplayName: Sleek Tasks
+        CFBundleShortVersionString: "0.1.0"
+        CFBundleVersion: "1"
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    entitlements:
+      path: build/SleekTasksWidgets.entitlements
+      properties:
+        com.apple.security.application-groups: [group.com.uxg.sleek]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.sleek.tasks.widgets
+        PRODUCT_NAME: SleekTasksWidgets
+        SWIFT_VERSION: "5.0"
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) WIDGET"
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGN_STYLE: Manual
+        DEVELOPMENT_TEAM: ""
+        TARGETED_DEVICE_FAMILY: "1"
+        SKIP_INSTALL: YES

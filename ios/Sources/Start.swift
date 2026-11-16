@@ -12,24 +12,35 @@ struct StartView: View {
   @Namespace private var addNS
   @State private var shown = false                 // the page has come in (each part rises in turn)
   private var hello: String { let h = Calendar.current.component(.hour, from: Date()); return h < 12 ? "Good morning." : h < 18 ? "Good afternoon." : "Good evening." }
-  private var sub: String { let n = b.day.today.count, late = b.day.late.count; return (n == 0 ? "Nothing due today" : "\(n) task\(n == 1 ? "" : "s") for today") + (late > 0 ? ", and \(late) overdue" : "") + "." }
+  private var sub: String {
+    let n = b.day.today.count, late = b.day.late.count, get = b.day.toGet
+    let bits = (late > 0 ? ["\(late) overdue"] : []) + (get > 0 ? ["\(get) thing\(get == 1 ? "" : "s") to get"] : [])
+    return (n == 0 ? "Nothing due today" : "\(n) task\(n == 1 ? "" : "s") for today") + (bits.count == 2 ? ", \(bits[0]) and \(bits[1])" : bits.count == 1 ? ", and \(bits[0])" : "") + "."
+  }
   var body: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 24) {
         brand.padding(.top, 8)
+          .background(GeometryReader { g in Color.clear.onAppear { b.brandAt = g.frame(in: .global) }.onChange(of: g.frame(in: .global)) { _, f in b.brandAt = f } })
+          .opacity(b.launch == .done ? 1 : 0)          // while Sleek opens, its mark is on its way here
         VStack(alignment: .leading, spacing: 4) { Text(hello).font(.system(size: 34, weight: .bold)).tracking(-1); Text(b.day.loaded ? sub : " ").font(.system(size: 17)).foregroundStyle(.secondary) }.rise(shown, 1)
         today.rise(shown, 2)
         if b.startApps { apps.rise(shown, 3).transition(.opacity.combined(with: .scale(scale: 0.96, anchor: .top))) }
         if !b.day.recent.isEmpty { recent.rise(shown, 4) }
         if !marks.isEmpty { grid("Bookmarks", marks).rise(shown, 5) }
-        if !places.isEmpty { grid("Where you go most", places).rise(shown, 6) }
+        if !places.isEmpty {
+          if b.tileStyle == "icons" { grid("Where you go most", places).rise(shown, 6) }
+          else { VStack(alignment: .leading, spacing: 12) { head("Where you go most"); SiteTiles(b: b, places: places, shown: shown) }.rise(shown, 6) }
+        }
       }
       .padding(.horizontal, 20).padding(.top, b.barAtTop ? 68 : 0).padding(.bottom, b.barAtTop ? 40 : 112)
     }
     .scrollDismissesKeyboard(.interactively)
     .refreshable { await b.freshenToday() }          // pull down: your tasks again, without the ones you have ticked off
     .background(alignment: .top) { bloom.opacity(shown ? 1 : 0).scaleEffect(shown ? 1 : 0.6, anchor: .top).animation(.easeOut(duration: 0.9), value: shown) }
-    .onAppear { Work.shared.refresh(); DispatchQueue.main.async { shown = true } }
+    .onAppear { Work.shared.refresh(); if b.launch == .done || b.launch == .flying { DispatchQueue.main.async { shown = true } } }
+    .onChange(of: b.launch) { _, now in if now == .flying { shown = true } }      // the page comes in as the mark flies to it
+    .onDisappear { b.brandAt = nil }
     .onChange(of: adding) { _, on in if !on && composing && newTask.trimmingCharacters(in: .whitespaces).isEmpty { withAnimation(.spring(response: 0.42, dampingFraction: 0.85)) { composing = false } } }      // left with nothing typed: back to the tile
   }
   /// Sleek's mark turns into place and the name slides in beside it.
@@ -53,7 +64,8 @@ struct StartView: View {
         HStack { head("Today, from Sleek Tasks"); Spacer(); Button { sheet = .tasks } label: { Text("All").font(.system(size: 13, weight: .semibold)).frame(minWidth: 44, minHeight: 44, alignment: .trailing).contentShape(Rectangle()) }.foregroundStyle(Color.tasks).padding(.vertical, -14) }
         newTask_
         let rows = b.dueToday
-        if rows.isEmpty && b.doneToday.isEmpty && !composing { Text(b.day.loaded ? "Nothing is due today." : "Opening your tasks…").font(.system(size: 15)).foregroundStyle(.secondary).padding(.vertical, 4) }
+        ForEach(b.day.lists) { TodayList(l: $0, b: b).transition(.opacity.combined(with: .scale(scale: 0.97, anchor: .top))) }
+        if rows.isEmpty && b.doneToday.isEmpty && b.day.lists.isEmpty && !composing { Text(b.day.loaded ? "Nothing is due today." : "Opening your tasks…").font(.system(size: 15)).foregroundStyle(.secondary).padding(.vertical, 4) }
         ForEach(rows.prefix(5)) { TaskLine(t: $0, b: b).transition(.opacity) }
         // ticked off, a task stays here struck through; pull the page down and it slides away
         ForEach(b.doneToday.prefix(2)) { TaskLine(t: $0, b: b).transition(.asymmetric(insertion: .opacity, removal: .opacity.combined(with: .move(edge: .trailing)))) }
@@ -105,7 +117,14 @@ struct StartView: View {
   private var apps: some View {
     VStack(alignment: .leading, spacing: 12) {
       head("Sleek")
-      HStack(spacing: 12) { app("Slides", "slides", .slides); app("Docs", "docs", .docs); app("Tasks", "tasks", .tasks) }
+      if b.tileStyle == "icons" { HStack(spacing: 12) { app("Slides", "slides", .slides); app("Docs", "docs", .docs); app("Tasks", "tasks", .tasks) } }
+      else {                                              // the same glass as the site tiles, three square across
+        HStack(spacing: 12) { ForEach(Array([("Slides", "slides"), ("Docs", "docs"), ("Tasks", "tasks")].enumerated()), id: \.offset) { i, a in
+          Button { tap(); b.open("sleek://app/\(a.1).html") } label: { SiteTile(host: a.1, name: a.0, style: b.tileStyle, wide: false, big: false, app: a.1) }.buttonStyle(Press())
+            .opacity(shown ? 1 : 0).offset(y: shown ? 0 : 16).scaleEffect(shown ? 1 : 0.97)
+            .animation(.spring(response: 0.55, dampingFraction: 0.8).delay(0.25 + Double(i) * 0.055), value: shown)
+        } }
+      }
     }
   }
   private func app(_ name: String, _ file: String, _ c: Color) -> some View {
@@ -119,19 +138,16 @@ struct StartView: View {
   private var recent: some View {
     VStack(alignment: .leading, spacing: 12) {
       head("Pick up where you left off")
-      ScrollView(.horizontal, showsIndicators: false) { HStack(spacing: 12) { ForEach(b.day.recent) { r in
-        let c: Color = r.kind == "slides" ? .slides : .docs
-        Button { tap(); b.open(r.url) } label: {
-          VStack(alignment: .leading, spacing: 8) {
-            RoundedRectangle(cornerRadius: 10, style: .continuous).fill(LinearGradient(colors: [c, c.opacity(0.55)], startPoint: .topLeading, endPoint: .bottomTrailing)).frame(width: 150, height: 84)
-            VStack(alignment: .leading, spacing: 2) { Text(r.title).font(.system(size: 15, weight: .semibold)).lineLimit(1).foregroundStyle(.primary); Text(r.kind == "slides" ? "Slides" : "Docs").font(.system(size: 13)).foregroundStyle(.secondary) }
-          }.frame(width: 150, alignment: .leading)
-        }.buttonStyle(Press()) } } }
+      ScrollView(.horizontal, showsIndicators: false) { HStack(spacing: 14) { ForEach(Array(b.day.recent.enumerated()), id: \.element.id) { i, r in
+        Button { tap(); b.open(r.url) } label: { RecentTile(r: r) }.buttonStyle(Press())
+          .opacity(shown ? 1 : 0).offset(y: shown ? 0 : 14)
+          .animation(.spring(response: 0.55, dampingFraction: 0.82).delay(0.3 + Double(i) * 0.06), value: shown)
+      } }.padding(.vertical, 6) }.scrollClipDisabled()
     }
   }
   struct Place: Identifiable { let host: String, name: String, url: String; var id: String { url } }
   private var marks: [Place] { b.store.bookmarks.prefix(8).compactMap { m in guard let u = m["url"] as? String, let h = URL(string: u)?.host else { return nil }; return Place(host: h, name: m["title"] as? String ?? h, url: u) } }
-  private var places: [Place] { b.topSites.map { Place(host: $0.host, name: $0.host.replacingOccurrences(of: "www.", with: ""), url: $0.url) } }
+  private var places: [Place] { b.topSites.map { Place(host: $0.host, name: SiteName.of($0.host), url: $0.url) } }
   private func grid(_ name: String, _ list: [Place]) -> some View {
     VStack(alignment: .leading, spacing: 12) {
       head(name)
@@ -149,7 +165,7 @@ struct StartView: View {
   private func place(_ p: Place, mark: Bool) -> some View {
     Button { tap(); b.open(p.url) } label: { VStack(spacing: 8) { SiteIcon(host: p.host, size: 56); Text(p.name).font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1).minimumScaleFactor(0.9).frame(width: 72).frame(width: 56) } }.buttonStyle(Press())
       .contentShape(.contextMenuPreview, RoundedRectangle(cornerRadius: 16, style: .continuous).inset(by: -10))      // lifted for its menu, its name comes with it whole
-      .contextMenu { Button { b.newTab(URL(string: p.url)) } label: { Label("Open in New Tab", systemImage: "plus.square.on.square") }; Button { b.newTab(URL(string: p.url), isPrivate: true) } label: { Label("Open in Private Tab", systemImage: "eyeglasses") }
+      .contextMenu { Button { b.newTab(URL(string: p.url), background: true) } label: { Label("Open in Background", systemImage: "square.on.square.dashed") }; Button { b.newTab(URL(string: p.url)) } label: { Label("Open in New Tab", systemImage: "plus.square.on.square") }; Button { b.newTab(URL(string: p.url), isPrivate: true) } label: { Label("Open in Private Tab", systemImage: "eyeglasses") }
         Divider()
         if mark { Button(role: .destructive) { tap(.medium); b.removeMark(p.url) } label: { Label("Remove Bookmark", systemImage: "trash") } }
         else { Button(role: .destructive) { tap(.medium); b.hideTop(p.host) } label: { Label("Remove", systemImage: "minus.circle") } } }
@@ -211,5 +227,108 @@ struct TaskLine: View {
       }
       Spacer(minLength: 0)
     }.padding(.vertical, 4)
+  }
+}
+
+/// A grocery list on Today: its name and how much is left, a bar that fills as things go in the basket,
+/// the first few things to get (tick them here), and a way into the list in Sleek Tasks.
+struct TodayList: View {
+  let l: ListRow; @ObservedObject var b: Browser
+  private var c: Color { Color(hex: l.color) }
+  private var dueWord: String {
+    let p = l.due.split(separator: "-").compactMap { Int($0) }; guard l.late, p.count == 3, let d = Calendar.current.date(from: DateComponents(year: p[0], month: p[1], day: p[2])) else { return "Today" }
+    let n = Calendar.current.dateComponents([.day], from: Calendar.current.startOfDay(for: Date()), to: d).day ?? 0
+    return n == -1 ? "Yesterday" : "\(-n) days late"
+  }
+  var body: some View {
+    let things = b.things(l), got = l.got, left = l.left
+    VStack(alignment: .leading, spacing: 8) {
+      Button { tap(); b.open(l.url) } label: {
+        HStack(spacing: 12) {
+          Image(systemName: "basket.fill").font(.system(size: 15, weight: .semibold)).foregroundStyle(c).frame(width: 34, height: 34).background(c.opacity(0.15), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+          VStack(alignment: .leading, spacing: 1) {
+            Text(l.name).font(.system(size: 16, weight: .semibold)).foregroundStyle(.primary).lineLimit(1)
+            (Text(left > 0 ? "\(left) thing\(left == 1 ? "" : "s") to get · " : "Everything is in the basket · ").foregroundColor(.secondary) + Text(dueWord).foregroundColor(l.late ? .red : .secondary)).font(.system(size: 13)).lineLimit(1)
+          }
+          Spacer(minLength: 4)
+          Text("Open").font(.system(size: 13, weight: .semibold)).foregroundStyle(c)
+          Image(systemName: "chevron.right").font(.system(size: 12, weight: .bold)).foregroundStyle(c.opacity(0.7))
+        }.contentShape(Rectangle())
+      }.buttonStyle(Press()).accessibilityLabel("Open \(l.name)")
+      GeometryReader { g in ZStack(alignment: .leading) { Capsule().fill(Color.primary.opacity(0.08)); Capsule().fill(c).frame(width: l.all > 0 ? g.size.width * CGFloat(got) / CGFloat(l.all) : 0) } }.frame(height: 4)
+        .animation(.spring(response: 0.5, dampingFraction: 0.8), value: got)
+      ForEach(things) { t in
+        HStack(spacing: 12) {
+          Button { b.tick(t, on: l) } label: { ZStack { Circle().stroke(t.done ? c : Color.secondary.opacity(0.6), lineWidth: 1.8).background(Circle().fill(t.done ? c : .clear)); if t.done { Image(systemName: "checkmark").font(.system(size: 11, weight: .bold)).foregroundStyle(.white) } }.frame(width: 24, height: 24).contentShape(Rectangle().inset(by: -10)) }.buttonStyle(Press())
+            .accessibilityLabel("Got: \(t.title)").accessibilityAddTraits(t.done ? .isSelected : [])
+          Text(t.title).font(.system(size: 16)).strikethrough(t.done).foregroundStyle(t.done ? .secondary : .primary).lineLimit(1)
+          if t.qty > 1 { Text("×\(t.qty)").font(.system(size: 14).monospacedDigit()).foregroundStyle(.secondary) }
+          Spacer(minLength: 4)
+          Text(t.aisle).font(.system(size: 12)).foregroundStyle(.tertiary).lineLimit(1)
+        }.padding(.vertical, 2).transition(.opacity)
+      }
+      if l.left > 6 { Text("and \(l.left - 6) more").font(.system(size: 13)).foregroundStyle(.secondary).padding(.leading, 36) }
+    }
+    .padding(12).background(Color(.systemBackground).opacity(0.7), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+    .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(c.opacity(0.35), lineWidth: 1))
+  }
+}
+
+
+/// A deck or page on the start screen's "Pick up where you left off": a small preview of the thing itself, not a
+/// block of colour. A deck is a little slide in its own theme, with its cover's kicker and heading and how many
+/// slides it has; a page is a little sheet with its title and opening lines. A picture of your own, set in the app,
+/// takes the preview's place. The tile glows in the app's colour when pressed (Press).
+struct RecentTile: View {
+  let r: WorkItem
+  private var deck: Bool { r.kind == "slides" }
+  private var c: Color { deck ? .slides : .docs }
+  private var picture: UIImage? {
+    guard let comma = r.thumb.firstIndex(of: ","), let d = Data(base64Encoded: String(r.thumb[r.thumb.index(after: comma)...])) else { return nil }
+    return UIImage(data: d)
+  }
+  var body: some View {
+    VStack(alignment: .leading, spacing: 10) {
+      ZStack { if let p = picture { Image(uiImage: p).resizable().scaledToFill() } else if deck { slide } else { sheet } }
+        .frame(width: 192, height: 108).clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(.white.opacity(0.1), lineWidth: 0.8))
+        .background { RoundedRectangle(cornerRadius: 14, style: .continuous).fill(c.opacity(0.32)).blur(radius: 14).offset(y: 8).padding(10) }
+      HStack(spacing: 6) {
+        Image(systemName: deck ? "play.rectangle.fill" : "doc.text.fill").font(.system(size: 11, weight: .semibold)).foregroundStyle(c)
+        Text(r.title).font(.system(size: 14, weight: .semibold)).lineLimit(1).foregroundStyle(.primary)
+      }.frame(width: 192, alignment: .leading)
+    }
+  }
+  /// The deck's cover as a slide: dark or light as its theme says, its accent glowing from a corner.
+  private var slide: some View {
+    let a = Color(hex: r.accent), light = r.mode == "light", ink: Color = light ? Color(hex: "#15131C") : .white
+    let heading = r.heading.isEmpty ? r.title : r.heading
+    return ZStack(alignment: .bottomLeading) {
+      (light ? Color(hex: "#F6F4FB") : Color(hex: "#0D0B14"))
+      Circle().fill(a.opacity(light ? 0.35 : 0.75)).frame(width: 150).blur(radius: 40).offset(x: 110, y: -70)
+      Circle().fill(a.opacity(light ? 0.18 : 0.35)).frame(width: 110).blur(radius: 36).offset(x: -40, y: 40)
+      VStack(alignment: .leading, spacing: 3) {
+        if !r.kicker.isEmpty { Text(r.kicker.uppercased()).font(.system(size: 6.5, weight: .semibold)).kerning(0.8).foregroundStyle(ink.opacity(0.6)).lineLimit(1) }
+        Text(heading).font(.system(size: 14, weight: .bold)).foregroundStyle(ink).lineLimit(2).minimumScaleFactor(0.8)
+      }.padding(12).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+      if r.slides > 0 {
+        Text("\(r.slides)").font(.system(size: 9, weight: .bold).monospacedDigit()).foregroundStyle(ink.opacity(0.75))
+          .padding(.horizontal, 6).padding(.vertical, 2).background(Capsule().fill(ink.opacity(0.12)))
+          .padding(8).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+      }
+    }
+  }
+  /// The page as a sheet of paper: its title, then its first lines, fading out at the foot.
+  private var sheet: some View {
+    ZStack(alignment: .topLeading) {
+      Color(hex: "#FBFBFD")
+      VStack(alignment: .leading, spacing: 5) {
+        Capsule().fill(c).frame(width: 18, height: 3)
+        Text(r.title).font(.system(size: 11, weight: .bold)).foregroundStyle(Color(hex: "#16161A")).lineLimit(1)
+        if r.peek.isEmpty { ForEach(0..<3, id: \.self) { k in Capsule().fill(Color.black.opacity(0.08)).frame(width: k == 2 ? 90 : 160, height: 4) } }
+        else { Text(r.peek).font(.system(size: 7.5)).foregroundStyle(Color(hex: "#4A4A55")).lineSpacing(1.5).lineLimit(6) }
+      }.padding(.horizontal, 14).padding(.top, 12)
+      LinearGradient(colors: [.clear, Color(hex: "#FBFBFD")], startPoint: .center, endPoint: .bottom)
+    }
   }
 }

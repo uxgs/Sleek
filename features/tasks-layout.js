@@ -41,6 +41,9 @@
   }
   // what a slide shows: the project now (and its look kept for later), or how it last looked, or the sample
   function model(tk){
+    // a grocery list: its aisles and things (SleekTasks.listSnapshot), kept as it last looked too
+    if(T && tk && tk.project && T.isList && T.isList(tk.project)){ var l = T.listSnapshot(tk.project); if(l){ tk.snap = l; return Object.assign({ live: true }, l); } }
+    if(tk && tk.snap && tk.snap.kind === 'grocery' && !(T && tk.project && T.project(tk.project))) return tk.snap;
     if(T && tk && tk.project){
       var live = T.snapshot(tk.project, true);
       if(live){ tk.snap = { n: live.n, c: live.c, at: live.at, cols: live.cols.map(function(c){ return { n: c.n, c: c.c, done: c.done, tasks: c.tasks.map(function(t){ return { t: t.t, done: t.done, due: t.due, late: t.late, who: t.who, wc: t.wc }; }) }; }) }; live.live = true; return live; }
@@ -53,6 +56,7 @@
   function due(t, m){ var w = dueWords(t.due, m.live || m.sample); return w ? '<em class="' + (t.late ? 'late' : '') + '">' + w + '</em>' : ''; }
   function draw(host){
     var tk = host._tk || {}, m = model(tk), list = tk.view === 'list', showDone = tk.done !== false, n = 0;
+    if(m.kind === 'grocery'){ drawList(host, m, showDone); return; }
     var cols = m.cols.filter(function(c){ return showDone || !c.done; });
     host.setAttribute('data-view', list ? 'list' : 'board');
     var h;
@@ -72,6 +76,18 @@
     host.innerHTML = h; host.classList.toggle('tks-sample', !!m.sample);
     fit(host);
   }
+  // a grocery list on a slide: aisle by aisle down three columns, what is in the basket faded (or left out)
+  function drawList(host, m, showDone){
+    var n = 0, left = 0, all = 0;
+    var h = '<div class="tks-gl">' + (m.aisles || []).map(function(a){
+      var items = (a.items || []).filter(function(t){ all++; if(!t.done) left++; return showDone || !t.done; }); if(!items.length) return '';
+      return '<div class="tks-ga"><div class="tks-gh" style="--c:' + colour(a.c) + '"><i></i>' + esc(a.n) + '</div>' + items.map(function(t){
+        return '<div class="tks-row tks-gr' + (t.done ? ' done' : '') + '" style="--i:' + (n++) + '"><span class="tks-ck' + (t.done ? ' on' : '') + '"></span><span class="tks-t">' + esc(t.t) + '</span>' + (t.q > 1 ? '<em>×' + t.q + '</em>' : '') + '</div>'; }).join('') + '</div>';
+    }).join('') + '</div>' + (n ? '' : '<div class="tks-none">' + (all ? 'Everything is in the basket.' : 'Nothing on this list yet.') + '</div>');
+    h += '<div class="tks-foot"><i style="--c:' + colour(m.c, '#12A36A') + '"></i><b>' + esc(m.n || 'Groceries') + '</b><span>' + (left ? left + ' to get' : 'all in the basket') + ' · ' + (m.live ? 'Sleek Tasks' : 'as on ' + new Date(m.at || Date.now()).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })) + '</span><span class="tks-rest"></span></div>';
+    host.setAttribute('data-view', 'grocery'); host.innerHTML = h; host.classList.remove('tks-sample');
+    fit(host);
+  }
   // show only what fits: hide from the end of each column (or of the list), and say how many are hidden
   function fit(host){
     if(!host.isConnected || !host.clientHeight) return;
@@ -82,6 +98,11 @@
     }
     Array.prototype.forEach.call(host.querySelectorAll('.tks-col'), function(col){ trim(col.querySelector('.tks-cards'), col.querySelectorAll('.tks-card'), col.querySelector('.tks-more'), function(k){ return '+ ' + k + ' more'; }); });
     var list = host.querySelector('.tks-list'); if(list) trim(list, list.querySelectorAll('.tks-row'), host.querySelector('.tks-rest'), function(k){ return 'and ' + k + ' more'; });
+    // a grocery list: hide things from the end, and an aisle with none left showing goes with them
+    var gl = host.querySelector('.tks-gl'); if(gl){
+      var rows = gl.querySelectorAll('.tks-gr'), cut = 0;
+      while((gl.scrollHeight > gl.clientHeight + 1 || gl.scrollWidth > gl.clientWidth + 1) && cut < rows.length){ var r = rows[rows.length - 1 - cut]; r.hidden = true; cut++; var g = r.parentNode; if(!g.querySelector('.tks-gr:not([hidden])')) g.hidden = true; }
+      var rest = host.querySelector('.tks-rest'); if(rest) rest.textContent = cut ? 'and ' + cut + ' more' : ''; }
   }
   // draw again; with move, whatever moved glides from where it was
   function redrawHost(host, move){

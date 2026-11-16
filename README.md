@@ -98,7 +98,7 @@ paper pages, and it saves as you write.
   are always next to each other.
 - **Tables.** Controls above the table add and delete rows and columns and switch the header row;
   drag the line between two columns to resize them.
-- **Tasks.** Insert a task, a task list or a board from Sleek Tasks. They are the tasks themselves,
+- **Tasks.** Insert a task, a task list, a board or a grocery list from Sleek Tasks. They are the tasks themselves,
   not copies: tick one in the page and its card moves on the board, move the card in Tasks and the
   page follows, in every open tab. Press a task for its menu, type under a list to add one, drag a
   card between columns. With the cursor in a plain checklist, Insert offers **Make these tasks**,
@@ -164,6 +164,12 @@ today and due in the next seven days, across every board, with a box to add a ta
 - **Repeating tasks.** Set **Repeats** in a task's details: every day, weekday, week, month or year.
   Ticking it moves it on to the next time instead of finishing it (its subtasks are unticked), and
   the calendar shows, faintly, when it comes round again. Dragging it to a done column finishes it.
+- **Grocery lists.** New › Grocery list makes a list with a screen of its own. Type "2 lemons" or
+  "avocados x3" and press Enter: it lands in its aisle (Sleek guesses, and remembers when you move
+  one). Everything you add is remembered, so **Add again** offers your usuals, most bought first; a
+  long press stops offering one. Tick things into the basket as you shop; **Done shopping** moves
+  what is left to next week's list. Give a list a day and it shows on Today, here and in the Sleek
+  browser, until it is shopped. A list can go in a Docs page or on a Tasks slide.
 
 Tasks live in the browser you made them in, in their own storage. Every open tab of Tasks follows the
 others at once, and so does any Sleek Docs page that shows a task, a list or a board
@@ -190,7 +196,13 @@ App Store yet; you build them with Xcode.
   by this very deck page inside the app, and you change its words in fields beneath it and present
   from your hand.
 
-Docs and Slides share [ios-shared](ios-shared); `.sleek` files move pages and decks between the
+On one iPhone the four apps (these three and the Sleek browser) share your work: each keeps its copy
+in a folder they all reach (the App Group `group.com.uxg.sleek`) and brings in what is newer in the
+others', so a list ticked in Sleek Tasks is ticked in the browser, and a page written in Sleek Docs is
+in the browser too. The browser opens your boards, pages and decks in these apps when they are on the
+phone. Siri answers from Sleek Tasks or the browser: "What's on my grocery list in Sleek Tasks", "Add to
+my grocery list in Sleek", "What's due today in Sleek Tasks" (Siri needs the app's name). What they
+share is in [ios-shared](ios-shared); `.sleek` files still move pages, decks and tasks between the
 phone and the web.
 
 ## The sample deck
@@ -214,7 +226,7 @@ notes explain that layout:
 | Full video | The whole slide is a film, with the title over it |
 | Results | One to four big numbers that count up as the slide appears |
 | Chart | Bars, a line, a pie or a donut, drawn from a small table you edit, in the deck's colours or your own |
-| Tasks | A project's board or list from Sleek Tasks. It follows your tasks while you edit and present; a published deck shows them as they were when you published |
+| Tasks | A project's board or list, or a grocery list by aisle, from Sleek Tasks. It follows your tasks while you edit and present; a published deck shows them as they were when you published |
 | Lessons | Two columns: what landed and what to watch, with a press clipping on one bullet |
 | Wrap up | A recap in cards, then questions |
 | Annotated screen | A full-screen capture with pins, boxes and arrows, each with its own note |
@@ -322,7 +334,7 @@ task/                 the app: app.js (what is showing, the side list, how a tas
                       (each kind of field and how it is edited; pictures and clips), views.js (Today,
                       the list, the board and dragging), grid.js (the grid and your own fields),
                       cal.js (the calendar), sheet.js (a task's details and its notes editor),
-                      tasks.css
+                      grocery.js (a grocery list's own screen, and its card on Today), tasks.css
 tasks.webmanifest     install Sleek Tasks as an app
 ```
 

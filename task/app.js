@@ -70,19 +70,20 @@
 
   // ---------- what is showing ----------
   var VIEWS = [['board', 'Board'], ['grid', 'Grid'], ['list', 'List'], ['cal', 'Calendar']];
-  function lastView(pid){ try { var v = localStorage.getItem('sleek-tasks-view:' + pid); return VIEWS.some(function(x){ return x[0] === v; }) ? v : 'board'; } catch(e){ return 'board'; } }
+  function lastView(pid){ if(T.isList && T.isList(pid)) return 'shop'; try { var v = localStorage.getItem('sleek-tasks-view:' + pid); return VIEWS.some(function(x){ return x[0] === v; }) ? v : 'board'; } catch(e){ return 'board'; } }
   function go(view, pid){
     var board = view !== 'today' && view !== 'home';
-    if(board){ try { localStorage.setItem('sleek-tasks-view:' + pid, view); } catch(e){} }
+    if(board && view !== 'shop'){ try { localStorage.setItem('sleek-tasks-view:' + pid, view); } catch(e){} }
     var h = board ? '#/' + pid + '/' + view : '#' + view;
     if(location.hash !== h){ try { history.pushState(null, '', h); } catch(e){ location.hash = h; } }
     route();
   }
-  // The address decides what shows: nothing or #home is your boards, #today is Today, #/<board>/<view> is a board.
+  // The address decides what shows: nothing or #home is your boards, #today is Today, #/<board>/<view> is a board,
+  // and #/<list>/shop a grocery list (task/grocery.js): a grocery list only ever shows as itself.
   var shown = null;
   function route(){
-    var m = /^#\/([^/]+)\/(board|grid|list|cal)$/.exec(location.hash), p = m && T.project(m[1]);
-    if(p){ state.view = m[2]; state.proj = p.id; } else { state.view = location.hash === '#today' ? 'today' : 'home'; if(!T.project(state.proj)) state.proj = (T.projects()[0] || {}).id || null; }
+    var m = /^#\/([^/]+)\/(board|grid|list|cal|shop)$/.exec(location.hash), p = m && T.project(m[1]);
+    if(p){ var gl = T.isList && T.isList(p); state.view = gl ? 'shop' : m[2] === 'shop' ? 'board' : m[2]; state.proj = p.id; } else { state.view = location.hash === '#today' ? 'today' : 'home'; if(!T.project(state.proj)) state.proj = (T.projects()[0] || {}).id || null; }
     if(A.closeTask && !state.keepSheet) A.closeTask(true);
     closePop();
     var now = state.view + ':' + (state.view === 'home' || state.view === 'today' ? '' : state.proj), was = shown; shown = now;
@@ -96,7 +97,7 @@
   // its tile, and going back it draws into the tile again; between a board's views the old one slides away as
   // the new one comes in, in the direction of the tabs; everything else passes through a soft fade. This uses
   // the browser's view transitions where it has them; where it does not, the new view rises into place.
-  var ORDER = { home: 0, today: 1, board: 2, grid: 3, list: 4, cal: 5 };
+  var ORDER = { home: 0, today: 1, board: 2, grid: 3, list: 4, cal: 5, shop: 2 };
   function shift(was, now){
     var a = was.split(':'), b = now.split(':');
     var kind = a[0] === 'home' || b[0] === 'home' ? 'zoom' : a[1] === b[1] && a[1] ? (ORDER[b[0]] > ORDER[a[0]] ? 'fwd' : 'back') : 'fade';
@@ -111,16 +112,17 @@
   // ---------- the column of Today and projects, and the bar ----------
   var naming = false;
   function shell(){
-    var due = T.tasks().filter(function(t){ return !T.isDone(t) && t.due && away(t) <= 0; }).length, isToday = state.view === 'today', isHome = state.view === 'home';
-    $('#app').classList.toggle('at-home', isHome);
+    var due = T.tasks().filter(function(t){ return !T.isDone(t) && t.due && away(t) <= 0; }).length + T.projects().filter(T.listOnToday).length, isToday = state.view === 'today', isHome = state.view === 'home';
+    $('#app').classList.toggle('at-home', isHome); $('#app').classList.toggle('at-list', state.view === 'shop');
     var h = '<nav class="brand" aria-label="Where you are"><a href="index.html" title="Back to Sleek, to pick another app"><img src="icons/tasks.svg" alt="" width="22" height="20">Sleek</a><i aria-hidden="true">/</i><a class="crumb" href="#home" title="All your boards">Tasks</a></nav>' +
       '<button type="button" class="nav' + (isToday ? ' on' : '') + '" data-go="today"' + (isToday ? ' aria-current="page"' : '') + '><i class="dot"></i><span>Today</span><em>' + (due || '') + '</em></button><h4>Boards</h4>';
     T.projects().forEach(function(p){
       var on = !isToday && p.id === state.proj, n = T.tasks(p.id).filter(function(t){ return !T.isDone(t); }).length;
-      h += '<div class="nav' + (on ? ' on' : '') + '" role="button" tabindex="0" data-proj="' + p.id + '"' + (on ? ' aria-current="page"' : '') + '><i style="--c:' + p.color + '"></i><span>' + esc(p.name) + '</span><em>' + (n || '') + '</em>' +
+      h += '<div class="nav' + (on ? ' on' : '') + (p.kind === 'grocery' ? ' gl-nav' + (p.done ? ' shopped' : '') : '') + '" role="button" tabindex="0" data-proj="' + p.id + '"' + (on ? ' aria-current="page"' : '') + '>' + (p.kind === 'grocery' && A.icons ? '<b class="gl-i" style="--c:' + p.color + '">' + A.icons.basket + '</b>' : '<i style="--c:' + p.color + '"></i>') + '<span>' + esc(p.name) + '</span><em>' + (n || '') + '</em>' +
         '<span class="more" role="button" tabindex="0" data-pmore="' + p.id + '" aria-label="More for ' + esc(p.name) + '" aria-haspopup="true">⋯</span></div>';
     });
     h += '<button type="button" class="nav new" data-do="newproject"><i></i><span>New board</span></button>' +
+      (A.newList ? '<button type="button" class="nav new" data-do="newlist"><i></i><span>New grocery list</span></button>' : '') +
       '<div class="side-foot"><span class="grow"></span>' +
       '<button type="button" data-do="news" class="hide-s" aria-haspopup="true">' + (window.SLEEK_TASK_CHANGES ? 'v' + window.SLEEK_TASK_CHANGES[0].v : '') + '</button><button type="button" data-do="look" title="Light or dark" aria-label="Light or dark">◐</button></div>';
     if(!naming) side.innerHTML = h;
@@ -179,7 +181,7 @@
       var sw = document.createElement('div'); sw.className = 'sws'; T.COLORS.forEach(function(c){ var b = document.createElement('button'); b.type = 'button'; b.style.setProperty('--c', c); b.className = c === p.color ? 'on' : ''; b.setAttribute('aria-label', 'Colour ' + c); b.addEventListener('click', function(){ closePop(); T.setProject(p.id, { color: c }); }); sw.appendChild(b); }); m.appendChild(sw);
       var l = document.createElement('div'); l.className = 'line'; m.appendChild(l);
       var n = T.tasks(p.id).length;
-      danger(m, n ? 'Delete board and its ' + n + (n === 1 ? ' task' : ' tasks') : 'Delete board', function(){ T.removeProject(p.id); toast('Deleted “' + p.name + '”'); });
+      danger(m, T.isList(p) ? 'Delete this list' : n ? 'Delete board and its ' + n + (n === 1 ? ' task' : ' tasks') : 'Delete board', function(){ T.removeProject(p.id); toast('Deleted “' + p.name + '”'); });
     });
   }
   function news(btn){
@@ -195,7 +197,7 @@
     if((x = t.closest('[data-pmore]'))){ e.stopPropagation(); projectMenu(x, T.project(x.getAttribute('data-pmore'))); return; }
     if((x = t.closest('[data-go]'))){ go('today'); return; }
     if((x = t.closest('[data-proj]'))){ var id = x.getAttribute('data-proj'); go(lastView(id), id); return; }
-    if((x = t.closest('[data-do]'))){ var what = x.getAttribute('data-do'); if(what === 'newproject') nameProject(x, null); else if(what === 'look') look(); else if(what === 'news') news(x); }
+    if((x = t.closest('[data-do]'))){ var what = x.getAttribute('data-do'); if(what === 'newproject') nameProject(x, null); else if(what === 'newlist') A.newList(); else if(what === 'look') look(); else if(what === 'news') news(x); }
   });
   side.addEventListener('keydown', function(e){ if(e.key !== 'Enter' && e.key !== ' ') return; var x = e.target.closest('[data-pmore], [data-proj]'); if(!x || e.target.tagName === 'INPUT') return; e.preventDefault(); x.click(); });
   top.addEventListener('click', function(e){

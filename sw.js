@@ -3,7 +3,7 @@
    the network behind it, so a new version shows on the next visit. Change VERSION (and the list)
    when files are added or removed. */
 // 'sleek-' + Slides' version (data/changelog.js) + '-d' + Docs' (data/doc-changelog.js) + '-t' + Tasks' (data/task-changelog.js): a new version of any app renews the cache
-var VERSION = 'sleek-1.0.53-d1.0.10-t1.0.8';
+var VERSION = 'sleek-1.0.54-d1.0.11-t1.0.9';
 var FILES = [
   './', 'index.html', 'slides.html', 'deck.html', 'manifest.webmanifest', 'docs.html', 'doc.html', 'docs.webmanifest', 'core/short.js', 'core/motion.css', 'core/move.js',
   'styles.css', 'glow.css', 'app.js', 'glow-fx.js', 'theme-boot.js',
@@ -18,7 +18,7 @@ var FILES = [
   'doc/data.js', 'doc/blocks-data.js', 'doc/compare.js', 'doc/blocks-compare.js', 'doc/blocks-tasks.js', 'doc/tables.js', 'doc/word.js', 'doc/to-deck.js',
   'doc/doc.css', 'doc/doc-ui.css', 'doc/library.css', 'doc/reader.css',
   // Sleek Tasks
-  'tasks.html', 'tasks.webmanifest', 'core/task-store.js', 'data/task-changelog.js', 'task/app.js', 'task/fields.js', 'task/views.js', 'task/grid.js', 'task/cal.js', 'task/sheet.js', 'task/home.js', 'task/tasks.css',
+  'tasks.html', 'tasks.webmanifest', 'core/task-store.js', 'data/task-changelog.js', 'task/app.js', 'task/fields.js', 'task/views.js', 'task/grid.js', 'task/cal.js', 'task/sheet.js', 'task/grocery.js', 'task/home.js', 'task/tasks.css',
   'icons/icon.svg', 'icons/favicon.svg', 'icons/logo.svg',
   'icons/slides.svg', 'icons/slides-favicon.svg', 'icons/slides-favicon-32.png', 'icons/slides-192.png', 'icons/slides-512.png', 'icons/slides-maskable-512.png', 'icons/slides-touch.png', 'icons/docs.svg', 'icons/docs-favicon.svg', 'icons/docs-favicon-32.png', 'icons/docs-192.png', 'icons/docs-512.png', 'icons/docs-maskable-512.png', 'icons/docs-touch.png', 'icons/tasks.svg', 'icons/tasks-favicon.svg', 'icons/tasks-favicon-32.png', 'icons/tasks-192.png', 'icons/tasks-512.png', 'icons/tasks-maskable-512.png', 'icons/tasks-touch.png', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/maskable-512.png', 'icons/apple-touch-icon.png', 'icons/favicon-32.png',
   'assets/sample/backdrop.svg', 'assets/sample/card-rings.svg', 'assets/sample/card.svg', 'assets/sample/plan-sketch.svg', 'assets/sample/plan.svg',

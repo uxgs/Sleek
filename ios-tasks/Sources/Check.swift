@@ -107,6 +107,197 @@ final class Checker: ObservableObject {
     s.removeTask(second); s.removeBoard("webboard01")
     say(s.item(second) == nil && s.boards.map(\.id) == [home] && s.items.isEmpty, "a task can be deleted; deleting a board deletes its tasks")
 
+    // ---------- grocery lists ----------
+    let gl = s.addList("Weekly shop"), lb = s.board(gl)
+    say(lb?.isList == true && lb?.columns.map(\.name) == ["To get", "In the basket"] && (s.kept(board: gl)?["kind"] as? String) == "grocery" && s.plainBoards.map(\.id) == [home], "a grocery list is a board of its own kind, with To get and In the basket, as on the web")
+    let p1 = Store.parse("2 lemons"), p2 = Store.parse("lemons x3"), p3 = Store.parse("Lemons ×12"), p4 = Store.parse("eggs")
+    say(p1.name == "Lemons" && p1.qty == 2 && p2.qty == 3 && p3.qty == 12 && p4.qty == 1 && !p4.counted && p4.name == "Eggs", "“2 lemons”, “lemons x3” and “Lemons ×12” are read as the web reads them")
+    let guesses = ["Kitchen roll", "Bread rolls", "Oat milk", "Peanut butter", "Rice", "Steak", "Shampoo", "Foil", "Ice cream", "Frozen peas", "Chickpeas", "Juice", "Tomatoes", "Blueberries", "Birthday candles", "Sellotape"].map(Aisle.guess)
+    say(guesses == ["home", "bakery", "dairy", "pantry", "pantry", "meat", "home", "home", "frozen", "frozen", "pantry", "drinks", "produce", "produce", "home", "other"], "each thing goes to the aisle the web would put it in")
+    for x in ["2 lemons", "Avocados x3", "milk", "kitchen roll"] { s.addThing(x, to: gl) }
+    let lem = s.onList(gl, "lemons")
+    say(s.things(gl).map { "\($0.title)×\($0.qty)@\($0.aisle)" } == ["Lemons×2@produce", "Avocados×3@produce", "Milk×1@dairy", "Kitchen roll×1@home"] && s.addThing("   ", to: gl) == nil && s.addThing("Bread", to: home) == nil, "things land with their number and aisle, and only on a list")
+    s.addThing("milk", to: gl); s.tick(lem?.id ?? ""); s.addThing("lemons", to: gl)
+    say(s.onList(gl, "milk")?.qty == 2 && s.onList(gl, "lemons")?.done == false && s.onList(gl, "lemons")?.qty == 3 && s.things(gl).count == 4, "adding something already there makes it one more, and brings it back out of the basket")
+    s.removeTask(s.onList(gl, "milk")?.id ?? ""); s.removeTask(s.onList(gl, "kitchen roll")?.id ?? "")
+    say(s.offer(gl).map(\.name) == ["Milk", "Kitchen roll"] && s.suggest("2 mi", gl).map(\.name) == ["Milk"] && s.suggest("Milk", gl).isEmpty, "Add again offers your usuals not on the list, most added first; typing offers them too")
+    s.stopOffering("Kitchen roll"); s.setAisle(s.onList(gl, "avocados")?.id ?? "", "other")
+    say(s.offer(gl).map(\.name) == ["Milk"] && s.aisle(for: "avocados") == "other" && s.onList(gl, "Avocados")?.aisle == "other", "a usual can be told not to be offered; a thing moved to another aisle goes there from now on")
+    s.setQty(s.onList(gl, "avocados")?.id ?? "", 0)
+    say(s.onList(gl, "avocados")?.qty == 1 && s.found("lemons").isEmpty, "a number is never less than one; things on lists are not found as tasks")
+    s.setListDue(gl, Day.from(today: 2))
+    say(s.listsToday.isEmpty, "a list for another day is not on Today yet")
+    s.setListDue(gl, Day.from(today: -1))
+    say(s.listsToday.map(\.id) == [gl], "a list for today or a day gone by is on Today until shopped")
+    s.tick(s.onList(gl, "lemons")?.id ?? "")
+    let nx = s.finishList(gl, carry: true) ?? "", done = s.board(gl), nb = s.board(nx)
+    say(done?.shopped == true && done?.carried == 1 && done?.next == nx && nb?.isList == true && s.things(nx).map(\.title) == ["Avocados"] && s.things(gl).map(\.title) == ["Lemons"] && (nb?.due ?? "") > Day.today && s.listsToday.isEmpty, "Done shopping: it is shopped; what was not got starts the next list, a week on")
+    s.reopenList(gl)
+    say(s.board(gl)?.shopped == false && s.listsToday.map(\.id) == [gl], "a shopped list can be opened again")
+    s.flush()
+    let back = Store(file: file), keptU = back.keptUsual("milk")
+    say(back.board(gl)?.isList == true && back.board(nx)?.due == nb?.due && back.onList(nx, "avocados")?.aisle == "other" && (keptU?["c"] as? Int) == 2 && back.keptUsual("kitchen roll")?["off"] as? Bool == true, "lists, their things and your usuals are written to the file and read back the same")
+    let other = Store(file: dir.appendingPathComponent("lists.sleek")); _ = try? other.bring(s.text)
+    say(other.lists.count == 2 && other.offer(nx).map(\.name) == ["Lemons", "Milk"] && other.aisle(for: "Avocados") == "other", "a copy carries the lists and your usuals into another Sleek Tasks")
+    s.removeBoard(gl); s.removeBoard(nx)
+
+    // ---------- sharing with the other Sleek apps on this iPhone (the same cases as the web's mergeAll) ----------
+    func edit(_ text: String, _ f: (inout Rec) -> Void) -> String { var o = (try? JSONSerialization.jsonObject(with: Data(text.utf8))) as? Rec ?? [:]; f(&o); return (try? JSONSerialization.data(withJSONObject: o)).map { String(decoding: $0, as: UTF8.self) } ?? "" }
+    let theirs = dir.appendingPathComponent("browser"), them = Store(file: theirs.appendingPathComponent("Tasks.sleek")), mine = Store(file: dir.appendingPathComponent("tasks/Tasks.sleek"))
+    var told = 0; mine.tell = { told += 1 }; mine.peers = [theirs]
+    let tb = them.addBoard("Home"), keep = them.addTask("Keep me", board: tb) ?? "", change = them.addTask("Change me", board: tb) ?? "", del = them.addTask("Delete me there", board: tb) ?? "", later = them.addTask("Edited here later", board: tb) ?? ""
+    let tl = them.addList("Shop"); them.addThing("milk", to: tl); them.addThing("milk", to: tl); them.flush()
+    let first = mine.pull()
+    say(first > 0 && mine.board(tb)?.name == "Home" && mine.items.count == 5 && mine.keptUsual("milk")?["c"] as? Int == 2 && mine.pull() == 0, "it brings in another app's copy once, and again only when that copy changes")
+    let soon = Int(Date().timeIntervalSince1970 * 1000) + 5000
+    let next = edit(them.text) { o in
+      o["tasks"] = (o["tasks"] as? [Rec] ?? []).compactMap { t -> Rec? in var t = t; let id = t["id"] as? String; if id == del || id == later { return nil }; if id == change { t["title"] = "Changed there"; t["updated"] = soon }; return t }
+        + [["id": "zzzz1newone", "project": tb, "title": "Made there", "status": "todo", "order": 9, "created": soon, "updated": soon] as Rec]
+      o["gone"] = [del: soon, later: soon - 70_000] as Rec
+      o["usuals"] = (o["usuals"] as? [Rec] ?? []).map { u in var u = u; u["c"] = 7; u["a"] = "pantry"; u["at"] = soon; return u } + [["n": "Tea", "c": 3, "a": "", "off": false, "at": soon] as Rec]
+    }
+    mine.setTitle(later, "Edited here later, again")
+    let n1 = mine.merge(next), n2 = mine.merge(next)
+    say(mine.things(tb).map(\.title).sorted() == ["Changed there", "Edited here later, again", "Keep me", "Made there"] && mine.wasGone(del), "newer wins, deleted there goes, made there comes, changed here after the delete stays")
+    say(mine.keptUsual("milk")?["c"] as? Int == 7 && mine.keptUsual("milk")?["a"] as? String == "pantry" && mine.keptUsual("tea") != nil, "usuals combine: the higher count, the newer aisle, new names")
+    say(n1 > 0 && n2 == 0, "taking the same copy again changes nothing")
+    _ = mine.merge(edit(next) { o in o["projects"] = (o["projects"] as? [Rec] ?? []).map { p in var p = p; if p["id"] as? String == tb { p["name"] = "Older name"; p["updated"] = 1 }; return p } })
+    say(mine.board(tb)?.name == "Home", "an older board in the other copy is left alone")
+    _ = mine.merge(edit(next) { o in o["version"] = 2; o["tasks"] = [] as [Rec]; o["gone"] = [keep: soon + 9000] as Rec })
+    say(mine.item(keep) != nil, "a copy from a newer Sleek is left alone")
+    mine.flush(); let t1 = told; mine.flush()
+    say(t1 > 0 && told == t1, "writing its own copy tells the other apps, and only when something changed")
+    _ = mine.merge(edit(next) { o in o["gone"] = [tb: soon + 9000] as Rec })
+    say(mine.board(tb) == nil && mine.things(tb).isEmpty, "a board deleted there goes, with its tasks")
+    let tl2 = mine.lists.first?.id ?? ""; mine.removeTask(mine.things(tl2).first?.id ?? "")
+    let back2 = (try? JSONSerialization.jsonObject(with: Data(mine.text.utf8))) as? Rec
+    say((back2?["gone"] as? Rec)?.count ?? 0 > 2, "what is deleted here is noted in its own copy, for the others")
+
+    // ---------- what Siri says and adds (../ios-shared/Siri.swift), from the apps' copies in a shared folder of its own ----------
+    let root = dir.appendingPathComponent("shared"), st = Store(file: root.appendingPathComponent("tasks/Tasks.sleek")), sb = Store(file: root.appendingPathComponent("browser/Tasks.sleek"))
+    let work = st.addBoard("Work"); st.addTask("Send the invoice", board: work, due: Day.today); st.addTask("File taxes", board: work, due: Day.from(today: -1)); if let d = st.addTask("Already done", board: work, due: Day.today) { st.tick(d) }
+    let gro = st.addList("Groceries", due: Day.today); st.addThing("2 avocados", to: gro); let sour = st.addThing("sourdough", to: gro) ?? ""; if let m = st.addThing("milk", to: gro) { st.tick(m) }
+    st.addList("Next shop", due: Day.from(today: 6)); st.flush()
+    _ = try? sb.bring(st.text); sb.setTitle(sour, "Rye bread"); sb.flush()      // changed later in the browser
+    let heard = SiriTasks.groceries(SiriTasks.read(root))
+    say(heard.said.contains("Groceries list for today has 2 things") && heard.said.contains("2 avocados") && heard.said.contains("rye bread") && !heard.said.contains("milk") && heard.said.contains("1 is in the basket"), "Siri reads today's list from every app's copy, the newer change winning: “\(heard.said)”")
+    say(heard.card.groups.map(\.name) == ["Produce", "Bakery"], "and shows it by aisle, in the order you walk the shop")
+    let due = SiriTasks.dueToday(SiriTasks.read(root)).said
+    say(due.contains("One thing is due today: Send the invoice") && due.contains("late: File taxes") && !due.contains("Already done") && due.contains("Groceries list is for today"), "Siri says what is due today, what is late, and today's shopping: “\(due)”")
+    let e = SiriTasks.add("eggs", root: root), av = SiriTasks.add("3 avocados", root: root), mk = SiriTasks.add("milk", root: root)
+    say(e?.again == false && e?.list == "Groceries" && av?.again == true && av?.qty == 3 && mk?.again == true && mk?.qty == 2, "Siri adds to today's list as Add does: new things, a number said, one more of what is there")
+    st.peers = [root.appendingPathComponent("siri")]; st.pull()
+    let eggs = st.onList(gro, "eggs")
+    say(eggs?.aisle == "dairy" && st.onList(gro, "avocados")?.qty == 3 && st.onList(gro, "milk")?.done == false && st.keptUsual("eggs") != nil, "the app brings in what Siri added from Siri's own place (milk back from the basket, eggs in Dairy)")
+    st.removeTask(eggs?.id ?? ""); st.flush()
+    say(!SiriTasks.groceries(SiriTasks.read(root)).said.contains("eggs"), "something deleted in the app after Siri added it stays deleted")
+    let none = dir.appendingPathComponent("empty"), said0 = SiriTasks.groceries(SiriTasks.read(none)).said, made = SiriTasks.add("bananas", root: none), after = SiriTasks.groceries(SiriTasks.read(none)).said
+    say(said0.contains("no grocery list") && made?.list == "Groceries" && after.contains("bananas"), "with no list, Siri says so, and adding makes one")
+
+    // ---------- the widgets (../ios-shared/Widgets.swift), from the same shared folder ----------
+    let rye = st.onList(gro, "rye bread")?.id ?? sour
+    let wd = WData.load(root: root)
+    say(wd.list?.name == "Groceries" && wd.list?.left.map(\.title).contains("Rye bread") == true && wd.list?.got == 0 && wd.today.map(\.title) == ["Send the invoice"] && wd.late.map(\.title) == ["File taxes"], "the widgets read today's list, what is due and what is late from every app's copy")
+    say(wd.board?.name == "Work" && wd.board?.columns.map(\.name) == ["To do", "Doing", "Done"] && wd.board?.done == 1 && wd.board?.total == 3, "the Board widget shows a board's columns and how far along it is")
+    let ticked = SiriTasks.tick(rye, root: root), wd2 = WData.load(root: root)
+    say(ticked && wd2.list?.left.contains { $0.id == rye } == false && wd2.list?.got == 1, "a tick on a widget takes the thing off the list")
+    st.pull(); say(st.item(rye)?.done == true, "and Sleek Tasks brings the tick in from Siri's place")
+    let wk = st.addTask("Water the plants", board: work, due: Day.today) ?? ""; st.setRepeat(wk, "weekly"); st.flush()
+    SiriTasks.tick(wk, root: root); st.pull()
+    say(st.item(wk)?.done == false && st.item(wk)?.due == Repeats.next(Day.today, "weekly") && ["daily", "weekdays", "monthly", "yearly"].allSatisfy { WText.next("2026-01-31", $0) == Repeats.next("2026-01-31", $0) }, "ticking a repeating task on a widget moves it to its next day, as the app does")
+    let dk = root.appendingPathComponent("docs"), br = root.appendingPathComponent("browser")
+    try? FileManager.default.createDirectory(at: dk.appendingPathComponent("pages"), withIntermediateDirectories: true)
+    try? ##"{"pages":[{"id":"page000001","title":"Old name","at":100,"peek":"x"},{"id":"page000002","title":"Gone page","at":100,"peek":""}],"decks":[{"id":"deck000001","title":"Pitch","at":50,"slides":7,"kicker":"Q1","heading":"Hello","mode":"light","accent":"#FF9F0A"}]}"##.write(to: br.appendingPathComponent("glance.json"), atomically: true, encoding: .utf8)
+    try? ##"{"pages":[{"id":"page000001","title":"New name","at":200,"peek":"Opening words"}]}"##.write(to: dk.appendingPathComponent("glance.json"), atomically: true, encoding: .utf8)
+    try? ##"{"page:page000002":150}"##.write(to: dk.appendingPathComponent("gone.json"), atomically: true, encoding: .utf8)
+    try? ##"{"format":"sleek","version":2,"kind":"doc","id":"page000001","title":"New name","updated":200,"seed":{"theme":{"accent":"#7C5CFF"},"doc":{"type":"doc","content":[{"type":"cover","content":[{"type":"paragraph","content":[{"type":"text","text":"Trip"}]},{"type":"heading","content":[{"type":"text","text":"New name"}]},{"type":"paragraph"}]},{"type":"paragraph","content":[{"type":"text","text":"Flights land Friday."}]},{"type":"heading","content":[{"type":"text","text":"Packing"}]},{"type":"task_list","content":[{"type":"task_item","attrs":{"done":true},"content":[{"type":"paragraph","content":[{"type":"text","text":"Passport"}]}]},{"type":"task_item","attrs":{"done":false},"content":[{"type":"paragraph","content":[{"type":"text","text":"Charger"}]}]}]}]}}}"##.write(to: dk.appendingPathComponent("pages/page000001.sleek"), atomically: true, encoding: .utf8)
+    let wg = WData.glance(root), pb = WData.body("page000001", root)
+    say(wg.pages.map(\.title) == ["New name"] && wg.decks.first?.heading == "Hello" && wg.decks.first?.slides == 7, "the Docs and Slides widgets list every page and deck, the newest word winning and what was deleted left out")
+    say(pb?.kicker == "Trip" && pb?.opening == "Flights land Friday." && pb?.label == "Packing" && pb?.checks.map(\.0) == ["Passport", "Charger"] && pb?.checks.map(\.1) == [true, false], "the Page widget reads a page's cover line, its opening and its checklist")
+    say(WAislesView.groups(WData.sample.list!.left).reduce(0) { $0 + 1 + $1.1.count } <= 11, "the large grocery widget shows only as many aisles and things as fit")
+
+    // ---------- goals (../ios-shared/Goals.swift), in the app, on the widgets, and between the apps ----------
+    let nov15 = Calendar.current.date(from: DateComponents(year: 2026, month: 11, day: 15))!
+    func P(_ t: String) -> GoalParse.Draft { GoalParse.parse(t, today: nov15) }
+    let g1 = P("Run 30 days by New Year"), g2 = P("Accomplish these 20 things this year"), g3 = P("Read 12 books this year"), g4 = P("Save $2,000 by March"), g5 = P("Meditate every day for 6 weeks"), g6 = P("Go to the gym 3 times a week until Jan 31"), g7 = P("Visit five new countries by summer")
+    say(g1.kind == .days && g1.target == 30 && g1.due == "2026-12-31" && g1.title == "Run 30 days", "“Run 30 days by New Year”: 30 days to mark by Dec 31 (\(g1.title))")
+    say(g2.kind == .things && g2.target == 20 && g2.due == "2026-12-31" && g3.kind == .count && g3.target == 12 && g3.unit == ["book", "books"], "“20 things this year” is a list to tick; “12 books” is a number to count")
+    say(g4.kind == .count && g4.target == 2000 && g4.unit[0] == "$" && g4.due == "2027-03-31" && g5.kind == .days && g5.target == 42 && g5.due == "2026-12-26", "“Save $2,000 by March” counts dollars to Mar 31; “every day for 6 weeks” is 42 days")
+    say(g6.kind == .days && g6.due == "2027-01-31" && g6.target == 33 && g7.kind == .things && g7.target == 5 && g7.due == "2027-06-21", "“3 times a week until Jan 31” is 33 days; “five new countries by summer” is 5 things by Jun 21")
+    let gs = Store(file: dir.appendingPathComponent("goals/Tasks.sleek"))
+    let gd = gs.addGoal(GoalParse.Draft(title: "Practise Spanish", kind: .days, target: 3, due: GDay.add(GDay.today, 10), unit: ["time", "times"]))
+    var reachedNow = gs.edit(gd) { GoalEdit.mark(&$0) }
+    gs.edit(gd) { GoalEdit.mark(&$0, GDay.add(GDay.today, -1)) }; gs.edit(gd) { GoalEdit.mark(&$0, GDay.add(GDay.today, 3)) }
+    say(gs.goal(gd)?.marks.count == 2 && gs.goal(gd)?.streak == 2 && gs.goal(gd)?.markedToday == true && !reachedNow, "a day is marked, a day gone by too, a day to come never; two in a row is a streak of 2")
+    reachedNow = gs.edit(gd) { GoalEdit.mark(&$0, GDay.add(GDay.today, -2)) }
+    say(reachedNow && gs.goal(gd)?.reached == true && (gs.goal(gd)?.doneAt ?? 0) > 0 && gs.goal(gd)?.pace.text == "Reached", "the third day reaches it, and says so once")
+    gs.edit(gd) { GoalEdit.mark(&$0) }
+    say(gs.goal(gd)?.reached == false && gs.goal(gd)?.doneAt == 0 && gs.goal(gd)?.markedToday == false, "unmarking a day takes it back below its target")
+    let gt = gs.addGoal(GoalParse.Draft(title: "Things", kind: .things, target: 3, due: GDay.add(GDay.today, 30), unit: ["time", "times"]))
+    let firstThing = gs.goal(gt)?.things.first?.id ?? ""
+    gs.edit(gt) { GoalEdit.nameThing(&$0, firstThing, "Visit Lisbon") }; gs.edit(gt) { GoalEdit.tick(&$0) }; var extra = ""; gs.edit(gt) { extra = GoalEdit.addThing(&$0, "Learn to juggle") }
+    say(gs.goal(gt)?.things.count == 4 && gs.goal(gt)?.things.first?.done == GDay.today && gs.goal(gt)?.nextThing?.id != firstThing && gs.goal(gt)?.things.last?.id == extra && gs.goal(gt)?.sub.hasPrefix("1 of 4 things") == true, "a things goal: each one named, ticked with its day, more added (\(gs.goal(gt)?.sub ?? ""))")
+    let gc = gs.addGoal(GoalParse.Draft(title: "Save", kind: .count, target: 2000, due: GDay.add(GDay.today, 60), unit: ["$", "$"]))
+    gs.edit(gc) { GoalEdit.add(&$0, 250, note: "Birthday money") }; gs.edit(gc) { GoalEdit.add(&$0, 100) }; gs.edit(gc) { GoalEdit.undoToday(&$0) }
+    say(gs.goal(gc)?.done == 250 && gs.goal(gc)?.num(1500) == "$1,500" && gs.goal(gc)?.step == 100 && gs.goal(gc)?.log.first?.note == "Birthday money" && gs.goal(gc)?.pace.text.hasSuffix("ahead of pace") == true, "a number goal adds up, takes back today's last, and says money as money (\(gs.goal(gc)?.pace.text ?? ""))")
+    let behind = Goal(["id": "behind01", "kind": "days", "title": "Behind", "start": GDay.add(GDay.today, -20), "due": GDay.add(GDay.today, 9), "target": 30, "marks": [GDay.add(GDay.today, -1)]])!
+    let slow = Goal(["id": "slow0001", "kind": "count", "title": "Books", "start": GDay.add(GDay.today, -100), "due": GDay.add(GDay.today, 100), "target": 12, "unit": ["book", "books"], "log": [["id": "a", "d": GDay.today, "a": 6]]])!
+    say(behind.pace.behind && behind.pace.text == "20 behind" && behind.pace.hint == "Not enough days left for this target" && slow.pace.text == "On pace" && slow.pace.hint == "6 books to go", "ahead, on pace or behind, with what it takes (\(behind.pace.text): \(behind.pace.hint))")
+    gs.flush()
+    let gback = Store(file: gs.file), onDisk2 = (try? JSONSerialization.jsonObject(with: Data(contentsOf: gs.file))) as? Rec
+    say(gback.goals == gs.goals && (onDisk2?["goals"] as? [Rec])?.count == 3 && gback.goals.first?.reached == false, "goals are written to the same Tasks file and read back the same")
+    let gfresh = Store(file: dir.appendingPathComponent("goals2.sleek")); _ = try? gfresh.bring(gs.text)
+    say(gfresh.goals.count == 3 && same(gfresh.kept(goal: gc), gs.kept(goal: gc)), "a copy of everything carries your goals")
+    // between the apps: a widget writes to Siri's place, the app brings it in; deleted stays deleted
+    let groot = dir.appendingPathComponent("goalshare"), gapp = Store(file: groot.appendingPathComponent("tasks/Tasks.sleek")); gapp.peers = [groot.appendingPathComponent("siri")]
+    let wgoal = gapp.addGoal(GoalParse.Draft(title: "Run 5k", kind: .days, target: 30, due: GDay.add(GDay.today, 40), unit: ["time", "times"])); usleep(3000); let wc = gapp.addGoal(P("Read 12 books this year")); usleep(3000); let wt = gapp.addGoal(P("10 places this year")); gapp.flush()
+    let wdat = WData.load(goal: wc, root: groot)
+    say(wdat.goals.count == 3 && wdat.goal?.id == wc && WData.load(root: groot).goal?.id == wt, "the Goal widget shows the goal chosen for it, else the newest")
+    SiriTasks.goalStep(wgoal, "mark", root: groot); SiriTasks.goalStep(wc, "add", root: groot); SiriTasks.goalStep(wt, "tick", root: groot)
+    let after2 = WData.load(root: groot)
+    say(after2.goals.first { $0.id == wgoal }?.markedToday == true && after2.goals.first { $0.id == wc }?.done == 1 && after2.goals.first { $0.id == wt }?.done == 1, "a tap on a widget marks today, adds one, or ticks the next thing")
+    gapp.pull()
+    say(gapp.goal(wgoal)?.markedToday == true && gapp.goal(wc)?.done == 1 && gapp.goal(wt)?.done == 1, "and Sleek Tasks brings those in from Siri's place")
+    gapp.edit(wgoal) { GoalEdit.mark(&$0) }; gapp.removeGoal(wt); gapp.flush()
+    let after3 = WData.load(root: groot)
+    say(after3.goals.first { $0.id == wgoal }?.markedToday == false && !after3.goals.contains { $0.id == wt }, "what the app changes after wins, and a goal deleted in the app stays deleted on the widgets")
+    say(WData.sampleGoals.count == 4 && WData.sampleGoals.allSatisfy { !$0.reached && $0.id.hasPrefix("sample") }, "the widget gallery shows sample goals of each kind, which cannot be changed")
+
+    // every widget drawn, light and dark, with the sample and with what is in this Simulator, for a look (Documents/widgets-*.png)
+    for (name, data) in [("sample", WData.sample), ("real", WData.load())] {
+      for dark in [false, true] {
+        func box<V: View>(_ w: CGFloat, _ h: CGFloat, pad: Bool = true, _ v: V) -> some View { v.tint(.primary).padding(pad ? 16 : 0).frame(width: w, height: h).background(WC.bg).clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous)) }
+        let sheet = VStack(alignment: .leading, spacing: 18) {
+          HStack(alignment: .top, spacing: 18) { box(170, 170, WSearchView(family: .systemSmall)); box(364, 170, WSitesView(d: data)); box(170, 170, WPrivateView(family: .systemSmall).environment(\.colorScheme, .dark)).environment(\.colorScheme, .dark); box(364, 382, WDayView(d: data)) }
+          HStack(alignment: .top, spacing: 18) { box(170, 170, WGroceriesView(d: data, family: .systemSmall)); box(364, 170, WGroceriesView(d: data, family: .systemMedium)); box(364, 382, WAislesView(d: data)); box(170, 170, WDueView(d: data, family: .systemSmall)) }
+          HStack(alignment: .top, spacing: 18) { box(364, 170, WDueView(d: data, family: .systemMedium)); box(364, 382, WBoardView(d: data)); box(170, 170, WRecentPageView(d: data, family: .systemSmall)); box(364, 170, WPagesView(d: data)) }
+          HStack(alignment: .top, spacing: 18) { box(170, 170, WNewPageView(family: .systemSmall)); box(364, 382, pad: false, WPageView(d: data)); box(170, 170, pad: false, WRecentDeckView(d: data, family: .systemSmall)); box(364, 170, WDeckView(d: data)); box(364, 382, WDecksView(d: data)) }
+          HStack(alignment: .top, spacing: 18) {
+            ForEach(0..<1, id: \.self) { _ in
+              WGroceriesView(d: data, family: .accessoryCircular).frame(width: 72, height: 72); WDueView(d: data, family: .accessoryCircular).frame(width: 72, height: 72); WSearchView(family: .accessoryCircular).frame(width: 72, height: 72); WPrivateView(family: .accessoryCircular).frame(width: 72, height: 72); WNewPageView(family: .accessoryCircular).frame(width: 72, height: 72)
+              WDueView(d: data, family: .accessoryRectangular).frame(width: 166, height: 72); WRecentPageView(d: data, family: .accessoryRectangular).frame(width: 166, height: 72); WRecentDeckView(d: data, family: .accessoryRectangular).frame(width: 166, height: 72); WDueView(d: data, family: .accessoryInline).frame(width: 240, height: 30)
+            }
+          }.foregroundStyle(.white).padding(12).background(Color(white: 0.2), in: RoundedRectangle(cornerRadius: 22))
+          // the goal widgets: one of each kind small, the days and number ones medium and large, the things one large, all goals, and the Lock Screen
+          HStack(alignment: .top, spacing: 18) {
+            ForEach(data.goals.prefix(3)) { g in var one = data; let _ = (one.goal = g); box(170, 170, WGoalView(d: one, family: .systemSmall)) }
+            box(364, 170, WGoalView(d: data, family: .systemMedium)); box(364, 170, WGoalsView(d: data))
+          }
+          HStack(alignment: .top, spacing: 18) {
+            ForEach(data.goals.prefix(3)) { g in var one = data; let _ = (one.goal = g); box(364, 382, WGoalView(d: one, family: .systemLarge)) }
+            ForEach(data.goals.dropFirst(2).prefix(1)) { g in var one = data; let _ = (one.goal = g); box(364, 170, WGoalView(d: one, family: .systemMedium)) }
+          }
+          HStack(alignment: .top, spacing: 18) {
+            ForEach(0..<1, id: \.self) { _ in
+              WGoalView(d: data, family: .accessoryCircular).frame(width: 72, height: 72); WGoalView(d: data, family: .accessoryRectangular).frame(width: 166, height: 72); WGoalView(d: data, family: .accessoryInline).frame(width: 260, height: 30)
+            }
+          }.foregroundStyle(.white).padding(12).background(Color(white: 0.2), in: RoundedRectangle(cornerRadius: 22))
+        }.padding(30).background(dark ? Color(white: 0.04) : wHex("#DCD8EA")).environment(\.colorScheme, dark ? .dark : .light)
+        let r = ImageRenderer(content: sheet); r.scale = 1.5
+        if let png = r.uiImage?.pngData(), let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first { try? png.write(to: docs.appendingPathComponent("widgets-\(name)-\(dark ? "dark" : "light").png")) }
+      }
+    }
+
     // ---------- a real file, saved by Sleek Tasks on the web just now (./make.sh is not given one; see the README) ----------
     if let from = Args.arg("--web"), let text = try? String(contentsOfFile: from, encoding: .utf8) {
       let x = Store(file: dir.appendingPathComponent("cross.sleek")), got = try? x.bring(text), before = ((try? JSONSerialization.jsonObject(with: Data(text.utf8))) as? Rec)?["tasks"] as? [Rec] ?? []

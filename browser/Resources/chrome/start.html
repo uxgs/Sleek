@@ -55,13 +55,96 @@
   .ck:hover { border-color: #12A36A; transform: scale(1.1); } .ck.on { background: #12A36A; border-color: #12A36A; }
   .ck.on::after { content: ""; position: absolute; left: 5px; top: 2px; width: 4px; height: 8px; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg); }
   .none { margin: 6px; color: var(--muted); font-size: 14px; }
+  /* a grocery list on Today: its name, how much is left, the first few things to get (tick them here), and a way in */
+  .glc { --c: #12A36A; position: relative; margin: 2px 0 8px; padding: 10px 10px 8px; border-radius: 13px; background: var(--bg); border: 1px solid color-mix(in srgb, var(--c) 34%, var(--line)); transition: border-color .2s ease, box-shadow .3s ease, transform .25s cubic-bezier(.2,.7,.2,1); }
+  .glc:hover, .glc:focus-within { border-color: var(--c); box-shadow: 0 14px 30px -18px var(--c); }
+  .glc header { display: flex; align-items: center; gap: 10px; margin: 0 0 6px; }
+  .glc header i { flex: none; width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; background: color-mix(in srgb, var(--c) 16%, transparent); color: var(--c); }
+  .glc header i svg { width: 17px; height: 17px; }
+  .glc header span { min-width: 0; flex: 1; display: flex; flex-direction: column; } .glc header b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .glc header small { color: var(--muted); font-size: 12px; } .glc header small.late { color: #D43C2F; }
+  .glc a.go { flex: none; font-size: 13px; font-weight: 600; color: var(--c); text-decoration: none; padding: 5px 9px; border-radius: 8px; transition: background .15s ease; } .glc a.go:hover, .glc a.go:focus-visible { background: color-mix(in srgb, var(--c) 12%, transparent); outline: none; }
+  .glc .bar { height: 4px; border-radius: 4px; background: color-mix(in srgb, var(--fg) 8%, transparent); overflow: hidden; margin: 0 2px 6px; } .glc .bar b { display: block; height: 100%; border-radius: 4px; background: var(--c); transition: width .5s cubic-bezier(.2,.7,.2,1); }
+  .glc .trow { padding: 4px 6px; align-items: center; } .glc .ck { margin-top: 0; } .glc .trow .tx { flex-direction: row; align-items: baseline; gap: 8px; flex: 1; } .glc .trow .tx small { margin-left: auto; white-space: nowrap; }
+  .glc .trow q { quotes: none; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+  .glc .more { display: block; margin: 2px 6px 0; font-size: 12px; color: var(--muted); }
   .recent { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 0 6px 6px; }
   a.rc { display: flex; flex-direction: column; gap: 8px; padding: 10px; border-radius: 12px; border: 1px solid var(--line); text-decoration: none; color: inherit; min-width: 0; transition: transform .25s cubic-bezier(.2,.7,.2,1), border-color .2s ease, box-shadow .3s ease; }
   a.rc:hover, a.rc:focus-visible { border-color: var(--c); transform: translateY(-2px); outline: none; box-shadow: 0 14px 30px -16px var(--c); }
-  a.rc i { height: 50px; border-radius: 8px; background: linear-gradient(135deg, color-mix(in srgb, var(--c) 85%, #000), color-mix(in srgb, var(--c) 55%, #fff)); display: grid; place-items: center; } a.rc i img { width: 20px; height: auto; filter: brightness(0) invert(1); opacity: .9; }
-  a.rc b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } a.rc small { color: var(--muted); font-size: 12px; }
-  @media (max-width: 680px) { .cols2 { grid-template-columns: minmax(0, 1fr); } }
-  @media (max-width: 520px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  /* the preview: a little slide or a little sheet, 16:9 */
+  a.rc .pv { position: relative; display: block; aspect-ratio: 16 / 9; border-radius: 9px; overflow: hidden; font-style: normal; box-shadow: 0 0 0 1px rgba(127,127,140,.18), 0 10px 22px -14px var(--c); transition: box-shadow .3s ease; }
+  a.rc:hover .pv, a.rc:focus-visible .pv { box-shadow: 0 0 0 1px color-mix(in srgb, var(--c) 45%, transparent), 0 14px 30px -12px var(--c); }
+  a.rc .pv.pic img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  a.rc .pv.slide { --bg: #0D0B14; --ink: #fff; background: radial-gradient(70% 90% at 95% 0%, color-mix(in srgb, var(--a) 75%, transparent), transparent 70%), radial-gradient(60% 80% at 0% 110%, color-mix(in srgb, var(--a) 32%, transparent), transparent 70%), var(--bg); color: var(--ink); }
+  a.rc .pv.slide.light { --bg: #F6F4FB; --ink: #15131C; background: radial-gradient(70% 90% at 95% 0%, color-mix(in srgb, var(--a) 35%, transparent), transparent 70%), radial-gradient(60% 80% at 0% 110%, color-mix(in srgb, var(--a) 16%, transparent), transparent 70%), var(--bg); }
+  a.rc .pv.slide span { position: absolute; left: 10px; right: 10px; bottom: 9px; display: flex; flex-direction: column; gap: 2px; }
+  a.rc .pv.slide small { font-size: 6.5px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; opacity: .6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: inherit; }
+  a.rc .pv.slide b { font-size: 12px; font-weight: 700; line-height: 1.15; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; white-space: normal; }
+  a.rc .pv.slide em { position: absolute; top: 7px; right: 7px; font: 700 8px/1 inherit; font-style: normal; padding: 3px 6px; border-radius: 99px; background: color-mix(in srgb, var(--ink) 12%, transparent); opacity: .8; }
+  a.rc .pv.sheet { background: #FBFBFD; color: #16161A; padding: 9px 11px; display: flex; flex-direction: column; gap: 4px; }
+  a.rc .pv.sheet::after { content: ""; position: absolute; inset: 45% 0 0; background: linear-gradient(transparent, #FBFBFD); }
+  a.rc .pv.sheet s, a.rc .pv.sheet b, a.rc .pv.sheet u { flex: none; } a.rc .pv.sheet span { min-height: 0; overflow: hidden; }
+  a.rc .pv.sheet s { width: 14px; height: 2.5px; border-radius: 2px; background: var(--c); }
+  a.rc .pv.sheet b { font-size: 9.5px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  a.rc .pv.sheet span { font-size: 6.5px; line-height: 1.45; color: #4A4A55; }
+  a.rc .pv.sheet u { display: block; height: 3px; border-radius: 2px; background: rgba(0,0,0,.08); } a.rc .pv.sheet u:last-child { width: 55%; }
+  a.rc > b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: flex; align-items: center; gap: 6px; } a.rc > b img { width: 13px; height: 13px; flex: none; } a.rc small { color: var(--muted); font-size: 12px; }
+  /* where you go most (and Sleek's apps), as glass tiles: Appearance › Site Tiles chooses clear glass, colour glass or
+     icons; wide or square; a grid or a row that scrolls sideways. Each tile takes its colours from the site's own icon. */
+  .tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+  .tiles.sq { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; }
+  .tiles.row { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; margin: -14px -24px -22px; padding: 14px 24px 22px; scroll-padding: 0 24px; }
+  .tiles.row::-webkit-scrollbar { display: none; }
+  .tiles.row > .gw { flex: none; width: 232px; scroll-snap-align: start; } .tiles.row.sq > .gw { width: 132px; }
+  .gw { position: relative; min-width: 0; animation: tilein .5s cubic-bezier(.2,.8,.2,1) backwards; animation-delay: calc(var(--i, 0) * 45ms); }
+  .calm .gw { animation: none; }
+  @keyframes tilein { from { opacity: 0; transform: translateY(12px) scale(.96); } }
+  a.gt { --c1: 244,244,247; --c2: 214,217,226; --glow: 150,150,165; --ink: #1D1D1F; position: relative; display: block; aspect-ratio: 16 / 9; border-radius: 18px; overflow: hidden; isolation: isolate; text-decoration: none; color: var(--fg);
+    box-shadow: 0 10px 24px -14px rgba(var(--glow), .55), inset 0 0 0 .5px color-mix(in srgb, var(--fg) 9%, transparent);
+    transition: transform .35s cubic-bezier(.2,.7,.2,1), box-shadow .35s ease; outline: none; }
+  .sq a.gt { aspect-ratio: 1; border-radius: 16px; }
+  a.gt::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 3;      /* a little light across the top, and a fine bright edge */
+    background: linear-gradient(135deg, rgba(255,255,255,.32), rgba(255,255,255,.06) 32%, transparent 50%);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.55), inset 0 0 0 .8px rgba(255,255,255,.18); }
+  a.gt:hover, a.gt:focus-visible { transform: translateY(-3px) scale(1.025); box-shadow: 0 22px 40px -16px rgba(var(--glow), .8), inset 0 0 0 .5px color-mix(in srgb, var(--fg) 9%, transparent); }
+  a.gt:focus-visible { box-shadow: 0 0 0 2px var(--accent), 0 22px 40px -16px rgba(var(--glow), .8); }
+  .gt .lg { position: relative; flex: none; width: 44px; height: 44px; border-radius: 26%; overflow: hidden; background: #fff; display: grid; place-items: center; font-weight: 700; font-size: 18px; color: #1D1D1F; box-shadow: 0 6px 14px -6px rgba(var(--c2), .9), inset 0 0 0 .5px rgba(0,0,0,.08); }
+  .gt .lg img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .gt .lg.app { background: none; box-shadow: none; } .gt .lg.app img { position: static; width: 100%; height: auto; }
+  .gt .nm { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+  .gt .hs { font-size: 11px; font-weight: 500; opacity: .72; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+  .sq .gt .lg { width: 38px; height: 38px; } .sq .gt .nm { font-size: 12px; } .sq .gt .hs { display: none; }
+  .row:not(.sq) .gt .lg { width: 52px; height: 52px; } .row:not(.sq) .gt .nm { font-size: 14px; }
+  /* clear glass: frosted, the site's colour glowing through from a corner, its icon in the middle */
+  .clear a.gt { background: radial-gradient(120% 120% at 95% 0%, rgba(var(--c1), .6), transparent 70%), radial-gradient(100% 100% at 5% 105%, rgba(var(--c2), .32), transparent 70%), color-mix(in srgb, var(--card) 80%, var(--bg)); }
+  .clear .gt .in { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 10px; z-index: 2; }
+  .clear .gt .nm { opacity: .85; } .clear .gt .hs { display: none; }
+  /* colour glass: filled with the site's colour, its icon blurred into it, the crisp icon, name and address on top */
+  .colour a.gt { background: linear-gradient(135deg, rgb(var(--c1)), rgb(var(--c2))); color: var(--ink); box-shadow: 0 12px 28px -14px rgba(var(--glow), .75); }
+  .colour .gt .haze { position: absolute; width: 150%; aspect-ratio: 1; right: -75%; top: -85%; z-index: 1; filter: blur(26px) saturate(1.5); opacity: .75; pointer-events: none; }
+  .colour .gt .haze img { width: 100%; height: 100%; object-fit: cover; }
+  .colour .gt .in { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: flex-start; padding: 12px; z-index: 2; } .colour .gt .in .nm { margin-top: auto; }
+  .colour .gt .lg { width: 34px; height: 34px; box-shadow: 0 4px 10px -4px rgba(0,0,0,.35); } .colour.sq .gt .lg { width: 30px; height: 30px; } .colour.row:not(.sq) .gt .lg { width: 40px; height: 40px; }
+  .sq.colour .gt .in { padding: 10px; }
+  /* taking a site off: a small button on the tile, under the pointer; the tile shrinks away and the rest move up */
+  .rm { position: absolute; top: -7px; right: -7px; z-index: 5; width: 22px; height: 22px; border-radius: 50%; border: 0; padding: 0; cursor: pointer; display: grid; place-items: center;
+    background: color-mix(in srgb, var(--bg) 82%, transparent); color: var(--fg); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+    box-shadow: 0 2px 8px rgba(0,0,0,.18), inset 0 0 0 .5px color-mix(in srgb, var(--fg) 18%, transparent); opacity: 0; transform: scale(.7); transition: opacity .18s ease, transform .22s cubic-bezier(.2,.8,.2,1.4), background .15s ease; }
+  .rm svg { width: 10px; height: 10px; }
+  .gw:hover .rm, .tile:hover .rm, .rm:focus-visible { opacity: 1; transform: scale(1); } .rm:hover { background: #D43C2F; color: #fff; } .rm:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .tile .rm { top: -6px; right: -6px; }
+  .gw.going, .tile.going { pointer-events: none; animation: goaway .26s cubic-bezier(.4,0,.6,1) forwards; }
+  @keyframes goaway { to { opacity: 0; transform: scale(.82); filter: blur(4px); } }
+  .tiles.row .gw.going { animation: goaway .26s cubic-bezier(.4,0,.6,1) forwards, shut .3s .2s cubic-bezier(.4,0,.2,1) forwards; }
+  @keyframes shut { to { width: 0; margin-right: -14px; } }
+  /* the note after taking a site off, with a way back */
+  .note { position: fixed; left: 50%; bottom: 28px; z-index: 20; display: flex; align-items: center; gap: 14px; padding: 10px 10px 10px 16px; border-radius: 14px; font-size: 14px;
+    background: color-mix(in srgb, var(--card) 88%, transparent); -webkit-backdrop-filter: blur(18px) saturate(1.6); backdrop-filter: blur(18px) saturate(1.6); box-shadow: 0 14px 40px -12px rgba(0,0,0,.35), inset 0 0 0 .5px color-mix(in srgb, var(--fg) 14%, transparent);
+    transform: translate(-50%, 16px); opacity: 0; pointer-events: none; transition: transform .35s cubic-bezier(.2,.8,.2,1), opacity .25s ease; }
+  .note.on { transform: translate(-50%, 0); opacity: 1; pointer-events: auto; }
+  .note button { border: 0; background: none; color: var(--accent); font: inherit; font-weight: 600; padding: 4px 8px; border-radius: 8px; cursor: pointer; } .note button:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+  @media (max-width: 680px) { .cols2 { grid-template-columns: minmax(0, 1fr); } .tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); } .tiles.sq { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+  @media (max-width: 520px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } .tiles.sq { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  @media (prefers-reduced-motion: reduce) { .gw { animation: none; } a.gt { transition: box-shadow .2s ease; transform: none !important; } .gw.going, .tile.going { animation: fadeout .2s forwards; } @keyframes fadeout { to { opacity: 0; } } }
   /* motion: the page arrives piece by piece; with the cursor in the box, the box comes forward and the rest steps back */
   @keyframes arrive { from { opacity: 0; transform: translateY(14px); } }
   main > * { animation: arrive .5s cubic-bezier(.2,.8,.2,1) backwards; } .still main > * { animation: none; }
@@ -85,7 +168,7 @@
       <div class="box"><h2>Pick up where you left off</h2><div class="recent" id="recent"></div></div>
     </div>
   </section>
-  <section class="apps"><h2>Sleek</h2><div class="grid">
+  <section class="apps" id="apps"><h2>Sleek</h2><div class="grid" id="apps-g">
     <div class="tile"><b class="bloom" style="background:linear-gradient(90deg,#7C5CFF,#A77BFF,#E58CFF)"></b><a class="site" href="sleek://app/slides.html"><i><img src="sleek://app/icons/slides.svg" alt=""></i><span>Slides</span></a></div>
     <div class="tile"><b class="bloom" style="background:linear-gradient(90deg,#3D8BFF,#5FA8FF,#7EDBFF)"></b><a class="site" href="sleek://app/docs.html"><i><img src="sleek://app/icons/docs.svg" alt=""></i><span>Docs</span></a></div>
     <div class="tile"><b class="bloom" style="background:linear-gradient(90deg,#0FA968,#2CC88E,#7FE3B5)"></b><a class="site" href="sleek://app/tasks.html"><i><img src="sleek://app/icons/tasks.svg" alt=""></i><span>Tasks</span></a></div>
@@ -93,6 +176,7 @@
   <section id="marks" hidden><h2>Bookmarks</h2><div class="grid" id="marks-g"></div></section>
   <section id="top" hidden><h2>Where you go most</h2><div class="grid" id="top-g"></div></section>
 </main>
+<div class="note" id="note" role="status" aria-live="polite"><span id="note-t"></span><button type="button" id="note-undo">Undo</button></div>
 <script>
 (function(){
   function post(m){ try { window.webkit.messageHandlers.sleekPage.postMessage(m); } catch(e){} }
@@ -110,24 +194,118 @@
     return n === 0 ? 'Today' : n === 1 ? 'Tomorrow' : n === -1 ? 'Yesterday' : n < 0 ? (-n) + ' days late' : d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric' }); }
   function taskRow(t){ return '<div class="trow' + (t.done ? ' done' : '') + '"><button type="button" class="ck' + (t.done ? ' on' : '') + '" data-tick="' + esc(t.id) + '" role="checkbox" aria-checked="' + !!t.done + '" aria-label="Done: ' + esc(t.title) + '"></button>' +
     '<span class="tx"><b>' + esc(t.title) + '</b><small><span style="color:' + esc(t.color) + '">●</span> ' + esc(t.board) + (dueWord(t) ? ' · ' + dueWord(t) : '') + '</small></span></div>'; }
+  var BASKET = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9h18l-1.6 9.2a2 2 0 0 1-2 1.8H6.6a2 2 0 0 1-2-1.8z"/><path d="M8 9l3-5M16 9l-3-5M9 13v3M15 13v3"/></svg>';
+  function listCard(l){
+    var rows = l.items.map(function(t){ return '<div class="trow' + (t.done ? ' done' : '') + '"><button type="button" class="ck' + (t.done ? ' on' : '') + '" data-tick="' + esc(t.id) + '" role="checkbox" aria-checked="' + !!t.done + '" aria-label="Got: ' + esc(t.title) + '"></button>' +
+      '<span class="tx"><b>' + esc(t.title) + '</b>' + (t.qty > 1 ? '<q>×' + t.qty + '</q>' : '') + '<small>' + esc(t.aisle) + '</small></span></div>'; }).join('');
+    return '<div class="glc" style="--c:' + esc(l.color) + '"><header><i>' + BASKET + '</i><span><b>' + esc(l.name) + '</b><small' + (l.late ? ' class="late"' : '') + '>' +
+      (l.left ? l.left + (l.left === 1 ? ' thing' : ' things') + ' to get' : 'Everything is in the basket') + ' · ' + esc(l.late ? dueWord(l) : 'Today') + '</small></span><a class="go" href="' + esc(l.url) + '">Open list</a></header>' +
+      '<div class="bar"><b style="width:' + (l.all ? Math.round(100 * l.got / l.all) : 0) + '%"></b></div>' + rows + (l.left > 6 ? '<small class="more">and ' + (l.left - 6) + ' more</small>' : '') + '</div>';
+  }
   function day(d){
     var has = !!d; $('day').hidden = !has; $('hello').hidden = !has; if(!has) return;
     var h = new Date().getHours(), n = d.today.length, late = d.late.length;
     $('hi').textContent = (h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening') + '.';
-    $('hi-sub').textContent = (n ? n + (n === 1 ? ' task' : ' tasks') + ' for today' : 'Nothing due today') + (late ? ', and ' + late + ' overdue' : '') + '.';
+    var lists = d.lists || [], get = lists.reduce(function(a, l){ return a + l.left; }, 0), bits = [];
+    if(late) bits.push(late + ' overdue'); if(get) bits.push(get + (get === 1 ? ' thing' : ' things') + ' to get');
+    $('hi-sub').textContent = (n ? n + (n === 1 ? ' task' : ' tasks') + ' for today' : 'Nothing due today') + (bits.length ? (bits.length > 1 ? ', ' + bits[0] + ' and ' + bits[1] : ', and ' + bits[0]) : '') + '.';
     function sec(name, ts, cls){ return ts.length ? '<h3 class="sec ' + (cls || '') + '">' + name + '</h3>' + ts.map(taskRow).join('') : ''; }
-    $('tasks').innerHTML = (sec('Overdue', d.late, 'late') + sec('Today', d.today) + sec('Next 7 days', d.soon.slice(0, 5)) + sec('Just done', d.done)) || '<p class="none">Nothing is due. Add a task above, or give one a date in Tasks.</p>';
-    var rec = d.decks.map(function(x){ return { c: '#7C5CFF', app: 'slides', t: x.title, url: x.url, at: x.at, sub: 'Slides · ' + (x.slides ? x.slides + (x.slides === 1 ? ' slide' : ' slides') : 'edited ' + when(x.at)) }; })
-      .concat(d.pages.map(function(x){ return { c: '#0A84FF', app: 'docs', t: x.title, url: x.url, at: x.at, sub: 'Docs · edited ' + when(x.at) }; })).sort(function(a, b){ return b.at - a.at; }).slice(0, 4);
-    $('recent').innerHTML = rec.map(function(x){ return '<a class="rc" style="--c:' + x.c + '" href="' + esc(x.url) + '"><i><img src="sleek://app/icons/' + x.app + '.svg" alt=""></i><b>' + esc(x.t) + '</b><small>' + esc(x.sub) + '</small></a>'; }).join('') || '<p class="none" style="grid-column:1/-1">The decks and pages you make will show here.</p>';
+    $('tasks').innerHTML = (lists.map(listCard).join('') + sec('Overdue', d.late, 'late') + sec('Today', d.today) + sec('Next 7 days', d.soon.slice(0, 5)) + sec('Just done', d.done)) || '<p class="none">Nothing is due. Add a task above, or give one a date in Tasks.</p>';
+    // a small preview of each: a deck as a little slide in its own theme (its cover's kicker and heading), a page as a
+    // little sheet with its title and opening lines, or the picture of your own set for either (as on the iPhone)
+    var rec = d.decks.map(function(x){ return { c: '#7C5CFF', app: 'slides', t: x.title, url: x.url, at: x.at, x: x, sub: 'Slides · edited ' + when(x.at) }; })
+      .concat(d.pages.map(function(x){ return { c: '#0A84FF', app: 'docs', t: x.title, url: x.url, at: x.at, x: x, sub: 'Docs · edited ' + when(x.at) }; })).sort(function(a, b){ return b.at - a.at; }).slice(0, 4);
+    function peek(r){ var x = r.x || {};
+      if(x.thumb) return '<i class="pv pic"><img src="' + esc(x.thumb) + '" alt=""></i>';
+      if(r.app === 'slides') return '<i class="pv slide' + (x.mode === 'light' ? ' light' : '') + '" style="--a:' + esc(x.accent || '#7C5CFF') + '">' + (x.slides ? '<em>' + x.slides + '</em>' : '') + '<span>' + (x.kicker ? '<small>' + esc(x.kicker) + '</small>' : '') + '<b>' + esc(x.heading || r.t) + '</b></span></i>';
+      return '<i class="pv sheet"><s></s><b>' + esc(r.t) + '</b>' + (x.peek ? '<span>' + esc(x.peek) + '</span>' : '<u></u><u></u><u></u>') + '</i>'; }
+    $('recent').innerHTML = rec.map(function(x){ return '<a class="rc" style="--c:' + x.c + '" href="' + esc(x.url) + '">' + peek(x) + '<b><img src="sleek://app/icons/' + x.app + '.svg" alt="">' + esc(x.t) + '</b><small>' + esc(x.sub) + '</small></a>'; }).join('') || '<p class="none" style="grid-column:1/-1">The decks and pages you make will show here.</p>';
   }
   $('tasks').addEventListener('click', function(e){ var b = e.target.closest('[data-tick]'); if(!b) return; var on = !b.classList.contains('on'); b.classList.toggle('on', on); b.closest('.trow').classList.toggle('done', on); post({ tick: b.getAttribute('data-tick'), on: on }); });
   $('addtask').addEventListener('keydown', function(e){ if(e.key === 'Enter'){ var v = this.value.trim(); if(v){ post({ addTask: v }); this.value = ''; } } });
+  // ---------- where you go most, and Sleek's apps, as glass tiles ----------
+  // A tile's colours come from the site's icon: its brand colour (the most common strong hue) made lighter and deeper,
+  // or calm paper or graphite when the icon is black and white. The same reading as the iPhone app's (ios/Sources/Tiles.swift).
+  var APPS = [['Slides', 'slides', [124, 92, 255], '#7C5CFF,#A77BFF,#E58CFF'], ['Docs', 'docs', [10, 132, 255], '#3D8BFF,#5FA8FF,#7EDBFF'], ['Tasks', 'tasks', [18, 163, 106], '#0FA968,#2CC88E,#7FE3B5']];
+  var dark = matchMedia('(prefers-color-scheme: dark)'), kept = {};
+  function mix(c, t, k){ return c.map(function(v, i){ return v + (t[i] - v) * k; }); }
+  function lum(c){ return (0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]) / 255; }
+  function read(img){
+    var n = 40, cv = document.createElement('canvas'); cv.width = cv.height = n; var cx = cv.getContext('2d', { willReadFrequently: true }); cx.drawImage(img, 0, 0, n, n);
+    var px; try { px = cx.getImageData(0, 0, n, n).data; } catch(e){ return null; }
+    var b = {}, best = null;
+    for(var i = 0; i < px.length; i += 4){ var r = px[i], g = px[i + 1], bl = px[i + 2], a = px[i + 3]; if(a < 140) continue;
+      var mx = Math.max(r, g, bl), mn = Math.min(r, g, bl); if(mx < 50 || (mx - mn) / mx < 0.35) continue;
+      var c = mx - mn, h = mx === r ? ((g - bl) / c) % 6 : mx === g ? (bl - r) / c + 2 : (r - g) / c + 4, k = Math.round(((h * 60 + 360) % 360) / 20);
+      var B = b[k] || (b[k] = { n: 0, r: 0, g: 0, b: 0 }); B.n++; B.r += r; B.g += g; B.b += bl; if(!best || B.n > best.n) best = B; }
+    return { accent: best && best.n > n * n * 0.03 ? [best.r / best.n, best.g / best.n, best.b / best.n] : null, corner: px[3] < 140 ? null : [px[0], px[1], px[2]] };
+  }
+  function pair(t){
+    if(t && t.accent) return [mix(t.accent, [255, 255, 255], 0.12), mix(t.accent, [0, 0, 0], 0.38)];
+    if(!t || !t.corner || lum(t.corner) > 0.5) return dark.matches ? [[58, 60, 70], [30, 31, 38]] : [[250, 250, 252], [214, 217, 226]];
+    return [[56, 58, 66], [18, 18, 22]];
+  }
+  function paintTile(a, t){ var p = pair(t), rgb = function(c){ return c.map(Math.round).join(','); };
+    a.style.setProperty('--c1', rgb(p[0])); a.style.setProperty('--c2', rgb(p[1])); a.style.setProperty('--glow', rgb(t && t.accent ? t.accent : p[1]));
+    a.style.setProperty('--ink', lum(mix(p[0], p[1], 0.5)) > 0.62 ? '#141416' : '#fff'); a.dataset.mono = t && t.accent ? '' : '1'; }
+  function tint(a){
+    var h = a.getAttribute('data-h'), app = a.getAttribute('data-app');
+    if(app){ paintTile(a, { accent: APPS.filter(function(x){ return x[1] === app; })[0][2], corner: [0, 0, 0] }); return; }
+    if(kept[h] !== undefined){ paintTile(a, kept[h]); return; }
+    paintTile(a, null); var img = a.querySelector('.lg img'); if(!img) return;
+    var go = function(){ kept[h] = img.naturalWidth ? read(img) : null; paintTile(a, kept[h]); };
+    if(img.complete) go(); else { img.addEventListener('load', go); img.addEventListener('error', function(){ kept[h] = null; }); }
+  }
+  var X = '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M3 3l6 6M9 3l-6 6"/></svg>';
+  function rm(h, name, app){ return app ? '<button type="button" class="rm" data-rmapp="' + esc(h) + '" data-name="' + esc(name) + '" title="Unpin ' + esc(name) + ' from the new tab" aria-label="Unpin ' + esc(name) + '">' + X + '</button>'
+    : '<button type="button" class="rm" data-rm="' + esc(h) + '" data-name="' + esc(name) + '" title="Remove from Where you go most" aria-label="Remove ' + esc(name) + ' from Where you go most">' + X + '</button>'; }
+  function glass(x, i, style, app){
+    var h = x.h, logo = app ? '<span class="lg app"><img src="sleek://app/icons/' + app + '.svg" alt=""></span>'
+      : '<span class="lg">' + esc((x.name || h).charAt(0).toUpperCase()) + '<img src="sleek://ui/_icon/' + esc(h) + '" alt="" onerror="this.remove()"></span>';
+    var haze = style === 'colour' && !app ? '<span class="haze"><img src="sleek://ui/_icon/' + esc(h) + '" alt="" onerror="this.remove()"></span>' : '';
+    return '<div class="gw" data-key="' + esc(app || h) + '" style="--i:' + i + '"><a class="gt" href="' + esc(x.u) + '" title="' + esc(x.t || x.u) + '" data-h="' + esc(h) + '"' + (app ? ' data-app="' + app + '"' : '') + '>' + haze +
+      '<span class="in">' + logo + '<span class="nm">' + esc(x.name) + '</span><span class="hs">' + esc(app ? 'Sleek' : h) + '</span></span></a>' + rm(h, x.name, app) + '</div>';
+  }
+  // Redraw a set of tiles; the ones still there glide from where they were to where they now are, new ones come in.
+  function redraw(box, html, cls, arrive){
+    var was = {}; [].forEach.call(box.children, function(e){ if(e.dataset.key) was[e.dataset.key] = e.getBoundingClientRect(); });
+    box.className = cls + (arrive ? '' : ' calm'); box.innerHTML = html;
+    [].forEach.call(box.querySelectorAll('a.gt'), tint);
+    if(arrive || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    [].forEach.call(box.children, function(e){ var r0 = was[e.dataset.key]; if(!r0){ e.animate([{ opacity: 0, transform: 'scale(.92)' }, { opacity: 1, transform: 'none' }], { duration: 380, easing: 'cubic-bezier(.2,.8,.2,1)' }); return; }
+      var r = e.getBoundingClientRect(), dx = r0.left - r.left, dy = r0.top - r.top; if(dx || dy) e.animate([{ transform: 'translate(' + dx + 'px,' + dy + 'px)' }, { transform: 'none' }], { duration: 420, easing: 'cubic-bezier(.2,.8,.2,1)' }); });
+  }
+  var shown = '', last = null;
+  function iconTile(x){ return tile(x.t || x.name, x.u).replace('<div class="tile">', '<div class="tile" data-key="' + esc(x.h) + '">').replace(/<\/div>$/, rm(x.h, x.name || x.h) + '</div>'); }
+  function tiles(d){
+    var o = d.tiles || {}, style = o.style === 'colour' || o.style === 'icons' ? o.style : 'clear', sq = o.shape === 'square', row = o.layout === 'row', look = style + (sq ? ' sq' : '') + (row ? ' row' : '');
+    var arrive = shown !== look; shown = look;
+    var t = (d.top || []).filter(function(x){ return /^https?:/.test(x.u); }).slice(0, style === 'icons' ? 9 : row ? 12 : sq ? 12 : 8);
+    $('top').hidden = !t.length;
+    if(style === 'icons') redraw($('top-g'), t.map(iconTile).join(''), 'grid', arrive);
+    else redraw($('top-g'), t.map(function(x, i){ return glass(x, i, style); }).join(''), 'tiles ' + look, arrive);
+    // Sleek's own apps: each can be unpinned (its ×), and Appearance › Sleek Apps turns the row off or brings them all back
+    var off = o.hiddenApps || [], apps = APPS.filter(function(a){ return off.indexOf(a[1]) < 0; });
+    $('apps').hidden = o.apps === false || !apps.length;
+    if(style === 'icons') redraw($('apps-g'), apps.map(function(a){ return '<div class="tile" data-key="' + a[1] + '"><b class="bloom" style="background:linear-gradient(90deg,' + a[3] + ')"></b><a class="site" href="sleek://app/' + a[1] + '.html"><i><img src="sleek://app/icons/' + a[1] + '.svg" alt=""></i><span>' + a[0] + '</span></a>' + rm(a[1], a[0], true) + '</div>'; }).join(''), 'grid', arrive);
+    else redraw($('apps-g'), apps.map(function(a, i){ return glass({ h: a[1], u: 'sleek://app/' + a[1] + '.html', name: a[0] }, i, style, a[1]); }).join(''), 'tiles ' + look.replace(' row', ''), arrive);
+  }
+  dark.addEventListener('change', function(){ [].forEach.call(document.querySelectorAll('a.gt'), tint); });
+  // taking a site off Where you go most: it shrinks away, the app forgets it there (your history keeps it), and a note offers it back
+  var noteTimer = 0, undone = null;
+  document.addEventListener('click', function(e){
+    var b = e.target.closest('[data-rm], [data-rmapp]'); if(!b) return; e.preventDefault();
+    var app = b.getAttribute('data-rmapp'), w = b.closest('.gw, .tile'), h = app || b.getAttribute('data-rm'); w.classList.add('going');
+    setTimeout(function(){ post(app ? { hideApp: h } : { hideTop: h }); }, 260);
+    undone = app ? { showApp: h } : { showTop: h }; $('note-t').textContent = (b.getAttribute('data-name') || h) + (app ? ' was unpinned. Appearance › Sleek Apps brings it back' : ' was taken off Where you go most'); $('note').classList.add('on');
+    clearTimeout(noteTimer); noteTimer = setTimeout(function(){ $('note').classList.remove('on'); }, 5000);
+  });
+  $('note-undo').addEventListener('click', function(){ if(undone) post(undone); undone = ''; $('note').classList.remove('on'); });
   window.Start = { fill: function(d){
     document.getElementById('private').hidden = !d.private; if(d.still) document.documentElement.classList.add('still'); day(d.day);
-    var m = d.bookmarks || [], t = (d.top || []).filter(function(x){ return /^https?:/.test(x.u); });
+    var m = d.bookmarks || [];
     document.getElementById('marks').hidden = !m.length; document.getElementById('marks-g').innerHTML = m.map(function(b){ return tile(b.title, b.url); }).join('');
-    document.getElementById('top').hidden = !t.length; document.getElementById('top-g').innerHTML = t.map(function(x){ return tile(x.t, x.u); }).join('');
+    tiles(d); last = d;
   } };
   post({ want: 'start' });
 })();

@@ -20,10 +20,12 @@ it yourself with Xcode.
 ## Your pages, and Sleek Docs elsewhere
 
 Your pages are kept on the iPhone, in the app's own storage, and a plain `.sleek` copy of each is
-also kept in the app's folder and brought back if that storage is ever emptied. Nothing is sent
-anywhere. Pages move between the phone and Sleek Docs on the web as `.sleek` files: Send a Copy from
+also kept, and brought back if that storage is ever emptied. That copy is in a folder the Sleek apps
+on this iPhone share: this app brings in what is newer in the Sleek browser's copy (and the other
+apps'), and the browser in this one's, so a page written here is in the browser too. The Sleek browser
+opens your pages here when this app is on the phone. Nothing is sent anywhere. Pages move between the phone and Sleek Docs on the web as `.sleek` files: Send a Copy from
 here, or ⋯ › Bring In a Page (a `.sleek` file sent to the phone can also be opened into the app).
-The two do not stay in step by themselves.
+The phone and the web do not stay in step by themselves.
 
 ## Not here yet
 
@@ -52,7 +54,8 @@ project.yml          what the app is made of
 make.sh              calls ../ios-shared/build.sh, which gathers a copy of Sleek's pages and builds
 Sources/Docs.swift   the library, one page (the editor inside, and what the app tells it), the keyboard bar, the sheets
 Sources/Check.swift  the app checking itself
-../ios-shared/       Kit.swift (colours, glass, small pieces) and Host.swift (one of Sleek's pages inside a native app)
+../ios-shared/       Kit.swift (colours, glass, small pieces), Host.swift (one of Sleek's pages inside a native app),
+                     Shared.swift and SharedWork.swift (sharing your work with the other Sleek apps)
 ```
 
 It also compiles three files of the Mac browser as they are (`../browser/Sources/Sleek/`):

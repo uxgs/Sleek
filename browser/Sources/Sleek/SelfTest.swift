@@ -5,6 +5,7 @@
 import AppKit
 import WebKit
 import CryptoKit
+import CoreLocation
 
 @MainActor
 enum SelfTest {
@@ -72,7 +73,7 @@ enum SelfTest {
     check("with the cursor in the address box, the box itself is lit, and there is no second, square ring inside it", (ring["bad"] as? String) == "" && (ring["lit"] as? Bool) == true, ring)
     await press(w, "#b-menu")
     let menu = (await bar(w, "var p = document.getElementById('pop'); if(!p) return {}; var out = { top: [].map.call(p.querySelectorAll('[data-grp]'), function(b){ return b.querySelector('span').textContent; }).join('|'), rest: [].map.call(p.querySelectorAll('[data-menu]'), function(b){ return b.querySelector('span').textContent; }).join('|'), closed: !document.getElementById('sub'), subs: [], beside: true }; ['new', 'appearance', 'manage', 'defaults'].forEach(function(g){ Sleek.test.click('[data-grp=' + g + ']'); var s = document.getElementById('sub'), pr = document.getElementById('pop').getBoundingClientRect(), sr = s ? s.getBoundingClientRect() : null; out.subs.push(s ? [].map.call(s.children, function(r){ return r.querySelector('span').textContent.trim(); }).join('|') : ''); if(!sr || sr.right > pr.left || sr.left < 0 || sr.bottom > innerHeight + 1) out.beside = false; }); return out;")) as? [String: Any] ?? [:]
-    check("the ⋯ menu is a short list: New, Appearance, Manage and Defaults each open a small menu beside it; Find and Print are there at once", (menu["top"] as? String) == "New|Appearance|Manage|Defaults" && (menu["rest"] as? String) == "Find on This Page|Print…" && (menu["closed"] as? Bool) == true && (menu["subs"] as? [String] ?? []) == ["Tab|Window|Private Window", "Zoom|Theme|Bar Placement|" + (GlassView.available ? "Glass|" : "") + "Bookmarks Bar", "Bookmarks|History|Passwords|Downloads", "Search Provider|Make Sleek Default Browser"] && (menu["beside"] as? Bool) == true, menu)
+    check("the ⋯ menu is a short list: New, Appearance, Manage and Defaults each open a small menu beside it; Find and Print are there at once", (menu["top"] as? String) == "New|Appearance|Manage|Defaults" && (menu["rest"] as? String) == "Find on This Page|Print…" && (menu["closed"] as? Bool) == true && (menu["subs"] as? [String] ?? []) == ["Tab|Window|Private Window", "Zoom|Theme|Bar Placement|Site Tiles|Sleek Apps|" + (GlassView.available ? "Glass|" : "") + "Bookmarks Bar", "Bookmarks|History|Passwords|Downloads", "Search Provider|Search Suggestions|Make Sleek Default Browser"] && (menu["beside"] as? Bool) == true, menu)
     _ = await bar(w, "document.querySelector('[data-grp=manage]').dispatchEvent(new MouseEvent('mouseover', { bubbles: true })); return 1"); await nap(0.5)
     let hovered = (await bar(w, "var s = document.getElementById('sub'); return s ? s.getAttribute('aria-label') : ''")) as? String ?? ""
     check("resting the pointer on a line opens its small menu", hovered == "Manage", hovered)
@@ -171,6 +172,11 @@ enum SelfTest {
     s = await see(w)
     check("typing suggests the other open tab, pages from history, and a search", (s["rows"] as? [String] ?? []).contains { $0.hasPrefix("tab:") } && (s["rows"] as? [String] ?? []).contains { $0.hasPrefix("history:") } && (s["rows"] as? [String] ?? []).last?.hasPrefix("search:") == true, s["rows"])
     check("and finishes the address for you, with the offered ending selected, and suggests the well-known site", (s["url"] as? String) == "wikipedia.org" && (s["fill"] as? String) == "pedia.org" && (s["sel"] as? [Int]) == [4, 13] && (s["rows"] as? [String] ?? []).contains("site:Wikipedia"), [s["url"] ?? "", s["fill"] ?? "", s["sel"] ?? "", s["rows"] ?? ""])
+    w.tell(["type": "hints", "q": "wiki", "items": ["wikipedia english", "wiki how"]]); await nap(0.3); s = await see(w)
+    let hinted = (s["rows"] as? [String] ?? []).suffix(3)
+    check("your search provider's suggestions follow, each a search of its own (as on the iPhone)", Array(hinted) == ["search:Search DuckDuckGo for “wiki”", "search:wikipedia english", "search:wiki how"] || (hinted.count == 3 && hinted.last == "search:wiki how" && hinted.dropLast().last == "search:wikipedia english"), s["rows"])
+    w.tell(["type": "hints", "q": "wik", "items": ["wikileaks"]]); await nap(0.3); s = await see(w)
+    check("and suggestions for something no longer typed are not shown", !(s["rows"] as? [String] ?? []).contains("search:wikileaks"), s["rows"])
     await shot(w, "3-suggestions", to: out)
     _ = await bar(w, "var u = document.getElementById('url'); u.value = 'wik'; u.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'deleteContentBackward' })); return 1"); await nap(0.5); s = await see(w)
     check("deleting does not bring the ending back", (s["url"] as? String) == "wik" && (s["fill"] as? String) == "", [s["url"] ?? "", s["fill"] ?? ""])
@@ -290,6 +296,17 @@ enum SelfTest {
     check("a download lands in the Downloads folder, and the bar says so", ok && got == "Hello from Sleek" && ((s["toast"] as? String) ?? "").contains("hello.txt"), [got, s["toast"] ?? ""])
     try? FileManager.default.removeItem(at: Downloads.folder)
 
+    print("where you are")
+    // a page may ask where you are (a map; a TV service checking you are in its area). You are asked, and only then is the
+    // place handed over. Here the answer is given for you, and the place is a made-up one, so nothing is asked of the Mac.
+    func placePage(_ name: String) async { w.current?.web.loadSimulatedRequest(URLRequest(url: URL(string: "https://place-test.example/" + name)!), responseHTML: "<!doctype html><title>Where</title><p>Where am I?</p>"); _ = await until(8) { (await page(w.current, "return location.pathname")) as? String == "/" + name } }
+    let whereAmI = "return await new Promise(function(r){ navigator.geolocation.getCurrentPosition(function(p){ r(p.coords.latitude + ',' + p.coords.longitude); }, function(e){ r('no ' + e.code); }, { timeout: 6000 }); })"
+    Location.shared.fixed = CLLocation(latitude: 51.5, longitude: -0.12)
+    Tab.placeAnswer = false; await placePage("no"); let placeNo = (await page(w.current, whereAmI)) as? String ?? ""
+    Tab.placeAnswer = true; await placePage("yes"); let placeYes = (await page(w.current, whereAmI)) as? String ?? ""
+    Tab.placeAnswer = nil; Location.shared.fixed = nil
+    check("a page that asks where you are is told only once you allow it", Location.shared.works && placeNo == "no 1" && placeYes == "51.5,-0.12", [Location.shared.works, placeNo, placeYes])
+
     print("blocking")
     let listsReady = await until(90) { Blocker.shared.ready }
     check("the block lists are ready: adverts, trackers and cookie banners, with their rules", listsReady && (Blocker.shared.summary["rules"] as? Int ?? 0) > 100_000 && !Blocker.shared.popupHosts.isEmpty, Blocker.shared.facts.mapValues { [$0["rules"] ?? 0, $0["left"] ?? 0, $0["dropped"] ?? 0] })
@@ -331,6 +348,40 @@ enum SelfTest {
     _ = await page(w.current, "var a = window.open('https://example.org/'); return !!a"); ok = await until(8) { w.tabs.count == tabsBefore + 1 }
     check("an ordinary link that opens a new tab still does", ok, w.tabs.count - tabsBefore)
     if ok, let t = w.current { w.closeTab(t.id) }; await nap(0.4)
+    // Open Link in Background Tab / Background Private Tab, beside WebKit's Open Link in New Window (renamed New Tab)
+    if let t = w.current {
+      let m = NSMenu(); let wk = NSMenuItem(title: "Open Link in New Window", action: nil, keyEquivalent: ""); wk.identifier = NSUserInterfaceItemIdentifier("WKMenuItemIdentifierOpenLinkInNewWindow"); m.addItem(wk); m.addItem(NSMenuItem(title: "Copy Link", action: nil, keyEquivalent: ""))
+      t.addBackgroundItems(m)
+      check("right-clicking a link offers Open Link in Background Tab and in a Background Private Tab", m.items.map(\.title) == ["Open Link in New Tab", "Open Link in Background Tab", "Open Link in Background Private Tab", "Copy Link"], m.items.map(\.title))
+      let here = t.id, n = w.tabs.count
+      t.background = .here; _ = await page(t, "window.open('https://example.org/'); return 1"); ok = await until(8) { w.tabs.count == n + 1 }
+      check("Open Link in Background Tab opens it behind this page: you stay where you are", ok && w.current?.id == here && !w.panes.contains(w.tabs.last?.id ?? ""), [w.tabs.count - n, w.current?.id == here ? 1 : 0])
+      if ok, let b = w.tabs.last { w.closeTab(b.id) }; await nap(0.3)
+      let wins = App.shared.windows.count
+      t.background = .privately; _ = await page(t, "window.open('https://example.org/'); return 1")
+      ok = await until(8) { App.shared.windows.contains { $0.isPrivate && $0.tabs.contains { ($0.web.url?.host ?? "") == "example.org" } } }
+      let pw = App.shared.windows.first { $0.isPrivate }
+      check("Open Link in a Background Private Tab opens it in a private window kept behind this one", ok && w.current?.id == here && App.shared.windows.count == wins + 1 && pw?.window.isKeyWindow == false, [ok ? 1 : 0, App.shared.windows.count - wins])
+      let pm = NSMenu(); let wk2 = NSMenuItem(title: "Open Link in New Window", action: nil, keyEquivalent: ""); wk2.identifier = wk.identifier; pm.addItem(wk2)
+      pw?.current?.addBackgroundItems(pm)
+      check("a private window offers Open Link in Background Tab only (it is private already)", pm.items.map(\.title) == ["Open Link in New Tab", "Open Link in Background Tab"], pm.items.map(\.title))
+      pw?.window.performClose(nil); await nap(0.4)
+    }
+    // signing in. The lists name one address of google.com as a pop-up advert (its favicon); that once made every Google
+    // sign-in page a "pop-up advert", so the step after the password, where Google's page sends you on, went nowhere.
+    let partLines = ListConverter.convert("||pop.example^$popup\n||big.example/ads/$popup\n||shop.example/go?$popup,domain=news.example\n||10.20.$popup\n", frames: true)
+    check("a pop-up line that names one address of a site is kept as that address, not as the whole site", partLines.popupHosts == ["pop.example"] && partLines.popupParts.count == 2 && partLines.popupParts.allSatisfy { $0.hasPrefix("big.example\t") || $0.hasSuffix("\tnews.example") }, [Array(partLines.popupHosts), partLines.popupParts])
+    let B = Blocker.shared, signIn = URL(string: "https://accounts.google.com/ServiceLogin")
+    check("Google's sign-in pages are not taken for pop-up adverts, from wherever they are opened", !B.isPopup(signIn, from: "example.com") && !B.isPopup(signIn, from: "blocking-test.example") && !B.isPopup(signIn, from: nil) && !B.isPopup(URL(string: "https://www.google.com/search?q=sleek"), from: "example.com") && !B.popupHosts.contains("google.com"))
+    check("a site that only serves pop-up adverts still is one, except to its own pages", B.isPopup(URL(string: "https://\(popSite)/"), from: "blocking-test.example") && B.isPopup(URL(string: "https://www.\(popSite)/x"), from: nil) && !B.isPopup(URL(string: "https://\(popSite)/next"), from: popSite))
+    _ = await page(w.current, "location.href = 'https://accounts.google.com/ServiceLogin'; return 1"); ok = await loaded(w, "accounts.google.com")
+    let signBox = await until(10) { (await page(w.current, "return !!document.querySelector('input[type=email], input[name=identifier]')")) as? Bool == true }
+    check("a page that sends you on to Google's sign-in page gets there, with blocking on, and the page is whole", ok && signBox && w.current?.blocking == true && (w.current?.blocked["popups"] ?? 0) == 0, [w.current?.address ?? "", signBox, w.current?.blocked ?? [:]])
+    await shot(w, "12b-sign-in", to: out)
+    let signTabs = w.tabs.count
+    _ = await page(w.current, "var a = window.open('https://accounts.google.com/ServiceLogin'); return !!a"); ok = await until(8) { w.tabs.count == signTabs + 1 }
+    check("and a sign-in window that a page opens is opened", ok, w.tabs.count - signTabs)
+    if ok, let t = w.current { w.closeTab(t.id) }; await nap(0.4)
     w.store.set("blockOff", ["blocking-test.example"]); await nap(0.2); await loadExtras()
     seen = (await page(w.current, look)) as? [String: Any] ?? [:]; reqs = seen["requests"] as? [String: String] ?? [:]; s = await see(w)
     check("switched off for a site, nothing is blocked there, and the shield says Off", reqs["tagmanager"] == "loaded" && reqs["doubleclick"] == "loaded" && (seen["adShown"] as? Bool) == true && (seen["declined"] as? Bool) == false && (w.current?.blocked ?? [:]).isEmpty && (s["shieldOff"] as? Bool) == true, [reqs, seen, s["shield"] ?? ""])
@@ -347,10 +398,46 @@ enum SelfTest {
     let served = (await bar(w, "return await new Promise(function(ok){ var i = new Image(); i.onload = function(){ ok(i.naturalWidth); }; i.onerror = function(){ ok(0); }; i.src = 'sleek://ui/_icon/nytimes.com'; })")) as? Int ?? 0
     check("a site's icon is kept on this Mac, and Sleek's own pages can show it", iconKept && served > 0, [iconKept, served])
     await press(w, ".plus"); _ = await until(5) { w.current?.kind == "start" }
-    ok = await until(6) { (await page(w.current, "var i = document.querySelector('#top-g a.site[href*=nytimes] i img'); return !!(i && i.naturalWidth > 0)")) as? Bool == true }
-    check("a new tab shows where you go most, each with its site's icon", ok, await page(w.current, "return document.getElementById('top-g').innerHTML.slice(0, 400)"))
-    _ = await page(w.current, "var a = document.querySelector('#top-g a.site[href*=nytimes]'); if(a) a.focus(); return 1"); await nap(0.5)
+    ok = await until(6) { (await page(w.current, "var i = document.querySelector('#top-g a.gt[href*=nytimes] .lg img'); return !!(i && i.naturalWidth > 0)")) as? Bool == true }
+    let topCls = (await page(w.current, "return document.getElementById('top-g').className")) as? String ?? ""
+    check("a new tab shows where you go most as clear glass tiles, each with its site's icon", ok && topCls.hasPrefix("tiles clear"), await page(w.current, "return document.getElementById('top-g').innerHTML.slice(0, 400)"))
+    let tinted = (await page(w.current, "var a = document.querySelector('#top-g a.gt[href*=nytimes]'); return a ? a.style.getPropertyValue('--c1') : ''")) as? String ?? ""
+    check("each tile takes its colours from its site's icon", !tinted.isEmpty, tinted)
+    _ = await page(w.current, "var a = document.querySelector('#top-g a.gt[href*=nytimes]'); if(a) a.focus(); return 1"); await nap(0.6)
     await shot(w, "15-new-tab", to: out)
+    // Appearance › Site Tiles: the same three looks as the iPhone, wide or square, a grid or a row
+    _ = await bar(w, "if(!document.querySelector('#pop [data-grp]')) Sleek.test.click('#b-menu'); Sleek.test.click('[data-grp=appearance]'); return Sleek.test.click('[data-menu=tiles]')"); await nap(0.4)
+    let looks = (await bar(w, "return [].map.call(document.querySelectorAll('#pop .tlook'), function(b){ return b.textContent; }).join('|')")) as? String ?? ""
+    check("Appearance › Site Tiles offers Clear Glass, Colour Glass and Icons", looks == "Clear Glass|Colour Glass|Icons", looks)
+    await press(w, "[data-tset='tileStyle:colour']"); await press(w, "[data-tset='tileShape:square']"); await nap(0.4)
+    await shot(w, "15b-site-tiles-menu", to: out)
+    ok = await until(4) { ((await page(w.current, "return document.getElementById('top-g').className")) as? String ?? "").hasPrefix("tiles colour sq") }
+    check("choosing Colour Glass and Square changes the open new tab at once", ok && (w.store.settings["tileStyle"] as? String) == "colour" && (w.store.settings["tileShape"] as? String) == "square", await page(w.current, "return document.getElementById('top-g').className"))
+    _ = await bar(w, "Sleek.test.click('#b-menu'); return 1"); await nap(0.8)
+    await shot(w, "15c-new-tab-colour", to: out)
+    w.store.set("tileStyle", "icons"); ok = await until(4) { (await page(w.current, "return document.querySelectorAll('#top-g a.site').length")) as? Int ?? 0 > 0 }
+    check("Icons shows each site as its icon and name, as before", ok)
+    w.store.set("tileStyle", "clear"); w.store.set("tileShape", "wide"); w.store.set("tileLayout", "row")
+    ok = await until(4) { (await page(w.current, "return document.getElementById('top-g').className.indexOf('row') > 0")) as? Bool == true }
+    check("a row of tiles that scrolls sideways", ok); w.store.set("tileLayout", "grid"); await nap(0.5)
+    // taking a site off, and putting it back
+    _ = await page(w.current, "document.querySelector('[data-rm=\"nytimes.com\"]').click(); return 1")
+    ok = await until(4) { (w.store.settings["hiddenTop"] as? [String] ?? []).contains("nytimes.com") }
+    let goneNow = await until(4) { (await page(w.current, "return !document.querySelector('#top-g [data-key=\"nytimes.com\"]') && document.getElementById('note').classList.contains('on')")) as? Bool == true }
+    check("the × on a tile takes the site off Where you go most, with a note to undo it; history keeps it", ok && goneNow && w.store.history.contains { ($0["u"] as? String ?? "").contains("nytimes") }, w.store.settings["hiddenTop"])
+    await shot(w, "15d-site-removed", to: out)
+    _ = await page(w.current, "document.getElementById('note-undo').click(); return 1")
+    ok = await until(4) { (await page(w.current, "return !!document.querySelector('#top-g [data-key=\"nytimes.com\"]')")) as? Bool == true }
+    check("Undo puts it back", ok && !(w.store.settings["hiddenTop"] as? [String] ?? []).contains("nytimes.com"))
+    // unpinning one of Sleek's apps; Sleek Apps on again brings it back
+    _ = await page(w.current, "document.querySelector('[data-rmapp=docs]').click(); return 1")
+    ok = await until(4) { (await page(w.current, "return [].map.call(document.querySelectorAll('#apps-g .nm'), function(e){ return e.textContent; }).join('|')")) as? String == "Slides|Tasks" }
+    check("the × on one of Sleek's apps unpins it from the new tab", ok && (w.store.settings["hiddenApps"] as? [String]) == ["docs"], await page(w.current, "return document.getElementById('apps-g').textContent"))
+    _ = await bar(w, "window.webkit.messageHandlers.sleek.postMessage({ do: 'set', k: 'startApps', v: false }); return 1"); await nap(0.4)
+    let rowOff = (await page(w.current, "return document.getElementById('apps').hidden")) as? Bool == true
+    _ = await bar(w, "window.webkit.messageHandlers.sleek.postMessage({ do: 'set', k: 'startApps', v: true }); return 1")
+    ok = await until(4) { (await page(w.current, "return document.querySelectorAll('#apps-g .gw').length")) as? Int == 3 }
+    check("Appearance › Sleek Apps turns the row off, and on again with all three back", rowOff && ok && (w.store.settings["hiddenApps"] as? [String] ?? []).isEmpty)
 
     print("a picture dragged in")
     let logo = Res.site.appendingPathComponent("icons/icon-192.png"), board = NSPasteboard(name: NSPasteboard.Name("sleek-selftest"))

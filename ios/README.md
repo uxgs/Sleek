@@ -7,13 +7,13 @@ yet; you build it yourself with Xcode.
 ## What it does
 
 - **The bar is where you want it.** The first time, Sleek asks: along the bottom, near your thumb,
-  or along the top. Change it in Settings. Scroll down a page and the bar draws in to a small tile
+  or along the top. Change it from the ⋯ menu, under Appearance. Scroll down a page and the bar draws in to a small tile
   with Sleek's mark; press the tile, or scroll up, and it opens out. Drag the tile to any corner and
   it stays there.
 - **The address.** Press it to search or type an address. As you type, Sleek offers your own decks,
   pages, boards and tasks first, then bookmarks and places you have been, then well-known sites, then
   searches: what you typed, and what your search provider suggests for it (asked without cookies, never
-  from a private tab; Settings can switch suggestions off, and then nothing you type leaves the phone
+  from a private tab; Manage, in the ⋯ menu, can switch suggestions off, and then nothing you type leaves the phone
   until you search). Slide the address sideways for the next or last tab, and up for all of them.
 - **Tabs, and Private Browsing.** All your tabs are a grid, with the private ones apart. A private tab
   writes no history, is offered none of your history or work as you type, keeps its cookies and
@@ -24,7 +24,7 @@ yet; you build it yourself with Xcode.
   map) and it opens in that app, with the phone's own way back to Sleek at the top; the page you were
   on stays as it was. A site with no app opens in Sleek as usual. Links within the site you are
   already browsing, addresses you type, and private tabs stay in Sleek, and Open in App in the ⋯ menu
-  sends the page showing to its app. Settings can switch this off.
+  sends the page showing to its app. Manage can switch this off.
 - **Passwords.** Sign in to a site and Sleek offers to keep the name and password; next time, with
   the cursor in a sign-in box, the saved name appears beside the bar, and Face ID (or the passcode)
   fills it. Joining a site, Sleek offers a strong password and keeps it once the site has taken it.
@@ -32,18 +32,40 @@ yet; you build it yourself with Xcode.
   device only), opened with Face ID or the passcode, and closed again when you leave the app or five
   minutes after it was last used. A password is only ever filled into the site it was saved for, never
   on a page whose connection others can read, and a private tab is never asked to keep one. Passwords,
-  in Settings, lists them: show, copy (gone from the clipboard in a minute), change, remove, the ones
+  under Manage, lists them: show, copy (gone from the clipboard in a minute), change, remove, the ones
   worth changing, a stronger one made for you, and bringing them in from, or saving them to, the file
   other browsers use. It is the Mac app's vault, the same code.
 - **Blocking.** The same lists and the same code as the Mac app: adverts, trackers and cookie
   notices. The shield beside an address switches blocking off for a site that does not work, and
-  Sleek remembers that. Settings lists those sites.
-- **A new tab is your day.** What is due from Sleek Tasks, to tick off and add to; Slides, Docs and
-  Tasks; the decks and pages you last worked on; your bookmarks; and where you go most. Pull it down
-  and what you have ticked off leaves Today. Settings can hide the row of Sleek's apps.
+  Sleek remembers that. Blocking, under Manage, lists those sites.
+- **A new tab is your day.** What is due from Sleek Tasks, to tick off and add to, with any grocery
+  list whose day has come (tick things into the basket there, or open the list); Slides, Docs and
+  Tasks, as glass tiles in their colours; the decks and pages you last worked on; your bookmarks; and where you
+  go most, as glass tiles made from each site's own icon (filling its shape) and coloured from it. Pull it down
+  and what you have ticked off leaves Today.
+  Appearance chooses clear glass, colour glass or plain icons; wide tiles or square ones; a grid or a
+  row that scrolls sideways; and whether the row of Sleek's apps shows.
+- **An opening.** Each time Sleek starts, the two bars of its mark slide together, a soft glow rises, the
+  name writes itself in, and the mark flies up into its place on the new tab (on a page, it lifts away), to
+  the film's opening sound (quiet, silent when the iPhone is on silent, never stopping your music). A tap
+  skips it; with Reduce Motion it is a quick fade. The very first time, three short pages about Sleek come
+  before the question about the bar.
+- **One menu, no settings screen.** The ⋯ menu has New Tab, Private Tab and Tasks; Appearance (where
+  the bar is, light or dark, the site tiles, the row of Sleek's apps); and Manage (passwords, bookmarks,
+  history, blocking, your search provider and its suggestions, and links opening in apps).
 - **Slides, Docs and Tasks inside.** They open from inside the app (no network needed) and keep their
-  work on the phone. A plain copy of everything is also kept in the app's own folder, and brought
-  back if the phone ever empties the web engine's storage.
+  work on the phone. A plain copy of everything is also kept, and brought back if the phone ever
+  empties the web engine's storage.
+- **Sleek Tasks, Docs and Slides, when they are on the phone.** A board, list, page or deck opened in
+  Sleek (from Today, the app tiles, the address, the Tasks sheet or Save to Sleek) opens in its own
+  app, on that board, page or deck; without the app it opens inside Sleek as before. Links opening in
+  apps, under Manage, switches this off too. All four apps share your work: Sleek's plain copy is in a
+  folder they all reach, and Sleek brings in what is newer in theirs when it opens, when it comes back
+  to the front, and when one of them says it wrote something, so a thing ticked in Sleek Tasks is
+  ticked here.
+- **Siri.** "What's on my grocery list in Sleek", "Add to my grocery list in Sleek" and "What's due
+  today in Sleek" answer from your tasks as all the Sleek apps have them (Siri needs the app's name).
+  They are in the Shortcuts app, Spotlight and the Action button too.
 - **Save to Sleek.** The page showing becomes a task, on the board and day you choose, with a link
   back and any words you selected; or a Docs page with the article's words.
 - **The rest of a browser.** Bookmarks and history (by day; swipe to remove), find on page, pull
@@ -58,7 +80,7 @@ yet; you build it yourself with Xcode.
   in Sleek, apart from iCloud Keychain).
 - It cannot be set as the iPhone's browser for links from other apps until Apple grants that to a
   released app.
-- Work does not travel between this app and Sleek anywhere else by itself; move it with the apps'
+- Work does not travel between this iPhone and Sleek anywhere else by itself; move it with the apps'
   own "save a copy" files.
 
 ## Building it
@@ -82,11 +104,14 @@ phone's answer), passwords (with a throwaway key and a stand-in for Face ID), yo
 project.yml          what the app is made of (xcodegen turns it into an Xcode project)
 make.sh              gathers what goes inside the app (build/inside), then builds
 Assets.xcassets      the app's icon
+Sounds/opening.m4a   the opening's sound (made by ../tools/film/opening.py)
 Sources/
   Model.swift        tabs (ordinary and private), the bar's place, blocking for each site, links handed to apps, bookmarks, history, your Sleek work
   Views.swift        the screen: the page, the bar and its tile, the menu
   Start.swift        a new tab: your day; and a private tab's first page
-  Sheets.swift       searching, all your tabs, tasks, bookmarks and history, settings, the shield, Save to Sleek, the first-time question
+  Tiles.swift        the glass tiles for where you go most, coloured from each site's own icon, and for Sleek's apps
+  Intro.swift        the opening each time Sleek starts, and the three pages the first time
+  Sheets.swift       searching, all your tabs, tasks, bookmarks and history, blocking, the shield, Save to Sleek, the first-time question
   Passwords.swift    the Passwords screen: the list, one sign-in, adding and changing, files in and out
   Check.swift        the app checking itself
   Support.swift      where the app's files are, Sleek's mark and colours, small pieces the screens share
@@ -95,4 +120,8 @@ Sources/
 Six files are compiled straight from the Mac app, so the two never drift apart
 (`../browser/Sources/Sleek/`): `Common.swift` (Sleek's own pages, where an address goes, search
 providers, the script that notices sign-in boxes), `Vault.swift` (passwords), `Blocker.swift`, `Store.swift` (settings, bookmarks, history), `Known.swift` (site icons,
-well-known sites) and `Work.swift` (your Sleek work, through `bridge.html`).
+well-known sites) and `Work.swift` (your Sleek work, through `bridge.html`, and sharing it with the other apps).
+
+From `../ios-shared/` it compiles `Shared.swift` (the folder the Sleek apps share), `SharedWork.swift`
+(sharing through `Work.swift`), `Aisles.swift` and `Siri.swift` (what Siri can ask; Sleek Tasks
+compiles the same file). Siri itself can only be tried on a real iPhone.

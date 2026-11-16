@@ -20,7 +20,7 @@
   function esc(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, function(c){ return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function $(s, r){ return (r || document).querySelector(s); }
   function $$(s, r){ return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
-  var ICON = { back: '<path d="M14 5l-7 7 7 7"/>', fwd: '<path d="M10 5l7 7-7 7"/>', reload: '<path d="M19 12a7 7 0 1 1-2.1-5M19 5v4h-4"/>', stop: '<path d="M6 6l12 12M18 6L6 18"/>', lock: '<rect x="6" y="11" width="12" height="9" rx="2"/><path d="M9 11V8a3 3 0 0 1 6 0v3"/>', key: '<circle cx="8" cy="15" r="4"/><path d="M10.900 12.100L19 4M15.500 7.500l2.500 2.500M13.500 9.500l2 2"/>',
+  var ICON = { tiles: '<rect x="4" y="5" width="7" height="6" rx="1.6"/><rect x="13" y="5" width="7" height="6" rx="1.6"/><rect x="4" y="13" width="7" height="6" rx="1.6"/><rect x="13" y="13" width="7" height="6" rx="1.6"/>', apps: '<rect x="3" y="8" width="5" height="8" rx="1.4"/><rect x="9.5" y="8" width="5" height="8" rx="1.4"/><rect x="16" y="8" width="5" height="8" rx="1.4"/>', back: '<path d="M14 5l-7 7 7 7"/>', fwd: '<path d="M10 5l7 7-7 7"/>', reload: '<path d="M19 12a7 7 0 1 1-2.1-5M19 5v4h-4"/>', stop: '<path d="M6 6l12 12M18 6L6 18"/>', lock: '<rect x="6" y="11" width="12" height="9" rx="2"/><path d="M9 11V8a3 3 0 0 1 6 0v3"/>', key: '<circle cx="8" cy="15" r="4"/><path d="M10.900 12.100L19 4M15.500 7.500l2.500 2.500M13.500 9.500l2 2"/>',
     shield: '<path d="M12 3l7 3v5c0 4.500-3 8-7 10-4-2-7-5.500-7-10V6z"/><path d="M9 12l2 2 4-4"/>', shieldoff: '<path d="M12 3l7 3v5c0 4.500-3 8-7 10-4-2-7-5.500-7-10V6z"/>',
     split: '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M12 4v16"/>', more: '<circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/>', win: '<rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 9.5h18"/>', glasses: '<circle cx="7" cy="14" r="3.2"/><circle cx="17" cy="14" r="3.2"/><path d="M10.2 14h3.6M3.9 13l1.5-5M20.1 13l-1.5-5"/>',
     print: '<path d="M7 8V4h10v4"/><rect x="4" y="8" width="16" height="8" rx="2"/><path d="M7 13h10v7H7z"/>', zoom: '<circle cx="11" cy="11" r="6"/><path d="M20 20l-4.2-4.2M8.5 11h5M11 8.5v5"/>', findp: '<circle cx="11" cy="11" r="6"/><path d="M20 20l-4.2-4.2"/>',
@@ -39,7 +39,7 @@
   var BLOCKED = [['ads', 'Ads'], ['trackers', 'Trackers'], ['cookies', 'Cookie banners'], ['notes', 'Notification requests'], ['popups', 'Pop-ups and redirects']];
   function blockedTotal(t){ var n = 0, b = (t && t.blocked) || {}; BLOCKED.forEach(function(k){ n += b[k[0]] || 0; }); return n; }
   function listDate(s){ return String(s || '').replace(/^(\d{4})(\d\d)(\d\d)\d*$/, '$1-$2-$3').replace(/ \d\d:\d\d UTC$/, ''); }
-  var L = { pop: null, typed: null, sel: -1, native: { q: '', items: [] }, rows: [], toast: null, toastN: 0, find: false, findText: '', miss: false, history: null, over: false, reach: false, full: false, still: false };
+  var L = { pop: null, typed: null, sel: -1, native: { q: '', items: [] }, hints: { q: '', items: [] }, rows: [], toast: null, toastN: 0, find: false, findText: '', miss: false, history: null, over: false, reach: false, full: false, still: false };
 
   function cur(){ var id = S.panes[S.at]; return S.tabs.filter(function(t){ return t.id === id; })[0] || S.tabs[0] || null; }
   function marked(u){ return S.bookmarks.filter(function(b){ return b.url === u; })[0] || null; }
@@ -61,6 +61,8 @@
     S.tabs.forEach(function(t){ if(t !== cur() && t.kind !== 'start' && (t.title + ' ' + t.url).toLowerCase().indexOf(lo) >= 0 && out.length < 3) out.push({ kind: 'tab', id: t.id, title: t.title, hint: 'Switch to tab' }); });
     if(L.native.q === q) L.native.items.forEach(function(x){ out.push({ kind: x.kind, url: x.url, title: x.title || pretty(x.url), hint: x.kind === 'slides' ? 'Deck' : x.kind === 'docs' ? 'Page' : x.kind === 'tasks' ? (x.task ? 'Task' : 'Board') : pretty(x.url) }); });
     var eng = engine(); out.push({ kind: 'search', text: q, title: 'Search ' + (eng ? eng[0] : 'the web') + ' for “' + q + '”', hint: '' });
+    // what your search provider would search for (asked as you type, as on the iPhone)
+    if(L.hints.q === q) L.hints.items.forEach(function(s){ out.push({ kind: 'search', text: s, title: s, hint: '', guess: true }); });
     return out;
   }
 
@@ -109,8 +111,8 @@
     var h = (bottom && !imm ? '<div class="titlestrip"></div>' : '') + '<button type="button" class="peek" data-do="peek" aria-label="Show the bar"></button><div class="chrome" id="bar"><img class="isle" src="sleek://app/icons/logo.svg" alt=""><div class="tabs" id="tabs"><span class="pins">' +
       ['slides', 'docs', 'tasks'].map(function(k){ return '<button type="button" class="pin' + (t && t.kind === k ? ' on' : '') + '" data-pin="' + k + '" title="' + APPS[k][0] + '" aria-label="' + APPS[k][0] + '"><img src="sleek://app/icons/' + k + '.svg" alt=""></button>'; }).join('') + '</span>' +
       S.tabs.filter(function(x){ return !APPS[x.kind]; }).map(function(x){
-        return '<button type="button" class="tab' + (t && x.id === t.id ? ' on' : '') + (S.n > 1 && S.panes.indexOf(x.id) >= 0 ? ' in' : '') + '" data-tab="' + x.id + '" title="' + esc(x.title) + '">' + (x.loading ? '<span class="spin"></span>' : icon(x)) + '<span class="tt">' + esc(x.title) + '</span><span class="x" data-close="' + x.id + '" role="button" aria-label="Close this tab">×</span></button>'; }).join('') +
-      '<button type="button" class="plus" data-do="newtab" title="New tab" aria-label="New tab">+</button></div>';
+        return '<button type="button" class="tab' + (t && x.id === t.id ? ' on' : '') + (S.n > 1 && S.panes.indexOf(x.id) >= 0 ? ' in' : '') + '" data-tab="' + x.id + '" title="' + esc(x.title) + '">' + (x.loading ? '<span class="spin"></span>' : icon(x)) + '<span class="tt">' + esc(x.title) + '</span><span class="x" data-close="' + x.id + '" role="button" aria-label="Close this tab"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></svg></span></button>'; }).join('') +
+      '<button type="button" class="plus" data-do="newtab" title="New tab" aria-label="New tab"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg></button></div>';
     var web = t && t.kind === 'web', value = L.typed != null ? L.typed + (L.fill || '') : shown(t), bm = t ? marked(t.url) : null;
     h += '<div class="tool"><button type="button" class="ib" data-do="back"' + (t && t.back ? '' : ' disabled') + ' aria-label="Back">' + ico('back') + '</button><button type="button" class="ib" data-do="fwd"' + (t && t.fwd ? '' : ' disabled') + ' aria-label="Forward">' + ico('fwd') + '</button>' +
       '<button type="button" class="ib" data-do="' + (t && t.loading ? 'stop' : 'reload') + '" aria-label="' + (t && t.loading ? 'Stop' : 'Reload') + '">' + ico(t && t.loading ? 'stop' : 'reload') + '</button>' +
@@ -146,10 +148,12 @@
           '<div class="row zoomrow">' + ico('zoom') + '<span class="lbl">Zoom</span><span class="zoomer"><button type="button" data-zoom="-1" aria-label="Smaller">−</button><button type="button" class="pct" data-zoom="0" aria-label="Back to 100%">' + (t ? t.zoom : 100) + '%</button><button type="button" data-zoom="1" aria-label="Larger">+</button></span></div>' +
           row('look', 'look', 'Theme', esc(themeNow) + more) +
           '<div class="row">' + ico('barpos') + '<span class="lbl">Bar Placement</span><span class="seg">' + [['top', 'Top'], ['bottom', 'Bottom']].map(function(o){ return '<button type="button" data-barat="' + o[0] + '" class="' + (set.barAt === o[0] ? 'on' : '') + '">' + o[1] + '</button>'; }).join('') + '</span></div>' +
+          row('tiles', 'tiles', 'Site Tiles', ({ clear: 'Clear Glass', colour: 'Colour Glass', icons: 'Icons' }[set.tileStyle] || 'Clear Glass') + more) +
+          '<div class="row">' + ico('apps') + '<span class="lbl">Sleek Apps</span><span class="sw"><button type="button" role="switch" aria-checked="' + (set.startApps !== false) + '" data-flip="startApps" aria-label="Show Sleek’s apps on a new tab"></button></span></div>' +
           (S.glassOK ? '<div class="row">' + ico('glass') + '<span class="lbl">Glass</span><span class="sw"><button type="button" role="switch" aria-checked="' + !!set.glass + '" data-flip="glass" aria-label="Glass"></button></span></div>' : '') +
           '<div class="row">' + ico('star') + '<span class="lbl">Bookmarks Bar</span><span class="sw"><button type="button" role="switch" aria-checked="' + !!set.bar + '" data-flip="bar" aria-label="Show the bookmarks bar"></button></span></div>'
         : L.sub === 'manage' ? row('allmarks', 'book', 'Bookmarks', more) + row('history', 'clock', 'History', more) + row('passwords', 'lock', 'Passwords', more) + row('downloads', 'down', 'Downloads', more)
-        : L.sub === 'defaults' ? row('search', 'search', 'Search Provider', esc(engine() ? engine()[0] : 'Your own') + more) + row('default', 'globe', 'Make Sleek Default Browser', '') : '';
+        : L.sub === 'defaults' ? row('search', 'search', 'Search Provider', esc(engine() ? engine()[0] : 'Your own') + more) + '<div class="row">' + ico('search') + '<span class="lbl">Search Suggestions</span><span class="sw"><button type="button" role="switch" aria-checked="' + (set.searchHints !== false) + '" data-flip="searchHints" aria-label="Search suggestions from your search provider"></button></span></div>' + row('default', 'globe', 'Make Sleek Default Browser', '') : '';
       if(sub) h += '<div class="pop menu sets sub s-' + L.sub + '" id="sub" role="menu" aria-label="' + GROUPS.filter(function(g){ return g[0] === L.sub; })[0][2] + '">' + sub + '</div>';
     }
     if(L.pop === 'shield' && t){ var bl = t.blocked || {}, total = blockedTotal(t), off = !t.blockOn;
@@ -169,6 +173,14 @@
     if(L.pop === 'allmarks') h += '<div class="pop menu" id="pop" data-anchor="' + (set.bar && !imm ? '#b-all' : '#b-menu') + '" data-side="right" style="width:300px"><h4 style="padding:6px 9px 2px">All bookmarks</h4>' + (S.bookmarks.map(function(b, i){ return '<button type="button" class="mi" data-bm="' + i + '"><span class="two"><b>' + esc(b.title) + '</b><i>' + esc(pretty(b.url)) + '</i></span></button>'; }).join('') || '<p style="padding:6px 9px">None yet. Press the star in the address box to keep a page.</p>') + '</div>';
     if(L.pop === 'history') h += '<div class="pop menu" id="pop" data-anchor="#b-menu" data-side="right" style="width:340px"><h4 style="padding:6px 9px 2px">History</h4>' + (S.private ? '<p style="padding:6px 9px">A private window keeps no history.</p>' : !L.history ? '<p style="padding:6px 9px">…</p>' : (L.history.map(function(x){ return '<button type="button" class="mi" data-hist="' + esc(x.u) + '"><span class="two"><b>' + esc(x.t || pretty(x.u)) + '</b><i>' + esc(pretty(x.u)) + '</i></span><small>' + when(x.at) + '</small></button>'; }).join('') || '<p style="padding:6px 9px">Nothing yet.</p>') +
       (L.history.length ? '<div class="line" style="margin:4px"></div><button type="button" class="mi" data-menu="clearhistory"><span style="color:var(--k-warn)">Clear history</span><small></small></button>' : '')) + '</div>';
+    // how a new tab shows the places you go most (and Sleek's apps): the same three looks as on the iPhone
+    if(L.pop === 'tiles'){ var ts = set.tileStyle || 'clear', seg = function(k, now, opts){ return '<span class="seg">' + opts.map(function(o){ return '<button type="button" data-tset="' + k + ':' + o[0] + '" class="' + (now === o[0] ? 'on' : '') + '" aria-pressed="' + (now === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</span>'; };
+      h += '<div class="pop" id="pop" data-anchor="#b-menu" data-side="right" style="width:340px"><h4>Site tiles</h4><div class="looks">' +
+        [['clear', 'Clear Glass', 'radial-gradient(120% 140% at 92% 0%, rgba(124,92,255,.6), transparent 65%), radial-gradient(90% 120% at 0% 110%, rgba(229,140,255,.35), transparent 70%), var(--k-hover)'], ['colour', 'Colour Glass', 'linear-gradient(135deg, #9A84FF, #4B2FC0)'], ['icons', 'Icons', 'var(--k-hover)']].map(function(l){
+          return '<button type="button" class="lookb tlook' + (ts === l[0] ? ' on' : '') + '" data-tset="tileStyle:' + l[0] + '" aria-pressed="' + (ts === l[0]) + '"><i class="tl-' + l[0] + '" style="--p:' + l[2] + '"><b></b></i>' + l[1] + '</button>'; }).join('') + '</div>' +
+        (ts === 'icons' ? '<p>Each site as its icon and name, three across, as before.</p>' :
+          '<div class="sw"><span>Shape</span>' + seg('tileShape', set.tileShape || 'wide', [['wide', 'Wide'], ['square', 'Square']]) + '</div>' +
+          '<div class="sw"><span>Layout<small>A row scrolls sideways</small></span>' + seg('tileLayout', set.tileLayout || 'grid', [['grid', 'Grid'], ['row', 'Row']]) + '</div>') + '</div>'; }
     if(L.pop === 'search'){ var en = engine(), own = en ? '' : (set.search || '');
       h += '<div class="pop menu" id="pop" data-anchor="#b-menu" data-side="right" style="width:300px"><h4 style="padding:6px 9px 2px">Search with</h4>' + SEARCH.map(function(e, i){ return '<button type="button" class="mi" data-engine="' + i + '" role="menuitemradio" aria-checked="' + (en === e) + '"><span>' + e[0] + '</span><small>' + (en === e ? '✓' : '') + '</small></button>'; }).join('') +
         '<div class="line" style="margin:4px"></div><div style="padding:4px 9px 8px;display:flex;flex-direction:column;gap:6px"><span style="font-size:12px;color:var(--k-muted)">Or another: its search address, with %s where the words go' + (en ? '' : ' (in use now)') + '</span><div class="frow" style="flex-wrap:nowrap"><input type="text" id="engineurl" value="' + esc(own) + '" placeholder="https://example.com/search?q=%s" aria-label="Another search address" spellcheck="false" autocomplete="off"><button type="button" class="go" data-do="engineown">Use</button></div></div></div>'; }
@@ -197,7 +209,8 @@
     place(); arrivals();
     if(panelY){ var pb2 = $('.panel-b'); if(pb2) pb2.scrollTop = panelY; }
     if(L.grab && L.grab.moved) hold(); else if(L.flip) settle();
-    if(keep){ var again = document.getElementById(keep); if(again){ again.focus(); try { again.setSelectionRange(a0, a1); } catch(e){} } }
+    // the cursor goes back where it was. That is not you clicking into the address box, so it must not close a menu just opened
+    if(keep){ var again = document.getElementById(keep); if(again){ L.refocus = true; again.focus(); L.refocus = false; try { again.setSelectionRange(a0, a1); } catch(e){} } }
     if(L.fresh && L.fill && L.typed != null){ L.fresh = false; var box = $('#url'); try { box.setSelectionRange(L.typed.length, L.typed.length + L.fill.length); } catch(e){} }      // the offered ending is selected, so typing on replaces it
     report(); pullDraw();
   }
@@ -366,6 +379,7 @@
     if((x = t.closest('[data-hist]'))){ L.pop = null; post({ do: 'open', url: x.getAttribute('data-hist'), new: e.metaKey }); paint(); return; }
     if((x = t.closest('[data-dl]'))){ post({ do: 'reveal', id: x.getAttribute('data-dl') }); return; }
     if((x = t.closest('[data-zoom]'))){ post({ do: 'zoom', by: +x.getAttribute('data-zoom') }); return; }
+    if((x = t.closest('[data-tset]'))){ var kv = x.getAttribute('data-tset').split(':'); post({ do: 'set', k: kv[0], v: kv[1] }); return; }
     if((x = t.closest('[data-look]'))){ post({ do: 'set', k: 'look', v: x.getAttribute('data-look') }); return; }
     if((x = t.closest('[data-theme]'))){ post({ do: 'set', k: 'theme', v: x.getAttribute('data-theme') }); return; }
     if((x = t.closest('[data-corner]'))){ var cn = x.getAttribute('data-corner').split(' '); post({ do: 'corner', side: cn[0], at: cn[1] }); return; }
@@ -418,7 +432,7 @@
     else if(e.target.id === 'sboard' && L.saving) L.saving.board = e.target.value;
   });
   win.addEventListener('focusin', function(e){
-    if(e.target.id === 'url' && L.typed == null){ var c = cur(); L.typed = c && c.kind === 'web' ? c.url : ''; L.fill = ''; L.typedFor = c ? c.id : ''; L.dirty = false; L.sel = -1; L.pop = null; paint(); var u = $('#url'); u.focus(); u.select(); }
+    if(e.target.id === 'url' && L.typed == null && !L.refocus){ var c = cur(); L.typed = c && c.kind === 'web' ? c.url : ''; L.fill = ''; L.typedFor = c ? c.id : ''; L.dirty = false; L.sel = -1; L.pop = null; paint(); var u = $('#url'); u.focus(); u.select(); }
   });
   win.addEventListener('focusout', function(e){ if(e.target.id === 'url') setTimeout(function(){ var a = document.activeElement; if(L.typed != null && !(a && a.id === 'url')){ L.typed = null; L.sel = -1; paint(); } }, 120); });
   win.addEventListener('input', function(e){
@@ -459,6 +473,7 @@
         paint(); if(L.typed != null && !L.dirty){ var ua = $('#url'); if(ua && document.activeElement === ua) ua.select(); }
         if(S.settings.imm && !hadImm) showBar();
       }
+      else if(m.type === 'hints'){ L.hints = { q: m.q, items: m.items || [] }; if(L.typed != null && L.typed.trim() === m.q) paint(); }
       else if(m.type === 'suggest'){ L.native = { q: m.q, items: m.items || [] };
         if(L.typed != null){ var ty = L.typed, bx = $('#url'), f = m.fill || '';      // finish the address being typed, when what is typed begins one you know or a well-known one
           L.fill = !L.noFill && f && m.q === ty && f.length > ty.length && f.toLowerCase().indexOf(ty.toLowerCase()) === 0 && bx && document.activeElement === bx && bx.selectionStart === bx.value.length ? f.slice(ty.length) : ''; L.fresh = !!L.fill; paint(); } }

@@ -11,6 +11,7 @@ render.mjs    steps the page and pipes frames to ffmpeg
 art/          the film decks' pictures: three made-up products, each screen as a finished design
               and as a pencil wireframe (art.html, art2.html; art.mjs renders them to art/*.webp)
 score.py      the score and sound effects, from the cue sheet: five tracks to choose from
+opening.py    the film's opening sting on its own, for Sleek for iPhone's opening (writes ios/Sounds/opening.m4a)
 reels.js      the helper clips' cue sheets (film.html?reel=<name>): six short clips for Settings
 proof.html    a short test of the clock on the app's hardest motion
 ```

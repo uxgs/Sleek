@@ -33,7 +33,11 @@
   function statusOf(t){ var p = T.project(t.project); return p && p.statuses.filter(function(s){ return s.id === t.status; })[0] || null; }
   function av(who){ if(!who) return ''; var p = T.person(who); return '<span class="tk-av" style="--c:' + (p ? p.color : '#8E8E93') + '" title="' + esc(who) + '">' + esc(who.charAt(0).toUpperCase()) + '</span>'; }
   function ck(t){ var on = T.isDone(t); return '<button type="button" class="tk-ck' + (on ? ' on' : '') + '" data-tick="' + t.id + '" role="checkbox" aria-checked="' + on + '" aria-label="Done: ' + esc(t.title) + '"></button>'; }
-  function openInTasks(p){ window.open('tasks.html#/' + p.id + '/board', '_blank'); }
+  function openInTasks(p){ window.open('tasks.html#/' + p.id + (T.isList && T.isList(p) ? '/shop' : '/board'), '_blank'); }
+  function isList(p){ return !!(T.isList && T.isList(p)); }
+  var BASKET = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9h18l-1.6 9.2a2 2 0 0 1-2 1.8H6.6a2 2 0 0 1-2-1.8z"/><path d="M8 9l3-5M16 9l-3-5M9 13v3M15 13v3"/></svg>';
+  // a list's day in words, as Tasks says it
+  function dayWords(k){ if(!k) return ''; var n = Math.round((from(k) - today0()) / DAY); return n === 0 ? 'today' : n === 1 ? 'tomorrow' : n === -1 ? 'yesterday' : n < 0 ? (-n) + ' days ago' : from(k).toLocaleDateString(undefined, { weekday: 'long' }); }
 
   // ---------- how a block last looked ----------
   // `seen` remembers the latest look of each task and block drawn or saved since the page opened, so
@@ -48,6 +52,7 @@
   }
   function snapBlock(a){
     var f = tasksFor(a); if(!f) return null;
+    if(isList(f.p)) return seen[keyOf(a)] = T.listSnapshot(f.p.id);
     return seen[keyOf(a)] = { n: f.p.name, c: f.p.color, at: Date.now(), cols: f.p.statuses.map(function(s){ return { n: s.name, c: s.color, done: !!s.done, tasks: f.all.filter(function(t){ return t.status === s.id; }).map(function(t){ return { t: t.title, done: T.isDone(t), due: t.due || '', who: t.who || '' }; }) }; }) };
   }
   // a page's document, with every task block's `snap` brought up to date (where its tasks are here)
@@ -108,11 +113,16 @@
       if(!f){
         // the tasks aren't in this browser: show how the block last looked
         var s = seen[keyOf(a)] || a.snap, rows = []; ((s && s.cols) || []).forEach(function(c){ (c.tasks || []).forEach(function(t){ rows.push(t); }); });
+        if(s && s.kind === 'grocery'){ el.className = 'dk-tasks gone dk-gl';
+          el.innerHTML = '<div class="tk-h"><i class="gl-i" style="--c:' + esc(s.c || '#12A36A') + '">' + BASKET + '</i><b>' + esc(s.n) + '</b><span>grocery list · not in this browser · as it last looked</span><span class="tk-tools"><button type="button" data-do="del">Remove</button></span></div>' +
+            '<div class="gl-aisles">' + (s.aisles || []).map(function(x){ return '<div class="gl-a"><h5><i style="--c:' + esc(x.c) + '"></i>' + esc(x.n) + '</h5>' + x.items.map(function(t){ return '<div class="tk-row' + (t.done ? ' done' : '') + '"><span class="tk-ck' + (t.done ? ' on' : '') + '"></span><span class="tk-t">' + esc(t.t) + '</span>' + (t.q > 1 ? '<q>×' + t.q + '</q>' : '') + '</div>'; }).join('') + '</div>'; }).join('') + '</div>';
+          return; }
         el.innerHTML = '<div class="tk-h"><i style="--c:' + esc((s && s.c) || '#8E8E93') + '"></i><b>' + esc(s ? s.n : 'Tasks') + '</b><span>not in this browser · as it last looked</span><span class="tk-tools"><button type="button" data-do="del">Remove</button></span></div><div class="tk-list">' +
           rows.map(function(t){ return '<div class="tk-row' + (t.done ? ' done' : '') + '"><span class="tk-ck' + (t.done ? ' on' : '') + '"></span><span class="tk-t">' + esc(t.t) + '</span></div>'; }).join('') + '</div>';
         return;
       }
       snapBlock(a);
+      if(isList(f.p)){ paintList(f, typing, was, move); return; }
       var p = f.p, h = '<div class="tk-h"><i style="--c:' + p.color + '"></i><b>' + esc(p.name) + '</b><span>' + (a.view === 'board' ? 'board' : a.ids ? 'these tasks' : a.show === 'all' ? 'every task' : 'open tasks') + ' · live</span><span class="tk-tools">' +
         '<button type="button" data-do="view">' + (a.view === 'board' ? 'As a list' : 'As a board') + '</button>' + (a.view === 'list' ? '<button type="button" data-do="show">' + (a.show === 'all' ? 'Hide done' : 'Show done') + '</button>' : '') +
         '<button type="button" data-do="open">Open in Tasks</button><button type="button" data-do="del">Remove</button></span></div>';
@@ -126,6 +136,26 @@
           (list.length ? '' : '<div class="tk-none">' + (f.all.length ? 'Everything here is done.' : 'No tasks yet.') + '</div>') + '</div>';
       }
       h += '<div class="tk-add"><input placeholder="＋ Add a task" aria-label="Add a task to ' + esc(p.name) + '" maxlength="300"></div>';
+      el.innerHTML = h;
+      if(typing != null){ var again = el.querySelector('.tk-add input'); again.value = typing; again.focus(); }
+      if(move && !still) Array.prototype.forEach.call(el.querySelectorAll('[data-flip]'), function(e){
+        var o = was[e.getAttribute('data-flip')], r = e.getBoundingClientRect(); if(!o || (Math.abs(o.left - r.left) < 1 && Math.abs(o.top - r.top) < 1)) return;
+        e.style.transition = 'none'; e.style.transform = 'translate(' + (o.left - r.left) + 'px,' + (o.top - r.top) + 'px)';
+        requestAnimationFrame(function(){ e.style.transition = 'transform .4s cubic-bezier(.2,.8,.2,1)'; e.style.transform = ''; setTimeout(function(){ e.style.transition = ''; }, 450); });
+      });
+    }
+    // a grocery list: what is left by aisle, in two columns, to tick here; what is in the basket after it, faded
+    function paintList(f, typing, was, move){
+      var p = f.p, left = f.all.filter(function(t){ return !T.isDone(t); }), got = f.all.length - left.length;
+      el.classList.add('dk-gl');
+      var groups = T.AISLES.concat([T.OTHER]).map(function(x){ var ts = f.all.filter(function(t){ return (t.aisle || 'other') === x.id; }).sort(function(m, n){ return (T.isDone(m) - T.isDone(n)) || (m.order || 0) - (n.order || 0); }); return { a: x, ts: ts }; }).filter(function(g){ return g.ts.length; });
+      var h = '<div class="tk-h"><i class="gl-i" style="--c:' + p.color + '">' + BASKET + '</i><b>' + esc(p.name) + '</b><span>' + (p.done ? 'shopped' : left.length ? left.length + ' to get' : 'everything is in the basket') + (p.due && !p.done ? ' · for ' + dayWords(p.due) : '') + ' · live</span><span class="tk-tools">' +
+        '<button type="button" data-do="open">Open list</button><button type="button" data-do="del">Remove</button></span></div>' +
+        '<div class="gl-bar"><b style="width:' + (f.all.length ? Math.round(100 * got / f.all.length) : 0) + '%;--c:' + p.color + '"></b></div>' +
+        '<div class="gl-aisles">' + groups.map(function(g){ return '<div class="gl-a"><h5><i style="--c:' + g.a.color + '"></i>' + esc(g.a.name) + '</h5>' + g.ts.map(function(t){
+          return '<div class="tk-row' + (T.isDone(t) ? ' done' : '') + '" data-flip="g-' + t.id + '">' + ck(t) + '<span class="tk-t">' + esc(t.title) + '</span>' + ((t.qty || 1) > 1 ? '<q>×' + t.qty + '</q>' : '') + '</div>'; }).join('') + '</div>'; }).join('') +
+        (groups.length ? '' : '<div class="tk-none">Nothing on it yet.</div>') + '</div>' +
+        '<div class="tk-add"><input placeholder="＋ Add an item, like “2 lemons”" aria-label="Add an item to ' + esc(p.name) + '" maxlength="300"></div>';
       el.innerHTML = h;
       if(typing != null){ var again = el.querySelector('.tk-add input'); again.value = typing; again.focus(); }
       if(move && !still) Array.prototype.forEach.call(el.querySelectorAll('[data-flip]'), function(e){
@@ -160,7 +190,8 @@
       var t = e.target;
       if(e.key === 'Enter' && t.tagName === 'INPUT'){
         e.preventDefault(); var title = t.value.trim(); if(!title) return; t.value = '';
-        var made = T.addTask({ project: node.attrs.project, title: title }); if(made && node.attrs.ids) set({ ids: node.attrs.ids.concat([made.id]) });
+        if(isList(T.project(node.attrs.project))) T.addItem(node.attrs.project, title);
+        else { var made = T.addTask({ project: node.attrs.project, title: title }); if(made && node.attrs.ids) set({ ids: node.attrs.ids.concat([made.id]) }); }
         var again = el.querySelector('.tk-add input'); if(again) again.focus();
       } else if((e.key === 'Enter' || e.key === ' ') && t.classList.contains('tk-card')){ e.preventDefault(); moveMenu(t); }
     });
@@ -182,13 +213,14 @@
 
   // ---------- choosing what to put in ----------
   function atCursor(){ var c = A.view.coordsAtPos(A.view.state.selection.from); return { left: c.left, right: c.left, top: c.top, bottom: c.bottom }; }
-  function ensureProject(){ return T.projects()[0] || T.addProject({ name: 'My tasks' }); }
+  function boards(){ return T.projects().filter(function(p){ return !isList(p); }); }
+  function ensureProject(){ return boards()[0] || T.addProject({ name: 'My tasks' }); }
   // pick a project, then run act(project)
   function pickProject(title, act){
     ensureProject();
     A.pop(atCursor(), function(p){
       var h = document.createElement('h4'); h.textContent = title; p.appendChild(h);
-      T.projects().forEach(function(pr){ var n = T.tasks(pr.id).filter(function(t){ return !T.isDone(t); }).length; A.item(p, null, pr.name, n + (n === 1 ? ' open task' : ' open tasks'), function(){ A.closePop(); A.view.focus(); act(pr); }); });
+      boards().forEach(function(pr){ var n = T.tasks(pr.id).filter(function(t){ return !T.isDone(t); }).length; A.item(p, null, pr.name, n + (n === 1 ? ' open task' : ' open tasks'), function(){ A.closePop(); A.view.focus(); act(pr); }); });
       var note = document.createElement('p'); note.textContent = 'Boards are made in Sleek Tasks.'; p.appendChild(note);
     });
   }
@@ -197,9 +229,9 @@
     ensureProject();
     var inp, box, sel = 0, rows = [];
     function draw(){
-      var q = inp.value.trim().toLowerCase(), hits = T.tasks().filter(function(t){ return !q || t.title.toLowerCase().indexOf(q) >= 0; }).sort(function(a, b){ return (T.isDone(a) - T.isDone(b)) || (b.updated - a.updated); }).slice(0, 7);
+      var q = inp.value.trim().toLowerCase(), hits = T.tasks().filter(function(t){ return !isList(t.project) && (!q || t.title.toLowerCase().indexOf(q) >= 0); }).sort(function(a, b){ return (T.isDone(a) - T.isDone(b)) || (b.updated - a.updated); }).slice(0, 7);
       rows = hits.map(function(t){ return { task: t }; });
-      if(inp.value.trim()) T.projects().forEach(function(pr){ rows.push({ make: pr }); });
+      if(inp.value.trim()) boards().forEach(function(pr){ rows.push({ make: pr }); });
       sel = Math.min(sel, Math.max(0, rows.length - 1));
       box.innerHTML = rows.map(function(r, i){
         if(r.task){ var pr = T.project(r.task.project); return '<button type="button" class="mi' + (i === sel ? ' sel' : '') + '" data-i="' + i + '"><span><b class="' + (T.isDone(r.task) ? 'tk-struck' : '') + '">' + esc(r.task.title) + '</b><i>' + esc(pr ? pr.name : '') + '</i></span></button>'; }
@@ -227,6 +259,17 @@
     inp.focus();
   }
   K.insertTask = function(){ pickTask(function(t){ var v = A.view; v.dispatch(v.state.tr.replaceSelectionWith(N.task_ref.create({ task: t.id, snap: snapTask(t) })).insertText(' ').scrollIntoView()); v.focus(); }); };
+  // a grocery list: one of yours (not shopped first), or a new one
+  K.insertList = function(){
+    if(!T.addList) return;
+    A.pop(atCursor(), function(p){
+      var h = document.createElement('h4'); h.textContent = 'Which grocery list?'; p.appendChild(h);
+      var ls = T.projects().filter(isList).sort(function(a, b){ return (!!a.done - !!b.done) || (a.due || '9') .localeCompare(b.due || '9'); });
+      function put(pr){ A.closePop(); A.view.focus(); var a = { project: pr.id, view: 'list', show: 'all', ids: null }; a.snap = snapBlock(a); A.insertBlock(N.tasks.create(a)); }
+      ls.forEach(function(pr){ var n = T.tasks(pr.id).filter(function(t){ return !T.isDone(t); }).length; A.item(p, null, pr.name, pr.done ? 'shopped' : n + ' to get' + (pr.due ? ' · for ' + dayWords(pr.due) : ''), function(){ put(pr); }); });
+      A.item(p, null, '＋ New grocery list', 'Fill it here, or in Sleek Tasks', function(){ put(T.addList({ name: 'Groceries' })); });
+    });
+  };
   K.insertTasks = function(kind){ pickProject(kind === 'board' ? 'Which board?' : 'Which board’s tasks?', function(pr){ var a = { project: pr.id, view: kind === 'board' ? 'board' : 'list', show: 'open', ids: null }; a.snap = snapBlock(a); A.insertBlock(N.tasks.create(a)); }); };
 
   // ---------- a plain checklist becomes real tasks ----------

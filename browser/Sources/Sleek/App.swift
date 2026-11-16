@@ -52,6 +52,17 @@ final class App: NSObject, NSApplicationDelegate {
     if Res.selfTest != nil { w.window.orderFrontRegardless() } else { w.window.makeKeyAndOrderFront(nil) }
     return w
   }
+  /// A link opened in a background private tab: it joins the private window you have (or one made for it, kept
+  /// behind this one), and you stay where you are.
+  @discardableResult func openInBackgroundPrivately(_ u: URL) -> BrowserWindow {
+    let keep = front, w = windows.last { $0.isPrivate } ?? {
+      let p = BrowserWindow(store: store, isPrivate: true); p.onClose = { [weak self] gone in self?.windows.removeAll { $0 === gone } }; windows.append(p)
+      if let k = keep?.window { p.window.order(.below, relativeTo: k.windowNumber) } else { p.window.orderFront(nil) }
+      return p }()
+    w.newTab(u, select: w.tabs.isEmpty)
+    keep?.tell(["type": "toast", "text": "Opened in a private tab, behind this window"])
+    return w
+  }
   // links from other apps, once Sleek is the default browser, or a file dropped on its icon
   func application(_ application: NSApplication, open urls: [URL]) { if launched { let w = front ?? newWindow(isPrivate: false, empty: true); urls.forEach { w.newTab($0) }; w.window.makeKeyAndOrderFront(nil) } else { pendingURLs += urls } }
   func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }

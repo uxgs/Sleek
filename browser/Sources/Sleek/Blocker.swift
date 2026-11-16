@@ -18,6 +18,7 @@
 //   @@||ok.example^                   an exception                                -> "ignore the rules before"
 //   ##.ad-box, site.com##.promo       hide what matches, everywhere or on a site  -> a hide rule
 //   ||popads.example^$popup           a site only ever opened as a pop-up         -> kept in popupHosts
+//   ||big.example/ads/$popup          one address of a site, opened as a pop-up   -> kept in popupParts (the rest of the site is left alone)
 //   anything with options the engine can't express (csp, redirect, scripts…)      -> left out
 import Foundation
 import WebKit
@@ -25,7 +26,8 @@ import WebKit
 struct Converted {
   var rules: [String] = []          // block and hide rules, each the engine's JSON for one rule
   var exceptions: [String] = []     // "ignore the rules before", which must come after them
-  var popupHosts = Set<String>()
+  var popupHosts = Set<String>()    // sites that only ever serve pop-up adverts
+  var popupParts: [String] = []     // pop-up adverts that are only some addresses of a site: "site <tab> expression <tab> opened from (a|b), if the line says"
   var left = 0                      // lines left out
 }
 
@@ -55,11 +57,15 @@ enum ListConverter {
     }
     return out + end
   }
-  /// The host of a line like ||host^ or ||host/path, for pop-up rules.
-  static func host(_ pattern: String) -> String? {
+  /// The site a pop-up line names, and whether it names the whole of it (||host^) or only some of its addresses
+  /// (||host/path, ||host*x=). The two must not be confused: the lists name google.com/favicon.ico as a pop-up advert,
+  /// and taking that for all of google.com stops every sign-in page Google has.
+  static func site(_ pattern: String) -> (host: String, whole: Bool)? {
     guard pattern.hasPrefix("||") else { return nil }
-    let h = pattern.dropFirst(2).prefix { $0 != "^" && $0 != "/" && $0 != "*" && $0 != ":" }
-    return h.contains(".") && h.allSatisfy({ $0.isASCII && ($0.isLetter || $0.isNumber || $0 == "." || $0 == "-") }) ? h.lowercased() : nil
+    let rest = pattern.dropFirst(2), h = rest.prefix { $0.isASCII && ($0.isLetter || $0.isNumber || $0 == "." || $0 == "-") }
+    guard !h.hasPrefix("."), let end = h.split(separator: ".", omittingEmptySubsequences: false).last, end.count >= 2, end.count < h.count, end.allSatisfy({ $0.isLetter }) else { return nil }      // a whole name ending in letters, not the start of a numeric address
+    let after = rest.dropFirst(h.count)
+    return (h.lowercased(), after.isEmpty || after == "^")
   }
   static func rule(_ expr: String, kinds: [String]?, childFrame: Bool = false, party: String?, on: [String], notOn: [String], caseMatters: Bool, action: String) -> String {
     var t = "\"url-filter\":" + quote(expr)
@@ -119,7 +125,10 @@ enum ListConverter {
       }
       if cannot { out.left += 1; return }
       let pattern = String(s)
-      if popup && !exception, let h = host(pattern) { out.popupHosts.insert(h) }
+      if popup && !exception, let at = site(pattern) {
+        if at.whole && on.isEmpty { out.popupHosts.insert(at.host) }
+        else if let e = expression(pattern) { out.popupParts.append(at.host + "\t" + e + "\t" + on.joined(separator: "|")) }
+      }
       if popup && want.isEmpty && !frame && !page { return }                              // only ever a pop-up: handled when a page asks for a new tab
       if exception && page { out.left += 1; return }                                       // "leave this whole site alone": left out, so the site is still blocked on
       guard let expr = expression(pattern) else { out.left += 1; return }
@@ -153,6 +162,7 @@ final class Blocker {
 
   private(set) var lists: [String: WKContentRuleList] = [:]
   private(set) var popupHosts = Set<String>()
+  private var popupParts: [String: [(match: NSRegularExpression, from: [String])]] = [:]      // by site
   private(set) var facts: [String: [String: Any]] = [:]      // for each list: rules, left out, dropped, when it was made ready, its version
   var onChange: [() -> Void] = []
   private var dir = FileManager.default.temporaryDirectory
@@ -170,14 +180,14 @@ final class Blocker {
   private func version(_ text: String) -> (id: String, dated: String) {
     var stamp = "", dated = ""
     for l in text.prefix(1200).split(separator: "\n") { if l.hasPrefix("! Version:") || l.hasPrefix("! Last modified:") { stamp += l; if dated.isEmpty { dated = l.split(separator: ":", maxSplits: 1).last.map { $0.trimmingCharacters(in: .whitespaces) } ?? "" } } }
-    var h: UInt64 = 1469598103934665603; for b in (stamp + "#\(text.utf8.count)#3").utf8 { h = (h ^ UInt64(b)) &* 1099511628211 }      // the trailing number changes when the way lists are converted changes
+    var h: UInt64 = 1469598103934665603; for b in (stamp + "#\(text.utf8.count)#4").utf8 { h = (h ^ UInt64(b)) &* 1099511628211 }      // the trailing number changes when the way lists are converted changes
     return (String(h, radix: 36), dated)
   }
 
   func start(dir: URL) {
     self.dir = dir; try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
     if let saved = (try? JSONSerialization.jsonObject(with: Data(contentsOf: dir.appendingPathComponent("ready.json")))) as? [String: Any] {
-      facts = saved["lists"] as? [String: [String: Any]] ?? [:]; popupHosts = Set(saved["popups"] as? [String] ?? [])
+      facts = saved["lists"] as? [String: [String: Any]] ?? [:]; readPopups()
     }
     Task { await makeReady(); if Res.selfTest == nil { await refreshIfOld() } }
   }
@@ -200,7 +210,7 @@ final class Blocker {
   /// Make every list ready: use what the engine already holds for this exact copy, or convert and compile it.
   private func makeReady() async {
     if working { return }; working = true; defer { working = false }
-    var popups = Set<String>(), changed = false
+    var changed = false
     for s in Blocker.sources {
       guard let file = source(s.id), let text = try? String(contentsOf: file, encoding: .utf8) else { continue }
       let v = version(text), name = "sleek-" + s.id + "-" + v.id
@@ -213,10 +223,9 @@ final class Blocker {
       if list == nil { all = await sound(all[...], dropped: &dropped); list = await compile(name, all[...]) }
       guard let ok = list else { continue }
       lists[s.id] = ok; changed = true
-      facts[s.id] = ["version": v.id, "dated": v.dated, "rules": all.count, "left": made.left, "dropped": dropped, "popups": Array(made.popupHosts), "title": s.title]
+      facts[s.id] = ["version": v.id, "dated": v.dated, "rules": all.count, "left": made.left, "dropped": dropped, "popups": Array(made.popupHosts), "popupParts": made.popupParts, "popupsAs": Blocker.popupsAs, "title": s.title]
     }
-    for f in facts.values { popups.formUnion(f["popups"] as? [String] ?? []) }
-    popupHosts = popups
+    readPopups()
     if changed {
       if let d = try? JSONSerialization.data(withJSONObject: ["lists": facts, "popups": []]) { try? d.write(to: dir.appendingPathComponent("ready.json"), options: .atomic) }
       // lists the engine holds for older copies are no longer needed
@@ -237,8 +246,33 @@ final class Blocker {
     }
     if fetched { await makeReady() }
   }
-  func isPopupHost(_ host: String?) -> Bool {
-    guard var h = host?.lowercased() else { return false }
-    while true { if popupHosts.contains(h) { return true }; guard let dot = h.firstIndex(of: "."), h[h.index(after: dot)...].contains(".") else { return false }; h = String(h[h.index(after: dot)...]) }
+  /// How pop-up sites are kept in `facts`. What an older Sleek kept (a whole site for every pop-up line) is not read.
+  static let popupsAs = 2
+  private func readPopups() {
+    var hosts = Set<String>(), parts: [String: [(match: NSRegularExpression, from: [String])]] = [:]
+    for f in facts.values where (f["popupsAs"] as? Int) == Blocker.popupsAs {
+      hosts.formUnion(f["popups"] as? [String] ?? [])
+      for line in f["popupParts"] as? [String] ?? [] {
+        let p = line.components(separatedBy: "\t")
+        if p.count == 3, let r = try? NSRegularExpression(pattern: p[1], options: [.caseInsensitive]) { parts[p[0], default: []].append((r, p[2].isEmpty ? [] : p[2].components(separatedBy: "|"))) }
+      }
+    }
+    popupHosts = hosts; popupParts = parts
+  }
+  /// Is this address a pop-up advert: a site that only ever serves them, or one of the addresses the lists name on a
+  /// site that is otherwise ordinary? `from` is the site of the page that asked for it: a site's own pages are never
+  /// pop-ups to it, and some lines of the lists hold only for pop-ups opened from the sites they name.
+  func isPopup(_ url: URL?, from: String? = nil) -> Bool {
+    guard let url = url, var h = url.host?.lowercased() else { return false }
+    let opener = from?.lowercased() ?? "", text = url.absoluteString
+    func under(_ host: String, _ site: String) -> Bool { host == site || host.hasSuffix("." + site) }
+    while true {
+      let own = under(opener, h)
+      if !own, popupHosts.contains(h) { return true }
+      for p in popupParts[h] ?? [] where p.from.isEmpty ? !own : p.from.contains(where: { under(opener, $0) }) {
+        if p.match.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)) != nil { return true }
+      }
+      guard let dot = h.firstIndex(of: "."), h[h.index(after: dot)...].contains(".") else { return false }; h = String(h[h.index(after: dot)...])
+    }
   }
 }

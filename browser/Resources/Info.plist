@@ -18,6 +18,8 @@
   <key>NSAppTransportSecurity</key><dict><key>NSAllowsArbitraryLoadsInWebContent</key><true/></dict>
   <key>NSCameraUsageDescription</key><string>A site you are on asked to use the camera. Sleek asks you before letting it.</string>
   <key>NSMicrophoneUsageDescription</key><string>A site you are on asked to use the microphone. Sleek asks you before letting it.</string>
+  <key>NSLocationUsageDescription</key><string>A site you are on asked where you are. Sleek asks you before letting it know.</string>
+  <key>NSLocationWhenInUseUsageDescription</key><string>A site you are on asked where you are. Sleek asks you before letting it know.</string>
   <key>CFBundleURLTypes</key>
   <array><dict><key>CFBundleURLName</key><string>Web address</string><key>CFBundleTypeRole</key><string>Viewer</string><key>CFBundleURLSchemes</key><array><string>http</string><string>https</string></array></dict></array>
   <key>CFBundleDocumentTypes</key>
