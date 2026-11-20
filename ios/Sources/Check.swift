@@ -165,7 +165,7 @@ final class Checker: ObservableObject {
     say(boardGone, "a board deleted in another app goes here too")
     Work.shared.folder = was.0; Work.shared.peers = was.1; try? fm.removeItem(at: share)
     let addr = { (s: String) in Browser.sleekApp(for: URL(string: s)!)?.absoluteString ?? "-" }
-    say(addr("sleek://app/tasks.html#/abcde12345/shop") == "sleek-tasks://open?board=abcde12345" && addr("sleek://app/tasks.html") == "sleek-tasks://open" && addr("sleek://app/doc.html?d=pg12345678") == "sleek-docs://open?d=pg12345678"
+    say(addr("sleek://app/tasks.html#/abcde12345/shop") == "sleek-tasks://open?board=abcde12345" && addr("sleek://app/tasks.html") == "sleek-tasks://open" && addr("sleek://app/notes.html") == "sleek-notes://open" && addr("sleek://app/notes.html#n/abcde12345") == "sleek-notes://open?id=abcde12345" && addr("sleek://app/doc.html?d=pg12345678") == "sleek-docs://open?d=pg12345678"
         && addr("sleek://app/deck.html?d=dk12345678") == "sleek-slides://open?d=dk12345678" && addr("sleek://app/slides.html") == "sleek-slides://open" && addr("https://example.org/doc.html?d=x1234") == "-" && addr("sleek://app/tasks.html#/BAD!/x") == "sleek-tasks://open",
         "each of Sleek's own pages knows the address of the Sleek app that shows it")
     let hintsWere = b.searchHints; b.setting("searchHints", false); let hintsOff = !b.searchHints; b.setting("searchHints", hintsWere)
@@ -186,10 +186,10 @@ final class Checker: ObservableObject {
     say(redOK && monoOK, "a tile takes its colour from the site's icon (red for a red one), and a black-and-white icon gets a graphite tile")
     if let f = Icons.file("tile-check.example") { try? FileManager.default.createDirectory(at: f.deletingLastPathComponent(), withIntermediateDirectories: true); try? redIcon.pngData()?.write(to: f) }
     let keptTint = Tint.of("tile-check.example"); if let f = Icons.file("tile-check.example") { try? FileManager.default.removeItem(at: f) }
-    say(["slides", "docs", "tasks"].allSatisfy { SiteTile.apps[$0]?.accent != nil }, "Slides, Docs and Tasks have glass tiles in their own colours")
+    say(Browser.sleekApps.allSatisfy { SiteTile.apps[$0]?.accent != nil }, "Slides, Docs, Tasks and Notes have glass tiles in their own colours")
 
     // ---------- the start page, arranged your way ----------
-    let layoutWas = ["startOrder", "startOff", "startApps", "startAppList", "startMarks", "goalsOff"].map { ($0, b.store.settings[$0]) }
+    let layoutWas = ["startOrder", "startOff", "startApps", "startAppList", "startAppsOff", "startMarks", "goalsOff"].map { ($0, b.store.settings[$0]) }
     for (k, _) in layoutWas { b.store.settings[k] = nil }
     let firstOrder = b.parts == Part.allCases
     b.movePart(.goals, to: 0); b.takeOff(.today); b.movePart(.most, to: 1)
@@ -199,8 +199,14 @@ final class Checker: ObservableObject {
     b.store.settings["startOrder"] = nil; b.store.settings["startOff"] = nil; b.store.settings["startApps"] = false
     say(b.partsOff == [.apps] && !b.parts.contains(.apps), "the old switch that hid Sleek's apps counts as taking that section off")
     b.store.settings["startApps"] = nil
+    let appsFirst = b.appsOnPage == ["slides", "docs", "tasks", "notes"]
+    b.store.settings["startAppList"] = ["docs", "slides", "tasks"]      // a page arranged before Notes existed
+    let notesJoins = b.appsOnPage == ["docs", "slides", "tasks", "notes"]
+    b.setApp("notes", on: false); let notesOff = b.appsOnPage == ["docs", "slides", "tasks"]; b.setApp("notes", on: true)
+    say(appsFirst && notesJoins && notesOff && b.appsOnPage.last == "notes", "Sleeky Notes joins Slides, Docs and Tasks on the page, also on a page arranged before it existed, and stays off once taken off")
+    b.store.settings["startAppList"] = nil; b.store.settings["startAppsOff"] = nil
     b.moveTile(.apps, "tasks", to: "slides"); b.setApp("docs", on: false)
-    say(b.appsOnPage == ["tasks", "slides"], "Sleek's apps on the page move into your order, and one can come off")
+    say(b.appsOnPage == ["tasks", "slides", "notes"], "Sleek's apps on the page move into your order, and one can come off")
     let marksWere = b.store.bookmarks
     b.store.bookmarks = []; for i in 1...10 { b.store.addBookmark(title: "Mark \(i)", url: "https://mark\(i).example/") }
     let firstMarks = b.marksOnPage.map(\.name)
@@ -231,6 +237,34 @@ final class Checker: ObservableObject {
         "a tap on a goal marks today or adds one, written where the other Sleek apps read it, and a goal it completes leaves the page")
     try? FileManager.default.removeItem(at: groot); b.goals = []
     for (k, v) in layoutWas { b.store.settings[k] = v }
+
+    // ---------- pressing and holding an image; the page's colour behind the clock ----------
+    say(!(Bundle.main.object(forInfoDictionaryKey: "NSPhotoLibraryAddUsageDescription") as? String ?? "").isEmpty, "the app says why it adds to Photos (without that, iOS closes an app that tries)")
+    let dot = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAEElEQVR42mOoifkPRAwQCgAxhgddozWUVwAAAABJRU5ErkJggg=="
+    let it = b.newTab(); it.atStart = false; it.web.frame = CGRect(x: 0, y: 0, width: 390, height: 700)
+    it.web.loadSimulatedRequest(URLRequest(url: URL(string: "https://image-test.example/")!), responseHTML: """
+    <!doctype html><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><title>Images</title><body style="margin:0;background:#102a43">
+    <header style="background:rgb(230,57,70);height:60px"></header><img id="plain" src="\(dot)" style="display:block;width:200px;height:120px"><a href="https://example.com/"><img id="linked" src="\(dot)" style="display:block;width:200px;height:120px"></a><p id="text" style="height:900px">Words</p>
+    """)
+    _ = await until(15) { !it.web.isLoading && it.title == "Images" }
+    func touch(_ id: String) async { it.held = nil; _ = await js(it, "var el = document.getElementById('\(id)'), r = el.getBoundingClientRect(), t = new Touch({ identifier: 1, target: el, clientX: r.left + 20, clientY: r.top + 20 }); el.dispatchEvent(new TouchEvent('touchstart', { touches: [t], targetTouches: [t], changedTouches: [t], bubbles: true })); return 1;") }
+    await touch("plain"); _ = await until(4) { it.held != nil }
+    let plain = it.held, callout = await js(it, "return document.getElementById('plain').style.getPropertyValue('-webkit-touch-callout')") as? String ?? ""
+    say(plain?.src.scheme == "data" && plain?.linked == false && (plain?.box?.width ?? 0) == 200 && callout == "none" && it.contextMenuInteraction(UIContextMenuInteraction(delegate: it), configurationForMenuAtLocation: .zero) != nil,
+        "an image pressed and held gets Sleek's own menu (open it, save it to Photos, copy, share) in place of WebKit's")
+    await touch("linked"); _ = await until(4) { it.held != nil }
+    say(it.held?.linked == true && it.contextMenuInteraction(UIContextMenuInteraction(delegate: it), configurationForMenuAtLocation: .zero) == nil && it.heldMenu(link: URL(string: "https://example.com/")) != nil,
+        "an image that is a link keeps the link's menu, with the image's choices added")
+    await touch("text"); await nap(0.4)
+    say(it.held == nil && it.heldNow == nil && it.contextMenuInteraction(UIContextMenuInteraction(delegate: it), configurationForMenuAtLocation: .zero) == nil, "anything else that is held is left to the phone's own menu")
+    let pic = await it.picture(URL(string: dot)!)
+    say(pic?.type == .png && pic?.name == "Image.png" && pic.flatMap { UIImage(data: $0.data) }?.size == CGSize(width: 2, height: 2), "the image itself is fetched whole, ready for Photos, copying or sharing")
+    it.topSoon(); let topped = await until(6) { it.topColor.map { TopEdge.key($0) } == "230,57,70" }
+    let overRed = b.statusDark
+    _ = await js(it, "window.scrollTo(0, 400); return 1;"); it.topSoon()
+    let navy = await until(6) { it.topColor.map { TopEdge.key($0) } == "16,42,67" }
+    say(topped && overRed == true && navy && TopEdge.dark(UIColor(red: 0.98, green: 0.97, blue: 0.94, alpha: 1)) == false, "the colour along the top of the page runs up behind the clock, which turns light or dark to suit, and follows as the page scrolls")
+    b.close(it)
     say(Chime.url != nil, "the opening sound is inside the app")
     say(b.launch == .done,"while the app checks itself, Sleek opens without its launch animation")
     say(keptTint == redTint && SiteName.of("www.tile-check.example") == "tile-check.example" && PhoneTab.iconScript.contains("apple-touch-icon"), "tiles read the icon Sleek keeps for a site, and Sleek keeps the site's iPhone icon when it has one")
@@ -250,6 +284,15 @@ final class Checker: ObservableObject {
     let home = await until(20) { (await self.js(s, "return !!(window.SleekTasks && SleekTasks.projects().length && document.querySelector('.home h1'))")) as? Bool == true }
     let wide = ((await js(s, "return document.documentElement.scrollWidth - innerWidth")) as? Int) ?? 99
     say(tasksUp && home && wide <= 0 && s.shownName == "Sleek Tasks" && !s.blocking, "Sleek Tasks opens inside the app and fits the phone's width")
+    let notesUp = await visit(s, "sleek://app/notes.html")
+    let notesHome = await until(20) { (await self.js(s, "return !!(window.SleekNotes && window.SleekNotesApp && !document.documentElement.classList.contains('booting') && document.querySelector('#jotin'))")) as? Bool == true }
+    _ = await js(s, "document.querySelector('#jotin').value = 'Checked on the iPhone'; document.querySelector('#jot').requestSubmit(); return 1")
+    let jotted = (await js(s, "return SleekNotes.notes()[0].title")) as? String == "Checked on the iPhone"
+    let notesWide = ((await js(s, "return document.documentElement.scrollWidth - innerWidth")) as? Int) ?? 99
+    say(notesUp && notesHome && jotted && notesWide <= 0 && s.shownName == "Sleeky Notes" && !s.blocking, "Sleeky Notes opens inside the app, keeps a note, and fits the phone's width")
+    let canLock = (await js(s, "return !!(window.SleekVault && SleekVault.can)")) as? Bool == true
+    say(true, "locking notes inside the app: \(canLock ? "available" : "not available here (the page is not a secure one), so Lock says so")")
+    _ = await js(s, "SleekNotes.notes().filter(n => n.title === 'Checked on the iPhone').forEach(n => SleekNotes.remove(n.id)); return 1")
     for (file, name) in [("docs.html", "Sleek Docs"), ("slides.html", "Sleek Slides")] {
       let up = await visit(s, "sleek://app/" + file); await nap(0.6)
       let w = ((await js(s, "return document.documentElement.scrollWidth - innerWidth")) as? Int) ?? 99

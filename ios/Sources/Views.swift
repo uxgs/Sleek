@@ -40,6 +40,7 @@ struct BrowserView: View {
     .fullScreenCover(isPresented: Binding(get: { b.asking }, set: { _ in })) { WelcomeView(b: b).preferredColorScheme(b.scheme) }
     .preferredColorScheme(b.scheme)
     .tint(.sleekB)
+    .onChange(of: b.launch) { _, _ in b.statusChanged() }.onChange(of: b.look) { _, _ in DispatchQueue.main.async { b.statusChanged() } }
     .onChange(of: phase) { _, now in if now != .active { b.leaving() } else { Task { await Work.shared.pull() } }; if now == .background { Vault.shared.lock() } }      // passwords close when you leave the app
     // the widgets: sleek-browser://search, ://private, ://open?u=<a site, or one of Sleek's own pages>
     .onOpenURL { url in
@@ -83,7 +84,8 @@ struct PageView: View {
         if tab.loading && !b.barAtTop { progress }
       }
     }
-    .background(Color(.systemBackground))
+    .background(tab.atStart ? Color(.systemBackground) : Color(tab.topColor ?? .systemBackground))      // behind the clock: the page's own top colour (Edge.swift)
+    .onAppear { b.statusChanged() }.onChange(of: tab.atStart) { _, _ in b.statusChanged() }
   }
   /// With the bar at the bottom, a page's progress runs along the top of the screen.
   private var progress: some View {
@@ -104,7 +106,7 @@ struct BarView: View {
       ZStack(alignment: b.compact ? b.corner.alignment : (b.corner.isTop ? .top : .bottom)) {
         Color.clear
         if b.compact { tile(in: g.size) } else {
-          VStack(spacing: 8) { if !b.barAtTop { extras }; bar; if b.barAtTop { extras } }
+          VStack(spacing: 8) { if !b.barAtTop { extras }; bar; if b.barAtTop { extras } }.frame(maxWidth: 560)      // on a wide screen (an iPhone Duo, opened) the bar stays a bar, in the middle
         }
       }
       .padding(.horizontal, b.compact ? 16 : 12).padding(.bottom, b.compact ? 12 : 4).padding(.top, 8)
@@ -174,13 +176,13 @@ struct BarView: View {
         }
         Spacer(minLength: 0)
       }
-      if k.make { Text("Kept on this iPhone only and used with Face ID, so you sign in without a password.").font(.system(size: 13)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true) }
+      if k.make { Text("Kept on this iPhone only and used with \(Unlock.name), so you sign in without a password.").font(.system(size: 13)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true) }
       else if k.users.isEmpty { Text("Sign in another way. If the site then offers to add a passkey, Sleek keeps it.").font(.system(size: 13)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true) }
       else {
         VStack(spacing: 6) {
           ForEach(k.users) { u in
             Button { b.answerPasskey(yes: true, id: u.id) } label: {
-              HStack(spacing: 10) { Image(systemName: "faceid").font(.system(size: 15, weight: .medium)).foregroundStyle(sleekRun); Text(u.user.isEmpty ? "Passkey" : u.user).font(.system(size: 15, weight: .medium)).lineLimit(1); Spacer(minLength: 0); Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold)).foregroundStyle(.tertiary) }
+              HStack(spacing: 10) { Image(systemName: Unlock.icon).font(.system(size: 15, weight: .medium)).foregroundStyle(sleekRun); Text(u.user.isEmpty ? "Passkey" : u.user).font(.system(size: 15, weight: .medium)).lineLimit(1); Spacer(minLength: 0); Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold)).foregroundStyle(.tertiary) }
                 .padding(.horizontal, 14).frame(height: 48).background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 14, style: .continuous)).contentShape(Rectangle())
             }.foregroundStyle(.primary)
           }

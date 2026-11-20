@@ -27,6 +27,11 @@ struct StartView: View {
     let bits = (late > 0 ? ["\(late) overdue"] : []) + (get > 0 ? ["\(get) thing\(get == 1 ? "" : "s") to get"] : [])
     return (n == 0 ? "Nothing due today" : "\(n) task\(n == 1 ? "" : "s") for today") + (bits.count == 2 ? ", \(bits[0]) and \(bits[1])" : bits.count == 1 ? ", and \(bits[0])" : "") + "."
   }
+  /// How many fit across: never fewer than on an ordinary iPhone, more where the screen is wider (an iPhone Duo, opened).
+  private func across(_ base: Int, least: CGFloat, gap: CGFloat = 12) -> Int {
+    let w = viewport.width > 0 ? viewport.width : UIScreen.main.bounds.width
+    return max(base, Int((w - 40 + gap) / (least + gap)))
+  }
   /// The sections showing: all of yours while arranging; otherwise those with something in them.
   private var showing: [Part] { b.parts.filter { b.arranging || has($0) } }
   private func has(_ p: Part) -> Bool {
@@ -278,7 +283,7 @@ struct StartView: View {
     let gs = b.goalsOnPage
     if gs.isEmpty { hint(b.goals.isEmpty ? "Set a goal in Sleek Tasks and it shows here, to move on with a tap." : "Choose goals to show here in this section's options.") }
     else if b.goalLook == "bars" { VStack(spacing: 10) { ForEach(gs) { goalBar($0) } }.allowsHitTesting(!b.arranging) }
-    else { HStack(alignment: .top, spacing: 10) { ForEach(gs.prefix(3)) { goalRing($0) } }.allowsHitTesting(!b.arranging) }
+    else { HStack(alignment: .top, spacing: 10) { ForEach(gs.prefix(across(3, least: 108, gap: 10))) { goalRing($0) } }.allowsHitTesting(!b.arranging) }
   }
   private func goalRing(_ g: Goal) -> some View {
     let c = Color(hex: g.color)
@@ -338,9 +343,9 @@ struct StartView: View {
   @ViewBuilder private var appsPart: some View {
     let list = b.appsOnPage
     if list.isEmpty { hint("Choose Sleek's apps for here in this section's options.") }
-    else if b.tileStyle == "icons" { HStack(spacing: 12) { ForEach(list, id: \.self) { a in chrome(.apps, a, a.capitalized) { app(a.capitalized, a, Color(hex: a == "slides" ? "#7C5CFF" : a == "docs" ? "#0A84FF" : "#12A36A")) } } } }
-    else {                                              // the same glass as the site tiles, three square across
-      LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 3), spacing: 12) { ForEach(Array(list.enumerated()), id: \.element) { i, a in
+    else if b.tileStyle == "icons" { HStack(spacing: 12) { ForEach(list, id: \.self) { a in chrome(.apps, a, a.capitalized) { app(a.capitalized, a, Browser.appColor(a)) } } } }
+    else {                                              // the same glass as the site tiles, square, all four across (three when there are three or fewer)
+      LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: list.count > 3 ? 10 : 12), count: across(min(4, max(3, list.count)), least: 104)), spacing: 12) { ForEach(Array(list.enumerated()), id: \.element) { i, a in
         chrome(.apps, a, a.capitalized) {
           Button { guard !b.arranging else { return }; tap(); b.open("sleek://app/\(a).html") } label: { SiteTile(host: a, name: a.capitalized, style: b.tileStyle, wide: false, big: false, app: a) }.buttonStyle(Press())
         }
@@ -378,21 +383,21 @@ struct StartView: View {
     let more = p == .marks && b.arranging
     if list.isEmpty && !more { hint("The sites you go to most will show here.") }
     else if b.tileStyle == "icons" {
-      LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8, alignment: .top), count: 4), spacing: 16) {
+      LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8, alignment: .top), count: across(4, least: 80, gap: 8)), spacing: 16) {
         ForEach(list) { pl in chrome(p, p == .marks ? pl.url : pl.host, pl.name) { place(pl) } }
         if more { addMarks(icon: true) }
       }
     } else if b.tileLayout == "row" {
-      let wide = b.tileShape == "wide"
+      let wide = b.tileShape == "wide", roomy = across(1, least: 104) >= 5
       ScrollView(.horizontal, showsIndicators: false) {
         HStack(spacing: 12) {
-          ForEach(Array(list.enumerated()), id: \.element.id) { i, pl in tile(p, pl, i, big: true).containerRelativeFrame(.horizontal, count: wide ? 5 : 2, span: wide ? 4 : 1, spacing: 12) }
-          if more { addMarks(icon: false).containerRelativeFrame(.horizontal, count: wide ? 5 : 2, span: wide ? 4 : 1, spacing: 12) }
+          ForEach(Array(list.enumerated()), id: \.element.id) { i, pl in tile(p, pl, i, big: true).containerRelativeFrame(.horizontal, count: roomy ? (wide ? 5 : 4) : (wide ? 5 : 2), span: roomy ? (wide ? 2 : 1) : (wide ? 4 : 1), spacing: 12) }
+          if more { addMarks(icon: false).containerRelativeFrame(.horizontal, count: roomy ? (wide ? 5 : 4) : (wide ? 5 : 2), span: roomy ? (wide ? 2 : 1) : (wide ? 4 : 1), spacing: 12) }
         }.scrollTargetLayout().padding(.vertical, 22)
       }
       .scrollTargetBehavior(.viewAligned).contentMargins(.horizontal, 20, for: .scrollContent).padding(.horizontal, -20).padding(.vertical, -22)
     } else {
-      LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: b.tileShape == "wide" ? 2 : 3), spacing: 12) {
+      LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: b.tileShape == "wide" ? across(2, least: 160) : across(3, least: 104)), spacing: 12) {
         ForEach(Array(list.enumerated()), id: \.element.id) { i, pl in tile(p, pl, i, big: false) }
         if more { addMarks(icon: false) }
       }
@@ -589,8 +594,8 @@ struct StartOptions: View {
         }
       } header: { Text("Goals to show") } footer: { Text("Rings show three at a time. New goals you make in Sleek Tasks show here until you switch them off.") }
     case .apps:
-      Section("On the page") { ForEach(["slides", "docs", "tasks"], id: \.self) { a in
-        Toggle(isOn: Binding(get: { b.appsOnPage.contains(a) }, set: { tap(); b.setApp(a, on: $0) })) { HStack(spacing: 12) { AppIcon(app: a, size: 30); Text("Sleek " + a.capitalized) } }
+      Section("On the page") { ForEach(Browser.sleekApps, id: \.self) { a in
+        Toggle(isOn: Binding(get: { b.appsOnPage.contains(a) }, set: { tap(); b.setApp(a, on: $0) })) { HStack(spacing: 12) { AppIcon(app: a, size: 30); Text(Browser.appName(a)) } }
       } }
       TileLook(b: b, shapes: false)
     case .recent:

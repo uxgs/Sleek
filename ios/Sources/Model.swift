@@ -54,6 +54,9 @@ final class PhoneTab: NSObject, ObservableObject, Identifiable, WKNavigationDele
   @Published var shot: UIImage?          // how it looked when last left, for the grid of tabs
   private(set) var blocking = false      // whether the block lists are on this tab now
   weak var browser: Browser?
+  var held: HeldImage?                   // the image under the finger at the last touch (Images.swift)
+  @Published var topColor: UIColor?      // the page's colour along its top edge, carried up behind the clock (Edge.swift)
+  var topPending = false, topKey = ""
   private var watch: [NSKeyValueObservation] = [], lastY: CGFloat = 0
   /// Where the page's passkey questions arrive (Passkeys.swift, shared with the Mac app).
   let keys = KeyBridge()
@@ -76,6 +79,10 @@ final class PhoneTab: NSObject, ObservableObject, Identifiable, WKNavigationDele
     // signing in: a script apart from the page's own (the same one the Mac app uses) says where the sign-in boxes are and what was sent
     c.userContentController.addUserScript(WKUserScript(source: sharedSignInScript, injectionTime: .atDocumentEnd, forMainFrameOnly: true, in: signInWorld))
     c.userContentController.add(Weak(self), contentWorld: signInWorld, name: "sleekPw")
+    // pressing and holding: the same kind of script notes the image under the finger (Images.swift)
+    c.userContentController.addUserScript(WKUserScript(source: PhoneTab.heldScript, injectionTime: .atDocumentStart, forMainFrameOnly: true, in: signInWorld))
+    c.userContentController.add(Weak(self), contentWorld: signInWorld, name: "sleekHeld")
+    web.addInteraction(UIContextMenuInteraction(delegate: self))
     // passkeys: a script in the page stands in for navigator.credentials and hands the question to Sleek
     c.userContentController.addUserScript(WKUserScript(source: Passkeys.script, injectionTime: .atDocumentStart, forMainFrameOnly: true))
     c.userContentController.addScriptMessageHandler(keys, contentWorld: .page, name: "sleekKey")
@@ -83,6 +90,7 @@ final class PhoneTab: NSObject, ObservableObject, Identifiable, WKNavigationDele
     let sync: (WKWebView, Any) -> Void = { [weak self] _, _ in Task { @MainActor in self?.sync() } }
     watch = [web.observe(\.title, changeHandler: sync), web.observe(\.url, changeHandler: sync), web.observe(\.isLoading, changeHandler: sync), web.observe(\.estimatedProgress, changeHandler: sync),
              web.observe(\.canGoBack, changeHandler: sync), web.observe(\.canGoForward, changeHandler: sync),
+             web.observe(\.themeColor, changeHandler: sync), web.observe(\.underPageBackgroundColor, changeHandler: sync),
              web.scrollView.observe(\.contentOffset) { [weak self] s, _ in MainActor.assumeIsolated { self?.scrolled(s) } }]
     fit(top: browser.barAtTop)
     keys.onAsk = { [weak self] a in if let s = self { s.browser?.passkeyAsked(s, a) } }
@@ -90,16 +98,25 @@ final class PhoneTab: NSObject, ObservableObject, Identifiable, WKNavigationDele
   }
   /// The tab is going: its page's open passkey questions are answered "not allowed", and nothing holds on to it.
   func closing() { keys.dropAll(); web.configuration.userContentController.removeScriptMessageHandler(forName: "sleekKey", contentWorld: .page) }
-  func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) { keys.dropAll() }      // a new page: the old one's questions are over
+  func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) { keys.dropAll(); topSoon(); tellRoom() }      // a new page: the old one's questions are over
   /// Leave room for the bar at whichever end it is, so nothing at the very top or bottom of a page sits under it.
   func fit(top: Bool) {
     let room: CGFloat = 62, inset = UIEdgeInsets(top: top ? room : 0, left: 0, bottom: top ? 0 : room, right: 0)
     web.scrollView.contentInset = inset; web.scrollView.verticalScrollIndicatorInsets = inset
+    barTop = top; tellRoom()
   }
-  private func sync() { title = web.title ?? ""; address = web.url; loading = web.isLoading; progress = web.estimatedProgress; canBack = web.canGoBack; canForward = web.canGoForward }
+  private var barTop = false
+  /// Sleek's own pages fill the screen and keep controls at its foot (Notes' "Jot something down"), so they are told how
+  /// much room the bar takes, as --sleek-bar-top and --sleek-bar-bottom, and keep clear of it themselves.
+  private func tellRoom() {
+    guard isSleek else { return }
+    web.evaluateJavaScript("document.documentElement.style.setProperty('--sleek-bar-top','\(barTop ? 62 : 0)px');document.documentElement.style.setProperty('--sleek-bar-bottom','\(barTop ? 0 : 62)px');", completionHandler: nil)
+  }
+  private func sync() { topSoon(); title = web.title ?? ""; address = web.url; loading = web.isLoading; progress = web.estimatedProgress; canBack = web.canGoBack; canForward = web.canGoForward }
   @objc private func pulled(_ c: UIRefreshControl) { tap(.medium); web.reload(); DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) { c.endRefreshing() } }
   /// Scrolling down a page draws the bar in; scrolling up, or reaching the top, brings it back.
   private func scrolled(_ s: UIScrollView) {
+    topSoon()
     guard let b = browser, b.current === self, !atStart, s.isDragging || s.isDecelerating else { return }
     let y = s.contentOffset.y + s.adjustedContentInset.top
     if y <= 4 { b.setCompact(false); lastY = y } else if y > lastY + 28, y > 80 { b.setCompact(true); lastY = y } else if y < lastY - 44 { b.setCompact(false); lastY = y }
@@ -110,7 +127,7 @@ final class PhoneTab: NSObject, ObservableObject, Identifiable, WKNavigationDele
   var isWeb: Bool { !atStart && (address?.scheme == "https" || address?.scheme == "http") }
   var shownName: String {
     if atStart { return "" }
-    if isSleek { let f = address?.lastPathComponent ?? ""; return f.hasPrefix("slides") || f.hasPrefix("deck") ? "Sleek Slides" : f.hasPrefix("doc") ? "Sleek Docs" : f.hasPrefix("tasks") ? "Sleek Tasks" : "Sleek" }
+    if isSleek { let f = address?.lastPathComponent ?? ""; return f.hasPrefix("slides") || f.hasPrefix("deck") ? "Sleek Slides" : f.hasPrefix("doc") ? "Sleek Docs" : f.hasPrefix("tasks") ? "Sleek Tasks" : f.hasPrefix("notes") ? "Sleeky Notes" : "Sleek" }
     return host
   }
   var shownTitle: String { atStart ? (isPrivate ? "Private Tab" : "New Tab") : (title.isEmpty ? shownName : title) }
@@ -130,6 +147,7 @@ final class PhoneTab: NSObject, ObservableObject, Identifiable, WKNavigationDele
   /// A password Sleek made for this page (signing up). Once the page sends it, it is kept without asking.
   var suggested: String?
   func userContentController(_ c: WKUserContentController, didReceive message: WKScriptMessage) {
+    if message.name == "sleekHeld" { noteHeld(message.body); return }
     guard message.name == "sleekPw", let m = message.body as? [String: Any], let u = web.url, u.scheme == "https", let host = u.host else { return }      // never over a connection others can read
     let site = Vault.site(host)
     if m["focus"] != nil { browser?.signInField(self, site: site, fresh: m["fresh"] as? Bool ?? false, on: m["on"] as? String ?? "pass", keysOnly: m["webauthn"] != nil) }
@@ -192,6 +210,7 @@ final class PhoneTab: NSObject, ObservableObject, Identifiable, WKNavigationDele
     decisionHandler(response.canShowMIMEType ? .allow : .cancel)
   }
   func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+    topSoon()
     guard let b = browser, let u = webView.url else { return }
     b.pageLoaded(self)
     guard !isPrivate, u.scheme == "https" || u.scheme == "http" else { return }
@@ -245,21 +264,8 @@ final class PhoneTab: NSObject, ObservableObject, Identifiable, WKNavigationDele
   func webView(_ webView: WKWebView, runJavaScriptAlertPanelWithMessage message: String, initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping () -> Void) { ask(asker + " says", message, cancel: false) { _, _ in completionHandler() } }
   func webView(_ webView: WKWebView, runJavaScriptConfirmPanelWithMessage message: String, initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping (Bool) -> Void) { ask(asker + " asks", message, cancel: true) { ok, _ in completionHandler(ok) } }
   func webView(_ webView: WKWebView, runJavaScriptTextInputPanelWithPrompt prompt: String, defaultText: String?, initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping (String?) -> Void) { ask(asker + " asks", prompt, field: defaultText ?? "", cancel: true) { ok, s in completionHandler(ok ? s : nil) } }
-  /// Press and hold a link: open it in a new tab (or a private one), copy it, or share it.
-  func webView(_ webView: WKWebView, contextMenuConfigurationFor elementInfo: WKContextMenuElementInfo) async -> UIContextMenuConfiguration? {
-    guard let u = elementInfo.linkURL else { return nil }
-    return UIContextMenuConfiguration(identifier: nil, previewProvider: nil) { [weak self] _ in
-      UIMenu(title: u.absoluteString, children: [
-        UIAction(title: "Open in Background", image: UIImage(systemName: "square.on.square.dashed")) { _ in self?.browser?.newTab(u, isPrivate: self?.isPrivate ?? false, background: true) },
-        UIAction(title: "Open in New Tab", image: UIImage(systemName: "plus.square.on.square")) { _ in self?.browser?.newTab(u, isPrivate: self?.isPrivate ?? false) },
-        UIMenu(title: "", options: .displayInline, children: [
-          UIAction(title: "Open in Private Tab", image: UIImage(systemName: "eyeglasses")) { _ in self?.browser?.newTab(u, isPrivate: true) }] +
-          (self?.isPrivate == true ? [] : [UIAction(title: "Open in Background Private Tab", image: UIImage(systemName: "eyeglasses")) { _ in self?.browser?.newTab(u, isPrivate: true, background: true) }])),
-        UIAction(title: "Copy Link", image: UIImage(systemName: "doc.on.doc")) { _ in UIPasteboard.general.url = u },
-        UIAction(title: "Share…", image: UIImage(systemName: "square.and.arrow.up")) { _ in topController()?.present(UIActivityViewController(activityItems: [u], applicationActivities: nil), animated: true) }
-      ])
-    }
-  }
+  /// Pressing and holding a link or an image (Images.swift). It has to be declared here, in the class, for WebKit to find it.
+  func webView(_ webView: WKWebView, contextMenuConfigurationFor elementInfo: WKContextMenuElementInfo) async -> UIContextMenuConfiguration? { heldMenu(link: elementInfo.linkURL) }
 }
 
 @MainActor
@@ -324,7 +330,7 @@ final class Browser: ObservableObject {
     Icons.dir = base.appendingPathComponent("icons"); Icons.onNew = { [weak self] in Task { @MainActor in self?.objectWillChange.send() } }
     Blocker.shared.onChange.append { [weak self] in self?.blockerChanged() }
     Blocker.shared.start(dir: base.appendingPathComponent("lists"))
-    Work.shared.share(as: "browser", holds: ["tasks", "pages", "decks"], else: base.appendingPathComponent("Work"))      // with the other Sleek apps on this iPhone
+    Work.shared.share(as: "browser", holds: ["tasks", "pages", "decks", "notes"], else: base.appendingPathComponent("Work"))      // with the other Sleek apps on this iPhone
     Work.shared.onAdopt = { [weak self] _, id in for t in self?.tabs ?? [] where t.web.url?.scheme == "sleek" && (t.web.url?.query ?? "").contains("d=" + id) { t.web.reload() } }
     Work.shared.onNote = { [weak self] text in self?.say(text) }
     Work.shared.onChange.append { [weak self] in self?.readDay() }
@@ -387,7 +393,7 @@ final class Browser: ObservableObject {
   }
   func open(_ typed: String) {
     guard let u = destination(for: typed, search: store.search) else { return }
-    // Sleek Tasks, Docs or Slides, when that app is on this iPhone: it opens there, with your latest work written for it
+    // Sleek Tasks, Docs, Slides or Notes, when that app is on this iPhone: it opens there, with your latest work written for it
     // first. Otherwise the same page opens here, from inside this app, as it always has. ("Open in Apps" in Settings.)
     if appLinks && !Res.proving, let app = Browser.sleekApp(for: u), UIApplication.shared.canOpenURL(app) {
       Task { @MainActor in await Work.shared.keepCopy(now: true); await UIApplication.shared.open(app) }; return
@@ -395,7 +401,7 @@ final class Browser: ObservableObject {
     tab.go(u); setCompact(false)
   }
   /// For one of Sleek's own pages inside this app, the address of the Sleek app that shows it (nil for anything else):
-  /// tasks.html#/<board>/… → sleek-tasks://open?board=<board>; doc.html?d=<id> → sleek-docs://open?d=<id>; deck.html?d=<id> → sleek-slides://open?d=<id>.
+  /// tasks.html#/<board>/… → sleek-tasks://open?board=<board>; doc.html?d=<id> → sleek-docs://open?d=<id>; deck.html?d=<id> → sleek-slides://open?d=<id>; notes.html#n/<id> → sleek-notes://open?id=<id>.
   static func sleekApp(for u: URL) -> URL? {
     guard u.scheme == "sleek", u.host == "app" else { return nil }
     let d = URLComponents(url: u, resolvingAgainstBaseURL: false)?.queryItems?.first { $0.name == "d" }?.value, ok = { (s: String) in s.range(of: "^[a-z0-9]{4,24}$", options: .regularExpression) != nil }
@@ -403,6 +409,7 @@ final class Browser: ObservableObject {
     switch u.lastPathComponent {
     case "tasks.html": return app("sleek-tasks", "board", (u.fragment ?? "").split(separator: "/").first.map(String.init))
     case "doc.html", "docs.html": return app("sleek-docs", "d", d)
+    case "notes.html": return app("sleek-notes", "id", (u.fragment ?? "").hasPrefix("n/") ? String((u.fragment ?? "").dropFirst(2)) : nil)
     case "deck.html", "slides.html", "index.html": return app("sleek-slides", "d", d)
     default: return nil
     }

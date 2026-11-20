@@ -11,7 +11,7 @@ enum Part: String, CaseIterable, Identifiable {
     switch self { case .today: "Today, from Sleek Tasks"; case .goals: "Goals"; case .apps: "Sleek"; case .recent: "Pick up where you left off"; case .marks: "Bookmarks"; case .most: "Where you go most" }
   }
   var blurb: String {
-    switch self { case .today: "What is due, and your grocery list"; case .goals: "Your goals, with one tap to move them on"; case .apps: "Slides, Docs and Tasks"; case .recent: "The decks and pages you last worked on"; case .marks: "The bookmarks you choose, as tiles"; case .most: "The sites you go to most, as tiles" }
+    switch self { case .today: "What is due, and your grocery list"; case .goals: "Your goals, with one tap to move them on"; case .apps: "Slides, Docs, Tasks and Notes"; case .recent: "The decks and pages you last worked on"; case .marks: "The bookmarks you choose, as tiles"; case .most: "The sites you go to most, as tiles" }
   }
   var icon: String {
     switch self { case .today: "checkmark.circle"; case .goals: "target"; case .apps: "square.grid.2x2"; case .recent: "rectangle.on.rectangle"; case .marks: "bookmark"; case .most: "globe" }
@@ -44,9 +44,22 @@ extension Browser {
   func bringBack(_ p: Part) { keepParts(parts.filter { $0 != p } + [p], off: partsOff.subtracting([p])) }
 
   // ---------- the tiles in a section ----------
-  /// Sleek's own apps on the page, in your order.
-  var appsOnPage: [String] { (store.settings["startAppList"] as? [String] ?? ["slides", "docs", "tasks"]).filter { ["slides", "docs", "tasks"].contains($0) } }
-  func setApp(_ a: String, on: Bool) { var l = appsOnPage.filter { $0 != a }; if on { l.append(a) }; choose(list: "startAppList", l) }
+  /// Sleek's own apps, as they came to be. Each is a page inside this app (sleek://app/<name>.html).
+  static let sleekApps = ["slides", "docs", "tasks", "notes"]
+  static func appName(_ a: String) -> String { a == "notes" ? "Sleeky Notes" : "Sleek " + a.capitalized }
+  static func appColor(_ a: String) -> Color { Color(hex: a == "slides" ? "#7C5CFF" : a == "docs" ? "#0A84FF" : a == "notes" ? "#F5A80C" : "#12A36A") }
+  /// Sleek's own apps on the page, in your order. Notes came after the page could be arranged, so it joins a page arranged
+  /// before it existed, at the end, unless you have taken it off (startAppsOff).
+  var appsOnPage: [String] {
+    guard let saved = store.settings["startAppList"] as? [String] else { return Browser.sleekApps }
+    let off = store.settings["startAppsOff"] as? [String] ?? []
+    return saved.filter { Browser.sleekApps.contains($0) } + ["notes"].filter { !saved.contains($0) && !off.contains($0) }
+  }
+  func setApp(_ a: String, on: Bool) {
+    var l = appsOnPage.filter { $0 != a }; if on { l.append(a) }
+    var off = (store.settings["startAppsOff"] as? [String] ?? []).filter { $0 != a }; if !on { off.append(a) }
+    store.set("startAppsOff", off); choose(list: "startAppList", l)
+  }
   /// The bookmarks on the page: the ones you chose, in your order; until you choose, your first eight.
   var marksOnPage: [StartView.Place] {
     let all = store.bookmarks.compactMap { m -> StartView.Place? in guard let u = m["url"] as? String, let h = URL(string: u)?.host else { return nil }; return StartView.Place(host: h, name: m["title"] as? String ?? h, url: u) }

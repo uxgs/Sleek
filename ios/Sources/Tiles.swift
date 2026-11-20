@@ -63,7 +63,7 @@ struct SiteTile: View {
   @Environment(\.colorScheme) private var scheme
   private var compact: Bool { !wide && !big }          // square, three across
   /// Sleek's own apps, in their colours.
-  static let apps: [String: Tint] = ["slides": Tint(accent: [124, 92, 255], corner: [0, 0, 0], pixels: 192), "docs": Tint(accent: [10, 132, 255], corner: [0, 0, 0], pixels: 192), "tasks": Tint(accent: [18, 163, 106], corner: [0, 0, 0], pixels: 192)]
+  static let apps: [String: Tint] = ["slides": Tint(accent: [124, 92, 255], corner: [0, 0, 0], pixels: 192), "docs": Tint(accent: [10, 132, 255], corner: [0, 0, 0], pixels: 192), "tasks": Tint(accent: [18, 163, 106], corner: [0, 0, 0], pixels: 192), "notes": Tint(accent: [245, 168, 12], corner: [0, 0, 0], pixels: 192)]
   private var art: UIImage? { app.map { UIImage(contentsOfFile: Res.site.appendingPathComponent("icons/\($0)-192.png").path) } ?? Icons.file(host).flatMap { UIImage(contentsOfFile: $0.path) } }
   @ViewBuilder private func logo(_ size: CGFloat) -> some View { if let a = app { AppIcon(app: a, size: size) } else { TileLogo(host: host, size: size) } }
   var body: some View {

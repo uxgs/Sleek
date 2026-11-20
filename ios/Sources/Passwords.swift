@@ -70,9 +70,9 @@ struct PasswordsScreen: View {
       Spacer()
       Image(systemName: "lock.fill").font(.system(size: 30, weight: .medium)).foregroundStyle(.white).frame(width: 76, height: 76).background(sleekRun, in: Circle()).shadow(color: Color.sleekB.opacity(0.45), radius: 20, y: 10)
       Text("Your passwords are locked").font(.system(size: 24, weight: .bold)).tracking(-0.5)
-      Text(V.unreadable ? "The key to your passwords is not in this iPhone’s Keychain, so they cannot be opened. The file has been left as it is." : !canAsk ? "Set a passcode on this iPhone first. Passwords open with Face ID or your passcode." : "They are kept on this iPhone only, encrypted, and never sent anywhere.").font(.system(size: 15)).foregroundStyle(.secondary).multilineTextAlignment(.center).padding(.horizontal, 32)
+      Text(V.unreadable ? "The key to your passwords is not in this iPhone’s Keychain, so they cannot be opened. The file has been left as it is." : !canAsk ? "Set a passcode on this iPhone first. Passwords open with \(Unlock.kind == .none ? "your passcode" : Unlock.name + " or your passcode")." : "They are kept on this iPhone only, encrypted, and never sent anywhere.").font(.system(size: 15)).foregroundStyle(.secondary).multilineTextAlignment(.center).padding(.horizontal, 32)
       if !V.unreadable && canAsk {
-        Button { tap(.medium); unlock() } label: { Label("Unlock", systemImage: "faceid").font(.system(size: 17, weight: .semibold)).padding(.horizontal, 24).frame(height: 52).foregroundStyle(Color(.systemBackground)).background(Color.primary, in: Capsule()) }.buttonStyle(Press()).padding(.top, 8)
+        Button { tap(.medium); unlock() } label: { Label("Unlock", systemImage: Unlock.icon).font(.system(size: 17, weight: .semibold)).padding(.horizontal, 24).frame(height: 52).foregroundStyle(Color(.systemBackground)).background(Color.primary, in: Capsule()) }.buttonStyle(Press()).padding(.top, 8)
       }
       Spacer(); Spacer()
     }.frame(maxWidth: .infinity)
@@ -92,7 +92,7 @@ struct PasswordsScreen: View {
       Section { ForEach(shown) { row($0) }.onDelete { at in at.map { shown[$0].id }.forEach { V.remove($0) } } } header: { if !all.isEmpty { Text(q.isEmpty ? "All" : "Found") } }
       let keys = passkeys.filter { q.isEmpty || $0.site.contains(q) || $0.user.lowercased().contains(q) }
       if !keys.isEmpty {
-        Section { ForEach(keys) { keyRow($0) }.onDelete { at in at.map { keys[$0].id }.forEach { V.removePasskey($0) }; b.objectWillChange.send() } } header: { Text("Passkeys") } footer: { Text("Made on this iPhone and kept only here. You sign in with Face ID; the site holds just the public half.") }
+        Section { ForEach(keys) { keyRow($0) }.onDelete { at in at.map { keys[$0].id }.forEach { V.removePasskey($0) }; b.objectWillChange.send() } } header: { Text("Passkeys") } footer: { Text("Made on this iPhone and kept only here. You sign in with \(Unlock.name); the site holds just the public half.") }
       }
       if q.isEmpty {
         Section { Toggle("Offer to save passwords", isOn: Binding(get: { b.savePasswords }, set: { b.store.set("savePasswords", $0); b.objectWillChange.send() })) }

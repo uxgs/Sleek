@@ -1,6 +1,7 @@
 // Where the iPhone app's own files are, and small things its views lean on.
 // (What it shares with the Mac app is in ../../browser/Sources/Sleek: Common, Blocker, Store, Known, Work.)
 import SwiftUI
+import LocalAuthentication
 import WebKit
 
 enum Res {
@@ -81,4 +82,11 @@ struct WebBox: UIViewRepresentable {
   var c = UIApplication.shared.connectedScenes.compactMap { ($0 as? UIWindowScene)?.keyWindow }.first?.rootViewController
   while let next = c?.presentedViewController { c = next }
   return c
+}
+
+/// How this iPhone knows it is you: Face ID on most, Touch ID on some (the iPhone Duo among them), or just the passcode.
+enum Unlock {
+  static let kind: LABiometryType = { let c = LAContext(); _ = c.canEvaluatePolicy(.deviceOwnerAuthentication, error: nil); return c.biometryType }()
+  static var name: String { kind == .touchID ? "Touch ID" : kind == .faceID ? "Face ID" : kind == .opticID ? "Optic ID" : "your passcode" }
+  static var icon: String { kind == .touchID ? "touchid" : kind == .faceID ? "faceid" : kind == .opticID ? "opticid" : "lock.open" }
 }

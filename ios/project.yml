@@ -40,7 +40,7 @@ targets:
       path: build/Info.plist
       properties:
         # whether Sleek Tasks, Docs and Slides are on this iPhone, to open your work there
-        LSApplicationQueriesSchemes: [sleek-tasks, sleek-docs, sleek-slides]
+        LSApplicationQueriesSchemes: [sleek-tasks, sleek-docs, sleek-slides, sleek-notes]
         # the widgets open Sleek here: the address bar, a private tab, a site or one of your pages
         CFBundleURLTypes:
           - CFBundleURLName: com.sleek.browser
@@ -60,6 +60,7 @@ targets:
         INFOPLIST_KEY_NSMicrophoneUsageDescription: A page you opened asked to use the microphone.
         INFOPLIST_KEY_NSLocationWhenInUseUsageDescription: A page you opened asked where you are.
         INFOPLIST_KEY_NSFaceIDUsageDescription: Sleek uses Face ID to open your passwords.
+        INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription: Sleek saves an image to Photos when you choose Save to Photos.
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         MARKETING_VERSION: "0.1.0"
