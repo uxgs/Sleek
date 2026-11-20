@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sleeky Notes</title>
+<script src="core/analytics.js"></script>
+<link rel="manifest" href="notes.webmanifest">
+<link rel="icon" href="icons/notes-favicon.svg" type="image/svg+xml">
+<link rel="icon" href="icons/notes-favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="icons/notes-touch.png">
+<meta name="theme-color" content="#FFFFFF">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Sleeky Notes">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="note/notes.css">
+<link rel="stylesheet" href="core/motion.css">
+<!-- light or dark: as last chosen here, else as the device is set, before anything is drawn -->
+<script>try{ var l = localStorage.getItem('sleek-notes-look'); if(l === 'dark' || (!l && matchMedia('(prefers-color-scheme: dark)').matches)){ document.documentElement.setAttribute('data-mode', 'dark'); document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0E0E11'); } }catch(e){} document.documentElement.classList.add('booting');</script>
+<!-- the storage: notes in their own database (core/note-store.js) -->
+<script src="core/note-store.js"></script>
+</head>
+<body>
+<div class="nt" id="app">
+  <!-- All notes, Pinned, Locked, your folders and tags: down the side on a wide screen (note/app.js) -->
+  <nav class="nav" id="nav" aria-label="Folders and tags"></nav>
+  <!-- your notes, and the box that keeps whatever you type as a new one -->
+  <section class="listp" aria-label="Your notes">
+    <div class="scroll" id="list">
+      <div class="brandrow"><a class="brand" href="index.html" title="All of Sleek"><img src="icons/notes.svg" alt="" width="30" height="27"><span>Notes</span></a><button type="button" class="round" id="newbtn" data-act="new" aria-label="New note"></button></div>
+      <label class="search"><span id="searchic"></span><input id="q" type="search" placeholder="Search" aria-label="Search your notes" autocomplete="off"></label>
+      <div id="chips"></div>
+      <div id="rows"></div>
+    </div>
+    <form class="jot" id="jot" autocomplete="off">
+      <input id="jotin" placeholder="Jot something down…" aria-label="Jot something down" enterkeyhint="done" maxlength="4000">
+      <button class="send" id="send" aria-label="Keep this note"></button>
+    </form>
+  </section>
+  <!-- the open note: its icon, title, folder, tags and text (note/editor.js), or its lock (note/lock.js) -->
+  <section class="notep" aria-label="The note"><div class="scroll" id="note"></div></section>
+</div>
+<div id="over"></div>
+<input type="file" id="file" accept=".sleek,.json,application/json" hidden>
+<script src="data/note-changelog.js"></script>
+<script src="note/editor.js"></script>
+<script src="note/lock.js"></script>
+<script src="note/app.js"></script>
+<script src="core/short.js"></script>
+</body>
+</html>

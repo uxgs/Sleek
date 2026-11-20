@@ -1,0 +1,16 @@
+{
+  "name": "Sleeky Notes",
+  "short_name": "Sleeky Notes",
+  "description": "Jot something down in a second and find it later, in your browser. Everything saves as you go, and it works offline.",
+  "id": "./notes.html",
+  "start_url": "./notes.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0B0B0D",
+  "theme_color": "#0B0B0D",
+  "icons": [
+    { "src": "icons/notes-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/notes-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/notes-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

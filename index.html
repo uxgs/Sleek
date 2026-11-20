@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Sleek</title>
-<meta name="description" content="Sleek Slides, Sleek Docs and Sleek Tasks: three apps that run in your browser, with no account and nothing to install, and that work offline.">
+<meta name="description" content="Sleek Slides, Sleek Docs, Sleek Tasks and Sleeky Notes: four apps that run in your browser, with no account and nothing to install, and that work offline.">
 <script src="core/analytics.js"></script>
 <link rel="icon" href="icons/favicon.svg" type="image/svg+xml">
 <link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
@@ -16,31 +16,33 @@
 <link rel="stylesheet" href="core/motion.css">
 <style>
   /* Sleek's front door: the name, one line, and a tile for each app. You pick one; nothing else is
-     here. Each app has its own page (slides.html, docs.html, tasks.html), which on the hosted site
-     also answers to a short address: /slides, /docs and /tasks. One dark look, like the start screens. */
+     here. Each app has its own page (slides.html, docs.html, tasks.html, notes.html), which on the hosted site
+     also answers to a short address: /slides, /docs, /tasks and /notes. One dark look, like the start screens. */
   :root { --bg: #0B0B0D; --surface: #141417; --surface-2: #1C1C21; --fg: #F5F5F7; --muted: #A1A1A6; --faint: #7C7C84;
-          --line: rgba(255,255,255,0.10); --slides: #7C5CFF; --docs: #0A84FF; --tasks: #12A36A;
+          --line: rgba(255,255,255,0.10); --slides: #7C5CFF; --docs: #0A84FF; --tasks: #12A36A; --notes: #F5A80C;
           --ff: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; color-scheme: dark; }
   *, *::before, *::after { box-sizing: border-box; }
   html, body { margin: 0; }
   body { min-height: 100vh; background: var(--bg); color: var(--fg); font: 15px/1.5 var(--ff); -webkit-font-smoothing: antialiased; position: relative; isolation: isolate; overflow-x: hidden; }
   body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none; background:
-      radial-gradient(45% 60% at 12% 100%, rgba(10,132,255,0.30), transparent 70%),
-      radial-gradient(45% 60% at 50% 108%, rgba(124,92,255,0.32), transparent 70%),
-      radial-gradient(45% 60% at 88% 100%, rgba(18,163,106,0.28), transparent 70%); }
-  main { max-width: 1180px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px;
+      radial-gradient(38% 60% at 9% 100%, rgba(10,132,255,0.30), transparent 70%),
+      radial-gradient(38% 60% at 36% 108%, rgba(124,92,255,0.32), transparent 70%),
+      radial-gradient(38% 60% at 64% 108%, rgba(18,163,106,0.28), transparent 70%),
+      radial-gradient(38% 60% at 91% 100%, rgba(245,168,12,0.22), transparent 70%); }
+  main { max-width: 1400px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px;
          padding: calc(64px + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) calc(64px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
   .brand { display: flex; align-items: center; gap: 11px; }
   .brand img { display: block; width: 34px; height: auto; }
   .brand span { font-size: 25px; font-weight: 700; letter-spacing: -0.045em; line-height: 1; }
   h1 { margin: 16px 0 0; font-size: clamp(38px, 7vw, 64px); line-height: 1.02; letter-spacing: -0.035em; font-weight: 650; text-wrap: balance; }
   .lede { margin: 0 0 22px; font-size: 18px; color: var(--muted); max-width: 52ch; }
-  .tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+  .tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; }
   .tile { --a: var(--slides); position: relative; display: flex; flex-direction: column; gap: 18px; padding: 18px 18px 20px; border-radius: 24px; background: var(--surface);
           border: 1px solid var(--line); color: inherit; text-decoration: none; min-width: 0;
           transition: transform .3s cubic-bezier(.16,1,.3,1), border-color .25s ease, box-shadow .3s ease; }
   .tile.docs { --a: var(--docs); }
   .tile.tasks { --a: var(--tasks); }
+  .tile.notes { --a: var(--notes); } .tile.notes :is(.new, .go span) { color: #2A1B00; }      /* amber is light: dark words on it */
   .tile:hover, .tile:focus-visible { transform: translateY(-5px); border-color: color-mix(in srgb, var(--a) 70%, transparent); outline: none;
           box-shadow: 0 30px 70px -34px color-mix(in srgb, var(--a) 80%, transparent), 0 0 0 1px color-mix(in srgb, var(--a) 40%, transparent); }
   .tile:focus-visible { box-shadow: 0 0 0 3px color-mix(in srgb, var(--a) 60%, transparent); }
@@ -68,6 +70,15 @@
   .mini-board i.a { background: var(--a); }
   .tile:hover .mini-board, .tile:focus-visible .mini-board { transform: scale(1.05); }
   .tile:hover .mini-board i.a, .tile:focus-visible .mini-board i.a { transform: translateX(128%) translateY(-118%); }
+  /* two small notes, each with its icon; one is locked */
+  .mini-notes { width: 70%; display: grid; grid-template-columns: 1fr 1fr; gap: 7%; transition: transform .4s cubic-bezier(.16,1,.3,1); }
+  .mini-notes div { aspect-ratio: 1 / 1.04; border-radius: 12px; background: #17171B; border: 1px solid rgba(255,255,255,.14); padding: 13%; display: flex; flex-direction: column; gap: 9%; box-shadow: 0 20px 40px -18px rgba(0,0,0,.8); transition: transform .45s cubic-bezier(.2,.8,.2,1); }
+  .mini-notes b { display: block; width: 32%; aspect-ratio: 1; border-radius: 30%; background: var(--a); margin-bottom: 6%; }
+  .mini-notes div + div b { background: #7E9CFF; }
+  .mini-notes i { display: block; height: 8%; border-radius: 3px; background: #fff; width: 84%; } .mini-notes i + i { width: 56%; opacity: .4; }
+  .tile:hover .mini-notes, .tile:focus-visible .mini-notes { transform: scale(1.05); }
+  .tile:hover .mini-notes div, .tile:focus-visible .mini-notes div { transform: rotate(-4deg) translateY(-3%); }
+  .tile:hover .mini-notes div + div, .tile:focus-visible .mini-notes div + div { transform: rotate(4deg) translateY(2%); }
   .name { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; } .name img { display: block; width: 30px; height: auto; flex: none; }
   .name h2 { margin: 0; font-size: 26px; font-weight: 650; letter-spacing: -0.03em; line-height: 1.1; }
   .new { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; padding: 4px 9px; border-radius: 999px; background: var(--a); color: #fff; }
@@ -77,16 +88,16 @@
   .go code { font: 500 13.5px ui-monospace, "SF Mono", Menlo, monospace; color: var(--faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .foot { margin: 22px 0 0; color: var(--faint); font-size: 14px; }
   .foot button { border: 0; background: none; padding: 0; font: inherit; color: var(--muted); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; } .foot button:hover { color: var(--fg); } .foot button:disabled { text-decoration: none; cursor: default; }
-  @media (max-width: 1000px) { .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 1240px) { .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } main { max-width: 1180px; } }
   @media (max-width: 720px) { .tiles { grid-template-columns: 1fr; } main { padding-top: calc(36px + env(safe-area-inset-top, 0px)); } .name h2 { font-size: 23px; } }
-  @media (prefers-reduced-motion: reduce) { .tile, .mini-slide, .mini-page, .mini-board, .mini-board i { transition: none; } }
+  @media (prefers-reduced-motion: reduce) { .tile, .mini-slide, .mini-page, .mini-board, .mini-board i, .mini-notes, .mini-notes div { transition: none; } }
 </style>
 </head>
 <body>
 <main>
   <div class="brand"><img src="icons/logo.svg" alt="" width="34" height="31"><span>Sleek</span></div>
   <h1>What are you making?</h1>
-  <p class="lede">Three apps that run in your browser. No account, nothing to install, and they work offline.</p>
+  <p class="lede">Four apps that run in your browser. No account, nothing to install, and they work offline.</p>
   <div class="tiles">
     <a class="tile" href="slides.html" data-slug="slides">
       <div class="art" aria-hidden="true"><div class="mini-slide"><i></i><i></i><i></i><i></i></div></div>
@@ -105,6 +116,12 @@
       <div class="name"><img src="icons/tasks.svg" alt="" width="30" height="27"><h2>Sleek Tasks</h2><span class="new">New</span></div>
       <p>Plan it and tick it off. Boards you drag cards across, and everything due today in one place.</p>
       <div class="go"><span>Open Tasks →</span><code>/tasks</code></div>
+    </a>
+    <a class="tile notes" href="notes.html" data-slug="notes">
+      <div class="art" aria-hidden="true"><div class="mini-notes"><div><b></b><i></i><i></i></div><div><b></b><i></i><i></i></div></div></div>
+      <div class="name"><img src="icons/notes.svg" alt="" width="30" height="27"><h2>Sleeky Notes</h2><span class="new">New</span></div>
+      <p>Jot it down, find it later. Pinned notes, folders, tags, an icon on each, and a lock for the private ones.</p>
+      <div class="go"><span>Open Notes →</span><code>/notes</code></div>
     </a>
   </div>
   <p class="foot">Your work stays in this browser. <button type="button" id="moveout">Save all of it to one file</button><span id="moveout-note"> to keep, or to move it to another browser.</span></p>
@@ -127,7 +144,7 @@
       if(b.disabled) return; b.disabled = true; var was = b.textContent;
       window.SleekMove.save(function(step){ b.textContent = 'Gathering: ' + step + '…'; }).then(function(n){
         b.textContent = was; b.disabled = false;
-        note.textContent = ' Saved ' + n.decks + (n.decks === 1 ? ' deck, ' : ' decks, ') + n.pages + (n.pages === 1 ? ' page and ' : ' pages and ') + n.tasks + (n.tasks === 1 ? ' task' : ' tasks') + ' to your downloads.';
+        note.textContent = ' Saved ' + n.decks + (n.decks === 1 ? ' deck, ' : ' decks, ') + n.pages + (n.pages === 1 ? ' page, ' : ' pages, ') + n.tasks + (n.tasks === 1 ? ' task and ' : ' tasks and ') + n.notes + (n.notes === 1 ? ' note' : ' notes') + ' to your downloads.';
       }, function(){ b.textContent = was; b.disabled = false; note.textContent = ' That could not be saved here.'; });
     });
   })();

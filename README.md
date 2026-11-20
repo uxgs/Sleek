@@ -1,6 +1,6 @@
 # Sleek
 
-Three apps that run in your browser, with no account and nothing to install, and that work offline:
+Four apps that run in your browser, with no account and nothing to install, and that work offline:
 
 - **Sleek Slides**, a presentation app. Build a deck, present it with speaker notes and a live
   preview, and share it as a file or a web page.
@@ -8,19 +8,21 @@ Three apps that run in your browser, with no account and nothing to install, and
   folders, and save them as PDF or Markdown. [More below](#sleek-docs).
 - **Sleek Tasks**, a planning app. Boards you drag cards across, a list, and everything due today in
   one place. [More below](#sleek-tasks).
+- **Sleeky Notes**, for jotting things down and finding them later. Pinned notes, folders, tags, an
+  icon on each note, and a lock for the private ones. [More below](#sleeky-notes).
 
 Your work stays in your browser; the one thing Sleek can send anywhere is
 [who is viewing a deck](#see-whos-viewing), and only for a deck you switch that on for.
 
 The front page asks which one you want. Each app also has a short address on the hosted site,
-`/slides`, `/docs` and `/tasks`. In each app, “Sleek” beside its name goes back to the front page. Each app has its own version number
+`/slides`, `/docs`, `/tasks` and `/notes`. In each app, “Sleek” beside its name goes back to the front page. Each app has its own version number
 and What's new. Most of this page is about Sleek Slides.
 
 **Open it** from the link in this repo's About box (it's hosted on GitHub Pages), or run your own copy
 (below).
 
-In Chrome or Edge, use the install button in the address bar to add Sleek Slides, Sleek Docs or Sleek
-Tasks as an app, with its own window and icon. In Safari, choose File › Add to Dock.
+In Chrome or Edge, use the install button in the address bar to add Sleek Slides, Sleek Docs, Sleek
+Tasks or Sleeky Notes as an app, with its own window and icon. In Safari, choose File › Add to Dock.
 
 ## On a phone
 
@@ -143,7 +145,7 @@ today and due in the next seven days, across every board, with a box to add a ta
 - **A copy of everything.** At the foot of the home page, "Save a copy of them all" saves every board
   and task as one `.sleek` file, pictures included, and "bring in a copy" adds a file's boards and
   tasks beside what is here (what is already here is left as it is). The front page has the same
-  for all three apps at once: "Save all of it to one file" gathers every deck, page and task
+  for all the apps at once: "Save all of it to one file" gathers every deck, page, task and note
   (`core/move.js`), to keep, or to move to another browser.
 - **Board.** A column for each status. Drag a card to another column, or up and down within one,
   with a mouse or a finger (hold a moment, then drag). Add a column, press a column's name to rename
@@ -176,6 +178,33 @@ others at once, and so does any Sleek Docs page that shows a task, a list or a b
 ([Tasks in a page](#sleek-docs)) and any deck with a Tasks slide: add one from Add slide, and in Edit
 mode **Choose tasks** picks the project, a board or a list, and whether done tasks show. Pictures and
 clips go in the picture store every Sleek app shares.
+
+## Sleeky Notes
+
+Open **Notes** from the front page. It is for writing something down in a second and finding it later.
+
+- **Jot.** Type in "Jot something down" at the foot of your notes and press return. It is kept at
+  once, at the top, and the box is ready for the next one. ＋ makes a note you can write at length.
+- **Pinned.** Pin a note and it stays at the top, as a tile.
+- **Folders and tags.** A note sits in one folder and can carry any number of tags. Press a folder
+  or a tag to see only those notes; on a wide screen they run down the side.
+- **An icon on every note.** Press a note's icon to choose another, and its colour, so your notes
+  are easy to tell apart at a glance.
+- **Writing.** Plain text, with **bold** and checklists: the checklist button (or `[] ` typed at the
+  start of a line) makes a line you can tick. Whatever you paste comes in as plain text.
+- **Search** looks through titles, tags and text.
+- **Locked notes.** Lock a note and only its title and icon show in your list. Its text is scrambled
+  (AES-GCM, 256 bits) and opens with a passcode you choose the first time, or, where the browser
+  allows it, with the device's fingerprint or face (a passkey). It locks again when you leave the
+  note or the page goes out of sight. Search finds a locked note by its title and tags only.
+  The key is kept only scrambled by your passcode (PBKDF2, 310,000 rounds), so **a forgotten
+  passcode cannot be reset**, by anyone. `note/lock.js` says exactly how.
+- **A copy of everything.** "Save a copy" saves every note as one `.sleek` file (locked notes stay
+  scrambled in it) and "Bring one in" adds a file's notes beside what is here.
+
+Notes live in the browser you made them in, in their own storage (`core/note-store.js`); every open
+tab follows the others. The app is `notes.html`, `note/app.js`, `note/editor.js` and `note/notes.css`.
+Not there yet: the iPhone app, notes inside the Sleek browser, and a note in a Docs page or as a task.
 
 ## Sleek, the browser
 

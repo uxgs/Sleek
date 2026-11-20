@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Draws the logos of Sleek's three apps: Slides, Docs and Tasks.
+"""Draws the logos of Sleek's four apps: Slides, Docs, Tasks and Notes.
 
 Sleek's own mark (icons/logo.svg) is two bars, each with one round end and one square end, stacked
 with a step, in a run of colour from blue through violet to pink. Each app's mark is built from the
@@ -8,6 +8,7 @@ same parts in its own run of colour:
   Slides   a deck: three slides fanned, the front one with a title         purple
   Docs     a page cut with the Sleek mark's own corners, a title and lines  blue
   Tasks    two tasks, one ticked and one still to do                        green
+  Notes    a note with its corner folded over, a title and two lines        amber
 
 For each app this writes, into icons/:
   <app>.svg            the mark alone, for beside the app's name
@@ -21,8 +22,8 @@ from the folder that holds index.html:  python3 tools/make-icons.py
 """
 import os
 
-RUN = {"slides": ["#7C5CFF", "#A77BFF", "#E58CFF"], "docs": ["#3D8BFF", "#5FA8FF", "#7EDBFF"], "tasks": ["#0FA968", "#2CC88E", "#7FE3B5"]}
-NAME = {"slides": "Sleek Slides", "docs": "Sleek Docs", "tasks": "Sleek Tasks"}
+RUN = {"slides": ["#7C5CFF", "#A77BFF", "#E58CFF"], "docs": ["#3D8BFF", "#5FA8FF", "#7EDBFF"], "tasks": ["#0FA968", "#2CC88E", "#7FE3B5"], "notes": ["#F59E0B", "#FFC53D", "#FFE08A"]}
+NAME = {"slides": "Sleek Slides", "docs": "Sleek Docs", "tasks": "Sleek Tasks", "notes": "Sleeky Notes"}
 
 
 def box(x, y, w, h, r):
@@ -52,6 +53,9 @@ def shape(app, f):
     if app == "docs":
         return ('<path d="%s" fill="%s"/>' % (box(158, 130, 196, 252, [56, 0, 56, 0]), f)
                 + line(202, 206, 288, 28) + line(200, 264, 312, 18) + line(200, 306, 312, 18) + line(200, 348, 262, 18))
+    if app == "notes":
+        return ('<path d="M190 134H322a56 56 0 0 1 56 56V294L294 378H190a56 56 0 0 1-56-56V190a56 56 0 0 1 56-56Z" fill="%s"/><path d="M294 378V326a32 32 0 0 1 32-32H378Z" fill="%s" opacity=".45"/>' % (f, f)
+                + line(192, 212, 286, 26) + line(190, 264, 320, 18) + line(190, 304, 258, 18))
     return ('<circle cx="172" cy="186" r="56" fill="%s"/><path d="M147 187l18 18 33-38" fill="none" stroke="#fff" stroke-width="17" stroke-linecap="round" stroke-linejoin="round"/>'
             '<path d="M256 130H340a56 56 0 0 1 0 112H256Z" fill="%s"/><circle cx="172" cy="326" r="56" fill="%s" opacity=".42"/><path d="M256 270H340a56 56 0 0 1 0 112H256Z" fill="%s"/>') % (f, f, f, f)
 
@@ -80,7 +84,7 @@ def tile(app, corners, scale):
 
 def main():
     here = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "icons")
-    for app in ("slides", "docs", "tasks"):
+    for app in ("slides", "docs", "tasks", "notes"):
         files = {"%s.svg" % app: mark(app), "%s-icon.svg" % app: tile(app, True, 1), "%s-favicon.svg" % app: tile(app, True, 1.3), "%s-maskable.svg" % app: tile(app, False, 0.82), "%s-touch.svg" % app: tile(app, False, 1)}
         for name, text in files.items():
             with open(os.path.join(here, name), "w") as out: out.write(text)

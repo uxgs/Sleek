@@ -1,10 +1,10 @@
-/* Everything you have made with Sleek in this browser, as one file: every deck, every page, and
-   every board and task, with their pictures inside it. It is for keeping a copy, and for moving to
+/* Everything you have made with Sleek in this browser, as one file: every deck, every page, every
+   board and task, and every note, with their pictures inside it. It is for keeping a copy, and for moving to
    another browser: the Sleek browser brings the file in from its File menu (Bring In Sleek Work).
 
    The file is text: { format: 'sleek-work', version: 1, decks: [a deck file, …], pages: [a page
-   file, …], tasks: a Sleek Tasks file }, each part exactly what its own app saves for one deck, one
-   page, or all your tasks. Nothing is sent anywhere; the file is made here and handed to you.
+   file, …], tasks: a Sleek Tasks file, notes: a Sleeky Notes file }, each part exactly what its own app saves for one deck, one
+   page, all your tasks, or all your notes (locked notes stay scrambled in it). Nothing is sent anywhere; the file is made here and handed to you.
 
    window.SleekMove.save(say) makes it; say(text) is told what it is doing as it goes. */
 (function(){
@@ -25,13 +25,14 @@
   }
   function save(say){
     say = say || function(){};
-    return load('core/store.js').then(function(){ return load('core/doc-store.js'); }).then(function(){ return load('core/task-store.js'); }).then(function(){
-      var S = window.SleekStore, D = window.SleekDocs, T = window.SleekTasks, count = { decks: 0, pages: 0, boards: 0, tasks: 0 };
+    return load('core/store.js').then(function(){ return load('core/doc-store.js'); }).then(function(){ return load('core/task-store.js'); }).then(function(){ return load('core/note-store.js'); }).then(function(){
+      var S = window.SleekStore, D = window.SleekDocs, T = window.SleekTasks, K = window.SleekNotes, count = { decks: 0, pages: 0, boards: 0, tasks: 0, notes: 0 };
       var parts = ['{"format":"sleek-work","version":1,"exported":' + JSON.stringify(new Date().toISOString()) + ',"decks":['];
       return S.list().then(function(decks){ return each(decks, 'Deck', say, S.exportDeck, parts); }).then(function(n){ count.decks = n; parts.push('],"pages":['); return D.list(); })
         .then(function(pages){ return each(pages, 'Page', say, D.exportDoc, parts); }).then(function(n){ count.pages = n; parts.push('],"tasks":'); say('Tasks'); return T.exportAll(); })
+        .then(function(text){ parts.push(text, ',"notes":'); count.boards = T.projects().length; count.tasks = T.tasks().length; say('Notes'); return K.exportAll(); })
         .then(function(text){
-          parts.push(text, '}'); count.boards = T.projects().length; count.tasks = T.tasks().length;
+          parts.push(text, '}'); count.notes = K.notes().length;
           var a = document.createElement('a'), url = URL.createObjectURL(new Blob(parts, { type: 'application/json' }));
           a.href = url; a.download = 'All my Sleek work ' + key(new Date()) + '.sleek'; document.body.appendChild(a); a.click(); a.remove();
           setTimeout(function(){ URL.revokeObjectURL(url); }, 60000);
