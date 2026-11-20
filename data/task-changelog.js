@@ -6,6 +6,10 @@
    (or, on a new day, add an entry at the top), and set the Tasks part of sw.js's VERSION to match.
    Keep each line to a few words, and each day to four lines at most. */
 window.SLEEK_TASK_CHANGES = [
+  { v: '1.0.10', date: '2026-11-20',
+    items: [
+      'On iPhone: Sleek Tasks opens with Sleek’s mark and its sound'
+    ] },
   { v: '1.0.9', date: '2026-11-15',
     items: [
       'Grocery lists: sorted by aisle, with your usuals one tap away',

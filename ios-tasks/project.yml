@@ -17,6 +17,8 @@ targets:
       - path: ../ios-shared/Siri.swift
       - path: ../ios-shared/Goals.swift
       - path: ../ios-shared/Widgets.swift
+      - path: ../ios-shared/Opening.swift      # the opening every Sleek app shares
+      - path: ../ios/Sounds                    # its sound
       - path: Assets.xcassets
     info:
       path: build/Info.plist

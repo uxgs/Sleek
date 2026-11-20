@@ -5,7 +5,7 @@ import SwiftUI
 
 @main
 struct SleekTasksApp: App {
-  var body: some Scene { WindowGroup { if Args.proving { CheckView() } else { TasksRoot() } } }
+  var body: some Scene { WindowGroup { if Args.proving { CheckView() } else { TasksRoot().sleekOpening("Tasks", ["#0FA968", "#2CC88E", "#7FE3B5"]) } } }
 }
 
 @MainActor
@@ -34,6 +34,7 @@ final class Checker: ObservableObject {
     let dir = FileManager.default.temporaryDirectory.appendingPathComponent("sleek-tasks-check-\(ProcessInfo.processInfo.processIdentifier)"), file = dir.appendingPathComponent("Tasks.sleek")
     let s = Store(file: file)
     say(s.boards.isEmpty && s.items.isEmpty && s.readable, "it starts with nothing, in a folder of its own")
+    say(Chime.url != nil && !Opening.plays, "the opening sound is inside the app, and the opening does not play while the app checks itself")
 
     // ---------- boards and tasks ----------
     let home = s.addBoard("My tasks"), b = s.board(home)

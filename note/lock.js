@@ -32,8 +32,12 @@
   function unwrap(kek, w){ return crypto.subtle.decrypt({ name: 'AES-GCM', iv: un64(w.iv) }, kek, un64(w.ct)).then(function(raw){ return new Uint8Array(raw); }); }   // fails when the key is the wrong one
   function noteKey(raw){ return crypto.subtle.importKey('raw', raw, 'AES-GCM', false, ['encrypt', 'decrypt']); }
 
-  /** The lock made in this browser, if there is one (a file brought in can carry others). */
-  function home(){ var all = N.vaults(), ids = Object.keys(all); return ids.map(function(id){ return all[id]; }).filter(function(v){ return v.home; })[0] || null; }
+  /** The lock new notes are locked with: the one made here, else the oldest one that came in from another copy of your
+      notes (the Sleek apps on one iPhone share one lock, and so one passcode). */
+  function home(){
+    var all = N.vaults(), list = Object.keys(all).map(function(id){ return all[id]; }).sort(function(a, b){ return (a.made || 0) - (b.made || 0); });
+    return list.filter(function(v){ return v.home; })[0] || list[0] || null;
+  }
   /** Make the lock: a new key, kept scrambled by this passcode. Gives { vault, raw }: raw is the key itself, for now. */
   function setup(pass){
     var raw = rand(32), salt = rand(16);
@@ -46,13 +50,20 @@
   function withPass(v, pass){ return passKey(pass, un64(v.salt), v.iter).then(function(kek){ return unwrap(kek, v.pass); }).then(function(raw){ return raw; }, function(){ return null; }); }
 
   // ---------- this device's fingerprint or face ----------
+  // Inside Sleeky Notes for iPhone the app itself keeps the key, in the iPhone's keychain behind Face ID or Touch ID
+  // (ios-notes/Sources/Notes.swift), and hands it over when you unlock. The page asks it through `sleekLock`.
+  var native = null, nativeName = '';
+  try { native = (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.sleekLock) || null; } catch(e){ native = null; }
+  function app(msg){ return native.postMessage(msg); }
   /** Whether this browser, on this device, can ask for a fingerprint or a face at all. */
   function canBio(){
+    if(native) return app({ do: 'can' }).then(function(r){ nativeName = (r && r.name) || ''; return !!(r && r.can); }, function(){ return false; });
     if(!window.PublicKeyCredential || !navigator.credentials || !window.isSecureContext || !PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable) return Promise.resolve(false);
     return PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable().then(function(ok){ return !!ok; }, function(){ return false; });
   }
   /** What to call it on this device. */
   function bioName(){
+    if(native && nativeName) return nativeName;
     var ua = navigator.userAgent || '', touch = navigator.maxTouchPoints > 1;
     if(/iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && touch)) return 'Face ID';
     if(/Macintosh/.test(ua)) return 'Touch ID';
@@ -71,6 +82,7 @@
   }
   /** Let this device's fingerprint or face open the lock too. Fails with 'no-prf' where the browser cannot keep a secret behind it. */
   function addBio(v, raw){
+    if(native) return app({ do: 'keep', id: v.id, key: b64(raw) }).then(function(r){ if(!r || !r.ok) throw new Error('no-bio'); v.bio = [{ native: true }]; N.setVault(v); return v; });
     var salt = rand(32);
     return navigator.credentials.create({ publicKey: {
       rp: { name: 'Sleeky Notes' }, user: { id: rand(16), name: 'Sleeky Notes lock', displayName: 'Sleeky Notes lock' }, challenge: rand(32),
@@ -88,6 +100,7 @@
   }
   /** The key, from this device's fingerprint or face. Fails when it is refused, cancelled or not possible. */
   function withBio(v){
+    if(native) return app({ do: 'key', id: v.id }).then(function(r){ if(!r || !r.key) throw new Error(r && r.missing ? 'missing' : 'refused'); return un64(r.key); });
     return ask(v.bio || []).then(function(g){
       var e = (v.bio || []).filter(function(x){ return x.id === g.id; })[0] || v.bio[0];
       return secretKey(g.secret).then(function(kek){ return unwrap(kek, e); });
@@ -101,5 +114,5 @@
   }
   function unseal(raw, sealed){ return noteKey(raw).then(function(k){ return crypto.subtle.decrypt({ name: 'AES-GCM', iv: un64(sealed.iv) }, k, un64(sealed.ct)); }).then(function(b){ return dec.decode(b); }); }
 
-  window.SleekVault = { home: home, setup: setup, withPass: withPass, canBio: canBio, bioName: bioName, addBio: addBio, withBio: withBio, seal: seal, unseal: unseal, can: !!(window.crypto && crypto.subtle) };
+  window.SleekVault = { home: home, setup: setup, withPass: withPass, canBio: canBio, bioName: bioName, addBio: addBio, withBio: withBio, seal: seal, unseal: unseal, can: !!(window.crypto && crypto.subtle), native: !!native };
 })();

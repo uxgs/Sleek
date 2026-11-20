@@ -6,7 +6,7 @@ import WebKit
 
 @main
 struct SleekDocsApp: App {
-  var body: some Scene { WindowGroup { if Res.proving { CheckView() } else { DocsRoot() } } }
+  var body: some Scene { WindowGroup { if Res.proving { CheckView() } else { DocsRoot().sleekOpening("Docs", ["#3D8BFF", "#5FA8FF", "#7EDBFF"]) } } }
 }
 
 @MainActor
@@ -25,6 +25,7 @@ final class Checker: ObservableObject {
     lib.start()
     let up = await until(30) { Work.shared.ready && self.lib.ready }
     say(up && lib.pages.isEmpty, "the app's door to its pages opens, and there are none yet")
+    say(Chime.url != nil && !Opening.plays, "the opening sound is inside the app, and the opening does not play while the app checks itself")
 
     // ---------- a new page, in the real editor ----------
     page.open(nil)

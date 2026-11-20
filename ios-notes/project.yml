@@ -1,0 +1,102 @@
+# Sleeky Notes for iPhone. `./make.sh` turns this into an Xcode project (with xcodegen) and builds it.
+# The app carries Sleek's own pages inside and shows them with native bars around them; it compiles the
+# shared pieces in ../ios-shared and three files of the Mac browser as they are.
+name: SleekNotes
+options:
+  bundleIdPrefix: com.sleek
+  deploymentTarget:
+    iOS: "17.0"
+targets:
+  SleekNotes:
+    type: application
+    platform: iOS
+    dependencies:
+      - target: SleekNotesWidgets
+    sources:
+      - path: Sources
+      - path: ../ios-shared/Shared.swift
+      - path: ../ios-shared/SharedWork.swift
+      - path: ../ios-shared/Kit.swift
+      - path: ../ios-shared/Host.swift
+      - path: ../browser/Sources/Sleek/Common.swift
+      - path: ../browser/Sources/Sleek/Work.swift
+      - path: ../browser/Sources/Sleek/Known.swift
+      - path: ../ios-shared/NoteData.swift     # your notes, as the widgets read them (and the addresses the app answers to)
+      - path: ../ios-shared/NoteWidgets.swift  # the widgets' own drawing, so the app can check it (Check.swift)
+      - path: ../ios-shared/Opening.swift      # the opening every Sleek app shares
+      - path: ../ios/Sounds                    # its sound
+      - path: Assets.xcassets
+      - path: build/inside/app
+        type: folder
+      - path: build/inside/chrome
+        type: folder
+    info:
+      path: build/Info.plist
+      properties:
+        CFBundleDisplayName: Sleeky Notes
+        CFBundleShortVersionString: "0.1.0"
+        CFBundleVersion: "1"
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        NSFaceIDUsageDescription: Sleeky Notes uses Face ID to open your locked notes.
+        LSSupportsOpeningDocumentsInPlace: false
+        # the Sleek browser and the widgets open your notes here by this address
+        CFBundleURLTypes:
+          - CFBundleURLName: com.sleek.notes
+            CFBundleURLSchemes: [sleek-notes]
+        UTExportedTypeDeclarations:
+          - UTTypeIdentifier: com.sleek.file
+            UTTypeDescription: Sleek file
+            UTTypeConformsTo: [public.json]
+            UTTypeTagSpecification:
+              public.filename-extension: [sleek]
+        CFBundleDocumentTypes:
+          - CFBundleTypeName: Sleek file
+            LSHandlerRank: Alternate
+            LSItemContentTypes: [com.sleek.file]
+    entitlements:
+      path: build/SleekNotes.entitlements
+      properties:
+        com.apple.security.application-groups: [group.com.uxg.sleek]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.sleek.notes
+        PRODUCT_NAME: SleekNotes
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        SWIFT_VERSION: "5.0"
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGN_STYLE: Manual
+        DEVELOPMENT_TEAM: ""
+        TARGETED_DEVICE_FAMILY: "1"
+  # the app's widgets (drawn by ../ios-shared/NoteWidgets.swift), reading the notes the Sleek apps share
+  SleekNotesWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Widgets
+      - path: ../ios-shared/NoteWidgets.swift
+      - path: ../ios-shared/NoteData.swift
+      - path: ../ios-shared/Shared.swift
+    info:
+      path: build/Widgets-Info.plist
+      properties:
+        CFBundleDisplayName: Sleeky Notes
+        CFBundleShortVersionString: "0.1.0"
+        CFBundleVersion: "1"
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    entitlements:
+      path: build/SleekNotesWidgets.entitlements
+      properties:
+        com.apple.security.application-groups: [group.com.uxg.sleek]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.sleek.notes.widgets
+        PRODUCT_NAME: SleekNotesWidgets
+        SWIFT_VERSION: "5.0"
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) WIDGET"
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGN_STYLE: Manual
+        DEVELOPMENT_TEAM: ""
+        TARGETED_DEVICE_FAMILY: "1"
+        SKIP_INSTALL: YES

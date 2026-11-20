@@ -7,7 +7,7 @@ import WebKit
 
 @main
 struct SleekSlidesApp: App {
-  var body: some Scene { WindowGroup { if Res.proving { CheckView() } else { SlidesRoot() } } }
+  var body: some Scene { WindowGroup { if Res.proving { CheckView() } else { SlidesRoot().sleekOpening("Slides", ["#7C5CFF", "#A77BFF", "#E58CFF"]) } } }
 }
 
 @MainActor
@@ -26,6 +26,7 @@ final class Checker: ObservableObject {
     lib.start()
     let up = await until(30) { Work.shared.ready && self.lib.ready }
     say(up && lib.decks.isEmpty, "the app's door to its decks opens, and there are none yet")
+    say(Chime.url != nil && !Opening.plays, "the opening sound is inside the app, and the opening does not play while the app checks itself")
 
     // ---------- a new deck ----------
     let id = await lib.create(title: "Phone deck", mode: "dark", accent: "#12A36A") ?? ""

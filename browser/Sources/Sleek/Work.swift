@@ -93,9 +93,9 @@ final class Work: NSObject, WKScriptMessageHandler {
     guard ready, !keeping, let dir = folder else { return }
     keeping = true; defer { keeping = false }
     guard let s = await ask("return await Work.stamps()") as? [String: Any] else { return }
-    let decks = s["decks"] as? [[String: Any]] ?? [], pages = s["pages"] as? [[String: Any]] ?? [], boards = (s["boards"] as? NSNumber)?.intValue ?? 0
+    let decks = s["decks"] as? [[String: Any]] ?? [], pages = s["pages"] as? [[String: Any]] ?? [], boards = (s["boards"] as? NSNumber)?.intValue ?? 0, notes = (s["noteCount"] as? NSNumber)?.intValue ?? 0
     let fm = FileManager.default, index = dir.appendingPathComponent("index.json")
-    if decks.isEmpty && pages.isEmpty && boards == 0 {
+    if decks.isEmpty && pages.isEmpty && boards == 0 && notes == 0 {
       // nothing in the storage at all: if a copy is here the storage was lost, so bring the copy back (once in a run)
       if !restoreTried { restoreTried = true; if await restore(from: dir) > 0 { onNote?("Your Sleek work was brought back from the copy on this Mac"); refresh() } }
       return
@@ -106,6 +106,10 @@ final class Work: NSObject, WKScriptMessageHandler {
     // (once there is a copy, it is written even when the last board has gone, so the other apps hear of it)
     if shares.contains("tasks"), boards > 0 || (sharing && kept["tasks"] != nil), let stamp = s["tasks"] as? String, kept["tasks"] != stamp, let text = await ask("return await Work.file('tasks')") as? String {
       if (try? text.write(to: dir.appendingPathComponent("Tasks.sleek"), atomically: true, encoding: .utf8)) != nil { kept["tasks"] = stamp; changed = true }
+    }
+    // your notes, all in one file as your tasks are (locked notes stay scrambled in it)
+    if shares.contains("notes"), notes > 0 || (sharing && kept["notes"] != nil), let stamp = s["notes"] as? String, !stamp.isEmpty, kept["notes"] != stamp, let text = await ask("return await Work.file('notes')") as? String {
+      if (try? text.write(to: dir.appendingPathComponent("Notes.sleek"), atomically: true, encoding: .utf8)) != nil { kept["notes"] = stamp; changed = true }
     }
     let now = Date().timeIntervalSince1970 * 1000
     for (kind, list, sub) in [("deck", decks, "decks"), ("page", pages, "pages")] where shares.contains(sub) {
@@ -151,8 +155,8 @@ final class Work: NSObject, WKScriptMessageHandler {
   // Each app writes only its own files, so two apps never write the same file. The Mac sets none of this.
   var peers: [URL] = []
   var sharing: Bool { !peers.isEmpty && folder != nil }
-  /// What this app holds and shares: "tasks", "pages", "decks".
-  var shares: Set<String> = ["tasks", "pages", "decks"]
+  /// What this app holds and shares: "tasks", "pages", "decks", "notes".
+  var shares: Set<String> = ["tasks", "pages", "decks", "notes"]
   /// Tells the other apps that this one wrote something (the iPhone apps set it).
   var tell: (() -> Void)?
   /// A page or deck ("page", id) was taken from another app, or deleted as it was there: whoever shows it opens it afresh.
@@ -215,6 +219,11 @@ final class Work: NSObject, WKScriptMessageHandler {
       if shares.contains("tasks"), let m = (try? fm.attributesOfItem(atPath: tf.path))?[.modificationDate] as? Date, seen[tf.path] != m, let text = try? String(contentsOf: tf, encoding: .utf8) {
         if let r = await ask("return await Work.merge(text)", ["text": text]) as? [String: Any], r["error"] == nil { took += Int(Work.num(r["changed"])); seen[tf.path] = m }
       }
+      // their notes, the same way
+      let nf = p.appendingPathComponent("Notes.sleek")
+      if shares.contains("notes"), let m = (try? fm.attributesOfItem(atPath: nf.path))?[.modificationDate] as? Date, seen[nf.path] != m, let text = try? String(contentsOf: nf, encoding: .utf8) {
+        if let r = await ask("return await Work.mergeNotes(text)", ["text": text]) as? [String: Any], r["error"] == nil { took += Int(Work.num(r["changed"])); seen[nf.path] = m }
+      }
       // their pages and decks: their index says when each last changed
       for (key, stamp) in Work.json(p.appendingPathComponent("index.json")) as? [String: Any] ?? [:] {
         guard let k = split(key) else { continue }; let at = Work.num(stamp)
@@ -244,20 +253,20 @@ final class Work: NSObject, WKScriptMessageHandler {
   }
   private func files(in dir: URL) -> [URL] {
     let fm = FileManager.default; var out: [URL] = []
-    let tasks = dir.appendingPathComponent("Tasks.sleek"); if fm.fileExists(atPath: tasks.path) { out.append(tasks) }
+    for name in ["Tasks.sleek", "Notes.sleek"] { let f = dir.appendingPathComponent(name); if fm.fileExists(atPath: f.path) { out.append(f) } }
     for sub in ["decks", "pages"] { out += ((try? fm.contentsOfDirectory(at: dir.appendingPathComponent(sub), includingPropertiesForKeys: nil)) ?? []).filter { $0.pathExtension == "sleek" } }
     return out
   }
   private func restore(from dir: URL) async -> Int { let got = await bring(files(in: dir)); return got.decks + got.pages + got.boards + got.tasks }
   /// Bring in Sleek files: decks, pages, a Sleek Tasks file, or everything in one. What is already here is left alone.
   func bring(_ files: [URL]) async -> (decks: Int, pages: Int, boards: Int, tasks: Int, here: Int, unread: Int) {
-    var n = (decks: 0, pages: 0, boards: 0, tasks: 0, here: 0, unread: 0)
+    var n = (decks: 0, pages: 0, boards: 0, tasks: 0, here: 0, unread: 0), notes = 0
     for f in files {
       guard let text = try? String(contentsOf: f, encoding: .utf8), let r = await ask("return await Work.bring(text)", ["text": text]) as? [String: Any], r["error"] == nil else { n.unread += 1; continue }
       func v(_ k: String) -> Int { (r[k] as? NSNumber)?.intValue ?? 0 }
-      n.decks += v("decks"); n.pages += v("pages"); n.boards += v("boards"); n.tasks += v("tasks"); n.here += v("here")
+      n.decks += v("decks"); n.pages += v("pages"); n.boards += v("boards"); n.tasks += v("tasks"); n.here += v("here"); notes += v("notes")
     }
-    if n.decks + n.pages + n.boards + n.tasks > 0 { refresh() }
+    if n.decks + n.pages + n.boards + n.tasks + notes > 0 { refresh() }
     return n
   }
   /// In a few words, what came of bringing files in.

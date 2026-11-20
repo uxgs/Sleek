@@ -19,7 +19,8 @@ svg.i { width: 1em; height: 1em; fill: none; stroke: currentColor; stroke-width:
 /* focus: a ring in the control's own shape, with a soft bloom */
 :is(button, input, a, [contenteditable]):focus-visible { outline: 2px solid var(--n-acc); outline-offset: 2px; box-shadow: 0 0 0 6px var(--n-acc-soft); }
 
-.nt { display: grid; grid-template-columns: 236px 356px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); height: 100vh; height: 100dvh; padding-top: env(safe-area-inset-top, 0px); }
+/* inside the Sleek browser on iPhone, its bar takes room at the top or the foot of the screen (--sleek-bar-top, --sleek-bar-bottom) */
+.nt { display: grid; grid-template-columns: 236px 356px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); height: 100vh; height: calc(100dvh - var(--sleek-bar-top, 0px)); padding-top: env(safe-area-inset-top, 0px); }
 .nav { display: flex; flex-direction: column; gap: 2px; min-height: 0; overflow-y: auto; background: var(--n-app); border-right: 1px solid var(--n-line); padding: 14px 10px calc(10px + env(safe-area-inset-bottom, 0px)) max(10px, env(safe-area-inset-left, 0px)); }
 .listp, .notep { position: relative; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
 .listp { border-right: 1px solid var(--n-line); }
@@ -82,7 +83,7 @@ svg.i { width: 1em; height: 1em; fill: none; stroke: currentColor; stroke-width:
 @keyframes pop { from { opacity: 0; transform: scale(.9) translateY(-14px); } to { opacity: 1; transform: none; } }
 @keyframes ring { 0%, 55% { box-shadow: 0 0 0 2px var(--n-acc), 0 0 0 8px var(--n-acc-soft); } 100% { box-shadow: 0 0 0 2px transparent, 0 0 0 8px transparent; } }
 .empty { color: var(--n-faint); text-align: center; padding: 46px 10px; font-size: 14px; text-wrap: balance; }
-.jot { flex: none; display: flex; gap: 8px; align-items: center; margin: 0 12px calc(14px + env(safe-area-inset-bottom, 0px)); padding: 6px 6px 6px 16px; border-radius: 26px; background: var(--n-raise); box-shadow: 0 0 0 1px var(--n-line), 0 14px 30px -14px rgba(0,0,0,0.4); transition: box-shadow .25s; }
+.jot { flex: none; display: flex; gap: 8px; align-items: center; margin: 0 12px calc(14px + env(safe-area-inset-bottom, 0px) + var(--sleek-bar-bottom, 0px)); padding: 6px 6px 6px 16px; border-radius: 26px; background: var(--n-raise); box-shadow: 0 0 0 1px var(--n-line), 0 14px 30px -14px rgba(0,0,0,0.4); transition: box-shadow .25s; }
 .jot:focus-within { box-shadow: 0 0 0 2px var(--n-acc), 0 0 0 7px var(--n-acc-soft), 0 14px 30px -14px rgba(0,0,0,0.4); }
 .jot input { flex: 1; min-width: 0; height: 40px; border: 0; background: none; outline: none; box-shadow: none; font-size: 16px; }
 .send { width: 40px; height: 40px; border-radius: 50%; background: var(--n-acc); color: var(--n-acc-ink); display: grid; place-items: center; font-size: 20px; flex: none; transition: transform .15s; }
@@ -159,7 +160,7 @@ svg.i { width: 1em; height: 1em; fill: none; stroke: currentColor; stroke-width:
 .pick.bad { color: var(--n-bad); margin-top: 6px; }
 .news { display: grid; grid-template-columns: auto 1fr; gap: 0 10px; align-items: baseline; margin-bottom: 14px; } .news span { color: var(--n-faint); font-size: 12.5px; }
 .news ul { grid-column: 1 / -1; margin: 4px 0 0; padding-left: 18px; color: var(--n-muted); font-size: 14px; }
-.toast { position: fixed; left: 50%; bottom: calc(92px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 70; display: flex; align-items: center; gap: 12px; padding: 9px 16px; border-radius: 20px; background: var(--n-fg); color: var(--n-bg); font-size: 13.5px; font-weight: 600; max-width: calc(100vw - 32px); animation: toast .35s cubic-bezier(.2,.9,.2,1); }
+.toast { position: fixed; left: 50%; bottom: calc(92px + env(safe-area-inset-bottom, 0px) + var(--sleek-bar-bottom, 0px)); transform: translateX(-50%); z-index: 70; display: flex; align-items: center; gap: 12px; padding: 9px 16px; border-radius: 20px; background: var(--n-fg); color: var(--n-bg); font-size: 13.5px; font-weight: 600; max-width: calc(100vw - 32px); animation: toast .35s cubic-bezier(.2,.9,.2,1); }
 .toast button { color: var(--n-acc); font-weight: 700; padding: 2px 4px; border-radius: 6px; }
 :root:not([data-mode="dark"]) .toast button { color: #FFC53D; }
 @keyframes toast { from { transform: translate(-50%, 20px); opacity: 0; } }
@@ -177,10 +178,10 @@ svg.i { width: 1em; height: 1em; fill: none; stroke: currentColor; stroke-width:
   #chips, .listp .foot { display: block; } .listp .foot { display: flex; justify-content: center; padding: 22px 0 4px; }
   .back { display: inline-flex; }
   .scroll { padding-left: max(18px, env(safe-area-inset-left, 0px)); padding-right: max(18px, env(safe-area-inset-right, 0px)); }
-  .notep .scroll { padding: 6px max(20px, env(safe-area-inset-right, 0px)) calc(40px + env(safe-area-inset-bottom, 0px)) max(20px, env(safe-area-inset-left, 0px)); }
-  .listp::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 280px; pointer-events: none; background: radial-gradient(120% 80% at 0% 0%, color-mix(in srgb, var(--n-acc) 22%, transparent), transparent 60%), radial-gradient(90% 70% at 100% 0%, rgba(255,142,224,0.12), transparent 60%); }
+  .notep .scroll { padding: 6px max(20px, env(safe-area-inset-right, 0px)) calc(40px + env(safe-area-inset-bottom, 0px) + var(--sleek-bar-bottom, 0px)) max(20px, env(safe-area-inset-left, 0px)); }
+  .listp::before { content: ""; position: absolute; inset: calc(0px - env(safe-area-inset-top, 0px)) 0 auto 0; height: calc(280px + env(safe-area-inset-top, 0px)); pointer-events: none; background: radial-gradient(120% 80% at 0% 0%, color-mix(in srgb, var(--n-acc) 22%, transparent), transparent 60%), radial-gradient(90% 70% at 100% 0%, rgba(255,142,224,0.12), transparent 60%); }
   .listp > * { position: relative; }
   .shade { align-items: flex-end; padding: 0; }
-  .sheet { max-width: none; border-radius: 28px 28px 0 0; padding: 18px 18px calc(22px + env(safe-area-inset-bottom, 0px)); } .grab { display: block; }
+  .sheet { max-width: none; border-radius: 28px 28px 0 0; padding: 18px 18px calc(22px + env(safe-area-inset-bottom, 0px) + var(--sleek-bar-bottom, 0px)); } .grab { display: block; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01s !important; transition-duration: .01s !important; } }

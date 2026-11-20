@@ -204,7 +204,8 @@ Open **Notes** from the front page. It is for writing something down in a second
 
 Notes live in the browser you made them in, in their own storage (`core/note-store.js`); every open
 tab follows the others. The app is `notes.html`, `note/app.js`, `note/editor.js` and `note/notes.css`.
-Not there yet: the iPhone app, notes inside the Sleek browser, and a note in a Docs page or as a task.
+On iPhone, Sleeky Notes is inside the Sleek browser and is an app of its own, with Face ID and widgets
+([ios-notes](ios-notes/README.md)). Not there yet: a note in a Docs page or as a task.
 
 ## Sleek, the browser
 
@@ -212,7 +213,7 @@ A Mac app that browses the web with Slides, Docs and Tasks inside it is being bu
 [browser](browser/README.md) folder. It is not a public download yet. Sleek for iPhone, the same browser
 for the phone, is in the [ios](ios/README.md) folder; it is not in the App Store yet.
 
-## Sleek for iPhone: Tasks, Docs and Slides
+## Sleek for iPhone: Tasks, Docs, Slides and Notes
 
 Each is an app of its own for the iPhone, made for the phone rather than shrunk to it. None is in the
 App Store yet; you build them with Xcode.
@@ -224,11 +225,16 @@ App Store yet; you build them with Xcode.
 - [ios-slides](ios-slides/README.md): **Sleek Slides**. Your decks are a native list; a slide is drawn
   by this very deck page inside the app, and you change its words in fields beneath it and present
   from your hand.
+- [ios-notes](ios-notes/README.md): **Sleeky Notes**. This very Notes page inside the app, with locked
+  notes that open with Face ID, a Jot sheet, and widgets for pinned notes, one note, recent notes and Jot.
 
-On one iPhone the four apps (these three and the Sleek browser) share your work: each keeps its copy
+Each opens as the Sleek browser does: Sleek's mark slides together in the app's own colours, its name
+writes itself in, and it lifts away, to the opening sound ([ios-shared/Opening.swift](ios-shared/Opening.swift)).
+
+On one iPhone the five apps (these four and the Sleek browser) share your work: each keeps its copy
 in a folder they all reach (the App Group `group.com.uxg.sleek`) and brings in what is newer in the
-others', so a list ticked in Sleek Tasks is ticked in the browser, and a page written in Sleek Docs is
-in the browser too. The browser opens your boards, pages and decks in these apps when they are on the
+others', so a list ticked in Sleek Tasks is ticked in the browser, and a page written in Sleek Docs or a note
+jotted in Sleeky Notes is in the browser too. The browser opens your boards, pages, decks and notes in these apps when they are on the
 phone. Siri answers from Sleek Tasks or the browser: "What's on my grocery list in Sleek Tasks", "Add to
 my grocery list in Sleek", "What's due today in Sleek Tasks" (Siri needs the app's name). What they
 share is in [ios-shared](ios-shared); `.sleek` files still move pages, decks and tasks between the

@@ -5,6 +5,9 @@ it yourself with Xcode.
 
 ## What it does
 
+- **It opens as Sleek does.** Sleek's mark slides together in Slides' colours, the name writes itself in,
+  and it lifts away, to the opening sound (`../ios-shared/Opening.swift`). A tap skips it; with Reduce
+  Motion it is a quick fade.
 - **Your decks are a list**, each with a cover in its own look. Press and hold a deck to rename it,
   duplicate it, send a copy, or delete it. A new deck asks its name, light or dark, and a colour.
 - **You edit the words, and the slide lays itself out.** The slide stays in view at the top: it is

@@ -1,5 +1,5 @@
-// What the four Sleek apps on an iPhone share: one folder they can all reach (the App Group group.com.uxg.sleek), in which
-// each app keeps its copy of your work in a place of its own (browser, tasks, docs, slides) that only it writes, and a
+// What the Sleek apps on an iPhone share: one folder they can all reach (the App Group group.com.uxg.sleek), in which
+// each app keeps its copy of your work in a place of its own (browser, tasks, docs, slides, notes) that only it writes, and a
 // ping that tells the others when one of them has written something. Each app brings in what is newer in the others'
 // places when it opens, when it comes back to the front, and when it hears the ping.
 // The browser, Docs and Slides share through ../browser/Sources/Sleek/Work.swift; Sleek Tasks through its Store.swift.
@@ -9,7 +9,7 @@ import WidgetKit
 
 enum Shared {
   static let group = "group.com.uxg.sleek"
-  static let apps = ["browser", "tasks", "docs", "slides"]
+  static let apps = ["browser", "tasks", "docs", "slides", "notes"]
   private static let ping = "com.sleek.shared.changed" as CFString
   /// The shared folder, or nil when the app was built without the App Group.
   static var root: URL? { FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: group)?.appendingPathComponent("Work", isDirectory: true) }

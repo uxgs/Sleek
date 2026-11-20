@@ -258,8 +258,12 @@
   /** The key to a vault: this device's fingerprint or face if it was set up here, else (or if that is refused) the passcode. */
   function needKey(v){
     if(!v) return Promise.resolve(null);
-    if(v.bio && v.bio.length && S.bio) return V.withBio(v).then(function(raw){ return raw; }, function(){ return askPass(v); });
-    return askPass(v);
+    if(v.bio && v.bio.length && S.bio) return V.withBio(v).then(function(raw){ return raw; }, function(e){
+      // refused or cancelled: the passcode. No key kept on this iPhone after all (it was restored, say): the passcode, and the key is kept again
+      return askPass(v).then(function(raw){ if(raw && V.native && e && e.message === 'missing') V.addBio(v, raw).catch(function(){}); return raw; });
+    });
+    // in the iPhone app, a lock that came from another copy of your notes opens with its passcode once; after that, with Face ID
+    return askPass(v).then(function(raw){ if(raw && V.native && S.bio) V.addBio(v, raw).catch(function(){}); return raw; });
   }
   /** The first time: choose a passcode. Gives { vault, raw }, or null. */
   function setupLock(){
@@ -449,5 +453,7 @@
     try { if(localStorage.getItem('sleek-sw') === '1') on = true; } catch(e){}
     if(on) window.addEventListener('load', function(){ navigator.serviceWorker.register('sw.js').catch(function(){}); });
   }
-  window.SleekNotesApp = { state: S };      // for the checks
+  // for the checks, and for Sleeky Notes for iPhone (ios-notes/), which jots from its own sheet, opens what a widget
+  // asked for, and locks an open note when the app is left
+  window.SleekNotesApp = { state: S, jot: jot, open: function(id){ if(N.note(id)) open(id); }, list: function(){ if(S.open) leave(); }, add: newNote, away: function(){ flush(); relock(); } };
 })();

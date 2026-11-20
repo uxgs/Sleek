@@ -11,11 +11,12 @@
 <script src="core/store.js"></script>
 <script src="core/doc-store.js"></script>
 <script src="core/task-store.js"></script>
+<script src="core/note-store.js"></script>
 </head>
 <body>
 <script>
 (function(){
-  var S = window.SleekStore, D = window.SleekDocs, T = window.SleekTasks, DAY = 86400000;
+  var S = window.SleekStore, D = window.SleekDocs, T = window.SleekTasks, K = window.SleekNotes, DAY = 86400000;
   function post(m){ try { window.webkit.messageHandlers.sleekWork.postMessage(m); } catch(e){} }
   function key(d){ return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
   function byDue(a, b){ return (a.due || '9999') < (b.due || '9999') ? -1 : (a.due || '9999') > (b.due || '9999') ? 1 : (a.order || 0) - (b.order || 0); }
@@ -102,29 +103,30 @@
   // ---------- the copy the browser keeps on this Mac, and bringing work in from a file ----------
   // What there is and when each thing last changed, so the app can tell what its copy is missing.
   window.Work.stamps = function(){
-    return Promise.all([T.ready(), D.list().catch(function(){ return []; }), S.list().catch(function(){ return []; })]).then(function(r){
+    return Promise.all([T.ready(), D.list().catch(function(){ return []; }), S.list().catch(function(){ return []; }), K ? K.ready().catch(function(){}) : null]).then(function(r){
       var newest = 0; T.projects().concat(T.tasks()).forEach(function(x){ newest = Math.max(newest, x.updated || x.created || 0); });
-      return { tasks: T.stamp ? T.stamp() : T.projects().length + ':' + T.tasks().length + ':' + T.people().length + ':' + newest, boards: T.projects().length,
+      return { notes: K ? K.stamp() : '', noteCount: K ? K.notes().length : 0, tasks: T.stamp ? T.stamp() : T.projects().length + ':' + T.tasks().length + ':' + T.people().length + ':' + newest, boards: T.projects().length,
                decks: r[2].map(function(d){ return { id: d.id, at: d.updated || 0 }; }), pages: r[1].map(function(d){ return { id: d.id, at: d.updated || 0 }; }) };
     });
   };
-  // One thing as the text of its file: a deck, a page, or all your tasks. Nothing when it is gone, or too large to hand over in one piece.
+  // One thing as the text of its file: a deck, a page, all your tasks, or all your notes. Nothing when it is gone, or too large to hand over in one piece.
   window.Work.file = function(kind, id){
-    return (kind === 'deck' ? S.exportDeck(id) : kind === 'page' ? D.exportDoc(id) : T.exportAll()).then(function(text){ return text && text.length < 180e6 ? text : null; });
+    return (kind === 'deck' ? S.exportDeck(id) : kind === 'page' ? D.exportDoc(id) : kind === 'notes' ? K.exportAll() : T.exportAll()).then(function(text){ return text && text.length < 180e6 ? text : null; });
   };
   // Bring in the text of a file: a deck, a page, a Sleek Tasks file, or everything in one (core/move.js). Says what came in.
   window.Work.bring = function(text){
     var o; try { o = JSON.parse(text); } catch(e){ return Promise.resolve({ error: 'That is not a Sleek file.' }); }
-    var got = { decks: 0, pages: 0, boards: 0, tasks: 0, here: 0 }, have = {};
+    var got = { decks: 0, pages: 0, boards: 0, tasks: 0, notes: 0, here: 0 }, have = {};
     // a deck or a page that is already here (the very one, by its id) is left as it is, as boards and tasks are
     function one(x){
       if(!x || typeof x !== 'object') return Promise.resolve();
       if(x.format === 'sleek-tasks') return T.importAll(JSON.stringify(x)).then(function(r){ got.boards += r.boards; got.tasks += r.tasks; });
+      if(x.format === 'sleek-notes') return K ? K.importAll(JSON.stringify(x)).then(function(r){ got.notes += r.notes; }) : Promise.resolve();
       if(x.format !== 'sleek') return Promise.resolve();
       var page = x.kind === 'doc'; if(x.id && have[(page ? 'p:' : 'd:') + x.id]){ got.here++; return Promise.resolve(); }
       return page ? D.importDoc(JSON.stringify(x)).then(function(d){ if(d) got.pages++; }) : S.importDeck(JSON.stringify(x)).then(function(d){ if(d) got.decks++; });
     }
-    var list = o && o.format === 'sleek-work' ? (o.decks || []).concat(o.pages || [], [o.tasks]) : [o], chain = Promise.resolve();
+    var list = o && o.format === 'sleek-work' ? (o.decks || []).concat(o.pages || [], [o.tasks, o.notes]) : [o], chain = Promise.resolve();
     return Promise.all([T.ready(), D.list().catch(function(){ return []; }), S.list().catch(function(){ return []; })]).then(function(r){
       r[1].forEach(function(d){ have['p:' + d.id] = 1; }); r[2].forEach(function(d){ have['d:' + d.id] = 1; });
       list.forEach(function(x){ chain = chain.then(function(){ return one(x); }).catch(function(){}); });
@@ -135,6 +137,8 @@
   function fail(e){ return { error: String((e && e.message) || e) }; }
   // another app's copy of your tasks: what is newer there comes in, what was deleted there goes (core/task-store.js mergeAll)
   window.Work.merge = function(text){ return T.ready().then(function(){ return T.mergeAll(text); }).catch(fail); };
+  // and of your notes (core/note-store.js mergeAll)
+  window.Work.mergeNotes = function(text){ return K.ready().then(function(){ return K.mergeAll(text); }).catch(fail); };
   // another app's copy of a page or a deck, taken when it is newer than the one here
   window.Work.adopt = function(kind, text){
     return Promise.resolve().then(function(){ return kind === 'deck' ? S.adopt(text) : D.adopt(text); }).then(function(d){ return { took: !!d }; }).catch(fail);
@@ -151,6 +155,8 @@
   // tell the app when tasks change (here, or in any other tab), a moment later so a run of changes is one telling
   var told = 0;
   T.ready().then(function(){ T.on(function(){ clearTimeout(told); told = setTimeout(function(){ post({ changed: 'tasks' }); }, 120); }); post({ ready: true }); }, function(e){ post({ failed: String(e) }); });
+  var toldNotes = 0;
+  if(K) K.ready().then(function(){ K.on(function(){ clearTimeout(toldNotes); toldNotes = setTimeout(function(){ post({ changed: 'notes' }); }, 120); }); }, function(){});
 })();
 </script>
 </body>

@@ -5,6 +5,9 @@ it yourself with Xcode.
 
 ## What it does
 
+- **It opens as Sleek does.** Sleek's mark slides together in Tasks' colours, the name writes itself in,
+  and it lifts away, to the opening sound (`../ios-shared/Opening.swift`). A tap skips it; with Reduce
+  Motion it is a quick fade.
 - **It opens on Today.** What is late, what is due today, and what you have done, with a ring that
   fills as you go.
 - **Adding is under your thumb.** A field docked at the bottom, which stays up after each task so a

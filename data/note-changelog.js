@@ -6,11 +6,11 @@
    changes: set the top entry's v (or, on a new day, add an entry at the top), and set the Notes part
    of sw.js's VERSION to match. Keep each line to a few words, and each day to four lines at most. */
 window.SLEEK_NOTE_CHANGES = [
-  { v: '1.0.1', date: '2026-11-20',
+  { v: '1.0.2', date: '2026-11-20',
     items: [
       'Sleeky Notes: jot something down in a second, find it later',
       'Pin notes, file them in folders, tag them, and give each an icon',
       'Lock a note: only its title shows until you unlock it',
-      'Checklists and bold, a copy of everything as a file, and it works offline'
+      'Checklists, bold and offline; on iPhone, its own app with Face ID and widgets'
     ] }
 ];

@@ -5,6 +5,9 @@ it yourself with Xcode.
 
 ## What it does
 
+- **It opens as Sleek does.** Sleek's mark slides together in Docs' colours, the name writes itself in,
+  and it lifts away, to the opening sound (`../ios-shared/Opening.swift`). A tap skips it; with Reduce
+  Motion it is a quick fade.
 - **Your pages are a list** you can search with one thumb, with folders as chips along the top. Press
   and hold a page to duplicate it, move it to a folder, send a copy, or delete it.
 - **A page is all page.** It is the same editor Sleek Docs uses on the web, inside the app, so a page

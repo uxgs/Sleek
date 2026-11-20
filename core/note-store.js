@@ -71,6 +71,11 @@
   function changed(what){ tell(what, true); }
   try { chan = new BroadcastChannel('sleek-notes'); chan.onmessage = function(e){ var what = e.data || {}; read().then(function(){ tell(Object.assign({ remote: true }, what), false); }); }; } catch(e){ chan = null; }
   function on(fn){ subs.push(fn); return function(){ subs = subs.filter(function(f){ return f !== fn; }); }; }
+  /** A few characters that change whenever anything here does: how the apps that share your notes tell their copy is behind. */
+  function stamp(){
+    var newest = 0; cache.notes.forEach(function(n){ newest = Math.max(newest, n.stamp || n.updated || 0); }); cache.folders.forEach(function(f){ newest = Math.max(newest, f.updated || 0); });
+    return cache.notes.length + ':' + cache.folders.length + ':' + Object.keys(cache.gone).length + ':' + JSON.stringify(cache.vaults).length + ':' + newest;
+  }
   /** Every write so far is in the database (for a page about to close, and for the checks). */
   function saved(){ return pending; }
 
@@ -211,7 +216,7 @@
   }
 
   window.SleekNotes = {
-    open: open, ready: ready, on: on, saved: saved, uid: uid, COLORS: COLORS, tag: tag,
+    open: open, ready: ready, on: on, saved: saved, stamp: stamp, uid: uid, COLORS: COLORS, tag: tag,
     notes: notes, note: note, add: add, set: set, remove: remove, restore: restore, tags: tags,
     folders: folders, folder: folder, addFolder: addFolder, renameFolder: renameFolder, removeFolder: removeFolder,
     vaults: vaults, vault: vault, setVault: setVault,
