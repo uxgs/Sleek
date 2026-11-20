@@ -17,7 +17,8 @@ For each app this writes, into icons/:
   <app>-maskable.svg   the tile with no corners and a smaller mark, for phones that cut their own shape
   <app>-touch.svg      the tile with no corners, for an iPhone's home screen
 
-The .png files beside them are pictures of these at the sizes phones and browsers ask for. Run this
+The .png files beside them are pictures of these at the sizes phones and browsers ask for (drawn
+large, 1024 across, then scaled down: a browser asked to draw one smaller than about 500 across crops it). Run this
 from the folder that holds index.html:  python3 tools/make-icons.py
 """
 import os

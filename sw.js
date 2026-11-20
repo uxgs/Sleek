@@ -3,7 +3,7 @@
    the network behind it, so a new version shows on the next visit. Change VERSION (and the list)
    when files are added or removed. */
 // 'sleek-' + Slides' version (data/changelog.js) + '-d' + Docs' (data/doc-changelog.js) + '-t' + Tasks' (data/task-changelog.js) + '-n' + Notes' (data/note-changelog.js): a new version of any app renews the cache
-var VERSION = 'sleek-1.0.54-d1.0.11-t1.0.9-n1.0.0';
+var VERSION = 'sleek-1.0.54-d1.0.11-t1.0.9-n1.0.1';
 var FILES = [
   './', 'index.html', 'slides.html', 'deck.html', 'manifest.webmanifest', 'docs.html', 'doc.html', 'docs.webmanifest', 'core/short.js', 'core/motion.css', 'core/move.js',
   'styles.css', 'glow.css', 'app.js', 'glow-fx.js', 'theme-boot.js',
