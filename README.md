@@ -184,8 +184,10 @@ clips go in the picture store every Sleek app shares.
 Open **Notes** from the front page. It is for writing something down in a second and finding it later.
 
 - **Jot.** Type in "Jot something down" at the foot of your notes and press return. It is kept at
-  once, at the top, and the box is ready for the next one. ＋ makes a note you can write at length.
-- **Pinned.** Pin a note and it stays at the top, as a tile.
+  once and opens in full, with what you typed as its title and the cursor in its text (on a wide
+  screen it opens beside the list, and the box is ready for the next one). ＋ makes an empty note.
+- **Tiles.** Every note is a tile: its icon, its title and the start of its text.
+- **Pinned.** Pin a note and it stays at the top.
 - **Folders and tags.** A note sits in one folder and can carry any number of tags. Press a folder
   or a tag to see only those notes; on a wide screen they run down the side.
 - **An icon on every note.** Press a note's icon to choose another, and its colour, so your notes
@@ -193,6 +195,15 @@ Open **Notes** from the front page. It is for writing something down in a second
 - **Writing.** Plain text, with **bold** and checklists: the checklist button (or `[] ` typed at the
   start of a line) makes a line you can tick. Whatever you paste comes in as plain text.
 - **Search** looks through titles, tags and text.
+- **Hold a note for its menu.** Hold a note in the list, or right-click it, to pin it, duplicate it,
+  move it to a folder, copy its text or delete it. Held, the note lifts off the list while the rest
+  blurs behind it.
+- **Swipe to delete.** On a touch screen, swipe a note to the left: red shows behind it, and past
+  half-way (or with a quick flick) letting go deletes it. Undo brings it back.
+- **It moves.** On a phone a note opens out of its tile and draws back into it; on a wide
+  screen the note beside the list changes with a soft rise. Pin a note, jot one, delete one or choose
+  a folder, and each note glides to its new place. Sheets and messages ease away. With Reduce Motion,
+  nothing moves.
 - **Locked notes.** Lock a note and only its title and icon show in your list. Its text is scrambled
   (AES-GCM, 256 bits) and opens with a passcode you choose the first time, or, where the browser
   allows it, with the device's fingerprint or face (a passkey). It locks again when you leave the
@@ -226,7 +237,7 @@ App Store yet; you build them with Xcode.
   by this very deck page inside the app, and you change its words in fields beneath it and present
   from your hand.
 - [ios-notes](ios-notes/README.md): **Sleeky Notes**. This very Notes page inside the app, with locked
-  notes that open with Face ID, a Jot sheet, and widgets for pinned notes, one note, recent notes and Jot.
+  notes that open with Face ID, and widgets for pinned notes, one note, recent notes and Jot.
 
 Each opens as the Sleek browser does: Sleek's mark slides together in the app's own colours, its name
 writes itself in, and it lifts away, to the opening sound ([ios-shared/Opening.swift](ios-shared/Opening.swift)).

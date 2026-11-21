@@ -52,7 +52,6 @@ enum NoteKeys {
 @MainActor
 final class Notes: NSObject, ObservableObject, WKScriptMessageHandlerWithReply {
   let host: Host
-  @Published var jotting = false
   private var began = false
   /// What the app takes away from the page: the way back to Sleek's front page (there is none here), and saving a copy
   /// as a download (a file is sent from the app instead).
@@ -63,12 +62,14 @@ final class Notes: NSObject, ObservableObject, WKScriptMessageHandlerWithReply {
     host.web.configuration.userContentController.addScriptMessageHandler(self, contentWorld: .page, name: "sleekLock")
     host.web.scrollView.isScrollEnabled = false      // the page fills the screen and scrolls inside itself
   }
-  /// The page asking about the lock (../note/lock.js): { do: "can" } → { can, name }; { do: "keep", id, key } → { ok };
+  /// The page asking the app for something. A tap felt in the hand (../note/app.js): { do: "feel" }.
+  /// About the lock (../note/lock.js): { do: "can" } → { can, name }; { do: "keep", id, key } → { ok };
   /// { do: "key", id } → { key } once Face ID lets it go, { missing: true } when no key is kept here, or {} when it is refused.
   func userContentController(_ c: WKUserContentController, didReceive message: WKScriptMessage, replyHandler: @escaping (Any?, String?) -> Void) {
     guard message.frameInfo.isMainFrame, message.frameInfo.request.url?.scheme == "sleek", let m = message.body as? [String: Any], let what = m["do"] as? String else { replyHandler(nil, "not allowed"); return }
     let id = m["id"] as? String ?? "", ok = id.range(of: "^[a-z0-9]{6,24}$", options: .regularExpression) != nil
     switch what {
+    case "feel": UIImpactFeedbackGenerator(style: .medium).impactOccurred(); replyHandler([String: Any](), nil)      // a note was held: its menu opens
     case "can": replyHandler(["can": NoteKeys.can, "name": NoteKeys.name], nil)
     case "keep": replyHandler(["ok": ok && NoteKeys.keep(id, m["key"] as? String ?? "")], nil)
     case "key": if ok { NoteKeys.key(id) { k, missing in replyHandler(k.map { ["key": $0] } ?? (missing ? ["missing": true] : [String: Any]()), nil) } } else { replyHandler([String: Any](), nil) }
@@ -95,14 +96,11 @@ final class Notes: NSObject, ObservableObject, WKScriptMessageHandlerWithReply {
       guard await ready() else { return }
       await Work.shared.pull()
       switch a.what {
-      case "jot": jotting = true
-      case "new": host.tell("SleekNotesApp.add()")
+      case "jot", "new": tap(.medium); host.tell("SleekNotesApp.add()")      // a new note, open in full
       default: if let id = a.id { host.tell("SleekNotesApp.open(id)", ["id": id]) } else { host.tell("SleekNotesApp.list()") }
       }
     }
   }
-  /// Keep what was typed in the app's own Jot sheet as a new note.
-  func jot(_ text: String) { let t = text.trimmingCharacters(in: .whitespacesAndNewlines); if !t.isEmpty { tap(.medium); host.tell("SleekNotesApp.list(); SleekNotesApp.jot(t)", ["t": t]) } }
   /// A .sleek file of notes sent to the phone: its notes come in beside yours.
   func bring(_ url: URL) async {
     let scoped = url.startAccessingSecurityScopedResource(); defer { if scoped { url.stopAccessingSecurityScopedResource() } }
@@ -122,38 +120,5 @@ struct NotesRoot: View {
       .onAppear { notes.start() }
       .onChange(of: phase) { _, now in if now == .background { notes.away() } else if now == .active { Task { await Work.shared.pull() } } }
       .onOpenURL { notes.go($0) }
-      .sheet(isPresented: $notes.jotting) { JotSheet { notes.jot($0) } }
-  }
-}
-
-/// The box a widget's Jot opens: the keyboard is up at once, and Keep (or return) saves the note.
-struct JotSheet: View {
-  let keep: (String) -> Void
-  @State private var text = ""
-  @FocusState private var typing: Bool
-  @Environment(\.dismiss) private var dismiss
-  private let amber = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 1, green: 0.773, blue: 0.239, alpha: 1) : UIColor(red: 0.961, green: 0.659, blue: 0.047, alpha: 1) })
-  private func save() { keep(text); dismiss() }
-  var body: some View {
-    VStack(alignment: .leading, spacing: 14) {
-      HStack {
-        Text("Jot a note").font(.system(size: 20, weight: .bold)).tracking(-0.4)
-        Spacer()
-        Button("Cancel") { dismiss() }.foregroundStyle(.secondary)
-      }
-      HStack(alignment: .bottom, spacing: 8) {
-        TextField("Jot something down…", text: $text, axis: .vertical).lineLimit(1...5).font(.system(size: 17)).focused($typing).submitLabel(.done)
-          .onChange(of: text) { _, now in if now.hasSuffix("\n") { text = String(now.dropLast()); save() } }      // return keeps it
-        Button { save() } label: { Image(systemName: "arrow.up").font(.system(size: 17, weight: .bold)).foregroundStyle(Color(red: 0.165, green: 0.106, blue: 0)).frame(width: 40, height: 40).background(amber, in: Circle()) }
-          .buttonStyle(Press()).disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty).accessibilityLabel("Keep this note")
-      }
-      .padding(.leading, 16).padding(.trailing, 6).padding(.vertical, 6).background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 26, style: .continuous))
-      .overlay(RoundedRectangle(cornerRadius: 26, style: .continuous).strokeBorder(amber.opacity(typing ? 1 : 0), lineWidth: 2)).shadow(color: amber.opacity(typing ? 0.28 : 0), radius: 14)
-      .animation(.easeOut(duration: 0.25), value: typing)
-      Spacer(minLength: 0)
-    }
-    .padding(20)
-    .presentationDetents([.height(170)]).presentationDragIndicator(.visible)
-    .onAppear { typing = true }
   }
 }

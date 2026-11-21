@@ -9,8 +9,8 @@ window.SLEEK_NOTE_CHANGES = [
   { v: '1.0.2', date: '2026-11-20',
     items: [
       'Sleeky Notes: jot something down in a second, find it later',
-      'Pin notes, file them in folders, tag them, and give each an icon',
+      'Pin notes, file them in folders, tag them, and give each an icon; hold a note for its menu, swipe it left to delete',
       'Lock a note: only its title shows until you unlock it',
-      'Checklists, bold and offline; on iPhone, its own app with Face ID and widgets'
+      'Checklists, bold, offline, and motion between views; on iPhone, an app with Face ID and widgets'
     ] }
 ];

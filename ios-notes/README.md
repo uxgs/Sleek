@@ -18,7 +18,7 @@ Sleeky Notes as an app of its own. It is not in the App Store yet; you build it 
   text and its checklist; small, medium, large), *Recent Notes* (medium, large, and on the Lock
   Screen) and *Jot a Note* (small, and a round button on the Lock Screen). A press on a note opens
   it; a locked note shows only its title and a lock.
-- **Jot from a widget.** Jot opens a small sheet with the keyboard up. Return keeps the note.
+- **Jot from a widget.** Jot opens a new note in full, ready to write.
 - **One copy on your iPhone.** Your notes are shared with the Sleek browser on the same iPhone,
   through the folder the Sleek apps share: a note written in either is in both. With this app on the
   phone, the browser's Notes tile opens your notes here.
@@ -46,7 +46,7 @@ You need Xcode and xcodegen (`brew install xcodegen`).
 project.yml          the app and its widgets, for xcodegen
 Assets.xcassets      the app's icon
 Sources/
-  Notes.swift        the page inside the app, the key to locked notes (the keychain), the Jot sheet, the addresses it answers to
+  Notes.swift        the page inside the app, the key to locked notes (the keychain), the addresses it answers to
   Check.swift        the app checking itself, and drawing every widget to a picture
 Widgets/Bundle.swift the list of widgets
 ```

@@ -31,21 +31,26 @@ final class Checker: ObservableObject {
     say(await yes("return SleekNotes.notes().length === 1 && SleekNotes.notes()[0].pin && document.documentElement.classList.contains('in-app')"), "it starts with one note, a welcome, pinned")
     say(await yes("return getComputedStyle(document.querySelector('[data-act=\"export\"]')).display === 'none' && document.documentElement.scrollWidth <= innerWidth"), "the page fits the phone, without the web's own way of saving a copy")
 
-    // ---------- jotting, as the page does and as the app's own sheet does ----------
+    // ---------- adding a note: jotted in the page, or from a widget's Jot; either way it opens in full ----------
     _ = await js("document.querySelector('#jotin').value = 'Call the plumber'; document.querySelector('#jot').requestSubmit(); return 1")
-    notes.jot("  Buy washers for the kitchen tap  ")
-    let jotted = await until(5) { await self.yes("return SleekNotes.notes().length === 3 && SleekNotes.notes()[0].title === 'Buy washers for the kitchen tap' && SleekNotes.notes()[1].title === 'Call the plumber'") }
-    say(jotted, "a note jotted in the page is kept, and one from the app's Jot sheet lands on top")
+    let jotOpen = await until(5) { await self.yes("var n = SleekNotes.note(SleekNotesApp.state.open); return !!n && n.title === 'Call the plumber' && !!document.querySelector('#body')") }
+    _ = await js("SleekNotesApp.list(); return 1"); let jotBack = await until(5) { await self.yes("return SleekNotesApp.state.open === null") }
+    notes.go(NoteData.link("jot"))
+    let fresh = await until(8) { await self.yes("var n = SleekNotes.note(SleekNotesApp.state.open); return SleekNotes.notes().length === 3 && !!n && n.title === '' && !!document.querySelector('#ttl')") }
+    _ = await js("SleekNotes.set(SleekNotesApp.state.open, { title: 'Buy washers for the kitchen tap' }); SleekNotesApp.list(); return 1"); _ = await until(5) { await self.yes("return SleekNotesApp.state.open === null") }
+    let jotted = await yes("return SleekNotes.notes().length === 3 && SleekNotes.notes()[0].title === 'Buy washers for the kitchen tap' && SleekNotes.notes()[1].title === 'Call the plumber'")
+    say(jotOpen && jotBack && fresh && jotted, "a note jotted in the page opens in full, and so does a new one from a widget's Jot")
+    let tiles = await yes("return document.querySelectorAll('#rows .tile').length === 3 && !document.querySelector('#rows .row')")
+    say(tiles, "every note is a tile, pinned or not")
     let id = await js("return SleekNotes.notes()[0].id") as? String ?? ""
     _ = await js("SleekNotes.set(id, { body: '<div>Half inch, <b>brass</b></div><div class=\"ck\" data-done=\"1\">Measure the tap</div><div class=\"ck\" data-done=\"0\">Turn off the water</div>', icon: 'home', color: '#0A84FF', pin: true, tags: ['House Jobs'] }); return 1", ["id": id])
 
     // ---------- the addresses it answers to ----------
     notes.go(NoteData.link("open", id: id))
     let opened = await until(8) { await self.yes("return SleekNotesApp.state.open === id && !!document.querySelector('#body') && document.querySelector('#body').textContent.indexOf('brass') > 0", ["id": id]) }
-    notes.go(NoteData.link("jot")); let sheet = await until(5) { self.notes.jotting }; notes.jotting = false
     notes.go(NoteData.link("open")); let listed = await until(8) { await self.yes("return SleekNotesApp.state.open === null") }
     let a = NoteData.ask(URL(string: "sleek-notes://open?id=abcde12345")!), b = NoteData.ask(URL(string: "sleek-notes://open?id=BAD!")!), c = NoteData.ask(URL(string: "sleek-tasks://open")!)
-    say(opened && sheet && listed && a?.id == "abcde12345" && b?.what == "open" && b?.id == nil && c == nil, "a widget or the Sleek browser can open a note, the Jot sheet, or the list")
+    say(opened && listed && a?.id == "abcde12345" && b?.what == "open" && b?.id == nil && c == nil, "a widget or the Sleek browser can open a note, or the list")
 
     // ---------- locking, with the key kept by the app ----------
     let can = await js("return await SleekVault.canBio()") as? Bool == true, name = await js("return SleekVault.bioName()") as? String ?? ""

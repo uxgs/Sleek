@@ -74,7 +74,7 @@ enum NoteData {
   }
 
   // ---------- the addresses Sleeky Notes for iPhone answers to ----------
-  /// sleek-notes://open (your notes), ://open?id=<id> (a note), ://jot (the box to jot one down), ://new (an empty note).
+  /// sleek-notes://open (your notes), ://open?id=<id> (a note), ://jot and ://new (a new note, open in full).
   static func link(_ what: String, id: String? = nil) -> URL {
     var c = URLComponents(); c.scheme = "sleek-notes"; c.host = what
     if let id, id.range(of: "^[a-z0-9]{4,24}$", options: .regularExpression) != nil { c.queryItems = [URLQueryItem(name: "id", value: id)] }

@@ -2,7 +2,7 @@
 
    Three parts side by side on a wide screen, one at a time on a phone:
      the side list   All notes, Pinned, Locked, your folders and your tags        (#nav)
-     the notes       pinned ones as tiles, the rest as rows, newest first; a box
+     the notes       tiles, the pinned ones first, then the rest, newest first; a box
                      at the foot that keeps whatever you type as a new note        (#chips, #rows, #jot)
      the note        its icon, title, folder, tags and text                        (#note)
    Notes are kept by core/note-store.js; the writing box is note/editor.js; the lock is note/lock.js.
@@ -56,6 +56,8 @@
     list: '<rect x="4" y="5" width="6" height="6" rx="1.500"/><path d="M5.800 8l1 1 1.800-2M13 8h7M13 16h7"/><rect x="4" y="13" width="6" height="6" rx="1.500"/>',
     bold: '<path d="M8 5h5a3.500 3.500 0 0 1 0 7H8zM8 12h6a3.500 3.500 0 0 1 0 7H8z"/>',
     bin: '<path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12M10.500 11v5M13.500 11v5"/>',
+    dup: '<rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>',
+    copy: '<rect x="6" y="5" width="12" height="16" rx="2.5"/><path d="M9.5 5V4.500a1.500 1.500 0 0 1 1.500-1.500h2a1.500 1.500 0 0 1 1.500 1.500V5M9 11h6M9 15h4"/>',
     more: '<circle cx="6" cy="12" r="1.200"/><circle cx="12" cy="12" r="1.200"/><circle cx="18" cy="12" r="1.200"/>',
     moon: '<path d="M19 14.500A7.500 7.500 0 0 1 9.500 5a7.500 7.500 0 1 0 9.500 9.500z"/>',
     touch: '<path d="M7.500 19c.6-1.800.8-3.600.8-5.500V11a3.700 3.700 0 0 1 7.400 0v2.500c0 2.300-.3 4.300-.9 6"/><path d="M4.500 15V11a7.500 7.500 0 0 1 15 0v3.500c0 1.300-.1 2.500-.4 3.700"/><path d="M12 11v3.500c0 2.200-.4 4.200-1.100 6"/>'
@@ -91,7 +93,6 @@
     if(n.lock) return '<i class="lk">' + ic('lock') + ' Locked</i>';
     return esc(E.text(n.body).split('\n').filter(function(l){ return l.trim(); }).slice(0, 2).join(' · ')) || '<i class="lk">No more text</i>';
   }
-  function under(n){ return esc(n.tags.map(function(t){ return '#' + t; }).concat(folderName(n.folder) || []).join('  ·  ')); }
 
   // ---------- drawing ----------
   function foot(){
@@ -119,13 +120,11 @@
     var found = N.notes().filter(match), pins = S.filter === 'pinned' ? [] : found.filter(function(n){ return n.pin; }), rest = S.filter === 'pinned' ? found : found.filter(function(n){ return !n.pin; });
     var head = S.filter === 'all' ? 'Notes' : S.filter === 'pinned' ? 'Pinned' : S.filter === 'locked' ? 'Locked' : folderName(S.filter);
     function cls(n){ return (n.id === S.open ? ' on' : '') + (n.id === S.fresh ? ' fresh' : ''); }
+    function tile(n){ return '<button type="button" class="tile' + cls(n) + '" data-open="' + n.id + '" style="--c:' + esc(n.color) + '"><span class="ic">' + ic(n.icon) + '</span><b>' + esc(title(n)) + '</b><span class="sn">' + snippet(n) + '</span></button>'; }
     $('#rows').innerHTML =
-      (pins.length ? '<div class="label">' + ic('pin') + ' Pinned</div><div class="pins">' + pins.map(function(n){
-        return '<button type="button" class="tile' + cls(n) + '" data-open="' + n.id + '" style="--c:' + esc(n.color) + '"><span class="ic">' + ic(n.icon) + '</span><b>' + esc(title(n)) + '</b><span class="sn">' + snippet(n) + '</span></button>'; }).join('') + '</div>' : '') +
+      (pins.length ? '<div class="label">' + ic('pin') + ' Pinned</div><div class="tiles">' + pins.map(tile).join('') + '</div>' : '') +
       '<div class="label"><span>' + esc(head + (S.tag ? '  ·  #' + S.tag : '')) + '</span>' + (isFolder() ? '<button type="button" class="mini" data-act="folder" aria-label="Rename or delete this folder">' + ic('more') + '</button>' : '') + '</div>' +
-      '<div class="rows">' + rest.map(function(n){
-        return '<button type="button" class="row' + cls(n) + '" data-open="' + n.id + '" style="--c:' + esc(n.color) + '"><span class="ic">' + ic(n.icon) + '</span><span class="tx"><b>' + esc(title(n)) + '</b><span class="sn">' + snippet(n) + '</span>' +
-          (under(n) ? '<span class="tg">' + under(n) + '</span>' : '') + '</span><time>' + esc(when(n.updated)) + '</time></button>'; }).join('') + '</div>' +
+      '<div class="tiles">' + rest.map(tile).join('') + '</div>' +
       (found.length ? '' : '<div class="empty">' + (S.q ? 'Nothing matches “' + esc(S.q) + '”.' : N.notes().length ? 'No notes here yet.' : 'Nothing here yet. Jot something down below.') + '</div>') + foot();
     S.fresh = null;
   }
@@ -148,7 +147,7 @@
     var n = N.note(S.open), el = $('#note'); editor = null;
     $('#app').classList.toggle('open', !!n);
     if(!n){ el.innerHTML = '<div class="blank">' + ic('note') + '<span>Choose a note, or jot one down.</span></div>'; return; }
-    el.innerHTML = '<div class="in ' + (dir || '') + '"><div class="bar" id="nbar">' + bar(n) + '</div>' +
+    el.innerHTML = '<div class="in ' + (S.moving ? 'still' : dir || '') + '"><div class="bar" id="nbar">' + bar(n) + '</div>' +
       (S.hint ? '<div class="hint">' + ic('lock') + '<span>' + esc(S.hint) + '</span></div>' : '') +
       '<button type="button" class="bigic" id="nicon" data-act="icon" style="--c:' + esc(n.color) + '" aria-label="Change the icon">' + ic(n.icon) + '</button>' +
       '<div class="ttl" id="ttl" contenteditable="true" role="textbox" aria-label="Title" data-ph="Title" spellcheck="true">' + esc(n.title) + '</div>' +
@@ -183,26 +182,83 @@
   }
   function flush(){ return save ? Promise.resolve(save()) : Promise.resolve(); }
 
+  // ---------- movement ----------
+  // A change of view is one movement, not a cut, as in Sleek Tasks. On a phone a note opens out of its tile and
+  // draws back into it when you leave; on a wide screen the note beside the list changes with a soft rise. When the list
+  // itself changes (a note is pinned, jotted, deleted, or you choose a folder or a tag) each note glides to its new place.
+  // This uses the browser's view transitions where it has them (note/notes.css says how each kind moves, by data-shift
+  // on <html>); where it does not, the new view rises into place. With Reduce Motion, nothing moves.
+  var calm = matchMedia('(prefers-reduced-motion: reduce)'), turn = 0;
+  function unname(){ Array.prototype.forEach.call(document.querySelectorAll('#rows [data-open]'), function(e){ e.style.viewTransitionName = ''; }); }
+  /** Give each note in the list its own name for the movement, so it is followed from where it was to where it goes. */
+  function nameRows(){
+    var els = document.querySelectorAll('#rows [data-open]'); if(els.length > 40) return false;
+    Array.prototype.forEach.call(els, function(e){ e.style.viewTransitionName = 'n-' + e.dataset.open; }); return true;
+  }
+  /** Make a change as one movement of this kind. `then` runs when it has settled. */
+  function move(kind, change, then){
+    if(S.still || calm.matches || !document.startViewTransition || document.hidden){ change(); if(then) then(); return; }
+    var mine = ++turn, t;
+    de.setAttribute('data-shift', kind);
+    var ran = false;
+    function run(){ if(ran) return; ran = true; S.moving = true; try { change(); } finally { S.moving = false; } }
+    try { t = document.startViewTransition(run); } catch(e){ de.removeAttribute('data-shift'); run(); if(then) then(); return; }
+    var ended = false, quiet = function(){};
+    var end = function(){ if(ended) return; ended = true; if(turn === mine){ de.removeAttribute('data-shift'); unname(); } if(then) then(); };      // a browser may skip the movement; the view has still changed
+    // a page that is not being drawn (behind another window, say) may never be asked to change: it is changed all the same
+    setTimeout(function(){ if(ran) return; run(); try { t.skipTransition(); } catch(e){} end(); }, 450);
+    t.finished.then(end, end); t.ready.catch(quiet); t.updateCallbackDone.catch(quiet);
+  }
+  /** A change to the list of notes: each note is followed to its new place. */
+  function moveList(change){ unname(); var named = !S.still && nameRows(); move('list', function(){ change(); if(named) nameRows(); }); }
+
   // ---------- opening and leaving a note ----------
   function show(id, dir){
     if(S.open && S.open !== id){ flush(); S.key = null; S.plain = null; }
     if(id && !N.note(id)) id = null;
     S.open = id; S.adding = null; renderRows(); renderNote(false, dir);
   }
-  function open(id){
+  function open(id, then){
     S.came = true;
-    if(wide.matches){ try { history.replaceState(null, '', '#n/' + id); } catch(e){} show(id); }
-    else location.hash = 'n/' + id;
+    if(wide.matches){ try { history.replaceState(null, '', '#n/' + id); } catch(e){} move('swap', function(){ show(id); }, then); }
+    else { S.then = then || null; location.hash = 'n/' + id; }
+  }
+  /** Open a note at once, with the cursor in it: one that has just been added. The keyboard comes up only when this
+   *  happens in the same breath as the press that asked for it, so it does not wait for a movement. */
+  function openNow(id, where){
+    S.came = true;
+    try { history[wide.matches || S.open ? 'replaceState' : 'pushState'](null, '', '#n/' + id); } catch(e){}
+    show(id);
+    var t = $(where); if(!t) return;
+    t.focus(); try { var r = document.createRange(); r.selectNodeContents(t); r.collapse(false); var sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); } catch(e){}
   }
   function leave(){
-    if(wide.matches){ try { history.replaceState(null, '', location.pathname + location.search); } catch(e){} show(null, 'back'); }
+    if(wide.matches){ try { history.replaceState(null, '', location.pathname + location.search); } catch(e){} move('swap', function(){ show(null, 'back'); }); }
     else if(S.came && history.length > 1) history.back();
-    else { try { history.replaceState(null, '', location.pathname + location.search); } catch(e){} show(null, 'back'); }
+    else { try { history.replaceState(null, '', location.pathname + location.search); } catch(e){} route(); }
   }
-  function route(){ var m = /^#n\/([a-z0-9]+)$/.exec(location.hash); show(m ? m[1] : null, m ? '' : 'back'); }
+  /** Show what the address says: a note (#n/<id>), or the list. */
+  function route(){
+    var m = /^#n\/([a-z0-9]+)$/.exec(location.hash), id = m && N.note(m[1]) ? m[1] : null, was = S.open, then = S.then; S.then = null;
+    if(wide.matches){ move('swap', function(){ show(id, id ? '' : 'back'); }, then); return; }
+    if(id){
+      // out of its tile, when that is on the screen
+      var tile = was ? null : document.querySelector('#rows [data-open="' + id + '"]');
+      if(tile){ unname(); tile.style.viewTransitionName = 'note'; }
+      move(tile ? 'open' : 'fwd', function(){ show(id); }, then);
+    } else {
+      // back into its tile; when it is no longer in the list (deleted, or filtered away), the list slides back in
+      move(was ? 'close' : 'back', function(){
+        show(null, 'back');
+        var back = was && document.querySelector('#rows [data-open="' + was + '"]');
+        if(back) back.style.viewTransitionName = 'note'; else if(de.getAttribute('data-shift') === 'close') de.setAttribute('data-shift', 'back');
+      }, then);
+    }
+  }
   /** Lock the open note again: its text and key are forgotten. */
   function relock(){
     var n = N.note(S.open); if(!n || !n.lock || S.plain === null) return;
+    // at once, with no movement: its text must be off the screen the moment its key is forgotten
     flush().then(function(){ S.key = null; S.plain = null; if(N.note(S.open) === n) renderNote(); });
   }
 
@@ -211,20 +267,25 @@
     var o = $('#over'), old = o.querySelector('.toast'); if(old) old.remove();
     var t = document.createElement('div'); t.className = 'toast'; t.setAttribute('role', 'status'); t.innerHTML = '<span>' + esc(text) + '</span>' + (undo ? '<button type="button">Undo</button>' : '');
     if(undo) t.querySelector('button').addEventListener('click', function(){ t.remove(); undo(); });
-    o.appendChild(t); setTimeout(function(){ t.remove(); }, undo ? 6000 : 1900);
+    o.appendChild(t); setTimeout(function(){ t.classList.add('out'); setTimeout(function(){ t.remove(); }, 220); }, undo ? 6000 : 1900);
   }
-  function closeSheet(){ var s = $('#over .shade'); if(s) s.remove(); }
-  function sheet(html){ closeSheet(); $('#over').insertAdjacentHTML('beforeend', '<div class="shade" data-act="shut"><div class="sheet" role="dialog" aria-modal="true"><div class="grab"></div>' + html + '</div></div>'); return $('#over .sheet'); }
+  /** Close the sheet that is open: it eases away, then is gone (at once when another is about to take its place). */
+  function closeSheet(now){
+    var s = $('#over .shade:not(.out)'); if(!s) return;
+    if(now || calm.matches){ s.remove(); return; }
+    s.classList.add('out'); setTimeout(function(){ s.remove(); }, 200);
+  }
+  function sheet(html, about){ closeSheet(true); Array.prototype.forEach.call(document.querySelectorAll('#over .shade.out'), function(x){ x.remove(); }); $('#over').insertAdjacentHTML('beforeend', '<div class="shade" data-act="shut"><div class="sheet" role="dialog" aria-modal="true"' + (about ? ' data-note="' + esc(about) + '"' : '') + '><div class="grab"></div>' + html + '</div></div>'); return $('#over .shade:not(.out) .sheet'); }
   function iconSheet(){
     var n = N.note(S.open); if(!n) return;
     sheet('<h3>Icon</h3><div class="icons" style="--c:' + esc(n.color) + '">' + NOTE_ICONS.map(function(k){ return '<button type="button" data-icon="' + k + '" aria-pressed="' + (n.icon === k) + '" aria-label="' + ICON_NAMES[k] + '" title="' + ICON_NAMES[k] + '">' + ic(k) + '</button>'; }).join('') + '</div>' +
       '<div class="dots">' + N.COLORS.map(function(c){ return '<button type="button" data-color="' + c + '" style="--c:' + c + '" aria-pressed="' + (n.color === c) + '" aria-label="Colour"></button>'; }).join('') + '</div>');
   }
-  function moveSheet(){
-    var n = N.note(S.open); if(!n) return;
+  function moveSheet(id){
+    var n = N.note(id || S.open); if(!n) return;
     sheet('<h3>Move to</h3><button type="button" class="pick" data-move="" aria-pressed="' + !n.folder + '">' + ic('all') + 'No folder</button>' +
       N.folders().map(function(f){ return '<button type="button" class="pick" data-move="' + f.id + '" aria-pressed="' + (n.folder === f.id) + '">' + ic('folder') + esc(f.name) + '</button>'; }).join('') +
-      '<form class="line" id="movenew"><input placeholder="New folder" aria-label="New folder" maxlength="40"><button class="btn small">Add</button></form>');
+      '<form class="line" id="movenew"><input placeholder="New folder" aria-label="New folder" maxlength="40"><button class="btn small">Add</button></form>', n.id);
   }
   function folderSheet(){
     var f = N.folder(S.filter); if(!f) return;
@@ -298,7 +359,7 @@
           if(!got) return;
           return V.seal(got.vault, got.raw, body).then(function(sealed){
             N.set(n.id, { lock: true, sealed: sealed, body: '' }); S.key = got.raw; S.plain = body;
-            S.hint = 'Locked. It will ask the next time you open it.'; renderList(); renderNote();
+            S.hint = 'Locked. It will ask the next time you open it.'; move('fade', function(){ renderList(); renderNote(); });
           });
         });
       }
@@ -306,7 +367,7 @@
       return (S.key ? Promise.resolve(S.key) : needKey(v2)).then(function(raw){
         if(!raw) return;
         return (S.plain !== null ? Promise.resolve(S.plain) : V.unseal(raw, n.sealed)).then(function(text){
-          N.set(n.id, { lock: false, sealed: null, body: text }); S.key = null; S.plain = null; toast('Lock taken off'); renderList(); renderNote();
+          N.set(n.id, { lock: false, sealed: null, body: text }); S.key = null; S.plain = null; toast('Lock taken off'); move('fade', function(){ renderList(); renderNote(); });
         });
       });
     }).catch(function(e){ console.error(e); toast('That did not work. Nothing was changed.'); });
@@ -321,20 +382,152 @@
     }).catch(function(e){ console.error(e); toast('This note could not be opened.'); });
   }
 
+  // ---------- the menu on a note ----------
+  // Hold a note in the list, or right-click it, and a menu opens beside it: pin, duplicate, move, copy its text, delete.
+  // Held on a touch screen, the note lifts off the list and the rest blurs behind it, as iPhone's own menus do; tap the
+  // lifted note to open it. With a mouse the menu opens at the pointer.
+  // Swipe a note to the left and it is deleted, as a row is on iPhone: red shows behind it with a bin, and past half-way
+  // (or with a quick flick) letting go deletes it. Undo brings it back.
+  var press = null, swipe = null, swallow = false;
+  /** A tap felt in the hand, in Sleeky Notes for iPhone. */
+  function feel(){ try { if(V.native) window.webkit.messageHandlers.sleekLock.postMessage({ do: 'feel' }).catch(function(){}); } catch(e){} }
+  /** The room taken at the top or the foot of the screen (the iPhone's own edges, and the Sleek browser's bar). */
+  function room(side){
+    var p = document.createElement('div'); p.style.cssText = 'position:fixed;visibility:hidden;width:0;height:calc(env(safe-area-inset-' + side + ', 0px) + var(--sleek-bar-' + side + ', 0px))';
+    document.body.appendChild(p); var h = p.offsetHeight; p.remove(); return h;
+  }
+  /** Open the menu for this note. el is the note in the list; at is where the pointer is (none when it was held). */
+  function noteMenu(id, el, at){
+    var n = N.note(id); if(!n || !el.isConnected) return;
+    function item(act, icon, label, bad){ return '<button type="button" role="menuitem"' + (bad ? ' class="bad"' : '') + ' data-menu="' + act + '"><span>' + label + '</span>' + ic(icon) + '</button>'; }
+    closeSheet(true);
+    var lift = !at, r = el.getBoundingClientRect();
+    $('#over').insertAdjacentHTML('beforeend', '<div class="shade menu' + (lift ? ' lift' : '') + '" data-act="shut"><div class="ctx" role="menu" aria-label="' + esc(title(n)) + '" data-note="' + n.id + '">' +
+      item('pin', 'pin', n.pin ? 'Unpin' : 'Pin') + item('dup', 'dup', 'Duplicate') + item('move', 'folder', 'Move to folder') + (n.lock ? '' : item('copy', 'copy', 'Copy text')) + '<hr>' + item('delete', 'bin', 'Delete', true) + '</div></div>');
+    var sh = $('#over .shade.menu:not(.out)'), m = sh.querySelector('.ctx');
+    if(lift){
+      var g = el.cloneNode(true); g.className = 'tile ghost';
+      g.style.cssText = 'left:' + r.left + 'px;top:' + r.top + 'px;width:' + r.width + 'px;height:' + r.height + 'px;--c:' + n.color;
+      sh.insertBefore(g, m);
+    }
+    var vw = window.innerWidth, top = room('top') + 10, foot = window.innerHeight - room('bottom') - 10, w = m.offsetWidth, h = m.offsetHeight, x, y, up = false, right = false;
+    if(lift){
+      right = r.left + r.width / 2 > vw / 2 + 1; x = right ? r.right - w : r.left;
+      if(r.bottom + 10 + h <= foot) y = r.bottom + 10; else { up = true; y = r.top - 10 - h >= top ? r.top - 10 - h : foot - h; }
+    } else {
+      x = at.x; y = at.y; if(x + w > vw - 8){ x = at.x - w; right = true; } if(y + h > foot){ y = at.y - h; up = true; }
+    }
+    m.style.left = Math.max(10, Math.min(x, vw - w - 10)) + 'px'; m.style.top = Math.max(top, Math.min(y, foot - h)) + 'px';
+    m.style.transformOrigin = (right ? 'right ' : 'left ') + (up ? 'bottom' : 'top');
+    if(!lift) m.querySelector('button').focus({ preventScroll: true });
+  }
+  function letGo(){ if(press && press.t){ clearTimeout(press.t); press.t = 0; press.el.classList.remove('holding'); } }
+  document.addEventListener('pointerdown', function(e){
+    letGo(); press = null; swallow = false;
+    if(swipe || e.pointerType === 'mouse' || e.isPrimary === false) return;
+    var el = e.target.closest('#rows [data-open]'); if(!el) return;
+    el.classList.add('holding');
+    press = { el: el, x: e.clientX, y: e.clientY, t: setTimeout(function(){ if(!press || press.el !== el) return; letGo(); press = null; swallow = true; feel(); noteMenu(el.dataset.open, el); }, 460) };
+  });
+  document.addEventListener('pointermove', function(e){
+    if(swipe){
+      var s = swipe, now = performance.now(), dx = Math.min(0, e.clientX - s.x), over = -dx > s.far;
+      s.v = (dx - s.dx) / Math.max(1, now - s.at); s.dx = dx; s.at = now;
+      s.el.style.transform = 'translateX(' + dx + 'px)';
+      if(over !== s.over){ s.over = over; s.back.classList.toggle('over', over); if(over) feel(); }
+      return;
+    }
+    if(!press) return;
+    var mx = e.clientX - press.x, my = e.clientY - press.y;
+    if(Math.abs(mx) + Math.abs(my) > 10) letGo();
+    if(mx < -12 && Math.abs(mx) > Math.abs(my) * 1.4 && press.el.isConnected){
+      var el = press.el, box = el.parentNode, r = el.getBoundingClientRect(), b = box.getBoundingClientRect(), back = document.createElement('div');
+      back.className = 'wipe'; back.innerHTML = ic('bin'); back.style.cssText = 'left:' + (r.left - b.left) + 'px;top:' + (r.top - b.top) + 'px;width:' + r.width + 'px;height:' + r.height + 'px';
+      box.appendChild(back); el.classList.add('swiping'); swallow = true;
+      swipe = { el: el, back: back, id: el.dataset.open, x: press.x - 12, w: r.width, far: Math.min(120, r.width * 0.5), dx: 0, v: 0, at: performance.now(), over: false };
+      press = null;
+    }
+  });
+  /** The finger is off a note that was being swiped: it goes, or it settles back. */
+  function swiped(keep){
+    var s = swipe; if(!s) return; swipe = null;
+    if(!keep && (s.over || (s.v < -0.5 && s.dx < -30)) && N.note(s.id)){
+      s.el.style.transition = 'transform .2s ease-in, opacity .2s ease-in'; s.el.style.transform = 'translateX(' + -(s.w + 40) + 'px)'; s.el.style.opacity = '0'; s.back.classList.add('gone');
+      setTimeout(function(){ s.back.remove(); remove(s.id); }, calm.matches ? 0 : 200);
+    } else {
+      s.el.style.transition = 'transform .35s cubic-bezier(.2,.9,.2,1.1)'; s.el.style.transform = ''; s.back.classList.add('gone');
+      setTimeout(function(){ s.back.remove(); s.el.classList.remove('swiping'); s.el.style.transition = ''; }, 360);
+    }
+  }
+  document.addEventListener('pointerup', function(){ letGo(); press = null; swiped(false); });
+  document.addEventListener('pointercancel', function(){ letGo(); press = null; swiped(true); });
+  document.addEventListener('scroll', function(){ letGo(); press = null; }, true);
+  document.addEventListener('contextmenu', function(e){
+    var el = e.target.closest('#rows [data-open]'); if(!el) return;
+    e.preventDefault(); if(swallow || $('#over .shade.menu:not(.out)')) return;       // a held touch has opened it already
+    letGo(); press = null;
+    var r = el.getBoundingClientRect(), key = !e.clientX && !e.clientY;
+    noteMenu(el.dataset.open, el, e.pointerType === 'touch' ? null : key ? { x: r.left + 28, y: r.bottom - 6 } : { x: e.clientX, y: e.clientY });
+  });
+  function pin(id){
+    var n = N.note(id); if(!n) return;
+    N.set(id, { pin: !n.pin }); toast(n.pin ? 'Pinned' : 'Unpinned'); moveList(function(){ renderRows(); refreshNote(); });
+  }
+  /** A copy of this note, beside it. A locked note's copy is locked the same way. */
+  function duplicate(id){
+    flush().then(function(){
+      var n = N.note(id); if(!n) return;
+      var c = N.add({ title: n.title ? n.title + ' copy' : '', icon: n.icon, color: n.color, folder: n.folder, tags: n.tags, pin: n.pin, body: n.lock ? '' : n.body });
+      if(n.lock) N.set(c.id, { lock: true, sealed: n.sealed });
+      S.fresh = c.id; moveList(renderList); toast('Duplicated');
+    });
+  }
+  function remove(id){
+    var open = id === S.open; if(!N.note(id)) return;
+    if(open){ clearTimeout(saveT); save = null; S.key = null; S.plain = null; }
+    var was = N.remove(id);
+    if(open) leave(); else moveList(renderList);
+    toast('Note deleted', function(){ N.restore(was); moveList(renderList); });
+  }
+  /** A note's title and text, on the clipboard. */
+  function copyText(id){
+    var n = N.note(id); if(!n || n.lock) return;
+    var text = [n.title, E.text(id === S.open && editor ? editor.html() : n.body)].filter(Boolean).join('\n\n');
+    function old(){
+      var a = document.createElement('textarea'), ok = false; a.value = text; a.readOnly = true; a.style.cssText = 'position:fixed;top:0;left:0;opacity:0;font-size:16px';
+      document.body.appendChild(a); a.select(); a.setSelectionRange(0, text.length); try { ok = document.execCommand('copy'); } catch(e){} a.remove();
+      toast(ok ? 'Copied' : 'It could not be copied here');
+    }
+    if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(function(){ toast('Copied'); }, old); else old();
+  }
+  function menuDo(act, id){
+    switch(act){
+      case 'pin': pin(id); break;
+      case 'dup': duplicate(id); break;
+      case 'move': moveSheet(id); break;
+      case 'copy': copyText(id); break;
+      case 'delete': remove(id); break;
+    }
+  }
+
   // ---------- doing things ----------
+  /** Keep what was typed as a new note, and open it: what was typed is its title (or its text, when it is long). On a
+   *  phone the note fills the screen with the cursor in its text; on a wide screen it opens beside the list. */
   function jot(text){
     text = text.trim(); if(!text) return;
     var long = text.length > 80;
     var n = N.add({ title: long ? text.slice(0, 77).replace(/\s+\S*$/, '') + '…' : text, body: long ? E.fromText(text) : '', folder: isFolder() ? S.filter : '', tags: S.tag ? [S.tag] : [] });
     S.fresh = n.id; if(S.q){ S.q = ''; $('#q').value = ''; }
-    renderList(); $('#list').scrollTo({ top: 0, behavior: 'smooth' });
+    $('#list').scrollTo({ top: 0 });
+    if(wide.matches){ renderNav(); renderChips(); open(n.id); } else { renderList(); openNow(n.id, '#body'); }
   }
   function newNote(){
     var n = N.add({ folder: isFolder() ? S.filter : '', tags: S.tag ? [S.tag] : [] });
-    renderList(); open(n.id); setTimeout(function(){ var t = $('#ttl'); if(t) t.focus(); }, wide.matches ? 0 : 60);
+    renderNav(); renderChips(); openNow(n.id, '#ttl');
   }
-  function addFolder(name){ S.adding = null; var f = N.addFolder(name); if(f) S.filter = f.id; renderList(); }
-  function look(){
+  function addFolder(name){ S.adding = null; var f = N.addFolder(name); if(f) S.filter = f.id; moveList(renderList); }
+  function look(){ move('look', relook); }
+  function relook(){
     var dark = de.getAttribute('data-mode') !== 'dark';
     if(dark) de.setAttribute('data-mode', 'dark'); else de.removeAttribute('data-mode');
     try { localStorage.setItem('sleek-notes-look', dark ? 'dark' : 'light'); } catch(e){}
@@ -351,34 +544,36 @@
   }
   function importFile(file){
     if(!file) return;
-    file.text().then(function(t){ return N.importAll(t); }).then(function(r){ render(); toast(r.notes ? 'Brought in ' + r.notes + (r.notes === 1 ? ' note' : ' notes') : 'Those notes are all here already'); },
+    file.text().then(function(t){ return N.importAll(t); }).then(function(r){ moveList(render); toast(r.notes ? 'Brought in ' + r.notes + (r.notes === 1 ? ' note' : ' notes') : 'Those notes are all here already'); },
       function(e){ toast(/Sleeky Notes/.test(e && e.message) ? e.message : 'That file could not be read.'); });
   }
 
   document.addEventListener('click', function(e){
     var t = e.target.closest('button, a, [data-act]'); if(!t || t.tagName === 'A') return;
-    var n = N.note(S.open), d = t.dataset;
-    if(d.open) return open(d.open);
-    if(d.filter){ S.filter = d.filter; S.adding = null; renderList(); return; }
-    if(d.tag){ S.tag = S.tag === d.tag ? null : d.tag; renderList(); return; }
+    if(swallow){ swallow = false; e.preventDefault(); return; }       // the finger coming off a note that was held
+    var about = t.closest('[data-note]'), n = N.note(about ? about.dataset.note : S.open), d = t.dataset;
+    if(d.open){ closeSheet(true); return open(d.open); }
+    if(d.menu){ closeSheet(); if(n) menuDo(d.menu, n.id); return; }
+    if(d.filter){ if(S.filter !== d.filter || S.adding){ S.filter = d.filter; S.adding = null; moveList(renderList); } return; }
+    if(d.tag){ S.tag = S.tag === d.tag ? null : d.tag; moveList(renderList); return; }
     if(d.untag && n){ N.set(n.id, { tags: n.tags.filter(function(x){ return x !== d.untag; }) }); renderList(); refreshNote(); return; }
     if(d.icon && n){ N.set(n.id, { icon: d.icon }); iconSheet(); renderRows(); refreshNote(); return; }
     if(d.color && n){ N.set(n.id, { color: d.color }); iconSheet(); renderRows(); refreshNote(); return; }
     if('move' in d && n){ N.set(n.id, { folder: d.move }); closeSheet(); toast(d.move ? 'Moved to ' + folderName(d.move) : 'Taken out of its folder'); renderList(); refreshNote(); return; }
     switch(d.act){
-      case 'shut': if(e.target === t) closeSheet(); break;
+      case 'shut': if(e.target === t && !t.classList.contains('out')) closeSheet(); break;
       case 'back': leave(); break;
       case 'new': newNote(); break;
-      case 'pin': if(n){ N.set(n.id, { pin: !n.pin }); toast(n.pin ? 'Pinned' : 'Unpinned'); renderRows(); refreshNote(); } break;
+      case 'pin': if(n) pin(n.id); break;
       case 'lock': toggleLock(); break;
       case 'unlock': unlock(); break;
       case 'check': if(editor) editor.check(); break;
       case 'bold': if(editor) editor.bold(); break;
-      case 'delete': if(n){ clearTimeout(saveT); save = null; var was = N.remove(n.id); S.key = null; S.plain = null; leave(); if(wide.matches) render(); toast('Note deleted', function(){ N.restore(was); renderList(); }); } break;
+      case 'delete': if(n) remove(n.id); break;
       case 'icon': iconSheet(); break;
       case 'move': moveSheet(); break;
       case 'folder': folderSheet(); break;
-      case 'delfolder': N.removeFolder(S.filter); S.filter = 'all'; closeSheet(); render(); toast('Folder deleted'); break;
+      case 'delfolder': N.removeFolder(S.filter); S.filter = 'all'; closeSheet(); moveList(renderList); refreshNote(); toast('Folder deleted'); break;
       case 'addtag': S.adding = 'tag'; refreshNote(); $('#newtag').focus(); break;
       case 'addfolder': S.adding = 'folder'; renderNav(); renderChips(); Array.prototype.forEach.call(document.querySelectorAll('.newfolder'), function(i){ if(i.offsetParent) i.focus(); }); break;
       case 'news': newsSheet(); break;
@@ -390,8 +585,8 @@
   // the checklist and bold buttons must not take the cursor out of the note
   document.addEventListener('pointerdown', function(e){ var t = e.target.closest('[data-act="check"], [data-act="bold"]'); if(t) e.preventDefault(); });
   document.addEventListener('submit', function(e){
-    var id = e.target.id, n = N.note(S.open);
-    if(id === 'jot'){ e.preventDefault(); var i = $('#jotin'); jot(i.value); i.value = ''; i.focus({ preventScroll: true }); }
+    var id = e.target.id, about = e.target.closest('[data-note]'), n = N.note(about ? about.dataset.note : S.open);
+    if(id === 'jot'){ e.preventDefault(); var i = $('#jotin'), said = i.value; i.value = ''; if(wide.matches) i.focus({ preventScroll: true }); jot(said); }
     if(id === 'movenew' && n){ e.preventDefault(); var f = N.addFolder(e.target.querySelector('input').value); if(f){ N.set(n.id, { folder: f.id }); closeSheet(); toast('Moved to ' + f.name); renderList(); refreshNote(); } }
     if(id === 'rename'){ e.preventDefault(); if(N.renameFolder(S.filter, e.target.querySelector('input').value)){ closeSheet(); render(); } }
   });
@@ -402,7 +597,9 @@
   });
   document.addEventListener('keydown', function(e){
     var t = e.target, n = N.note(S.open);
-    if(e.key === 'Escape' && $('#over .shade')){ closeSheet(); return; }
+    if(e.key === 'Escape' && $('#over .shade:not(.out)')){ closeSheet(); return; }
+    var menu = (e.key === 'ArrowDown' || e.key === 'ArrowUp') && $('#over .shade.menu:not(.out) .ctx');
+    if(menu){ e.preventDefault(); var bs = Array.prototype.slice.call(menu.querySelectorAll('button')), at = bs.indexOf(document.activeElement); bs[(at + (e.key === 'ArrowDown' ? 1 : bs.length - 1) + (at < 0 && e.key === 'ArrowUp' ? 1 : 0)) % bs.length].focus(); return; }
     if(e.key !== 'Enter' && e.key !== 'Escape') return;
     if(t.id === 'ttl' && e.key === 'Enter'){ e.preventDefault(); var b = $('#body'); if(b) b.focus(); }
     if(t.id === 'newtag'){ e.preventDefault(); var v = N.tag(t.value); S.adding = null; if(e.key === 'Enter' && v && n && n.tags.indexOf(v) < 0) N.set(n.id, { tags: n.tags.concat([v]) }); renderList(); refreshNote(); }
@@ -439,7 +636,8 @@
     var first = false; try { first = !localStorage.getItem('sleek-notes-begun'); localStorage.setItem('sleek-notes-begun', '1'); } catch(e){}
     if(first && !N.notes().length) welcome();
     $('#send').innerHTML = ic('up'); $('#searchic').innerHTML = ic('search'); $('#newbtn').innerHTML = ic('plus');
-    renderList(); route();
+    S.still = true; renderList(); route(); S.still = false;
+    $('#rows').classList.add('first'); setTimeout(function(){ $('#rows').classList.remove('first'); }, 1200);
     if(wide.matches && !S.open && N.notes().length){ var top = N.notes().filter(function(n){ return n.pin; })[0] || N.notes()[0]; try { history.replaceState(null, '', '#n/' + top.id); } catch(e){} show(top.id); }
     setTimeout(function(){ de.classList.remove('booting'); }, 30);
   }).catch(function(e){
