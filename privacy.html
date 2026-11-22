@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Privacy · Sleek</title>
+<meta name="description" content="What the Sleek apps keep, where they keep it, and the few things that ever leave your device.">
+<link rel="icon" href="icons/favicon.svg" type="image/svg+xml">
+<meta name="theme-color" content="#0B0B0D">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+  /* Sleek's privacy page: one for every Sleek app, on the web and on iPhone. The App Store asks each app for the
+     address of a page like this. It says only what the apps do; when an app changes what it keeps or sends,
+     this page changes with it (and so does the date at its foot). */
+  :root { color-scheme: dark; }
+  *, *::before, *::after { box-sizing: border-box; }
+  body { margin: 0; background: #0B0B0D; color: #F5F5F7; font: 16px/1.6 "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  main { max-width: 680px; margin: 0 auto; padding: calc(56px + env(safe-area-inset-top, 0px)) max(20px, env(safe-area-inset-right, 0px)) calc(72px + env(safe-area-inset-bottom, 0px)) max(20px, env(safe-area-inset-left, 0px)); }
+  .brand { display: inline-flex; align-items: center; gap: 10px; color: inherit; text-decoration: none; font-size: 22px; font-weight: 700; letter-spacing: -0.045em; }
+  .brand img { width: 30px; height: auto; display: block; }
+  h1 { margin: 28px 0 10px; font-size: clamp(34px, 7vw, 48px); line-height: 1.05; letter-spacing: -0.035em; font-weight: 650; text-wrap: balance; }
+  .lede { margin: 0 0 34px; font-size: 18px; color: #A1A1A6; }
+  h2 { margin: 38px 0 8px; font-size: 21px; letter-spacing: -0.02em; font-weight: 650; }
+  p, li { color: #C9C9CE; } p { margin: 0 0 14px; } ul { margin: 0 0 14px; padding-left: 20px; } li { margin: 0 0 8px; }
+  b { color: #F5F5F7; font-weight: 600; }
+  a { color: #8AB8FF; text-underline-offset: 3px; } a:hover, a:focus-visible { color: #F5F5F7; outline: none; }
+  .foot { margin-top: 44px; padding-top: 18px; border-top: 1px solid rgba(255,255,255,0.10); font-size: 14px; color: #7C7C84; }
+</style>
+</head>
+<body>
+<main>
+  <a class="brand" href="./"><img src="icons/logo.svg" alt="" width="30" height="27">Sleek</a>
+  <h1>Your work stays with you.</h1>
+  <p class="lede">The Sleek apps have no accounts and no sign-in. What you make is kept on your own device. This page says what each app keeps, and the few things that ever leave your device.</p>
+
+  <h2>The iPhone apps</h2>
+  <p>Sleek (the browser), Sleek Docs, Sleek Slides, Sleek Tasks and Sleeky Notes collect nothing. There is no account, no advertising, no analytics and no tracking in them.</p>
+  <ul>
+    <li><b>Your pages, decks, tasks, goals and notes</b> are kept on your iPhone, in the app's own storage. The Sleek apps on the same iPhone share one folder, so that a page or a note made in one can be opened in another. Nothing in it is sent anywhere.</li>
+    <li><b>Sending a copy</b> (a <code>.sleek</code> file, Markdown, a web page, a print) happens only when you choose it, through the iPhone's own share sheet, to wherever you choose.</li>
+    <li><b>Locked notes</b> in Sleeky Notes are encrypted on your iPhone with a passcode you choose. The key can also be kept in the iPhone's keychain so that Face ID or Touch ID opens them. Neither the passcode nor the key leaves your iPhone, and nobody else can reset them.</li>
+    <li><b>Photos</b> you put on a page or a slide are read only when you pick them.</li>
+    <li><b>Siri and widgets</b> in Sleek Tasks read your lists from the same storage on your iPhone.</li>
+  </ul>
+
+  <h2>Sleek, the browser</h2>
+  <ul>
+    <li><b>Your history, bookmarks, open tabs and settings</b> are kept on your iPhone. Private Browsing keeps no history and forgets its cookies when the last private tab closes.</li>
+    <li><b>Passwords</b> you let Sleek keep are encrypted on your iPhone and opened with Face ID, Touch ID or the iPhone's passcode. They are not sent anywhere.</li>
+    <li><b>The pages you open</b> come from their own sites, which see what any browser shows them. Sleek blocks the adverts and trackers on its lists before they load.</li>
+    <li><b>Searching.</b> What you type in the address bar goes to the search provider you chose, including, as you type, for its suggestions.</li>
+    <li><b>The block lists</b> (EasyList, EasyPrivacy and the EasyList Cookie List) are refreshed from their publisher's site. Nothing about you is sent with that.</li>
+    <li><b>Camera, microphone and where you are</b> are used only when a page asks and you allow it.</li>
+  </ul>
+
+  <h2>Sleek on the web</h2>
+  <ul>
+    <li><b>Your work</b> is kept in your browser, on your device. Clearing the browser's storage removes it, so keep a copy (each app can save one as a file).</li>
+    <li><b>Visits are counted.</b> The hosted site uses Google Analytics to count visits by kind of page ("Front page", "Deck", "Tasks"). The address is trimmed first, so the names and contents of your work are never sent.</li>
+    <li><b>Viewers.</b> If you publish a deck and switch Viewers on, a small service counts who is viewing it: a random code for each viewer's browser and the number of the slide showing. It keeps how many views and people a deck has had and how far they got. No names, no addresses, and nothing from the deck itself. Switching Viewers off forgets them.</li>
+    <li><b>Fonts</b> are loaded from Google Fonts on the web. The iPhone apps carry their fonts inside.</li>
+  </ul>
+
+  <h2>Children</h2>
+  <p>The apps do not ask who you are or how old you are, and collect nothing from anyone.</p>
+
+  <h2>Questions</h2>
+  <p>Write to <a href="mailto:uxgenes@gmail.com">uxgenes@gmail.com</a>, or see <a href="support.html">Support</a>.</p>
+
+  <p class="foot">Last changed 22 November 2026.</p>
+</main>
+</body>
+</html>
